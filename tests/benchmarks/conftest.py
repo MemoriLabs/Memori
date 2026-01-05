@@ -134,6 +134,6 @@ def entity_with_n_facts(memori_instance, fact_content_size, request):
         "entity_db_id": entity_db_id,
         "fact_count": fact_count,
         "content_size": fact_content_size,
-        "db_type": memori_instance._benchmark_db_type,
+        "db_type": getattr(memori_instance, "_benchmark_db_type", "unknown"),
         "facts": facts,
     }
