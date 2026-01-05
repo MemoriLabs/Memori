@@ -211,9 +211,34 @@ class BaseInvoke:
                     hasattr(formatted_response, "__dict__")
                     and "_pb" in formatted_response.__dict__
                 ):
+                    # Old google-generativeai format (protobuf)
                     formatted_response = json.loads(
                         json_format.MessageToJson(formatted_response.__dict__["_pb"])
                     )
+                elif hasattr(formatted_response, "candidates"):
+                    # New google-genai format (dict with candidates)
+                    result = {}
+                    if formatted_response.candidates:
+                        candidates = []
+                        for candidate in formatted_response.candidates:
+                            candidate_data = {}
+                            if hasattr(candidate, "content") and candidate.content:
+                                content_data = {}
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
+                                    parts = []
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text"):
+                                            parts.append({"text": part.text})
+                                    content_data["parts"] = parts
+                                if hasattr(candidate.content, "role"):
+                                    content_data["role"] = candidate.content.role
+                                candidate_data["content"] = content_data
+                            candidates.append(candidate_data)
+                        result["candidates"] = candidates
+                    formatted_response = result
                 else:
                     formatted_response = {}
 
@@ -720,11 +745,39 @@ class BaseIterator:
             formatted_chunk = copy.deepcopy(chunk)
             if isinstance(self.raw_response, list):
                 if "_pb" in formatted_chunk.__dict__:
+                    # Old google-generativeai format (protobuf)
                     self.raw_response.append(
                         json.loads(
                             json_format.MessageToJson(formatted_chunk.__dict__["_pb"])
                         )
                     )
+                elif "candidates" in formatted_chunk.__dict__:
+                    # New google-genai format (dict with candidates)
+                    chunk_data = {}
+                    if (
+                        hasattr(formatted_chunk, "candidates")
+                        and formatted_chunk.candidates
+                    ):
+                        candidates = []
+                        for candidate in formatted_chunk.candidates:
+                            candidate_data = {}
+                            if hasattr(candidate, "content") and candidate.content:
+                                content_data = {}
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
+                                    parts = []
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text"):
+                                            parts.append({"text": part.text})
+                                    content_data["parts"] = parts
+                                if hasattr(candidate.content, "role"):
+                                    content_data["role"] = candidate.content.role
+                                candidate_data["content"] = content_data
+                            candidates.append(candidate_data)
+                        chunk_data["candidates"] = candidates
+                    self.raw_response.append(chunk_data)
         else:
             if isinstance(self.raw_response, dict):
                 self.raw_response = merge_chunk(self.raw_response, chunk.__dict__)
