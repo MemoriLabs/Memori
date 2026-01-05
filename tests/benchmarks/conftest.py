@@ -91,9 +91,9 @@ def memori_instance(db_connection, request):
 
     try:
         bind = getattr(db_connection, "kw", {}).get("bind", None)
-        mem._benchmark_db_type = bind.dialect.name if bind else "unknown"
+        mem._benchmark_db_type = bind.dialect.name if bind else "unknown"  # type: ignore[attr-defined]
     except Exception:
-        mem._benchmark_db_type = "unknown"
+        mem._benchmark_db_type = "unknown"  # type: ignore[attr-defined]
 
     return mem
 
@@ -134,6 +134,6 @@ def entity_with_n_facts(memori_instance, fact_content_size, request):
         "entity_db_id": entity_db_id,
         "fact_count": fact_count,
         "content_size": fact_content_size,
-        "db_type": getattr(memori_instance, "_benchmark_db_type", "unknown"),
+        "db_type": memori_instance._benchmark_db_type,  # type: ignore[attr-defined]
         "facts": facts,
     }
