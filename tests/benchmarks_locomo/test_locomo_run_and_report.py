@@ -26,7 +26,7 @@ def _fake_embed_texts(
     return [v(x) for x in items]
 
 
-def test_run_writes_predictions_and_summary(tmp_path: Path):
+def test_run_writes_predictions_and_summary(tmp_path: Path, monkeypatch):
     dataset = Path(__file__).parent / "fixtures" / "locomo_tiny.json"
     out_dir = tmp_path / "run"
 
@@ -35,8 +35,8 @@ def test_run_writes_predictions_and_summary(tmp_path: Path):
     import memori.memory.recall as recall_mod
 
     # run_mod.embed_texts = _fake_embed_texts
-    run_impl_mod.embed_texts = _fake_embed_texts
-    recall_mod.embed_texts = _fake_embed_texts
+    monkeypatch.setattr(run_impl_mod, "embed_texts", _fake_embed_texts)
+    monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
 
     rc = run_main(
         [
@@ -70,7 +70,7 @@ def test_run_writes_predictions_and_summary(tmp_path: Path):
     assert summary_obj["metrics_overall"]["mrr"] == 1.0
 
 
-def test_report_aggregates_predictions(tmp_path: Path):
+def test_report_aggregates_predictions(tmp_path: Path, monkeypatch):
     dataset = Path(__file__).parent / "fixtures" / "locomo_tiny.json"
     out_dir = tmp_path / "run"
 
@@ -78,8 +78,8 @@ def test_report_aggregates_predictions(tmp_path: Path):
     import memori.memory.recall as recall_mod
 
     # run_mod.embed_texts = _fake_embed_texts
-    run_impl_mod.embed_texts = _fake_embed_texts
-    recall_mod.embed_texts = _fake_embed_texts
+    monkeypatch.setattr(run_impl_mod, "embed_texts", _fake_embed_texts)
+    monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
 
     run_main(
         ["--dataset", str(dataset), "--out", str(out_dir), "--ingest", "turn_facts"]
@@ -100,7 +100,9 @@ def test_report_aggregates_predictions(tmp_path: Path):
     assert summary_obj["metrics_overall"]["hit@1"] == 1.0
 
 
-def test_run_can_reuse_existing_sqlite_db_without_ingestion(tmp_path: Path):
+def test_run_can_reuse_existing_sqlite_db_without_ingestion(
+    tmp_path: Path, monkeypatch
+):
     dataset = Path(__file__).parent / "fixtures" / "locomo_tiny.json"
     sqlite_db = tmp_path / "shared.sqlite"
     out_dir_1 = tmp_path / "run1"
@@ -111,8 +113,8 @@ def test_run_can_reuse_existing_sqlite_db_without_ingestion(tmp_path: Path):
 
     # First run ingests deterministically.
     # run_mod.embed_texts = _fake_embed_texts
-    run_impl_mod.embed_texts = _fake_embed_texts
-    recall_mod.embed_texts = _fake_embed_texts
+    monkeypatch.setattr(run_impl_mod, "embed_texts", _fake_embed_texts)
+    monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
 
     rc = run_main(
         [
@@ -138,8 +140,8 @@ def test_run_can_reuse_existing_sqlite_db_without_ingestion(tmp_path: Path):
         )
 
     # run_mod.embed_texts = _should_not_be_called
-    run_impl_mod.embed_texts = _should_not_be_called
-    recall_mod.embed_texts = _fake_embed_texts
+    monkeypatch.setattr(run_impl_mod, "embed_texts", _should_not_be_called)
+    monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
 
     rc2 = run_main(
         [

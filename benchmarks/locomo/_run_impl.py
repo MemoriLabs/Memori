@@ -510,7 +510,7 @@ def _enqueue_aa(
 ) -> None:
     mem.augmentation.enqueue(
         AugmentationInput(
-            conversation_id=conv_id,
+            conversation_id=str(conv_id),
             entity_id=entity_external_id,
             process_id="locomo-benchmark",
             conversation_messages=msgs,
