@@ -6,12 +6,12 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from memori import Memori
-from memori.llm._embeddings import embed_texts
-from tests.benchmarks.fixtures.sample_data import (
+from benchmarks.perf.fixtures.sample_data import (
     generate_facts_with_size,
     generate_sample_queries,
 )
+from memori import Memori
+from memori.llm._embeddings import embed_texts
 
 
 @pytest.fixture

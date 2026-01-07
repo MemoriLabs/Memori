@@ -218,177 +218,24 @@ def build_user_data() -> dict:
 
     apps = [
         "Notion",
-        "Google_Drive",
-        "Google_Calendar",
-        "Gmail",
         "Slack",
-        "Zoom",
-        "VS_Code",
-        "Docker_Desktop",
-        "GitHub",
-        "GitHub_Desktop",
-        "Postman",
-        "TablePlus",
-        "DBeaver",
-        "Obsidian",
-        "Todoist",
+        "Gmail",
+        "Google_Calendar",
         "Spotify",
         "YouTube",
         "Netflix",
-        "Hulu",
-        "Amazon_Prime",
-        "Strava",
-        "MyFitnessPal",
-        "Pocket",
-        "Kindle_App",
-        "Signal",
-        "Discord",
-        "Reddit",
-        "X",
-        "LinkedIn",
-        "Google_Maps",
+        "Amazon",
+        "GitHub",
+        "Figma",
+        "Jira",
+        "Linear",
+        "Zoom",
+        "1Password",
+        "Google_Drive",
     ]
-    for a in apps:
-        add(a, "type", "Application")
-        add("John", "uses_app", a)
-        add(
-            a,
-            "category",
-            "productivity"
-            if a
-            in {
-                "Notion",
-                "Todoist",
-                "Obsidian",
-                "Google_Calendar",
-                "Google_Drive",
-                "Gmail",
-            }
-            else "communication"
-            if a in {"Slack", "Zoom", "Signal", "Discord"}
-            else "media",
-        )
-        add(a, "access_method", "mobile_and_desktop" if a not in {"Smart_TV"} else "tv")
+    for i, app in enumerate(apps, start=1):
+        add(app, "type", "App")
+        add("John", "uses_app", app)
+        add(app, "has_version", f"{(i % 5) + 1}.{(i % 10)}.{(i % 20)}")
 
-    services = [
-        "Banking_Service",
-        "Credit_Card",
-        "Mortgage_Lender",
-        "Insurance_Auto",
-        "Insurance_Home",
-        "Electric_Utility",
-        "Water_Utility",
-        "Internet_ISP",
-        "Mobile_Carrier",
-        "Cloud_Provider",
-    ]
-    for i, s in enumerate(services, start=1):
-        add(s, "type", "Service")
-        add("John", "has_service_account", s)
-        add(s, "billing_cycle", "monthly")
-        add(s, "has_priority", "high" if i <= 3 else "medium")
-
-    # -----------------------------
-    # Projects, repos, documents, artifacts
-    # -----------------------------
-    project_domains = [
-        "LLM_Tooling",
-        "Backend_API",
-        "Data_Pipeline",
-        "Infra_As_Code",
-        "Personal_Website",
-        "Home_Budget",
-    ]
-    for i in range(1, 51):  # 50 projects
-        p = f"Project_{i:03d}"
-        add(p, "type", "Project")
-        add("John", "owns_project", p)
-        add(p, "domain", project_domains[i % len(project_domains)])
-        add(p, "has_status", "active" if i % 5 != 0 else "paused")
-        add(p, "uses_language", ["Python", "TypeScript", "SQL", "Go"][i % 4])
-        add(p, "uses_platform", ["AWS", "GCP", "Vercel", "DigitalOcean"][i % 4])
-
-    doc_types = [
-        "Spec",
-        "Design_Doc",
-        "Runbook",
-        "Postmortem",
-        "Resume",
-        "Budget_Spreadsheet",
-        "Travel_Itinerary",
-        "Grocery_List",
-    ]
-    for i in range(1, 81):  # 80 docs
-        doc = f"Doc_{i:03d}"
-        add(doc, "type", "Document")
-        add("John", "created_document", doc)
-        add(doc, "document_type", doc_types[i % len(doc_types)])
-        add(doc, "stored_in", "Google_Drive" if i % 2 == 0 else "Notion")
-
-    # -----------------------------
-    # Goals, tasks, routines, preferences (LLM-relevant)
-    # -----------------------------
-    goal_areas = ["Career", "Health", "Finance", "Learning", "Home", "Travel"]
-    for i in range(1, 121):  # 120 goals
-        g = f"Goal_{i:03d}"
-        add(g, "type", "Goal")
-        add("John", "has_goal", g)
-        add(g, "goal_area", goal_areas[i % len(goal_areas)])
-        add(g, "target_timeframe", ["this_quarter", "this_year", "next_year"][i % 3])
-
-    routines = [
-        "Morning_Routine",
-        "Workout_Routine",
-        "Meal_Prep_Routine",
-        "Weekly_Planning",
-        "Budget_Review",
-        "Code_Review_Habit",
-    ]
-    for i in range(1, 101):  # 100 routines/habits
-        r = f"Routine_{i:03d}"
-        add(r, "type", "Routine")
-        add("John", "follows_routine", r)
-        add(r, "routine_template", routines[i % len(routines)])
-        add(r, "frequency", ["daily", "weekly", "monthly"][i % 3])
-
-    # -----------------------------
-    # LLM conversation topics / entities John might discuss
-    # -----------------------------
-    topics = [
-        "Trip_Planning",
-        "Interview_Prep",
-        "System_Design",
-        "API_Debugging",
-        "SQL_Optimization",
-        "Docker_Troubleshooting",
-        "CI_CD_Failures",
-        "Cost_Optimization",
-        "Latency_Tuning",
-        "Meal_Planning",
-        "Workout_Programming",
-        "Budgeting",
-        "Insurance_Comparison",
-        "Home_Repairs",
-        "Writing_Emails",
-        "Writing_Docs",
-        "Refactoring_Code",
-        "Testing_Strategy",
-        "Monitoring_Alerts",
-        "Productivity_Systems",
-    ]
-    for i in range(1, 201):  # 200 topic facts
-        t = f"Topic_{i:03d}"
-        add(t, "type", "Topic")
-        add("John", "asks_llm_about", t)
-        add(t, "topic_name", topics[i % len(topics)])
-        add(t, "priority", ["high", "medium", "low"][i % 3])
-
-    # -----------------------------
-    # Normalize to exactly 1,000 facts
-    # -----------------------------
-    facts_1000 = facts[:1000]
-    return {"user": "John", "facts": facts_1000}
-
-
-user_data = build_user_data()
-assert len(user_data["facts"]) == 1000
+    return {"user": "John", "facts": facts}

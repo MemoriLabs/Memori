@@ -6,12 +6,12 @@ from time import perf_counter
 
 import pytest
 
+from benchmarks.perf._results import append_csv_row, results_dir
+from benchmarks.perf.memory_utils import measure_peak_rss_bytes
 from memori._config import Config
 from memori._search import find_similar_embeddings
 from memori.llm._embeddings import embed_texts
 from memori.memory.recall import Recall
-from tests.benchmarks._results import append_csv_row, results_dir
-from tests.benchmarks.memory_utils import measure_peak_rss_bytes
 
 
 def _default_benchmark_csv_path() -> str:
