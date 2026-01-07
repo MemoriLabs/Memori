@@ -88,7 +88,7 @@ def run_locomo(cfg: RunConfig) -> dict:
         sqlite_path=sqlite_path,
         provenance_path=provenance_path,
     )
-    ts = datetime.datetime.now(datetime.UTC).isoformat()
+    ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     mem = _init_memori(sqlite_path)
     recall = Recall(mem.config)

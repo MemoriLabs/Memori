@@ -24,7 +24,7 @@ def _write_benchmark_row(*, benchmark, row: dict[str, object]) -> None:
     )
     stats = getattr(benchmark, "stats", None)
     row_out: dict[str, object] = dict(row)
-    row_out["timestamp_utc"] = datetime.datetime.now(datetime.UTC).isoformat()
+    row_out["timestamp_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     for key in (
         "mean",
