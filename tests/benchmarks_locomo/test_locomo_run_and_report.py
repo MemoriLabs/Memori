@@ -7,6 +7,43 @@ from benchmarks.locomo.report import main as report_main
 from benchmarks.locomo.run import main as run_main
 
 
+def _write_locomo_tiny(path: Path) -> Path:
+    data = [
+        {
+            "sample_id": "sample-001",
+            "conversation": [
+                {
+                    "session_id": "session-1",
+                    "dialogue": [
+                        {
+                            "turn_id": "t0",
+                            "speaker": "user",
+                            "text": "My favorite color is blue.",
+                        },
+                        {"turn_id": "t1", "speaker": "assistant", "text": "Got it."},
+                    ],
+                }
+            ],
+            "qa": [
+                {
+                    "question_id": "q0",
+                    "question": "What is my favorite color?",
+                    "answer": "blue",
+                    "evidence": 0,
+                },
+                {
+                    "question_id": "q1",
+                    "question": "Which color do I like best?",
+                    "answer": "blue",
+                    "evidence": 0,
+                },
+            ],
+        }
+    ]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
 def _fake_embed_texts(
     texts: str | list[str], model: str, fallback_dimension: int
 ) -> list[list[int | float]]:
@@ -27,7 +64,7 @@ def _fake_embed_texts(
 
 
 def test_run_writes_predictions_and_summary(tmp_path: Path, monkeypatch):
-    dataset = Path(__file__).parent / "fixtures" / "locomo_tiny.json"
+    dataset = _write_locomo_tiny(tmp_path / "locomo_tiny.json")
     out_dir = tmp_path / "run"
 
     # Prevent embedding model downloads during tests.
@@ -71,7 +108,7 @@ def test_run_writes_predictions_and_summary(tmp_path: Path, monkeypatch):
 
 
 def test_report_aggregates_predictions(tmp_path: Path, monkeypatch):
-    dataset = Path(__file__).parent / "fixtures" / "locomo_tiny.json"
+    dataset = _write_locomo_tiny(tmp_path / "locomo_tiny.json")
     out_dir = tmp_path / "run"
 
     import benchmarks.locomo._run_impl as run_impl_mod
@@ -103,7 +140,7 @@ def test_report_aggregates_predictions(tmp_path: Path, monkeypatch):
 def test_run_can_reuse_existing_sqlite_db_without_ingestion(
     tmp_path: Path, monkeypatch
 ):
-    dataset = Path(__file__).parent / "fixtures" / "locomo_tiny.json"
+    dataset = _write_locomo_tiny(tmp_path / "locomo_tiny.json")
     sqlite_db = tmp_path / "shared.sqlite"
     out_dir_1 = tmp_path / "run1"
     out_dir_2 = tmp_path / "run2"
