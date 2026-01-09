@@ -36,7 +36,7 @@ class TestClientRegistration:
         memori_instance.llm.register(client)
 
         assert hasattr(client, "_memori_installed")
-        assert client._memori_installed is True
+        assert getattr(client, "_memori_installed", False) is True
 
     @requires_anthropic
     @pytest.mark.integration
@@ -51,7 +51,7 @@ class TestClientRegistration:
         memori_instance.llm.register(client)
 
         assert hasattr(client, "_memori_installed")
-        assert client._memori_installed is True
+        assert getattr(client, "_memori_installed", False) is True
 
     @requires_anthropic
     @pytest.mark.integration
@@ -69,7 +69,7 @@ class TestClientRegistration:
 
         # Should still be the same wrapped method
         assert client.messages.create is original_create
-        assert client._memori_installed is True
+        assert getattr(client, "_memori_installed", False) is True
 
     @requires_anthropic
     @pytest.mark.integration

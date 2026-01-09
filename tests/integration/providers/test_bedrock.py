@@ -40,7 +40,7 @@ class TestClientRegistration:
         self, memori_instance, aws_credentials
     ):
         """Verify that registering a client sets _memori_installed flag."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         client = ChatBedrock(
             model_id=MODEL_ID,
@@ -61,7 +61,7 @@ class TestClientRegistration:
         self, memori_instance, aws_credentials
     ):
         """Verify that registering the same client multiple times is safe."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         client = ChatBedrock(
             model_id=MODEL_ID,
@@ -84,7 +84,7 @@ class TestClientRegistration:
         self, memori_instance, aws_credentials
     ):
         """Verify that original methods are backed up after registration."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         client = ChatBedrock(
             model_id=MODEL_ID,
@@ -298,7 +298,7 @@ class TestErrorHandling:
         import os
         from unittest.mock import patch
 
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         # Temporarily override AWS credentials
         with patch.dict(
@@ -321,7 +321,7 @@ class TestErrorHandling:
     @pytest.mark.integration
     def test_invalid_model_raises_error(self, memori_instance, aws_credentials):
         """Verify invalid model ID raises appropriate error."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         client = ChatBedrock(
             model_id="invalid-model-xyz",
@@ -339,7 +339,7 @@ class TestErrorHandling:
         self, memori_instance, aws_credentials
     ):
         """Verify async invocation with invalid model raises error."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         client = ChatBedrock(
             model_id="invalid-model-xyz",
@@ -408,7 +408,7 @@ class TestMemoriIntegration:
         self, aws_credentials, memori_instance
     ):
         """Verify Memori wrapper doesn't alter the response type."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         # Get response without Memori wrapper
         unwrapped_client = ChatBedrock(
@@ -435,7 +435,7 @@ class TestMemoriIntegration:
     @pytest.mark.integration
     def test_config_captures_provider_info(self, memori_instance, aws_credentials):
         """Verify Memori config captures Bedrock provider information."""
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
         client = ChatBedrock(
             model_id=MODEL_ID,

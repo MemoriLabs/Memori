@@ -43,7 +43,7 @@ class TestClientRegistration:
         memori_instance.llm.register(client)
 
         assert hasattr(client, "_memori_installed")
-        assert client._memori_installed is True
+        assert getattr(client, "_memori_installed", False) is True
 
         client.close()
 
@@ -65,7 +65,7 @@ class TestClientRegistration:
 
         # Should still be the same wrapped method
         assert client.models.generate_content is original_generate
-        assert client._memori_installed is True
+        assert getattr(client, "_memori_installed", False) is True
 
         client.close()
 
@@ -83,7 +83,7 @@ class TestClientRegistration:
 
         # Google uses models.generate_content, so wrapper should be installed
         assert hasattr(client, "_memori_installed")
-        assert client._memori_installed is True
+        assert getattr(client, "_memori_installed", False) is True
 
         client.close()
 

@@ -2,7 +2,7 @@
 
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from unittest.mock import patch
 
 import pytest
@@ -10,17 +10,11 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
-# =============================================================================
-# API Keys from environment
-# =============================================================================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 XAI_API_KEY = os.environ.get("XAI_API_KEY")
 
-# =============================================================================
-# Skip markers for each provider
-# =============================================================================
 requires_openai = pytest.mark.skipif(
     not OPENAI_API_KEY,
     reason="OPENAI_API_KEY environment variable not set",
@@ -192,11 +186,6 @@ def registered_async_streaming_client(memori_instance, openai_api_key):
     return client
 
 
-# =============================================================================
-# Anthropic Provider Fixtures
-# =============================================================================
-
-
 @pytest.fixture(scope="session")
 def anthropic_api_key():
     """Return the Anthropic API key or skip if not available."""
@@ -237,11 +226,6 @@ def registered_async_anthropic_client(memori_instance, async_anthropic_client):
     return async_anthropic_client
 
 
-# =============================================================================
-# Google Provider Fixtures
-# =============================================================================
-
-
 @pytest.fixture(scope="session")
 def google_api_key():
     """Return the Google API key or skip if not available."""
@@ -270,11 +254,6 @@ def registered_google_client(memori_instance, google_client):
     memori_instance.llm.register(google_client)
     memori_instance.attribution(entity_id="test-entity", process_id="test-process")
     return google_client
-
-
-# =============================================================================
-# xAI Provider Fixtures
-# =============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -323,11 +302,6 @@ def registered_async_xai_client(memori_instance, async_xai_client):
     return async_xai_client
 
 
-# =============================================================================
-# AWS Bedrock Provider Fixtures
-# =============================================================================
-
-
 @pytest.fixture(scope="session")
 def aws_credentials():
     """Return AWS credentials or skip if not available."""
@@ -346,7 +320,7 @@ def bedrock_client(aws_credentials):
     if not BEDROCK_SDK_AVAILABLE:
         pytest.skip("langchain-aws not installed (pip install langchain-aws)")
 
-    from langchain_aws import ChatBedrock
+    from langchain_aws import ChatBedrock  # type: ignore[import-not-found]
 
     return ChatBedrock(
         model_id="anthropic.claude-3-haiku-20240307-v1:0",
@@ -365,19 +339,11 @@ def registered_bedrock_client(memori_instance, bedrock_client):
     return bedrock_client
 
 
-# =============================================================================
-# Advanced Augmentation Payload Validation
-# =============================================================================
-
-
 @dataclass
 class CapturedPayload:
     """Container for captured AA payloads with validation methods."""
 
-    payloads: list = None
-
-    def __post_init__(self):
-        self.payloads = []
+    payloads: list = field(default_factory=list)
 
     def capture(self, payload: dict) -> dict:
         """Capture a payload and return mock response."""
@@ -399,7 +365,7 @@ class CapturedPayload:
         """Get number of captured payloads."""
         return len(self.payloads)
 
-    def validate_structure(self, payload: dict = None) -> list[str]:
+    def validate_structure(self, payload: dict | None = None) -> list[str]:
         """Validate payload structure against expected AA schema.
 
         Returns list of validation errors (empty if valid).
@@ -487,7 +453,7 @@ class CapturedPayload:
 
         return errors
 
-    def is_valid(self, payload: dict = None) -> bool:
+    def is_valid(self, payload: dict | None = None) -> bool:
         """Check if payload is valid."""
         return len(self.validate_structure(payload)) == 0
 

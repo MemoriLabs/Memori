@@ -1,10 +1,10 @@
-.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-integrations run-aa-unit-tests run-aa-integration
+.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-unit run-integration run-integration-provider
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Available targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 dev-up: ## Start development environment (builds and runs containers)
 	docker compose up -d --build
@@ -49,29 +49,17 @@ dev-clean: ## Complete teardown: stop containers, remove images, prune build cac
 test: ## Run tests in the container
 	docker compose exec dev pytest
 
-run-integrations: ## Run all provider integration tests (requires API keys in .env)
-	@echo "Running integration tests with MEMORI_TEST_MODE=1 (staging)..."
-	@echo "Ensure API keys are set in environment or .env file"
+run-unit: ## Run unit tests (no API keys needed)
+	@echo "Running unit tests..."
+	uv run pytest tests/ --ignore=tests/integration --ignore=tests/benchmarks -v --tb=short
+
+run-integration: ## Run all integration tests (requires API keys)
+	@echo "Running all integration tests with MEMORI_TEST_MODE=1..."
 	MEMORI_TEST_MODE=1 uv run pytest tests/integration/ -v -m integration --tb=short
 
-run-aa-unit-tests: ## Run AA payload unit tests (no API keys needed)
-	@echo "Running AA payload unit tests..."
-	uv run pytest tests/memory/augmentation/test_aa_payload_unit.py -v --tb=short
-
-run-aa-integration: ## Run AA integration tests with staging API
-	@echo "Running AA integration tests against staging..."
-	MEMORI_TEST_MODE=1 uv run pytest tests/integration/test_aa_payload.py -v -m integration --tb=short
-
-run-integrations-docker: ## Run integration tests in Docker container
-	docker compose exec -e MEMORI_TEST_MODE=1 dev pytest tests/integration/ -v -m integration --tb=short
-
-run-integration: ## Run integration test scripts directly (e.g., make run-integration FILE=tests/llm/clients/oss/openai/async.py ARGS="--db mysql")
-	@echo "Running integration test: $(FILE) $(ARGS)"
-	docker compose exec -e PYTHONPATH=/app dev python $(FILE) $(ARGS)
-
-run-integration-enterprise: ## Run integration test in enterprise mode (e.g., make run-integration-enterprise FILE=tests/llm/clients/oss/openai/sync.py)
-	@echo "Running integration test in ENTERPRISE mode: $(FILE) $(ARGS)"
-	docker compose exec -e PYTHONPATH=/app -e MEMORI_ENTERPRISE=1 dev python $(FILE) $(ARGS)
+run-integration-provider: ## Run specific provider tests (e.g., make run-integration-provider P=openai)
+	@echo "Running $(P) integration tests..."
+	MEMORI_TEST_MODE=1 uv run pytest tests/integration/providers/test_$(P).py -v -m integration --tb=short
 
 lint: ## Run linting (format check)
 	docker compose exec dev uv run ruff check .
