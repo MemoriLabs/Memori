@@ -1,15 +1,3 @@
-"""Unit tests for Advanced Augmentation (AA) payload building.
-
-These tests validate that AA payloads are correctly structured WITHOUT making
-any network requests. They test the _build_api_payload() method directly,
-avoiding threading issues with mocks.
-
-Run with:
-    pytest tests/memory/augmentation/test_aa_payload_unit.py -v
-
-No API keys required - these are pure unit tests.
-"""
-
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,41 +21,31 @@ from memori.memory.augmentation._models import (
 
 
 class TestHashId:
-    """Tests for the hash_id function."""
-
     def test_hash_id_returns_64_chars(self):
-        """Verify hash_id returns a 64-character SHA256 hash."""
         result = hash_id("test-user-123")
         assert result is not None
         assert len(result) == 64
         assert all(c in "0123456789abcdef" for c in result)
 
     def test_hash_id_returns_none_for_none(self):
-        """Verify hash_id returns None for None input."""
         assert hash_id(None) is None
 
     def test_hash_id_returns_none_for_empty_string(self):
-        """Verify hash_id returns None for empty string."""
         assert hash_id("") is None
 
     def test_hash_id_is_deterministic(self):
-        """Verify same input produces same hash."""
         hash1 = hash_id("consistent-user")
         hash2 = hash_id("consistent-user")
         assert hash1 == hash2
 
     def test_hash_id_different_inputs_different_hashes(self):
-        """Verify different inputs produce different hashes."""
         hash1 = hash_id("user-1")
         hash2 = hash_id("user-2")
         assert hash1 != hash2
 
 
 class TestDataclassModels:
-    """Tests for the augmentation payload dataclass models."""
-
     def test_conversation_data_structure(self):
-        """Verify ConversationData holds messages and summary."""
         messages = [{"role": "user", "content": "Hello"}]
         conv = ConversationData(messages=messages, summary="A greeting")
 
@@ -75,18 +53,15 @@ class TestDataclassModels:
         assert conv.summary == "A greeting"
 
     def test_conversation_data_summary_optional(self):
-        """Verify ConversationData summary is optional."""
         conv = ConversationData(messages=[])
         assert conv.summary is None
 
     def test_entity_data_structure(self):
-        """Verify EntityData holds hashed ID."""
         entity = EntityData(id=hash_id("user-123"))
         assert entity.id is not None
         assert len(entity.id) == 64
 
     def test_attribution_data_structure(self):
-        """Verify AttributionData holds entity and process."""
         attr = AttributionData(
             entity=EntityData(id=hash_id("user")),
             process=ProcessData(id=hash_id("process")),
@@ -95,7 +70,6 @@ class TestDataclassModels:
         assert attr.process.id is not None
 
     def test_meta_data_has_all_required_fields(self):
-        """Verify MetaData contains all required fields."""
         meta = MetaData()
 
         assert hasattr(meta, "attribution")
@@ -106,22 +80,17 @@ class TestDataclassModels:
         assert hasattr(meta, "storage")
 
     def test_sdk_data_defaults_to_python(self):
-        """Verify SdkData lang defaults to 'python'."""
         sdk = SdkData()
         assert sdk.lang == "python"
 
     def test_storage_data_defaults(self):
-        """Verify StorageData has correct defaults."""
         storage = StorageData()
         assert storage.cockroachdb is False
         assert storage.dialect is None
 
 
 class TestAugmentationPayloadToDict:
-    """Tests for AugmentationPayload.to_dict() method."""
-
     def test_payload_has_required_top_level_keys(self):
-        """Verify payload has 'conversation' and 'meta' keys."""
         payload = AugmentationPayload(
             conversation=ConversationData(messages=[]),
             meta=MetaData(),
@@ -132,7 +101,6 @@ class TestAugmentationPayloadToDict:
         assert "meta" in result
 
     def test_payload_conversation_structure(self):
-        """Verify conversation has messages array."""
         messages = [
             {"role": "system", "content": "You are helpful."},
             {"role": "user", "content": "Hello"},
@@ -150,7 +118,6 @@ class TestAugmentationPayloadToDict:
         assert result["conversation"]["summary"] == "A conversation"
 
     def test_payload_meta_has_all_required_keys(self):
-        """Verify meta has all required nested keys."""
         payload = AugmentationPayload(
             conversation=ConversationData(messages=[]),
             meta=MetaData(
@@ -182,7 +149,6 @@ class TestAugmentationPayloadToDict:
         assert "storage" in meta
 
     def test_payload_attribution_structure(self):
-        """Verify attribution has entity and process with hashed IDs."""
         payload = AugmentationPayload(
             conversation=ConversationData(messages=[]),
             meta=MetaData(
@@ -204,7 +170,6 @@ class TestAugmentationPayloadToDict:
         assert len(attr["process"]["id"]) == 64
 
     def test_payload_llm_structure(self):
-        """Verify LLM metadata structure."""
         payload = AugmentationPayload(
             conversation=ConversationData(messages=[]),
             meta=MetaData(
@@ -226,7 +191,6 @@ class TestAugmentationPayloadToDict:
         assert llm["model"]["sdk"]["version"] == "0.30.0"
 
     def test_payload_sdk_structure(self):
-        """Verify SDK metadata structure."""
         payload = AugmentationPayload(
             conversation=ConversationData(messages=[]),
             meta=MetaData(sdk=SdkData(lang="python", version="1.2.3")),
@@ -238,7 +202,6 @@ class TestAugmentationPayloadToDict:
         assert sdk["version"] == "1.2.3"
 
     def test_payload_storage_structure(self):
-        """Verify storage metadata structure."""
         payload = AugmentationPayload(
             conversation=ConversationData(messages=[]),
             meta=MetaData(storage=StorageData(cockroachdb=True, dialect="postgresql")),
@@ -251,11 +214,8 @@ class TestAugmentationPayloadToDict:
 
 
 class TestBuildApiPayload:
-    """Tests for AdvancedAugmentation._build_api_payload() method."""
-
     @pytest.fixture
     def mock_config(self):
-        """Create a mock config object for testing."""
         config = MagicMock()
         config.framework.provider = "openai"
         config.llm.provider = "openai"
@@ -268,7 +228,6 @@ class TestBuildApiPayload:
 
     @pytest.fixture
     def augmentation(self, mock_config):
-        """Create an AdvancedAugmentation instance with mock config."""
         from memori.memory.augmentation.augmentations.memori._augmentation import (
             AdvancedAugmentation,
         )
@@ -277,7 +236,6 @@ class TestBuildApiPayload:
         return aug
 
     def test_build_payload_returns_dict(self, augmentation):
-        """Verify _build_api_payload returns a dictionary."""
         payload = augmentation._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
             summary=None,
@@ -290,7 +248,6 @@ class TestBuildApiPayload:
         assert isinstance(payload, dict)
 
     def test_build_payload_has_required_keys(self, augmentation):
-        """Verify built payload has conversation and meta."""
         payload = augmentation._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
             summary=None,
@@ -304,7 +261,6 @@ class TestBuildApiPayload:
         assert "meta" in payload
 
     def test_build_payload_hashes_entity_id(self, augmentation):
-        """Verify entity_id is SHA256 hashed (64 chars)."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -317,11 +273,9 @@ class TestBuildApiPayload:
         entity_id = payload["meta"]["attribution"]["entity"]["id"]
         assert entity_id is not None
         assert len(entity_id) == 64
-        # Verify it's not the original value
         assert entity_id != "my-user-id"
 
     def test_build_payload_hashes_process_id(self, augmentation):
-        """Verify process_id is SHA256 hashed (64 chars)."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -337,7 +291,6 @@ class TestBuildApiPayload:
         assert process_id != "my-process-id"
 
     def test_build_payload_includes_messages(self, augmentation):
-        """Verify messages are included in payload."""
         messages = [
             {"role": "system", "content": "You are helpful."},
             {"role": "user", "content": "Hello"},
@@ -356,7 +309,6 @@ class TestBuildApiPayload:
         assert payload["conversation"]["messages"] == messages
 
     def test_build_payload_includes_summary(self, augmentation):
-        """Verify summary is included when provided."""
         payload = augmentation._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
             summary="This is a test conversation",
@@ -369,7 +321,6 @@ class TestBuildApiPayload:
         assert payload["conversation"]["summary"] == "This is a test conversation"
 
     def test_build_payload_includes_dialect(self, augmentation):
-        """Verify storage dialect is included."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -382,7 +333,6 @@ class TestBuildApiPayload:
         assert payload["meta"]["storage"]["dialect"] == "postgresql"
 
     def test_build_payload_includes_llm_provider(self, augmentation):
-        """Verify LLM provider metadata is included."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -396,7 +346,6 @@ class TestBuildApiPayload:
         assert payload["meta"]["llm"]["model"]["version"] == "gpt-4o-mini"
 
     def test_build_payload_includes_sdk_info(self, augmentation):
-        """Verify SDK metadata is included."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -410,7 +359,6 @@ class TestBuildApiPayload:
         assert payload["meta"]["sdk"]["version"] == "0.1.0"
 
     def test_build_payload_includes_framework_provider(self, augmentation):
-        """Verify framework provider is included."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -423,7 +371,6 @@ class TestBuildApiPayload:
         assert payload["meta"]["framework"]["provider"] == "openai"
 
     def test_build_payload_none_entity_id(self, augmentation):
-        """Verify None entity_id results in None in payload."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -436,7 +383,6 @@ class TestBuildApiPayload:
         assert payload["meta"]["attribution"]["entity"]["id"] is None
 
     def test_build_payload_none_process_id(self, augmentation):
-        """Verify None process_id results in None in payload."""
         payload = augmentation._build_api_payload(
             messages=[],
             summary=None,
@@ -450,25 +396,17 @@ class TestBuildApiPayload:
 
 
 class TestPayloadValidator:
-    """Tests using a payload validator similar to conftest.py::CapturedPayload."""
-
     def validate_payload_structure(self, payload: dict) -> list[str]:
-        """Validate payload structure against expected AA schema.
-
-        Returns list of validation errors (empty if valid).
-        """
         errors = []
 
         if not payload:
             return ["No payload to validate"]
 
-        # Check top-level keys
         if "conversation" not in payload:
             errors.append("Missing 'conversation' key")
         if "meta" not in payload:
             errors.append("Missing 'meta' key")
 
-        # Validate conversation structure
         if "conversation" in payload:
             conv = payload["conversation"]
             if "messages" not in conv:
@@ -476,7 +414,6 @@ class TestPayloadValidator:
             elif not isinstance(conv["messages"], list):
                 errors.append("'conversation.messages' must be a list")
 
-        # Validate meta structure
         if "meta" in payload:
             meta = payload["meta"]
 
@@ -492,7 +429,6 @@ class TestPayloadValidator:
                 if key not in meta:
                     errors.append(f"Missing 'meta.{key}'")
 
-            # Validate attribution
             if "attribution" in meta:
                 attr = meta["attribution"]
                 if "entity" not in attr or "id" not in attr.get("entity", {}):
@@ -500,7 +436,6 @@ class TestPayloadValidator:
                 if "process" not in attr or "id" not in attr.get("process", {}):
                     errors.append("Missing 'meta.attribution.process.id'")
 
-                # Validate hashed IDs (should be 64-char SHA256 or None)
                 entity_id = attr.get("entity", {}).get("id")
                 if entity_id is not None and len(entity_id) != 64:
                     errors.append(
@@ -513,7 +448,6 @@ class TestPayloadValidator:
                         f"Process ID not hashed: {len(process_id)} chars, expected 64"
                     )
 
-            # Validate LLM structure
             if "llm" in meta:
                 llm = meta["llm"]
                 if "model" not in llm:
@@ -521,14 +455,12 @@ class TestPayloadValidator:
                 elif "provider" not in llm.get("model", {}):
                     errors.append("Missing 'meta.llm.model.provider'")
 
-            # Validate SDK structure
             if "sdk" in meta:
                 sdk = meta["sdk"]
                 if sdk.get("lang") != "python":
                     lang = sdk.get("lang")
                     errors.append(f"Expected sdk.lang='python', got '{lang}'")
 
-            # Validate storage structure
             if "storage" in meta:
                 storage = meta["storage"]
                 if "dialect" not in storage:
@@ -539,7 +471,6 @@ class TestPayloadValidator:
         return errors
 
     def test_valid_payload_passes_validation(self):
-        """Verify a properly constructed payload passes validation."""
         payload = AugmentationPayload(
             conversation=ConversationData(
                 messages=[{"role": "user", "content": "Hello"}],
@@ -568,24 +499,21 @@ class TestPayloadValidator:
         assert len(errors) == 0, f"Validation errors: {errors}"
 
     def test_missing_conversation_fails_validation(self):
-        """Verify missing conversation key fails validation."""
         payload = {"meta": {}}
         errors = self.validate_payload_structure(payload)
         assert "Missing 'conversation' key" in errors
 
     def test_missing_meta_fails_validation(self):
-        """Verify missing meta key fails validation."""
         payload = {"conversation": {"messages": []}}
         errors = self.validate_payload_structure(payload)
         assert "Missing 'meta' key" in errors
 
     def test_unhashed_entity_id_fails_validation(self):
-        """Verify unhashed entity_id fails validation."""
         payload = {
             "conversation": {"messages": []},
             "meta": {
                 "attribution": {
-                    "entity": {"id": "raw-user-id"},  # Not hashed!
+                    "entity": {"id": "raw-user-id"},
                     "process": {"id": hash_id("proc")},
                 },
                 "framework": {"provider": "openai"},
@@ -601,12 +529,8 @@ class TestPayloadValidator:
 
 
 class TestProviderSpecificPayloads:
-    """Tests for payloads from different LLM providers."""
-
     @pytest.fixture
     def make_augmentation(self):
-        """Factory fixture to create augmentation with specific provider config."""
-
         def _make(provider: str, sdk_version: str = "1.0.0", model: str = "test-model"):
             from memori.memory.augmentation.augmentations.memori._augmentation import (
                 AdvancedAugmentation,
@@ -626,7 +550,6 @@ class TestProviderSpecificPayloads:
         return _make
 
     def test_openai_payload(self, make_augmentation):
-        """Verify OpenAI provider payload structure."""
         aug = make_augmentation("openai", "1.50.0", "gpt-4o-mini")
         payload = aug._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
@@ -642,7 +565,6 @@ class TestProviderSpecificPayloads:
         assert payload["meta"]["llm"]["model"]["version"] == "gpt-4o-mini"
 
     def test_anthropic_payload(self, make_augmentation):
-        """Verify Anthropic provider payload structure."""
         aug = make_augmentation("anthropic", "0.30.0", "claude-3-opus-20240229")
         payload = aug._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
@@ -658,7 +580,6 @@ class TestProviderSpecificPayloads:
         assert payload["meta"]["llm"]["model"]["version"] == "claude-3-opus-20240229"
 
     def test_google_payload(self, make_augmentation):
-        """Verify Google provider payload structure."""
         aug = make_augmentation("google", "1.0.0", "gemini-1.5-flash")
         payload = aug._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
@@ -673,7 +594,6 @@ class TestProviderSpecificPayloads:
         assert payload["meta"]["llm"]["model"]["provider"] == "google"
 
     def test_bedrock_payload(self, make_augmentation):
-        """Verify Bedrock provider payload structure."""
         aug = make_augmentation(
             "bedrock", "0.2.0", "anthropic.claude-3-sonnet-20240229-v1:0"
         )
@@ -690,7 +610,6 @@ class TestProviderSpecificPayloads:
         assert payload["meta"]["llm"]["model"]["provider"] == "bedrock"
 
     def test_xai_payload(self, make_augmentation):
-        """Verify xAI provider payload structure."""
         aug = make_augmentation("xai", "1.0.0", "grok-beta")
         payload = aug._build_api_payload(
             messages=[{"role": "user", "content": "test"}],
