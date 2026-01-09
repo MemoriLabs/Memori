@@ -1,6 +1,9 @@
 name: Integration Tests
 
 on:
+  push:
+    branches:
+      - integration-tests  # For testing - remove after merge
   release:
     types: [published]
   workflow_dispatch:
