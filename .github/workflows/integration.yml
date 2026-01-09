@@ -114,15 +114,20 @@ jobs:
           if [ -n "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
           echo "=========================================="
 
-  integration-complete:
+  integration-status:
+    name: Integration Tests Status
     runs-on: ubuntu-latest
     needs: integration-tests
     if: always()
     steps:
       - name: Check integration test results
         run: |
-          if [ "${{ needs.integration-tests.result }}" == "success" ]; then
+          result="${{ needs.integration-tests.result }}"
+          if [ "$result" == "success" ]; then
             echo "All integration tests passed!"
+            exit 0
+          elif [ "$result" == "skipped" ]; then
+            echo "Integration tests skipped (fork PR or no secrets) - OK"
             exit 0
           else
             echo "Integration tests failed!"
