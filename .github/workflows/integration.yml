@@ -49,9 +49,7 @@ jobs:
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: |
-          uv sync --dev
-          uv pip install google-genai langchain-aws || true
+        run: uv sync --dev
 
       - name: Run AA Payload Unit Tests (no API keys needed)
         run: |
@@ -113,23 +111,3 @@ jobs:
           if [ -n "$XAI_API_KEY" ]; then echo "  - xAI: Yes"; else echo "  - xAI: Skipped (no key)"; fi
           if [ -n "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
           echo "=========================================="
-
-  integration-status:
-    name: Integration Tests Status
-    runs-on: ubuntu-latest
-    needs: integration-tests
-    if: always()
-    steps:
-      - name: Check integration test results
-        run: |
-          result="${{ needs.integration-tests.result }}"
-          if [ "$result" == "success" ]; then
-            echo "All integration tests passed!"
-            exit 0
-          elif [ "$result" == "skipped" ]; then
-            echo "Integration tests skipped (fork PR or no secrets) - OK"
-            exit 0
-          else
-            echo "Integration tests failed!"
-            exit 1
-          fi
