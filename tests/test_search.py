@@ -363,6 +363,38 @@ def test_search_entity_facts_maintains_similarity_order():
     assert result[1]["similarity"] > result[2]["similarity"]
 
 
+def test_search_entity_facts_can_rerank_with_query_text(mocker):
+    mock_driver = MagicMock()
+    mock_driver.get_embeddings.return_value = [
+        {"id": 1, "content_embedding": [1.0, 0.0]},
+        {"id": 2, "content_embedding": [0.0, 1.0]},
+    ]
+    mock_driver.get_facts_by_ids.return_value = [
+        {"id": 1, "content": "Completely unrelated"},
+        {"id": 2, "content": "This mentions blue explicitly"},
+    ]
+
+    # Force semantic order to prefer id=1, then let lexical rerank pick id=2.
+    mocker.patch(
+        "memori._search.find_similar_embeddings",
+        return_value=[(1, 0.9), (2, 0.8)],
+    )
+
+    query_embedding = [1.0, 0.0]
+    result = search_entity_facts(
+        mock_driver,
+        entity_id=42,
+        query_embedding=query_embedding,
+        limit=1,
+        embeddings_limit=1000,
+        query_text="blue",
+    )
+    assert len(result) == 1
+    assert result[0]["id"] == 2
+    assert "lexical_score" in result[0]
+    assert "rank_score" in result[0]
+
+
 def test_search_entity_facts_with_different_db_formats():
     mock_driver = MagicMock()
     mock_driver.get_embeddings.return_value = [

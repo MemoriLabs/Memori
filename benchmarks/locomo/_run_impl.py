@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
+from benchmarks.locomo._types import LoCoMoSample
 from benchmarks.locomo.loader import load_locomo_json
 from benchmarks.locomo.provenance import (
     FactAttribution,
@@ -16,9 +18,8 @@ from benchmarks.locomo.provenance import (
 from benchmarks.locomo.retrieval import (
     build_turn_facts,
     evidence_to_turn_ids,
-    extract_turn_id_from_content,
 )
-from benchmarks.locomo.scoring import hit_at_k, mrr
+from benchmarks.locomo.scoring import hit_at_k_groups, mrr_groups
 from memori import Memori
 from memori.llm._embeddings import embed_texts
 from memori.memory.augmentation.input import AugmentationInput
@@ -40,14 +41,13 @@ class RunConfig:
     out: str
     sqlite_db: str = ""
     provenance_db: str = ""
-    ingest: str = "advanced_augmentation"
     reuse_db: bool = False
     run_id: str = ""
     k: int = 5
     aa_timeout: float = 180.0
-    aa_batch: str = "per_sample"
-    aa_chunk_size: int = 16
+    aa_batch: str = "per_pair"
     aa_dry_run: bool = False
+    aa_max_requests: int = 0
     meta_llm_provider: str = "openai"
     meta_llm_version: str = "gpt-4.1-mini"
     meta_llm_sdk_version: str = "unknown"
@@ -55,10 +55,22 @@ class RunConfig:
     meta_platform_provider: str = "benchmark"
     aa_provenance_top_n: int = 1
     aa_provenance_min_score: float = 0.25
+    aa_provenance_mode: str = "similarity"
+    rebuild_provenance: bool = False
+    allow_prod_aa: bool = False
     max_samples: int = 0
     max_questions: int = 0
+    only_sample_id: str = ""
+    max_sessions: int = 0
     verbose: bool = False
     log_every_questions: int = 0
+    seed_only: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class PairRequest:
+    messages: list[dict[str, str]]
+    pair_turn_ids: tuple[str, str]
 
 
 def run_locomo(cfg: RunConfig) -> dict:
@@ -79,6 +91,8 @@ def run_locomo(cfg: RunConfig) -> dict:
     )
 
     samples = load_locomo_json(cfg.dataset)
+    if cfg.only_sample_id:
+        samples = [s for s in samples if s.sample_id == cfg.only_sample_id]
     if cfg.max_samples and cfg.max_samples > 0:
         samples = samples[: cfg.max_samples]
 
@@ -94,15 +108,40 @@ def run_locomo(cfg: RunConfig) -> dict:
     recall = Recall(mem.config)
     prov_store = ProvenanceStore(provenance_path)
 
+    if (
+        not cfg.reuse_db
+        and not cfg.aa_dry_run
+        and not cfg.allow_prod_aa
+        and os.environ.get("MEMORI_TEST_MODE") != "1"
+    ):
+        raise RuntimeError(
+            "Advanced Augmentation LoCoMo runs must target staging. "
+            "Set MEMORI_TEST_MODE=1 (recommended) or pass --allow-prod-aa to override."
+        )
+
+    if cfg.verbose:
+        from memori._network import Api
+
+        url = Api(mem.config).url("sdk/augmentation")
+        print(
+            f"[locomo][aa] resolved_api_url={url} MEMORI_TEST_MODE={os.environ.get('MEMORI_TEST_MODE')!r}"
+        )
+
     totals = _Totals()
 
     with predictions_path.open("w", encoding="utf-8") as f:
         if cfg.verbose:
             print(
-                f"[locomo] start ingest={cfg.ingest} aa_batch={cfg.aa_batch} "
-                f"samples={len(samples)} k={cfg.k}"
+                f"[locomo] start ingest=advanced_augmentation aa_batch={cfg.aa_batch} "
+                f"samples={len(samples)} k={cfg.k} seed_only={cfg.seed_only}"
             )
         for sample in samples:
+            if cfg.max_sessions and cfg.max_sessions > 0:
+                sample = LoCoMoSample(
+                    sample_id=sample.sample_id,
+                    sessions=sample.sessions[: cfg.max_sessions],
+                    qa=sample.qa,
+                )
             entity_external_id = f"locomo:{run_id}:{sample.sample_id}"
             if cfg.reuse_db:
                 entity_db_id = _get_entity_id_sqlite(
@@ -134,25 +173,30 @@ def run_locomo(cfg: RunConfig) -> dict:
                         "Run ingestion first (omit --reuse-db) or pass the correct --run-id."
                     )
                 mem.config.recall_embeddings_limit = fact_count
-                if cfg.ingest == "advanced_augmentation" and not prov_store.has_any(
+                if cfg.rebuild_provenance and not cfg.seed_only:
+                    _build_aa_provenance(
+                        mem=mem,
+                        prov_store=prov_store,
+                        run_id=run_id,
+                        sample_id=sample.sample_id,
+                        entity_db_id=entity_db_id,
+                        turn_facts=turn_facts,
+                        top_n=cfg.aa_provenance_top_n,
+                        min_score=cfg.aa_provenance_min_score,
+                    )
+                elif not cfg.seed_only and not prov_store.has_any(
                     run_id=run_id, sample_id=sample.sample_id
                 ):
                     raise RuntimeError(
                         f"--reuse-db was set but no provenance rows were found for run_id={run_id} sample_id={sample.sample_id}. "
-                        "Run AA ingestion first (omit --reuse-db) to generate locomo_provenance.sqlite, or point --provenance-db at an existing provenance DB."
+                        "Seed AA ingestion once (omit --reuse-db) to generate locomo_provenance.sqlite, "
+                        "or point --provenance-db at an existing provenance DB, "
+                        "or pass --rebuild-provenance to recompute provenance offline."
                     )
                 if cfg.verbose:
                     print(
                         f"[locomo][reuse] sample={sample.sample_id} facts={fact_count}"
                     )
-            elif cfg.ingest == "turn_facts":
-                if cfg.verbose:
-                    print(
-                        f"[locomo][seed] sample={sample.sample_id} mode=turn_facts "
-                        f"turns={len(turn_facts)}"
-                    )
-                _ingest_turn_facts(mem, entity_db_id, turn_facts)
-                mem.config.recall_embeddings_limit = len(turn_facts) or 1
             else:
                 _configure_aa_meta(mem, cfg)
                 if cfg.aa_dry_run:
@@ -171,7 +215,7 @@ def run_locomo(cfg: RunConfig) -> dict:
                         "dataset_path": str(Path(cfg.dataset).resolve()),
                         "sqlite_db_path": str(sqlite_path),
                         "provenance_db_path": str(provenance_path),
-                        "ingest": cfg.ingest,
+                        "ingest": "advanced_augmentation",
                         "sample_count": len(samples),
                         "question_count": 0,
                         "questions_by_category": {},
@@ -180,7 +224,27 @@ def run_locomo(cfg: RunConfig) -> dict:
                         "phase": 2,
                         "note": "AA dry-run: printed/wrote payload preview and exited before network calls.",
                     }
-                _ingest_with_advanced_augmentation(mem, entity_external_id, sample, cfg)
+                conv_id = _ingest_with_advanced_augmentation(
+                    mem=mem,
+                    prov_store=prov_store,
+                    run_id=run_id,
+                    entity_external_id=entity_external_id,
+                    entity_db_id=entity_db_id,
+                    sample=sample,
+                    cfg=cfg,
+                )
+                if conv_id is not None:
+                    summary_val = _read_conversation_summary(mem, conv_id) or ""
+                    print(
+                        f"[locomo][aa] sample={sample.sample_id} "
+                        f"conversation_id={conv_id} summary_is_set={bool(summary_val)}"
+                    )
+                    if summary_val:
+                        print(f"[locomo][aa] summary={summary_val}")
+
+                if cfg.seed_only:
+                    continue
+
                 if cfg.verbose:
                     fact_count = len(
                         mem.config.storage.driver.entity_fact.get_embeddings(
@@ -191,16 +255,17 @@ def run_locomo(cfg: RunConfig) -> dict:
                         f"[locomo][seed] sample={sample.sample_id} mode=advanced_augmentation "
                         f"turns={len(turn_facts)} facts_written={fact_count}"
                     )
-                _build_aa_provenance(
-                    mem=mem,
-                    prov_store=prov_store,
-                    run_id=run_id,
-                    sample_id=sample.sample_id,
-                    entity_db_id=entity_db_id,
-                    turn_facts=turn_facts,
-                    top_n=cfg.aa_provenance_top_n,
-                    min_score=cfg.aa_provenance_min_score,
-                )
+                if cfg.aa_provenance_mode == "similarity":
+                    _build_aa_provenance(
+                        mem=mem,
+                        prov_store=prov_store,
+                        run_id=run_id,
+                        sample_id=sample.sample_id,
+                        entity_db_id=entity_db_id,
+                        turn_facts=turn_facts,
+                        top_n=cfg.aa_provenance_top_n,
+                        min_score=cfg.aa_provenance_min_score,
+                    )
                 # Keep recall bounded to the facts created for this entity.
                 entity_fact_driver = mem.config.storage.driver.entity_fact
                 mem.config.recall_embeddings_limit = (
@@ -212,8 +277,9 @@ def run_locomo(cfg: RunConfig) -> dict:
             if cfg.max_questions and cfg.max_questions > 0:
                 qa = qa[: cfg.max_questions]
 
+            available_turn_ids = {t.turn_id for t in turn_facts}
+
             for q in qa:
-                totals.count_question(q.category)
                 if (
                     cfg.verbose
                     and cfg.log_every_questions
@@ -225,27 +291,56 @@ def run_locomo(cfg: RunConfig) -> dict:
                     )
 
                 relevant = evidence_to_turn_ids(q.evidence, turn_index=turn_index)
+                if not relevant:
+                    if cfg.verbose:
+                        print(
+                            f"[locomo][skip] sample={sample.sample_id} "
+                            f"question_id={q.question_id} reason=no_evidence"
+                        )
+                    continue
+                missing = sorted(
+                    tid for tid in relevant if tid not in available_turn_ids
+                )
+                if missing:
+                    if cfg.verbose:
+                        preview = ", ".join(missing[:5])
+                        more = (
+                            "" if len(missing) <= 5 else f" (+{len(missing) - 5} more)"
+                        )
+                        print(
+                            f"[locomo][skip] sample={sample.sample_id} "
+                            f"question_id={q.question_id} reason=missing_evidence "
+                            f"missing={preview}{more}"
+                        )
+                    continue
+
+                totals.count_question(q.category)
                 results = recall.search_facts(
                     query=q.question,
                     limit=max(cfg.k, 1),
                     entity_id=entity_db_id,
                 )
 
+                # Scoring in AA mode needs a mapping from fact_id -> dia_id (LoCoMo turn id).
+                # A single fact can plausibly map to multiple turns; we score using any-match
+                # semantics per retrieved rank.
                 retrieved_ids: list[str] = []
+                retrieved_groups: list[set[str]] = []
                 top_k = _format_top_k(
                     results=results[: max(cfg.k, 1)],
-                    ingest=cfg.ingest,
                     prov_store=prov_store,
                     run_id=run_id,
                     sample_id=sample.sample_id,
                     retrieved_ids_out=retrieved_ids,
+                    retrieved_groups_out=retrieved_groups,
+                    provenance_limit=max(int(cfg.aa_provenance_top_n), 1),
                 )
 
                 metrics = {
-                    "hit@1": hit_at_k(relevant, retrieved_ids, 1),
-                    "hit@3": hit_at_k(relevant, retrieved_ids, 3),
-                    "hit@5": hit_at_k(relevant, retrieved_ids, 5),
-                    "mrr": mrr(relevant, retrieved_ids),
+                    "hit@1": hit_at_k_groups(relevant, retrieved_groups, 1),
+                    "hit@3": hit_at_k_groups(relevant, retrieved_groups, 3),
+                    "hit@5": hit_at_k_groups(relevant, retrieved_groups, 5),
+                    "mrr": mrr_groups(relevant, retrieved_groups),
                 }
                 totals.add_metrics(category=q.category or "unknown", metrics=metrics)
 
@@ -260,7 +355,7 @@ def run_locomo(cfg: RunConfig) -> dict:
                     "evidence": q.evidence,
                     "retrieval": {
                         "status": "ok",
-                        "ingest": cfg.ingest,
+                        "ingest": "advanced_augmentation",
                         "k": cfg.k,
                         "relevant_turn_ids": sorted(relevant),
                         "top_k": top_k,
@@ -275,7 +370,7 @@ def run_locomo(cfg: RunConfig) -> dict:
         dataset_path=str(Path(cfg.dataset).resolve()),
         sqlite_db_path=str(sqlite_path),
         provenance_db_path=str(provenance_path),
-        ingest=cfg.ingest,
+        ingest="advanced_augmentation",
         sample_count=len(samples),
     )
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -301,7 +396,7 @@ def _resolve_run_id(
             pass
 
     run_ids: set[str] = set()
-    if cfg.ingest == "advanced_augmentation" and provenance_path.exists():
+    if provenance_path.exists():
         run_ids |= _distinct_run_ids_from_provenance_sqlite(provenance_path)
 
     if sqlite_path.exists():
@@ -401,92 +496,100 @@ def _configure_aa_meta(mem: Memori, cfg: RunConfig) -> None:
     mem.config.llm.provider_sdk_version = cfg.meta_llm_sdk_version
 
 
-def _ingest_turn_facts(mem: Memori, entity_db_id: int, turn_facts) -> None:
-    contents = [t.content for t in turn_facts]
-    embeddings = embed_texts(
-        contents,
-        model=mem.config.embeddings.model,
-        fallback_dimension=mem.config.embeddings.fallback_dimension,
-    )
-    mem.config.storage.driver.entity_fact.create(entity_db_id, contents, embeddings)
-
-
 def _ingest_with_advanced_augmentation(
-    mem: Memori, entity_external_id: str, sample, cfg: RunConfig
-) -> None:
-    if cfg.aa_batch == "per_sample":
-        _aa_enqueue_batch(mem, entity_external_id, sample, batch="per_sample")
-        if cfg.verbose:
-            msg_count = sum(len(s.turns) for s in sample.sessions)
-            print(
-                f"[locomo][aa] sample={sample.sample_id} batch=per_sample "
-                f"messages={msg_count}"
-            )
-        mem.augmentation.wait(timeout=cfg.aa_timeout)
-        return
-
-    if cfg.aa_batch == "per_chunk":
-        _aa_enqueue_batch(
-            mem,
-            entity_external_id,
-            sample,
-            batch="per_chunk",
-            chunk_size=cfg.aa_chunk_size,
-        )
-        if cfg.verbose:
-            msg_count = sum(len(s.turns) for s in sample.sessions)
-            chunks = (msg_count + max(cfg.aa_chunk_size, 1) - 1) // max(
-                cfg.aa_chunk_size, 1
-            )
-            print(
-                f"[locomo][aa] sample={sample.sample_id} batch=per_chunk "
-                f"messages={msg_count} chunk_size={cfg.aa_chunk_size} chunks={chunks}"
-            )
-        mem.augmentation.wait(timeout=cfg.aa_timeout)
-        return
-
-    _aa_enqueue_batch(mem, entity_external_id, sample, batch="per_session")
-    if cfg.verbose:
-        session_count = len(sample.sessions)
-        msg_count = sum(len(s.turns) for s in sample.sessions)
-        print(
-            f"[locomo][aa] sample={sample.sample_id} batch=per_session "
-            f"sessions={session_count} messages={msg_count}"
-        )
-    mem.augmentation.wait(timeout=cfg.aa_timeout)
-
-
-def _aa_enqueue_batch(
-    mem: Memori,
-    entity_external_id: str,
-    sample,
     *,
-    batch: str,
-    chunk_size: int | None = None,
-) -> None:
-    if batch not in {"per_sample", "per_session", "per_chunk"}:
-        raise ValueError(f"unknown aa batch: {batch}")
+    mem: Memori,
+    prov_store: ProvenanceStore,
+    run_id: str,
+    entity_external_id: str,
+    entity_db_id: int,
+    sample,
+    cfg: RunConfig,
+) -> int | None:
+    if cfg.aa_batch == "per_pair":
+        return _aa_enqueue_pairs_sequential(
+            mem=mem,
+            prov_store=prov_store,
+            run_id=run_id,
+            entity_external_id=entity_external_id,
+            entity_db_id=entity_db_id,
+            sample_id=sample.sample_id,
+            sample=sample,
+            timeout=cfg.aa_timeout,
+            max_requests=int(cfg.aa_max_requests or 0),
+            verbose=bool(cfg.verbose),
+        )
 
-    if batch == "per_session":
-        for session in sample.sessions:
-            msgs = _build_aa_messages_for_session(sample, session)
-            conv_id = _create_conversation_and_persist_messages(mem, msgs)
-            _enqueue_aa(mem, conv_id, entity_external_id, msgs)
-        return
+    raise ValueError(f"unknown aa batch: {cfg.aa_batch}")
 
-    # per_sample / per_chunk share one conversation containing all messages
-    all_msgs = _build_aa_messages_for_sample(sample)
+
+def _aa_enqueue_pairs_sequential(
+    *,
+    mem: Memori,
+    prov_store: ProvenanceStore,
+    run_id: str,
+    entity_external_id: str,
+    entity_db_id: int,
+    sample_id: str,
+    sample,
+    timeout: float,
+    max_requests: int = 0,
+    verbose: bool = False,
+) -> int | None:
+    all_msgs, all_turn_ids = _build_aa_messages_and_turn_ids_for_sample(sample)
     conv_id = _create_conversation_and_persist_messages(mem, all_msgs)
 
-    if batch == "per_sample":
-        _enqueue_aa(mem, conv_id, entity_external_id, all_msgs)
-        return
+    reqs = _build_per_pair_requests(all_msgs, all_turn_ids)
+    max_n = int(max_requests or 0)
+    if max_n > 0:
+        reqs = reqs[:max_n]
 
-    size = int(chunk_size or 1)
-    if size <= 0:
-        size = 1
-    for i in range(0, len(all_msgs), size):
-        _enqueue_aa(mem, conv_id, entity_external_id, all_msgs[i : i + size])
+    entity_fact_driver = mem.config.storage.driver.entity_fact
+    known_fact_ids = {
+        int(r["id"])
+        for r in entity_fact_driver.get_embeddings(int(entity_db_id), limit=100000)
+    }
+
+    for idx, req in enumerate(reqs):
+        _enqueue_aa(mem, conv_id, entity_external_id, req.messages)
+        mem.augmentation.wait(timeout=timeout)
+
+        after = {
+            int(r["id"])
+            for r in entity_fact_driver.get_embeddings(int(entity_db_id), limit=100000)
+        }
+        new_fact_ids = sorted(after - known_fact_ids)
+        known_fact_ids = after
+
+        if new_fact_ids:
+            rows: list[FactAttribution] = []
+            for fid in new_fact_ids:
+                for dia_id in req.pair_turn_ids:
+                    if dia_id:
+                        rows.append(
+                            FactAttribution(fact_id=fid, dia_id=dia_id, score=1.0)
+                        )
+            prov_store.upsert_many(rows, run_id=run_id, sample_id=sample_id)
+
+        if verbose:
+            summary_val = _read_conversation_summary(mem, int(conv_id)) or ""
+            print(
+                f"[locomo][aa][pair] idx={idx} new_facts={len(new_fact_ids)} "
+                f"pair_turn_ids={req.pair_turn_ids} summary_is_set={bool(summary_val)}"
+            )
+
+    return int(conv_id)
+
+
+def _read_conversation_summary(mem: Memori, conversation_id: int) -> str | None:
+    try:
+        obj = mem.config.storage.driver.conversation.read(int(conversation_id))
+    except Exception:
+        return None
+    if not isinstance(obj, dict):
+        return None
+    summary = obj.get("summary")
+    return summary if isinstance(summary, str) and summary.strip() else None
 
 
 def _create_conversation_and_persist_messages(
@@ -520,22 +623,47 @@ def _enqueue_aa(
 
 
 def _build_aa_messages_for_sample(sample) -> list[dict[str, str]]:
-    speaker_to_role = _speaker_to_role(sample)
-    out: list[dict[str, str]] = []
-    for session in sample.sessions:
-        out.extend(_build_aa_messages_for_turns(sample, session, speaker_to_role))
-    return out
+    msgs, _turn_ids = _build_aa_messages_and_turn_ids_for_sample(sample)
+    return msgs
 
 
 def _build_aa_messages_for_session(sample, session) -> list[dict[str, str]]:
     speaker_to_role = _speaker_to_role(sample)
-    return _build_aa_messages_for_turns(sample, session, speaker_to_role)
+    msgs, _turn_ids = _build_aa_messages_and_turn_ids_for_turns(
+        sample, session, speaker_to_role
+    )
+    return msgs
 
 
 def _build_aa_messages_for_turns(
     sample, session, speaker_to_role: dict[str, str]
 ) -> list[dict[str, str]]:
-    out: list[dict[str, str]] = []
+    msgs, _turn_ids = _build_aa_messages_and_turn_ids_for_turns(
+        sample, session, speaker_to_role
+    )
+    return msgs
+
+
+def _build_aa_messages_and_turn_ids_for_sample(
+    sample,
+) -> tuple[list[dict[str, str]], list[str]]:
+    speaker_to_role = _speaker_to_role(sample)
+    msgs: list[dict[str, str]] = []
+    turn_ids: list[str] = []
+    for session in sample.sessions:
+        m, t = _build_aa_messages_and_turn_ids_for_turns(
+            sample, session, speaker_to_role
+        )
+        msgs.extend(m)
+        turn_ids.extend(t)
+    return msgs, turn_ids
+
+
+def _build_aa_messages_and_turn_ids_for_turns(
+    sample, session, speaker_to_role: dict[str, str]
+) -> tuple[list[dict[str, str]], list[str]]:
+    msgs: list[dict[str, str]] = []
+    turn_ids: list[str] = []
     session_id = session.session_id or ""
     for t_idx, turn in enumerate(session.turns):
         speaker = (turn.speaker or "").strip()
@@ -549,18 +677,17 @@ def _build_aa_messages_for_turns(
             text=turn.text,
             session_date_time=session.date_time,
         )
-        out.append({"role": role, "content": content})
-    return out
+        msgs.append({"role": role, "content": content})
+        turn_ids.append(turn_id)
+    return msgs, turn_ids
 
 
 def _format_turn_content(
     *, turn_id: str, speaker: str, text: str, session_date_time: str | None
 ) -> str:
-    body = f"{speaker}: {text}".strip() if speaker else str(text).strip()
-    content = f"[{turn_id}] {body}".strip()
-    if session_date_time:
-        content = f"{content} (session_time: {session_date_time})"
-    return content
+    # Mirror real-world Memori payloads: content is the plain message text only.
+    # Keep turn_id/speaker/session_time out of the message body (benchmark-only metadata).
+    return str(text).strip()
 
 
 def _speaker_to_role(sample) -> dict[str, str]:
@@ -591,8 +718,9 @@ def _build_aa_provenance(
     min_score: float,
 ) -> None:
     turn_ids = [t.turn_id for t in turn_facts]
+    turn_texts = [t.content for t in turn_facts]
     turn_embs = embed_texts(
-        [t.content for t in turn_facts],
+        turn_texts,
         model=mem.config.embeddings.model,
         fallback_dimension=mem.config.embeddings.fallback_dimension,
     )
@@ -611,11 +739,16 @@ def _build_aa_provenance(
         fallback_dimension=mem.config.embeddings.fallback_dimension,
     )
 
+    # Clear any prior mappings for this run/sample to avoid mixing old/new strategies.
+    prov_store.delete_sample(run_id=run_id, sample_id=sample_id)
+
     mapping = attribute_facts_to_turn_ids(
         turn_ids=turn_ids,
         turn_embeddings=turn_embs,
+        turn_texts=turn_texts,
         fact_ids=fact_ids_aligned,
         fact_embeddings=fact_embs,
+        fact_texts=fact_texts,
         top_n=top_n,
         min_score=min_score,
     )
@@ -654,26 +787,31 @@ def _write_aa_payload_preview(
         else "unknown"
     )
 
-    if cfg.aa_batch in ("per_sample", "per_chunk"):
-        messages = _build_aa_messages_for_sample(sample)
-    else:
-        messages = (
-            _build_aa_messages_for_session(sample, sample.sessions[0])
-            if sample.sessions
-            else []
+    aug = AdvancedAugmentation(config=mem.config, enabled=True)
+    url = Api(mem.config).url("sdk/augmentation")
+
+    all_msgs, all_turn_ids = _build_aa_messages_and_turn_ids_for_sample(sample)
+    requests: list[dict[str, object]] = []
+    if cfg.aa_batch != "per_pair":
+        raise ValueError(f"unknown aa batch: {cfg.aa_batch}")
+    for i, req in enumerate(_build_per_pair_requests(all_msgs, all_turn_ids)):
+        payload = aug._build_api_payload(  # noqa: SLF001 - benchmark-only debug path
+            req.messages,
+            "",
+            None,
+            dialect,
+            entity_external_id,
+            process_id,
+        )
+        requests.append(
+            {
+                "request_index": i,
+                "pair_turn_ids": list(req.pair_turn_ids),
+                "messages": req.messages,
+                "payload": payload,
+            }
         )
 
-    aug = AdvancedAugmentation(config=mem.config, enabled=True)
-    payload = aug._build_api_payload(  # noqa: SLF001 - benchmark-only debug path
-        messages,
-        "",
-        None,
-        dialect,
-        entity_external_id,
-        process_id,
-    )
-
-    url = Api(mem.config).url("sdk/augmentation")
     api_key = mem.config.api_key or ""
     api_key_preview = ""
     api_key_sha256 = ""
@@ -685,7 +823,7 @@ def _write_aa_payload_preview(
 
     preview = {
         "url": url,
-        "ingest": cfg.ingest,
+        "ingest": "advanced_augmentation",
         "aa_batch": cfg.aa_batch,
         "entity_id": entity_external_id,
         "process_id": process_id,
@@ -695,7 +833,7 @@ def _write_aa_payload_preview(
             "preview": api_key_preview,
             "sha256": api_key_sha256,
         },
-        "payload": payload,
+        "requests": requests,
     }
 
     out_path = out_dir / "aa_payload_preview.json"
@@ -703,39 +841,84 @@ def _write_aa_payload_preview(
 
     print(f"[locomo][aa-dry-run] url={url}")
     print(f"[locomo][aa-dry-run] wrote={out_path}")
-    print(json.dumps(preview, indent=2))
+    # Avoid flooding stdout for large datasets.
+    max_print = 5
+    preview_print = dict(preview)
+    preview_print["requests_total"] = len(requests)
+    preview_print["requests_printed"] = min(max_print, len(requests))
+    preview_print["requests"] = requests[:max_print]
+    print(json.dumps(preview_print, indent=2))
+
+
+def _build_per_pair_requests(
+    msgs: list[dict[str, str]],
+    turn_ids: list[str],
+) -> list[PairRequest]:
+    """
+    Build per-pair AA requests that mirror SDK behavior.
+
+    Each request includes *all* prior messages (oldest -> newest) plus the next
+    strict user->assistant pair at the end.
+
+    Any messages that can't be paired as a strict consecutive user+assistant pair
+    are skipped as pair boundaries, but still remain in the context for later requests.
+    """
+    if len(msgs) != len(turn_ids):
+        raise ValueError("msgs and turn_ids must be aligned")
+
+    out: list[PairRequest] = []
+    i = 0
+    while i < len(msgs) - 1:
+        role0 = (msgs[i].get("role") or "").strip()
+        role1 = (msgs[i + 1].get("role") or "").strip()
+        if role0 == "user" and role1 == "assistant":
+            tid0 = (turn_ids[i] or "").strip()
+            tid1 = (turn_ids[i + 1] or "").strip()
+            out.append(
+                PairRequest(messages=list(msgs[: i + 2]), pair_turn_ids=(tid0, tid1))
+            )
+            i += 2
+            continue
+        i += 1
+    return out
 
 
 def _format_top_k(
     *,
     results: list[dict],
-    ingest: str,
     prov_store: ProvenanceStore,
     run_id: str,
     sample_id: str,
     retrieved_ids_out: list[str],
+    retrieved_groups_out: list[set[str]],
+    provenance_limit: int = 1,
 ) -> list[dict[str, object]]:
     out: list[dict[str, object]] = []
     for r in results:
         content = r.get("content", "")
         fact_id = r.get("id")
 
-        turn_id = ""
-        if ingest == "turn_facts":
-            turn_id = extract_turn_id_from_content(content) or ""
-        elif isinstance(fact_id, int):
+        turn_ids: list[str] = []
+        if isinstance(fact_id, int):
             dia_ids = prov_store.best_dia_ids_for_fact(
-                run_id=run_id, sample_id=sample_id, fact_id=fact_id, limit=1
+                run_id=run_id,
+                sample_id=sample_id,
+                fact_id=fact_id,
+                limit=max(int(provenance_limit), 1),
             )
-            if dia_ids:
-                turn_id = dia_ids[0]
+            turn_ids = [d for d in dia_ids if d]
 
+        # For backward compatibility, keep a single primary turn_id field (first).
+        turn_id = turn_ids[0] if turn_ids else ""
         if turn_id:
             retrieved_ids_out.append(turn_id)
+
+        retrieved_groups_out.append(set(turn_ids))
 
         out.append(
             {
                 "turn_id": turn_id,
+                "turn_ids": turn_ids,
                 "fact_id": fact_id,
                 "similarity": r.get("similarity"),
                 "content": content,

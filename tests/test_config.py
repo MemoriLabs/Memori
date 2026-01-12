@@ -5,6 +5,8 @@ from memori._config import Config
 
 def test_is_test_mode():
     config = Config()
+    del os.environ["MEMORI_TEST_MODE"]
+
     assert config.is_test_mode() is False
 
     try:
