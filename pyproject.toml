@@ -88,18 +88,25 @@ python_functions = ["test_*"]
 markers = [
     "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
     "benchmark: marks tests as performance benchmarks",
+    "integration: marks tests as integration tests requiring external API keys",
 ]
 asyncio_mode = "auto"
 addopts = [
     "-v",
     "--strict-markers",
     "--ignore=tests/benchmarks",
+    "--ignore=tests/integration",
     "-m",
     "not benchmark",
     "--cov=memori",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::UserWarning:langsmith",
 ]
 
 [tool.coverage.run]
