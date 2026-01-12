@@ -23,6 +23,9 @@ on:
       AWS_SECRET_ACCESS_KEY:
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
@@ -44,6 +47,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Set up Python
         run: uv python install 3.12
@@ -57,37 +62,37 @@ jobs:
           uv run pytest tests/memory/augmentation/test_aa_payload_unit.py -v --tb=short
 
       - name: Run AA Integration Tests (staging API)
-        if: env.OPENAI_API_KEY != ''
+        if: env.OPENAI_API_KEY
         run: |
           echo "Running AA integration tests against staging..."
           uv run pytest tests/integration/test_aa_payload.py -v -m integration --tb=short
 
       - name: Run OpenAI Integration Tests
-        if: env.OPENAI_API_KEY != ''
+        if: env.OPENAI_API_KEY
         run: |
           echo "Running OpenAI integration tests..."
           uv run pytest tests/integration/providers/test_openai.py -v -m integration --tb=short
 
       - name: Run Anthropic Integration Tests
-        if: env.ANTHROPIC_API_KEY != ''
+        if: env.ANTHROPIC_API_KEY
         run: |
           echo "Running Anthropic integration tests..."
           uv run pytest tests/integration/providers/test_anthropic.py -v -m integration --tb=short
 
       - name: Run Google Integration Tests
-        if: env.GOOGLE_API_KEY != ''
+        if: env.GOOGLE_API_KEY
         run: |
           echo "Running Google integration tests..."
           uv run pytest tests/integration/providers/test_google.py -v -m integration --tb=short
 
       - name: Run xAI Integration Tests
-        if: env.XAI_API_KEY != ''
+        if: env.XAI_API_KEY
         run: |
           echo "Running xAI integration tests..."
           uv run pytest tests/integration/providers/test_xai.py -v -m integration --tb=short
 
       - name: Run Bedrock Integration Tests
-        if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
+        if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY
         run: |
           echo "Running Bedrock integration tests..."
           uv run pytest tests/integration/providers/test_bedrock.py -v -m integration --tb=short
@@ -102,12 +107,12 @@ jobs:
           echo ""
           echo "Tests run:"
           echo "  - AA Payload Unit Tests: Yes (no API keys needed)"
-          if [ -n "$OPENAI_API_KEY" ]; then echo "  - AA Integration Tests: Yes"; else echo "  - AA Integration Tests: Skipped (no key)"; fi
+          if [ "$OPENAI_API_KEY" ]; then echo "  - AA Integration Tests: Yes"; else echo "  - AA Integration Tests: Skipped (no key)"; fi
           echo ""
           echo "Providers tested:"
-          if [ -n "$OPENAI_API_KEY" ]; then echo "  - OpenAI: Yes"; else echo "  - OpenAI: Skipped (no key)"; fi
-          if [ -n "$ANTHROPIC_API_KEY" ]; then echo "  - Anthropic: Yes"; else echo "  - Anthropic: Skipped (no key)"; fi
-          if [ -n "$GOOGLE_API_KEY" ]; then echo "  - Google: Yes"; else echo "  - Google: Skipped (no key)"; fi
-          if [ -n "$XAI_API_KEY" ]; then echo "  - xAI: Yes"; else echo "  - xAI: Skipped (no key)"; fi
-          if [ -n "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
+          if [ "$OPENAI_API_KEY" ]; then echo "  - OpenAI: Yes"; else echo "  - OpenAI: Skipped (no key)"; fi
+          if [ "$ANTHROPIC_API_KEY" ]; then echo "  - Anthropic: Yes"; else echo "  - Anthropic: Skipped (no key)"; fi
+          if [ "$GOOGLE_API_KEY" ]; then echo "  - Google: Yes"; else echo "  - Google: Skipped (no key)"; fi
+          if [ "$XAI_API_KEY" ]; then echo "  - xAI: Yes"; else echo "  - xAI: Skipped (no key)"; fi
+          if [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
           echo "=========================================="
