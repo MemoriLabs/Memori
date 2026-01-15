@@ -27,7 +27,14 @@ def parse_embedding(raw) -> np.ndarray:
     - Native array: Fallback
     """
     if isinstance(raw, bytes | memoryview):
-        return np.frombuffer(raw, dtype="<f4")
+        raw_bytes = bytes(raw)
+        stripped = raw_bytes.strip()
+        if stripped.startswith(b"[") and stripped.endswith(b"]"):
+            try:
+                return np.array(json.loads(stripped.decode()), dtype=np.float32)
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+                pass
+        return np.frombuffer(raw_bytes, dtype="<f4")
     elif isinstance(raw, str):
         # Legacy JSON format
         return np.array(json.loads(raw), dtype=np.float32)
