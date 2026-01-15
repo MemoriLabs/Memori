@@ -95,6 +95,11 @@ Use the correct format for your database:
 "mysql+pymysql://user:password@host:3306/database"
 ```
 
+**OceanBase:**
+```python
+"mysql+oceanbase://user:password@host:2881/database?charset=utf8mb4"
+```
+
 **SQLite:**
 ```python
 "sqlite:///memori.db"  # Relative path

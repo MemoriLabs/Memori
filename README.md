@@ -208,6 +208,7 @@ _(unstreamed, streamed, synchronous and asynchronous)_
 - MariaDB
 - [MongoDB](https://github.com/MemoriLabs/Memori/tree/main/examples/mongodb) - Full example with setup instructions
 - MySQL
+- [OceanBase](https://github.com/MemoriLabs/Memori/tree/main/examples/oceanbase) - Full example with setup instructions
 - [Neon](https://github.com/MemoriLabs/Memori/tree/main/examples/neon) - Full example with setup instructions
 - Oracle
 - [PostgreSQL](https://github.com/MemoriLabs/Memori/tree/main/examples/postgres) - Full example with setup instructions

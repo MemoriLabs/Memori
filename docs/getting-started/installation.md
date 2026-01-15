@@ -53,6 +53,25 @@ SessionLocal = sessionmaker(bind=engine)
 mem = Memori(conn=SessionLocal)
 ```
 
+### OceanBase with SQLAlchemy
+
+```python
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.dialects import registry
+from sqlalchemy.orm import sessionmaker
+
+registry.register("mysql.oceanbase", "pyobvector.schema.dialect", "OceanBaseDialect")
+
+engine = create_engine(
+    "mysql+oceanbase://root:@host:2881/memori_test?charset=utf8mb4",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+```
+
 ### MongoDB with PyMongo
 
 ```python

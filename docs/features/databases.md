@@ -16,6 +16,7 @@
 | **PostgreSQL**  | [https://www.postgresql.org/](https://www.postgresql.org/)           | [PostgreSQL Example](https://github.com/MemoriLabs/Memori/tree/main/examples/postgres)     |
 | **MySQL**       | [https://www.mysql.com/](https://www.mysql.com/)                     | MySQL-compatible drivers                                                                 |
 | **MariaDB**     | [https://mariadb.org/](https://mariadb.org/)                         | MySQL-compatible drivers                                                                 |
+| **OceanBase**   | [https://www.oceanbase.com/](https://www.oceanbase.com/)              | [OceanBase Example](https://github.com/MemoriLabs/Memori/tree/main/examples/oceanbase)   |
 | **Neon**        | [https://neon.tech/](https://neon.tech/)                             | [Neon Example](https://github.com/MemoriLabs/Memori/tree/main/examples/neon)               |
 | **Supabase**    | [https://supabase.com/](https://supabase.com/)                       | PostgreSQL-compatible with real-time features                                            |
 | **CockroachDB** | [https://www.cockroachlabs.com/](https://www.cockroachlabs.com/)     | [CockroachDB Example](https://github.com/MemoriLabs/Memori/tree/main/examples/cockroachdb) |
@@ -81,6 +82,25 @@ def get_db():
     return client["memori"]
 
 mem = Memori(conn=get_db)
+```
+
+### OceanBase with SQLAlchemy
+
+```python
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.dialects import registry
+from sqlalchemy.orm import sessionmaker
+
+registry.register("mysql.oceanbase", "pyobvector.schema.dialect", "OceanBaseDialect")
+
+engine = create_engine(
+    "mysql+oceanbase://root:@host:2881/memori_test?charset=utf8mb4",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
 ```
 
 ### CockroachDB with SQLAlchemy
