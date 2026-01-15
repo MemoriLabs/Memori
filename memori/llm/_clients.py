@@ -444,6 +444,19 @@ class OpenAi(BaseClient):
                 stream,
             )
 
+            if hasattr(client, "responses"):
+                client._responses_create = client.responses.create
+                self._wrap_method(
+                    client.responses,
+                    "create",
+                    client,
+                    "_responses_create",
+                    _provider,
+                    OPENAI_LLM_PROVIDER,
+                    client._version,
+                    stream,
+                )
+
             client._memori_installed = True
 
         return self

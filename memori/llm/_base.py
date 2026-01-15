@@ -337,6 +337,12 @@ class BaseInvoke:
 
             return json.loads(raw_response.text)
 
+        if hasattr(raw_response, "output") and hasattr(raw_response, "output_text"):
+            if hasattr(raw_response, "model_dump"):
+                return raw_response.model_dump()
+            elif hasattr(raw_response, "__dict__"):
+                return self._convert_to_json(raw_response)
+
         return raw_response
 
     def _extract_text_from_parts(self, parts: list) -> str:
@@ -373,6 +379,22 @@ class BaseInvoke:
                 if msg.get("role") == "user":
                     return msg.get("content", "")
 
+        if "input" in kwargs:
+            input_val = kwargs.get("input", "")
+            if isinstance(input_val, str):
+                return input_val
+            if isinstance(input_val, list):
+                for item in reversed(input_val):
+                    if isinstance(item, dict) and item.get("role") == "user":
+                        content = item.get("content", "")
+                        if isinstance(content, str):
+                            return content
+                        if isinstance(content, list):
+                            for c in content:
+                                if isinstance(c, dict) and c.get("type") == "input_text":
+                                    return c.get("text", "")
+                                if isinstance(c, str):
+                                    return c
         if "contents" in kwargs:
             result = self._extract_from_contents(kwargs["contents"])
             if result:
@@ -566,6 +588,9 @@ class BaseInvoke:
             self.config.framework.provider, self.config.llm.provider
         ) or agno_is_google(self.config.framework.provider, self.config.llm.provider):
             self._inject_google_system_instruction(kwargs, recall_context)
+        elif ("input" in kwargs or "instructions" in kwargs) and "messages" not in kwargs:
+            existing_instructions = kwargs.get("instructions", "") or ""
+            kwargs["instructions"] = existing_instructions + recall_context
         else:
             messages = kwargs.get("messages", [])
             if messages and messages[0].get("role") == "system":
@@ -594,6 +619,24 @@ class BaseInvoke:
 
         self._injected_message_count = len(messages)
         logger.debug("Injecting %d conversation messages from history", len(messages))
+
+        if ("input" in kwargs or "instructions" in kwargs) and "messages" not in kwargs:
+            history_items = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role == "system":
+                    continue
+                history_items.append({"role": role, "content": content})
+
+            existing_input = kwargs.get("input")
+            if existing_input is None:
+                existing_input = []
+            elif isinstance(existing_input, str):
+                existing_input = [{"role": "user", "content": existing_input}]
+
+            kwargs["input"] = history_items + existing_input
+            return kwargs
 
         if (
             llm_is_openai(self.config.framework.provider, self.config.llm.provider)
@@ -817,6 +860,15 @@ class BaseIterator:
         return self
 
     def process_chunk(self, chunk):
+        if hasattr(chunk, "type") and chunk.type == "response.completed":
+            if hasattr(chunk, "response"):
+                response = chunk.response
+                if hasattr(response, "model_dump"):
+                    self.raw_response = response.model_dump()
+                else:
+                    self.raw_response = self.invoke._convert_to_json(response)
+            return self
+
         if self.invoke._uses_protobuf is True:
             formatted_chunk = copy.deepcopy(chunk)
             if isinstance(self.raw_response, list):

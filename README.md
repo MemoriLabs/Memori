@@ -183,7 +183,7 @@ This step is not necessary but will prep your environment for faster execution. 
 - Bedrock
 - Gemini
 - Grok (xAI)
-- OpenAI
+- OpenAI (Chat Completions & Responses API)
 
 _(unstreamed, streamed, synchronous and asynchronous)_
 
