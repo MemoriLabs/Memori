@@ -11,7 +11,7 @@ r"""
 import logging
 
 from memori._network import Api
-from memori.llm._embeddings import embed_texts_async
+from memori.embeddings import embed_texts
 from memori.memory._struct import Memories
 from memori.memory.augmentation._base import AugmentationContext, BaseAugmentation
 from memori.memory.augmentation._models import (
@@ -48,6 +48,34 @@ class AdvancedAugmentation(BaseAugmentation):
         except Exception:
             pass
         return ""
+
+    def _select_messages_for_summary(self, messages: list, summary: str) -> list:
+        if not summary:
+            return messages
+        if not messages or not isinstance(messages, list):
+            return []
+
+        assistant_idx = None
+        for i in range(len(messages) - 1, -1, -1):
+            msg = messages[i]
+            if isinstance(msg, dict) and msg.get("role") == "assistant":
+                assistant_idx = i
+                break
+
+        if assistant_idx is None:
+            return messages
+
+        user_idx = None
+        for i in range(assistant_idx - 1, -1, -1):
+            msg = messages[i]
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                user_idx = i
+                break
+
+        if user_idx is None:
+            return [messages[assistant_idx]]
+
+        return [messages[user_idx], messages[assistant_idx]]
 
     def _build_api_payload(
         self,
@@ -100,8 +128,11 @@ class AdvancedAugmentation(BaseAugmentation):
         dialect = driver.conversation.conn.get_dialect()
         summary = self._get_conversation_summary(driver, ctx.payload.conversation_id)
 
+        messages = self._select_messages_for_summary(
+            ctx.payload.conversation_messages, summary
+        )
         payload = self._build_api_payload(
-            ctx.payload.conversation_messages,
+            messages,
             summary,
             ctx.payload.system_prompt,
             dialect,
@@ -148,10 +179,11 @@ class AdvancedAugmentation(BaseAugmentation):
 
         if facts:
             embeddings_config = self.config.embeddings
-            fact_embeddings = await embed_texts_async(
+            fact_embeddings = await embed_texts(
                 facts,
                 model=embeddings_config.model,
                 fallback_dimension=embeddings_config.fallback_dimension,
+                async_=True,
             )
             api_response["entity"]["fact_embeddings"] = fact_embeddings
 
@@ -180,10 +212,11 @@ class AdvancedAugmentation(BaseAugmentation):
 
             if facts_from_triples:
                 embeddings_config = self.config.embeddings
-                embeddings_from_triples = await embed_texts_async(
+                embeddings_from_triples = await embed_texts(
                     facts_from_triples,
                     model=embeddings_config.model,
                     fallback_dimension=embeddings_config.fallback_dimension,
+                    async_=True,
                 )
                 facts_to_write = (facts_to_write or []) + facts_from_triples
                 embeddings_to_write = (

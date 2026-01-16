@@ -166,7 +166,7 @@ class EntityFact(BaseEntityFact):
             return self
 
         from memori._utils import generate_uniq
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         for i, fact in enumerate(facts):
             embedding = (
@@ -222,7 +222,27 @@ class EntityFact(BaseEntityFact):
         )
 
         embeddings = []
-        for result in list(results)[:limit]:
+        if hasattr(results, "limit"):
+            results = results.sort(
+                [("date_last_time", -1), ("num_times", -1), ("_id", -1)]
+            ).limit(limit)
+            iterable = results
+        else:
+            materialized = list(results)
+
+            def key(doc):
+                dt = doc.get("date_last_time")
+                num = doc.get("num_times")
+                _id = doc.get("_id")
+                return (
+                    dt if dt is not None else 0,
+                    num if num is not None else 0,
+                    _id if _id is not None else 0,
+                )
+
+            iterable = sorted(materialized, key=key, reverse=True)[:limit]
+
+        for result in iterable:
             embeddings.append(
                 {"id": result["_id"], "content_embedding": result["content_embedding"]}
             )
@@ -237,12 +257,18 @@ class EntityFact(BaseEntityFact):
             "memori_entity_fact",
             "find",
             {"_id": {"$in": fact_ids}},
-            {"_id": 1, "content": 1},
+            {"_id": 1, "content": 1, "date_created": 1},
         )
 
         facts = []
         for result in results:
-            facts.append({"id": result["_id"], "content": result["content"]})
+            facts.append(
+                {
+                    "id": result["_id"],
+                    "content": result["content"],
+                    "date_created": result.get("date_created"),
+                }
+            )
 
         return facts
 

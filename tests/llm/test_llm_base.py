@@ -497,14 +497,23 @@ def test_inject_recalled_facts_success():
 
     with patch("memori.memory.recall.Recall") as mock_recall:
         mock_recall.return_value.search_facts.return_value = [
-            {"content": "User likes pizza", "similarity": 0.9},
-            {"content": "User likes coding", "similarity": 0.85},
+            {
+                "content": "User likes pizza",
+                "similarity": 0.9,
+                "date_created": "2026-01-01 10:30:00",
+            },
+            {
+                "content": "User likes coding",
+                "similarity": 0.85,
+                "date_created": "2026-01-02 11:15:00",
+            },
         ]
         result = invoke.inject_recalled_facts(kwargs)
 
     assert len(result["messages"]) == 2
     assert result["messages"][0]["role"] == "system"
     assert "User likes pizza" in result["messages"][0]["content"]
+    assert "User likes pizza at 2026-01-01 10:30" in result["messages"][0]["content"]
     assert "User likes coding" in result["messages"][0]["content"]
     assert result["messages"][1]["role"] == "user"
 

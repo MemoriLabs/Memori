@@ -11,7 +11,7 @@ from benchmarks.perf.fixtures.sample_data import (
     generate_sample_queries,
 )
 from memori import Memori
-from memori.llm._embeddings import embed_texts
+from memori.embeddings import embed_texts
 
 
 @pytest.fixture

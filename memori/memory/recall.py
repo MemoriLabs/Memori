@@ -15,8 +15,8 @@ from sqlalchemy.exc import OperationalError
 
 from memori._config import Config
 from memori._logging import truncate
-from memori._search import search_entity_facts
-from memori.llm._embeddings import embed_texts
+from memori.embeddings import embed_texts
+from memori.search import search_entity_facts
 
 logger = logging.getLogger(__name__)
 
@@ -28,50 +28,40 @@ class Recall:
     def __init__(self, config: Config) -> None:
         self.config = config
 
-    def search_facts(
-        self, query: str, limit: int | None = None, entity_id: int | None = None
-    ) -> list[dict]:
-        logger.debug(
-            "Recall started - query: %s (%d chars), limit: %s",
-            truncate(query, 50),
-            len(query),
-            limit,
-        )
+    def _resolve_entity_id(self, entity_id: int | None) -> int | None:
+        if entity_id is not None:
+            return entity_id
 
-        if self.config.storage is None or self.config.storage.driver is None:
-            logger.debug("Recall aborted - storage not configured")
-            return []
+        if self.config.entity_id is None:
+            logger.debug("Recall aborted - no entity_id configured")
+            return None
 
-        if entity_id is None:
-            if self.config.entity_id is None:
-                logger.debug("Recall aborted - no entity_id configured")
-                return []
-            entity_id = self.config.storage.driver.entity.create(self.config.entity_id)
-            logger.debug("Entity ID resolved: %s", entity_id)
-
+        entity_id = self.config.storage.driver.entity.create(self.config.entity_id)
+        logger.debug("Entity ID resolved: %s", entity_id)
         if entity_id is None:
             logger.debug("Recall aborted - entity_id is None after resolution")
-            return []
+        return entity_id
 
-        if limit is None:
-            limit = self.config.recall_facts_limit
+    def _resolve_limit(self, limit: int | None) -> int:
+        return self.config.recall_facts_limit if limit is None else limit
 
+    def _embed_query(self, query: str) -> list[float]:
         logger.debug("Generating query embedding")
         embeddings_config = self.config.embeddings
-        query_embedding = embed_texts(
+        return embed_texts(
             query,
             model=embeddings_config.model,
             fallback_dimension=embeddings_config.fallback_dimension,
         )[0]
 
-        facts = []
+    def _search_with_retries(
+        self, *, entity_id: int, query: str, query_embedding: list[float], limit: int
+    ) -> list[dict]:
+        facts: list[dict] = []
         for attempt in range(MAX_RETRIES):
             try:
                 logger.debug(
-                    "Executing search_entity_facts - entity_id: %s, limit: %s, embeddings_limit: %s",
-                    entity_id,
-                    limit,
-                    self.config.recall_embeddings_limit,
+                    f"Executing search_entity_facts - entity_id: {entity_id}, limit: {limit}, embeddings_limit: {self.config.recall_embeddings_limit}"
                 )
                 facts = search_entity_facts(
                     self.config.storage.driver.entity_fact,
@@ -93,3 +83,30 @@ class Recall:
                 raise
 
         return facts
+
+    def search_facts(
+        self, query: str, limit: int | None = None, entity_id: int | None = None
+    ) -> list[dict]:
+        logger.debug(
+            "Recall started - query: %s (%d chars), limit: %s",
+            truncate(query, 50),
+            len(query),
+            limit,
+        )
+
+        if self.config.storage is None or self.config.storage.driver is None:
+            logger.debug("Recall aborted - storage not configured")
+            return []
+
+        entity_id = self._resolve_entity_id(entity_id)
+        if entity_id is None:
+            return []
+
+        limit = self._resolve_limit(limit)
+        query_embedding = self._embed_query(query)
+        return self._search_with_retries(
+            entity_id=entity_id,
+            query=query,
+            query_embedding=query_embedding,
+            limit=limit,
+        )

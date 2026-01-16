@@ -21,15 +21,18 @@ from benchmarks.locomo.retrieval import (
 )
 from benchmarks.locomo.scoring import hit_at_k_groups, mrr_groups
 from memori import Memori
-from memori.llm._embeddings import embed_texts
+from memori.embeddings import embed_texts
 from memori.memory.augmentation.input import AugmentationInput
 from memori.memory.recall import Recall
 
 CATEGORY_LABELS: dict[str, str] = {
-    "1": "factual",
+    # LoCoMo category IDs are numeric in the dataset JSON.
+    # Mapping here matches the upstream LoCoMo taxonomy:
+    # 1=multi-hop, 2=temporal, 3=open-domain knowledge, 4=single-hop, 5=adversarial.
+    "1": "multi-hop",
     "2": "temporal",
-    "3": "reasoning",
-    "4": "implicit",
+    "3": "open-domain",
+    "4": "single-hop",
     "5": "adversarial",
     "unknown": "unknown",
 }
@@ -340,6 +343,9 @@ def run_locomo(cfg: RunConfig) -> dict:
                     "hit@1": hit_at_k_groups(relevant, retrieved_groups, 1),
                     "hit@3": hit_at_k_groups(relevant, retrieved_groups, 3),
                     "hit@5": hit_at_k_groups(relevant, retrieved_groups, 5),
+                    "hit@10": hit_at_k_groups(relevant, retrieved_groups, 10),
+                    "hit@20": hit_at_k_groups(relevant, retrieved_groups, 20),
+                    "hit@30": hit_at_k_groups(relevant, retrieved_groups, 30),
                     "mrr": mrr_groups(relevant, retrieved_groups),
                 }
                 totals.add_metrics(category=q.category or "unknown", metrics=metrics)
@@ -931,7 +937,15 @@ class _Totals:
     def __init__(self) -> None:
         self.question_count = 0
         self.questions_by_category: dict[str, int] = {}
-        self.sums = {"hit@1": 0.0, "hit@3": 0.0, "hit@5": 0.0, "mrr": 0.0}
+        self.sums = {
+            "hit@1": 0.0,
+            "hit@3": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "hit@20": 0.0,
+            "hit@30": 0.0,
+            "mrr": 0.0,
+        }
         self.sums_by_cat: dict[str, dict[str, float]] = {}
         self.counts_by_cat: dict[str, int] = {}
 
@@ -944,7 +958,16 @@ class _Totals:
         for key in self.sums:
             self.sums[key] += float(metrics[key])
         self.sums_by_cat.setdefault(
-            category, {"hit@1": 0.0, "hit@3": 0.0, "hit@5": 0.0, "mrr": 0.0}
+            category,
+            {
+                "hit@1": 0.0,
+                "hit@3": 0.0,
+                "hit@5": 0.0,
+                "hit@10": 0.0,
+                "hit@20": 0.0,
+                "hit@30": 0.0,
+                "mrr": 0.0,
+            },
         )
         for key in self.sums_by_cat[category]:
             self.sums_by_cat[category][key] += float(metrics[key])

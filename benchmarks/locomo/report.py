@@ -30,7 +30,15 @@ def main(argv: list[str] | None = None) -> int:
 
     run_id: str | None = None
     timestamp_utc: str | None = None
-    sums = {"hit@1": 0.0, "hit@3": 0.0, "hit@5": 0.0, "mrr": 0.0}
+    sums = {
+        "hit@1": 0.0,
+        "hit@3": 0.0,
+        "hit@5": 0.0,
+        "hit@10": 0.0,
+        "hit@20": 0.0,
+        "hit@30": 0.0,
+        "mrr": 0.0,
+    }
     sums_by_cat: dict[str, dict[str, float]] = {}
     counts_by_cat: dict[str, int] = {}
 
@@ -53,7 +61,16 @@ def main(argv: list[str] | None = None) -> int:
                 if key in metrics:
                     sums[key] += float(metrics[key])
             sums_by_cat.setdefault(
-                cat, {"hit@1": 0.0, "hit@3": 0.0, "hit@5": 0.0, "mrr": 0.0}
+                cat,
+                {
+                    "hit@1": 0.0,
+                    "hit@3": 0.0,
+                    "hit@5": 0.0,
+                    "hit@10": 0.0,
+                    "hit@20": 0.0,
+                    "hit@30": 0.0,
+                    "mrr": 0.0,
+                },
             )
             for key in sums_by_cat[cat]:
                 if key in metrics:
