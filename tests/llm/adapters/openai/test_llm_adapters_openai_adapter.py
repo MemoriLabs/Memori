@@ -67,8 +67,18 @@ def test_get_formatted_response_streamed():
                 "query": {"stream": True},
                 "response": {
                     "choices": [
-                        {"delta": {"content": "abc", "role": "assistant"}},
-                        {"delta": {"content": "def", "role": "assistant"}},
+                        {
+                            "delta": {
+                                "content": "abc",
+                                "role": "assistant",
+                            }
+                        },
+                        {
+                            "delta": {
+                                "content": "def",
+                                "role": "assistant",
+                            }
+                        },
                     ]
                 },
             }
