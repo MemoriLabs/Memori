@@ -117,7 +117,6 @@ def test_search_facts_success():
             mock_embed.assert_called_once_with(
                 "What do I like?",
                 model=config.embeddings.model,
-                fallback_dimension=config.embeddings.fallback_dimension,
             )
             mock_search.assert_called_once_with(
                 config.storage.driver.entity_fact,
@@ -279,7 +278,6 @@ def test_search_facts_embeds_query_correctly():
             mock_embed.assert_called_once_with(
                 "My test query",
                 model=config.embeddings.model,
-                fallback_dimension=config.embeddings.fallback_dimension,
             )
             mock_search.assert_called_once()
             assert mock_search.call_args[0][2] == [0.1, 0.2, 0.3, 0.4, 0.5]

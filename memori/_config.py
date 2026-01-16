@@ -54,7 +54,6 @@ class Storage:
 class Embeddings:
     def __init__(self):
         self.model = "all-MiniLM-L6-v2"
-        self.fallback_dimension = 768
 
 
 class Config:

@@ -51,7 +51,6 @@ class Recall:
         return embed_texts(
             query,
             model=embeddings_config.model,
-            fallback_dimension=embeddings_config.fallback_dimension,
         )[0]
 
     def _search_with_retries(

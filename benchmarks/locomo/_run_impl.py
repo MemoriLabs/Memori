@@ -728,7 +728,6 @@ def _build_aa_provenance(
     turn_embs = embed_texts(
         turn_texts,
         model=mem.config.embeddings.model,
-        fallback_dimension=mem.config.embeddings.fallback_dimension,
     )
 
     entity_fact_driver = mem.config.storage.driver.entity_fact
@@ -742,7 +741,6 @@ def _build_aa_provenance(
     fact_embs = embed_texts(
         fact_texts,
         model=mem.config.embeddings.model,
-        fallback_dimension=mem.config.embeddings.fallback_dimension,
     )
 
     # Clear any prior mappings for this run/sample to avoid mixing old/new strategies.

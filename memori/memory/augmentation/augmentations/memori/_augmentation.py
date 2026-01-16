@@ -182,7 +182,6 @@ class AdvancedAugmentation(BaseAugmentation):
             fact_embeddings = await embed_texts(
                 facts,
                 model=embeddings_config.model,
-                fallback_dimension=embeddings_config.fallback_dimension,
                 async_=True,
             )
             api_response["entity"]["fact_embeddings"] = fact_embeddings
@@ -215,7 +214,6 @@ class AdvancedAugmentation(BaseAugmentation):
                 embeddings_from_triples = await embed_texts(
                     facts_from_triples,
                     model=embeddings_config.model,
-                    fallback_dimension=embeddings_config.fallback_dimension,
                     async_=True,
                 )
                 facts_to_write = (facts_to_write or []) + facts_from_triples

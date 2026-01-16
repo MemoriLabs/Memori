@@ -145,6 +145,5 @@ class Memori:
         return embed_texts(
             texts,
             model=embeddings_cfg.model,
-            fallback_dimension=embeddings_cfg.fallback_dimension,
             async_=async_,
         )

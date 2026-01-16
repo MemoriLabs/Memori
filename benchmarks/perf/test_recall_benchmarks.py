@@ -75,7 +75,6 @@ class TestQueryEmbeddingBenchmarks:
             return embed_texts(
                 query,
                 model=cfg.embeddings.model,
-                fallback_dimension=cfg.embeddings.fallback_dimension,
             )
 
         start = perf_counter()
@@ -105,7 +104,6 @@ class TestQueryEmbeddingBenchmarks:
             return embed_texts(
                 query,
                 model=cfg.embeddings.model,
-                fallback_dimension=cfg.embeddings.fallback_dimension,
             )
 
         start = perf_counter()
@@ -135,7 +133,6 @@ class TestQueryEmbeddingBenchmarks:
             return embed_texts(
                 query,
                 model=cfg.embeddings.model,
-                fallback_dimension=cfg.embeddings.fallback_dimension,
             )
 
         start = perf_counter()
@@ -165,7 +162,6 @@ class TestQueryEmbeddingBenchmarks:
             return embed_texts(
                 queries,
                 model=cfg.embeddings.model,
-                fallback_dimension=cfg.embeddings.fallback_dimension,
             )
 
         start = perf_counter()
@@ -288,19 +284,15 @@ class TestSemanticSearchBenchmarks:
         fact_count = entity_with_n_facts["fact_count"]
         entity_fact_driver = memori_instance.config.storage.driver.entity_fact
 
-        # Pre-fetch embeddings (not part of benchmark)
         db_results = entity_fact_driver.get_embeddings(entity_db_id, limit=fact_count)
         embeddings = [(row["id"], row["content_embedding"]) for row in db_results]
 
-        # Pre-generate query embedding (not part of benchmark)
         query = sample_queries["short"][0]
         query_embedding = embed_texts(
             query,
             model=memori_instance.config.embeddings.model,
-            fallback_dimension=memori_instance.config.embeddings.fallback_dimension,
         )[0]
 
-        # Benchmark only the similarity search
         def _search():
             return find_similar_embeddings(embeddings, query_embedding, limit=5)
 

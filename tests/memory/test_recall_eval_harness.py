@@ -129,9 +129,8 @@ def test_recall_eval_harness_reports_expected_metrics(mocker):
         "What food do I like?": [0.05, 0.05, 0.9],
     }
 
-    def _embed_side_effect(text, *, model, fallback_dimension):
+    def _embed_side_effect(text, *, model):
         _ = model
-        _ = fallback_dimension
         if isinstance(text, list):
             return [query_to_embedding[t] for t in text]
         return [query_to_embedding[text]]

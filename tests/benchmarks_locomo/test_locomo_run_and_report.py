@@ -45,8 +45,10 @@ def _write_locomo_tiny(path: Path) -> Path:
 
 
 def _fake_embed_texts(
-    texts: str | list[str], model: str, fallback_dimension: int
+    texts: str | list[str], model: str, *, async_: bool = False
 ) -> list[list[int | float]]:
+    _ = model
+    _ = async_
     if isinstance(texts, str):
         items = [texts]
     else:
@@ -87,7 +89,6 @@ def _seed_reuse_db(
     embeddings = _fake_embed_texts(
         contents,
         model=mem.config.embeddings.model,
-        fallback_dimension=mem.config.embeddings.fallback_dimension,
     )
     mem.config.storage.driver.entity_fact.create(entity_db_id, contents, embeddings)
 
@@ -336,8 +337,11 @@ def test_run_can_reuse_existing_sqlite_db_without_ingestion(
 
     # Second run must not ingest; make ingestion embedding calls fail if they happen.
     def _should_not_be_called(
-        texts: str | list[str], model: str, fallback_dimension: int
+        texts: str | list[str], model: str, *, async_: bool = False
     ) -> list[list[int | float]]:
+        _ = texts
+        _ = model
+        _ = async_
         raise AssertionError(
             "embed_texts should not be called during --reuse-db scoring"
         )

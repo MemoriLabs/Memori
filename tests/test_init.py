@@ -78,7 +78,6 @@ def test_embed_texts_uses_config_defaults(mocker):
 
     mem = Memori(conn=lambda: mock_conn)
     mem.config.embeddings.model = "test-model"
-    mem.config.embeddings.fallback_dimension = 123
 
     mock_embed = mocker.patch("memori.embed_texts", return_value=[[1.0, 2.0, 3.0]])
 
@@ -88,6 +87,5 @@ def test_embed_texts_uses_config_defaults(mocker):
     mock_embed.assert_called_once_with(
         "hello",
         model="test-model",
-        fallback_dimension=123,
         async_=False,
     )
