@@ -391,7 +391,10 @@ class BaseInvoke:
                             return content
                         if isinstance(content, list):
                             for c in content:
-                                if isinstance(c, dict) and c.get("type") == "input_text":
+                                if (
+                                    isinstance(c, dict)
+                                    and c.get("type") == "input_text"
+                                ):
                                     return c.get("text", "")
                                 if isinstance(c, str):
                                     return c
@@ -588,7 +591,9 @@ class BaseInvoke:
             self.config.framework.provider, self.config.llm.provider
         ) or agno_is_google(self.config.framework.provider, self.config.llm.provider):
             self._inject_google_system_instruction(kwargs, recall_context)
-        elif ("input" in kwargs or "instructions" in kwargs) and "messages" not in kwargs:
+        elif (
+            "input" in kwargs or "instructions" in kwargs
+        ) and "messages" not in kwargs:
             existing_instructions = kwargs.get("instructions", "") or ""
             kwargs["instructions"] = existing_instructions + recall_context
         else:

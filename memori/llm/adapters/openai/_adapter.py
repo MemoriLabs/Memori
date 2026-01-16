@@ -35,7 +35,11 @@ class Adapter(BaseLlmAdaptor):
             messages = []
             instructions = query.get("instructions", "")
             if instructions:
-                clean = instructions.split("<memori_context>")[0].strip() if "<memori_context>" in instructions else instructions
+                clean = (
+                    instructions.split("<memori_context>")[0].strip()
+                    if "<memori_context>" in instructions
+                    else instructions
+                )
                 if clean:
                     messages.append({"role": "system", "content": clean})
 
@@ -45,13 +49,19 @@ class Adapter(BaseLlmAdaptor):
             elif isinstance(input_val, list):
                 for item in input_val:
                     if isinstance(item, dict):
-                        role, content = item.get("role", "user"), item.get("content", "")
+                        role, content = (
+                            item.get("role", "user"),
+                            item.get("content", ""),
+                        )
                         if isinstance(content, str):
                             messages.append({"role": role, "content": content})
                         elif isinstance(content, list):
                             text_parts = []
                             for c in content:
-                                if isinstance(c, dict) and c.get("type") == "input_text":
+                                if (
+                                    isinstance(c, dict)
+                                    and c.get("type") == "input_text"
+                                ):
                                     text_parts.append(c.get("text", ""))
                                 elif isinstance(c, str):
                                     text_parts.append(c)
@@ -76,11 +86,29 @@ class Adapter(BaseLlmAdaptor):
                     for content in item.get("content", []):
                         if isinstance(content, dict):
                             if content.get("type") == "output_text":
-                                results.append({"role": "assistant", "text": content.get("text", ""), "type": "text"})
+                                results.append(
+                                    {
+                                        "role": "assistant",
+                                        "text": content.get("text", ""),
+                                        "type": "text",
+                                    }
+                                )
                             elif content.get("type") == "refusal":
-                                results.append({"role": "assistant", "text": content.get("refusal", ""), "type": "refusal"})
+                                results.append(
+                                    {
+                                        "role": "assistant",
+                                        "text": content.get("refusal", ""),
+                                        "type": "refusal",
+                                    }
+                                )
             if not results and response.get("output_text"):
-                results.append({"role": "assistant", "text": response.get("output_text", ""), "type": "text"})
+                results.append(
+                    {
+                        "role": "assistant",
+                        "text": response.get("output_text", ""),
+                        "type": "text",
+                    }
+                )
             return results
 
         # Chat Completions API format

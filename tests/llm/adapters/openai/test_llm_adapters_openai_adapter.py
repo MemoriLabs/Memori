@@ -43,6 +43,7 @@ class MockResponsesResponse:
 
 # Chat Completions API Tests
 
+
 def test_get_formatted_query():
     assert Adapter().get_formatted_query({}) == []
     assert Adapter().get_formatted_query({"conversation": {"query": {}}}) == []
@@ -124,6 +125,7 @@ def test_get_formatted_query_with_injected_messages():
 
 
 # Responses API Tests
+
 
 def test_responses_get_formatted_query_string_input():
     payload = {
@@ -222,6 +224,7 @@ def test_responses_get_formatted_response_fallback_to_output_text():
 
 # Iterator Tests with Responses API Streaming
 
+
 class TestIteratorWithResponsesAPI:
     def test_iter_returns_self(self):
         config = Config()
@@ -313,6 +316,7 @@ class TestAsyncIteratorWithResponsesAPI:
 
 
 # BaseInvoke Tests with Responses API
+
 
 class TestExtractUserQueryResponses:
     def test_extract_from_string_input(self):
