@@ -1,5 +1,3 @@
-"""Unit tests for OpenAI adapter (Chat Completions and Responses API)."""
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,9 +37,6 @@ class MockResponsesResponse:
 
     def model_dump(self):
         return {"output": self.output, "output_text": self.output_text}
-
-
-# Chat Completions API Tests
 
 
 def test_get_formatted_query():
@@ -122,9 +117,6 @@ def test_get_formatted_query_with_injected_messages():
         {"content": "new message", "role": "user"},
         {"content": "new response", "role": "assistant"},
     ]
-
-
-# Responses API Tests
 
 
 def test_responses_get_formatted_query_string_input():
@@ -222,210 +214,205 @@ def test_responses_get_formatted_response_fallback_to_output_text():
     assert result[0] == {"role": "assistant", "text": "Fallback text", "type": "text"}
 
 
-# Iterator Tests with Responses API Streaming
+def test_iterator_iter_returns_self():
+    config = Config()
+    iterator = Iterator(config, iter([]))
+    assert iterator.__iter__() is iterator
 
 
-class TestIteratorWithResponsesAPI:
-    def test_iter_returns_self(self):
-        config = Config()
-        iterator = Iterator(config, iter([]))
-        assert iterator.__iter__() is iterator
+@patch("memori.llm._iterator.MemoryManager")
+def test_iterator_yields_all_events(mock_memory_manager):
+    config = Config()
+    events = [
+        MockEvent("response.created"),
+        MockEvent("response.completed", MockResponse("Hello")),
+    ]
+    iterator = Iterator(config, iter(events))
 
-    @patch("memori.llm._iterator.MemoryManager")
-    def test_yields_all_events(self, mock_memory_manager):
-        config = Config()
-        events = [
-            MockEvent("response.created"),
-            MockEvent("response.completed", MockResponse("Hello")),
+    mock_invoke = MagicMock()
+    mock_invoke._uses_protobuf = False
+    mock_invoke._format_payload.return_value = {}
+    mock_invoke._format_kwargs.return_value = {}
+    mock_invoke._format_response.return_value = {}
+    iterator.configure_invoke(mock_invoke)
+    iterator.configure_request({"input": "test"}, 0)
+
+    collected = list(iterator)
+    assert len(collected) == 2
+
+
+@patch("memori.llm._iterator.MemoryManager")
+def test_iterator_captures_response_on_completed_event(mock_memory_manager):
+    config = Config()
+    mock_response = MockResponse("Test output")
+    events = [MockEvent("response.completed", mock_response)]
+    iterator = Iterator(config, iter(events))
+
+    mock_invoke = MagicMock()
+    mock_invoke._uses_protobuf = False
+    mock_invoke._format_payload.return_value = {}
+    mock_invoke._format_kwargs.return_value = {}
+    mock_invoke._format_response.return_value = {}
+    iterator.configure_invoke(mock_invoke)
+    iterator.configure_request({"input": "test"}, 0)
+
+    list(iterator)
+    assert iterator.raw_response == mock_response.model_dump()
+
+
+def test_async_iterator_aiter_returns_self():
+    config = Config()
+    mock_source = MagicMock()
+    mock_source.__aiter__.return_value = mock_source
+    iterator = AsyncIterator(config, mock_source)
+    assert iterator.__aiter__() is iterator
+
+
+@pytest.mark.asyncio
+@patch("memori.llm._iterator.MemoryManager")
+async def test_async_iterator_yields_all_events(mock_memory_manager):
+    config = Config()
+    events = [
+        MockEvent("response.created"),
+        MockEvent("response.completed", MockResponse("Hello")),
+    ]
+
+    async def async_gen():
+        for event in events:
+            yield event
+
+    iterator = AsyncIterator(config, async_gen())
+
+    mock_invoke = MagicMock()
+    mock_invoke._uses_protobuf = False
+    mock_invoke._format_payload.return_value = {}
+    mock_invoke._format_kwargs.return_value = {}
+    mock_invoke._format_response.return_value = {}
+    iterator.configure_invoke(mock_invoke)
+    iterator.configure_request({"input": "test"}, 0)
+    iterator.__aiter__()
+
+    collected = []
+    async for event in iterator:
+        collected.append(event)
+    assert len(collected) == 2
+
+
+@pytest.mark.asyncio
+async def test_async_iterator_raises_runtime_error_if_not_initialized():
+    config = Config()
+    iterator = AsyncIterator(config, MagicMock())
+    with pytest.raises(RuntimeError, match="Iterator not initialized"):
+        await iterator.__anext__()
+
+
+def test_extract_user_query_from_string_input():
+    config = Config()
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    assert invoke._extract_user_query({"input": "What is 2+2?"}) == "What is 2+2?"
+
+
+def test_extract_user_query_from_list_input():
+    config = Config()
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    kwargs = {
+        "input": [
+            {"role": "user", "content": "First"},
+            {"role": "user", "content": "Second"},
         ]
-        iterator = Iterator(config, iter(events))
-
-        mock_invoke = MagicMock()
-        mock_invoke._uses_protobuf = False
-        mock_invoke._format_payload.return_value = {}
-        mock_invoke._format_kwargs.return_value = {}
-        mock_invoke._format_response.return_value = {}
-        iterator.configure_invoke(mock_invoke)
-        iterator.configure_request({"input": "test"}, 0)
-
-        collected = list(iterator)
-        assert len(collected) == 2
-
-    @patch("memori.llm._iterator.MemoryManager")
-    def test_captures_response_on_completed_event(self, mock_memory_manager):
-        config = Config()
-        mock_response = MockResponse("Test output")
-        events = [MockEvent("response.completed", mock_response)]
-        iterator = Iterator(config, iter(events))
-
-        mock_invoke = MagicMock()
-        mock_invoke._uses_protobuf = False
-        mock_invoke._format_payload.return_value = {}
-        mock_invoke._format_kwargs.return_value = {}
-        mock_invoke._format_response.return_value = {}
-        iterator.configure_invoke(mock_invoke)
-        iterator.configure_request({"input": "test"}, 0)
-
-        list(iterator)
-        assert iterator.raw_response == mock_response.model_dump()
+    }
+    assert invoke._extract_user_query(kwargs) == "Second"
 
 
-class TestAsyncIteratorWithResponsesAPI:
-    def test_aiter_returns_self(self):
-        config = Config()
-        mock_source = MagicMock()
-        mock_source.__aiter__.return_value = mock_source
-        iterator = AsyncIterator(config, mock_source)
-        assert iterator.__aiter__() is iterator
-
-    @pytest.mark.asyncio
-    @patch("memori.llm._iterator.MemoryManager")
-    async def test_yields_all_events(self, mock_memory_manager):
-        config = Config()
-        events = [
-            MockEvent("response.created"),
-            MockEvent("response.completed", MockResponse("Hello")),
-        ]
-
-        async def async_gen():
-            for event in events:
-                yield event
-
-        iterator = AsyncIterator(config, async_gen())
-
-        mock_invoke = MagicMock()
-        mock_invoke._uses_protobuf = False
-        mock_invoke._format_payload.return_value = {}
-        mock_invoke._format_kwargs.return_value = {}
-        mock_invoke._format_response.return_value = {}
-        iterator.configure_invoke(mock_invoke)
-        iterator.configure_request({"input": "test"}, 0)
-        iterator.__aiter__()
-
-        collected = []
-        async for event in iterator:
-            collected.append(event)
-        assert len(collected) == 2
-
-    @pytest.mark.asyncio
-    async def test_raises_runtime_error_if_not_initialized(self):
-        config = Config()
-        iterator = AsyncIterator(config, MagicMock())
-        with pytest.raises(RuntimeError, match="Iterator not initialized"):
-            await iterator.__anext__()
+def test_extract_user_query_from_missing_input():
+    config = Config()
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    assert invoke._extract_user_query({}) == ""
 
 
-# BaseInvoke Tests with Responses API
+def test_inject_recalled_facts_returns_kwargs_when_no_storage():
+    config = Config()
+    config.storage = None
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    kwargs = {"input": "test", "instructions": "Be helpful"}
+    assert invoke.inject_recalled_facts(kwargs) == kwargs
 
 
-class TestExtractUserQueryResponses:
-    def test_extract_from_string_input(self):
-        config = Config()
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        assert invoke._extract_user_query({"input": "What is 2+2?"}) == "What is 2+2?"
+def test_inject_recalled_facts_appends_facts_to_instructions():
+    config = Config()
+    config.storage = MagicMock()
+    config.storage.driver = MagicMock()
+    config.storage.driver.entity.create.return_value = 1
+    config.entity_id = "test-entity"
+    config.recall_relevance_threshold = 0.1
+    config.llm.provider = "openai_responses"
 
-    def test_extract_from_list_input(self):
-        config = Config()
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        kwargs = {
-            "input": [
-                {"role": "user", "content": "First"},
-                {"role": "user", "content": "Second"},
-            ]
-        }
-        assert invoke._extract_user_query(kwargs) == "Second"
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    invoke.set_client(None, "openai_responses", "1.0.0")
 
-    def test_extract_from_missing_input(self):
-        config = Config()
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        assert invoke._extract_user_query({}) == ""
+    mock_facts = [{"content": "User likes Python", "similarity": 0.8}]
 
-
-class TestInjectRecalledFactsResponses:
-    def test_returns_kwargs_when_no_storage(self):
-        config = Config()
-        config.storage = None
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        kwargs = {"input": "test", "instructions": "Be helpful"}
-        assert invoke.inject_recalled_facts(kwargs) == kwargs
-
-    def test_appends_facts_to_instructions(self):
-        config = Config()
-        config.storage = MagicMock()
-        config.storage.driver = MagicMock()
-        config.storage.driver.entity.create.return_value = 1
-        config.entity_id = "test-entity"
-        config.recall_relevance_threshold = 0.1
-        config.llm.provider = "openai_responses"
-
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        invoke.set_client(None, "openai_responses", "1.0.0")
-
-        mock_facts = [{"content": "User likes Python", "similarity": 0.8}]
-
-        with patch("memori.memory.recall.Recall") as MockRecall:
-            MockRecall.return_value.search_facts.return_value = mock_facts
-            kwargs = {"input": "Test", "instructions": "Be helpful."}
-            result = invoke.inject_recalled_facts(kwargs)
-            assert "<memori_context>" in result["instructions"]
-            assert "User likes Python" in result["instructions"]
+    with patch("memori.memory.recall.Recall") as MockRecall:
+        MockRecall.return_value.search_facts.return_value = mock_facts
+        kwargs = {"input": "Test", "instructions": "Be helpful."}
+        result = invoke.inject_recalled_facts(kwargs)
+        assert "<memori_context>" in result["instructions"]
+        assert "User likes Python" in result["instructions"]
 
 
-class TestInjectConversationMessagesResponses:
-    def test_returns_kwargs_when_no_conversation_id(self):
-        config = Config()
-        config.cache.conversation_id = None
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        kwargs = {"input": "test"}
-        assert invoke.inject_conversation_messages(kwargs) == kwargs
-
-    def test_converts_string_input_to_list(self):
-        config = Config()
-        config.cache.conversation_id = 1
-        config.storage = MagicMock()
-        config.storage.driver = MagicMock()
-        config.storage.driver.conversation.messages.read.return_value = [
-            {"role": "user", "content": "Previous"},
-        ]
-        config.llm.provider = "openai_responses"
-
-        invoke = BaseInvoke(config, lambda **kwargs: None)
-        invoke.set_client(None, "openai_responses", "1.0.0")
-
-        result = invoke.inject_conversation_messages({"input": "New"})
-        assert isinstance(result["input"], list)
-        assert len(result["input"]) == 2
+def test_inject_conversation_messages_returns_kwargs_when_no_conversation_id():
+    config = Config()
+    config.cache.conversation_id = None
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    kwargs = {"input": "test"}
+    assert invoke.inject_conversation_messages(kwargs) == kwargs
 
 
-class TestInvokeWithResponsesAPI:
-    def test_invoke_calls_method(self):
-        config = Config()
-        config.storage = None
+def test_inject_conversation_messages_converts_string_input_to_list():
+    config = Config()
+    config.cache.conversation_id = 1
+    config.storage = MagicMock()
+    config.storage.driver = MagicMock()
+    config.storage.driver.conversation.messages.read.return_value = [
+        {"role": "user", "content": "Previous"},
+    ]
+    config.llm.provider = "openai_responses"
 
-        mock_response = MockResponsesResponse()
-        mock_method = MagicMock(return_value=mock_response)
+    invoke = BaseInvoke(config, lambda **kwargs: None)
+    invoke.set_client(None, "openai_responses", "1.0.0")
 
-        invoke = Invoke(config, mock_method)
-        invoke.set_client(None, "openai_responses", "1.0.0")
-
-        result = invoke.invoke(model="gpt-4o", input="test")
-        mock_method.assert_called_once()
-        assert result == mock_response
+    result = invoke.inject_conversation_messages({"input": "New"})
+    assert isinstance(result["input"], list)
+    assert len(result["input"]) == 2
 
 
-class TestInvokeAsyncWithResponsesAPI:
-    @pytest.mark.asyncio
-    async def test_async_invoke_calls_method(self):
-        config = Config()
-        config.storage = None
+def test_invoke_calls_method():
+    config = Config()
+    config.storage = None
 
-        mock_response = MockResponsesResponse()
+    mock_response = MockResponsesResponse()
+    mock_method = MagicMock(return_value=mock_response)
 
-        async def mock_method(**kwargs):
-            return mock_response
+    invoke = Invoke(config, mock_method)
+    invoke.set_client(None, "openai_responses", "1.0.0")
 
-        invoke = InvokeAsync(config, mock_method)
-        invoke.set_client(None, "openai_responses", "1.0.0")
+    result = invoke.invoke(model="gpt-4o", input="test")
+    mock_method.assert_called_once()
+    assert result == mock_response
 
-        result = await invoke.invoke(model="gpt-4o", input="test")
-        assert result == mock_response
+
+@pytest.mark.asyncio
+async def test_async_invoke_calls_method():
+    config = Config()
+    config.storage = None
+
+    mock_response = MockResponsesResponse()
+
+    async def mock_method(**kwargs):
+        return mock_response
+
+    invoke = InvokeAsync(config, mock_method)
+    invoke.set_client(None, "openai_responses", "1.0.0")
+
+    result = await invoke.invoke(model="gpt-4o", input="test")
+    assert result == mock_response

@@ -1,5 +1,11 @@
 import pytest
-from openai import AsyncOpenAI, AuthenticationError, NotFoundError, OpenAI
+from openai import (
+    AsyncOpenAI,
+    AuthenticationError,
+    BadRequestError,
+    NotFoundError,
+    OpenAI,
+)
 
 from tests.integration.conftest import requires_openai
 
@@ -240,8 +246,8 @@ class TestAsyncChatCompletions:
 class TestSyncStreaming:
     @requires_openai
     @pytest.mark.integration
-    def test_sync_streaming_returns_chunks(self, registered_streaming_openai_client):
-        stream = registered_streaming_openai_client.chat.completions.create(
+    def test_sync_streaming_returns_chunks(self, registered_openai_client):
+        stream = registered_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -254,8 +260,8 @@ class TestSyncStreaming:
 
     @requires_openai
     @pytest.mark.integration
-    def test_sync_streaming_assembles_content(self, registered_streaming_openai_client):
-        stream = registered_streaming_openai_client.chat.completions.create(
+    def test_sync_streaming_assembles_content(self, registered_openai_client):
+        stream = registered_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -272,8 +278,8 @@ class TestSyncStreaming:
 
     @requires_openai
     @pytest.mark.integration
-    def test_sync_streaming_chunk_structure(self, registered_streaming_openai_client):
-        stream = registered_streaming_openai_client.chat.completions.create(
+    def test_sync_streaming_chunk_structure(self, registered_openai_client):
+        stream = registered_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -290,10 +296,8 @@ class TestAsyncStreaming:
     @requires_openai
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_async_streaming_returns_chunks(
-        self, registered_async_streaming_client
-    ):
-        stream = await registered_async_streaming_client.chat.completions.create(
+    async def test_async_streaming_returns_chunks(self, registered_async_openai_client):
+        stream = await registered_async_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -310,9 +314,9 @@ class TestAsyncStreaming:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_async_streaming_assembles_content(
-        self, registered_async_streaming_client
+        self, registered_async_openai_client
     ):
-        stream = await registered_async_streaming_client.chat.completions.create(
+        stream = await registered_async_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -331,9 +335,9 @@ class TestAsyncStreaming:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_async_streaming_chunk_structure(
-        self, registered_async_streaming_client
+        self, registered_async_openai_client
     ):
-        stream = await registered_async_streaming_client.chat.completions.create(
+        stream = await registered_async_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -349,9 +353,9 @@ class TestAsyncStreaming:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_async_streaming_with_usage_info(
-        self, registered_async_streaming_client
+        self, registered_async_openai_client
     ):
-        stream = await registered_async_streaming_client.chat.completions.create(
+        stream = await registered_async_openai_client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -810,7 +814,7 @@ class TestResponsesErrorHandling:
     @requires_openai
     @pytest.mark.integration
     def test_invalid_model_raises_error(self, registered_openai_client):
-        with pytest.raises(NotFoundError):
+        with pytest.raises(BadRequestError):
             registered_openai_client.responses.create(
                 model="nonexistent-model-xyz",
                 input=TEST_PROMPT,
@@ -893,6 +897,34 @@ class TestResponsesStreaming:
 
     @requires_openai
     @pytest.mark.integration
+    def test_sync_streaming_final_response_structure(self, registered_openai_client):
+        stream = registered_openai_client.responses.create(
+            model=MODEL,
+            input=TEST_PROMPT,
+            max_output_tokens=MAX_OUTPUT_TOKENS,
+            stream=True,
+        )
+
+        events = list(stream)
+        completed_events = [
+            e for e in events if hasattr(e, "type") and e.type == "response.completed"
+        ]
+
+        assert len(completed_events) == 1
+        completed_event = completed_events[0]
+
+        assert hasattr(completed_event, "response")
+        response = completed_event.response
+        assert hasattr(response, "id")
+        assert hasattr(response, "model")
+        assert hasattr(response, "output")
+        assert hasattr(response, "output_text")
+        assert hasattr(response, "status")
+        assert response.status == "completed"
+        assert len(response.output_text) > 0
+
+    @requires_openai
+    @pytest.mark.integration
     def test_sync_streaming_yields_text_deltas(self, registered_openai_client):
         stream = registered_openai_client.responses.create(
             model=MODEL,
@@ -939,6 +971,40 @@ class TestResponsesStreaming:
         assert len(events) > 0
         event_types = [getattr(e, "type", None) for e in events]
         assert "response.completed" in event_types
+
+    @requires_openai
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_async_streaming_final_response_structure(
+        self, registered_async_openai_client
+    ):
+        stream = await registered_async_openai_client.responses.create(
+            model=MODEL,
+            input=TEST_PROMPT,
+            max_output_tokens=MAX_OUTPUT_TOKENS,
+            stream=True,
+        )
+
+        events = []
+        async for event in stream:
+            events.append(event)
+
+        completed_events = [
+            e for e in events if hasattr(e, "type") and e.type == "response.completed"
+        ]
+
+        assert len(completed_events) == 1
+        completed_event = completed_events[0]
+
+        assert hasattr(completed_event, "response")
+        response = completed_event.response
+        assert hasattr(response, "id")
+        assert hasattr(response, "model")
+        assert hasattr(response, "output")
+        assert hasattr(response, "output_text")
+        assert hasattr(response, "status")
+        assert response.status == "completed"
+        assert len(response.output_text) > 0
 
     @requires_openai
     @pytest.mark.integration

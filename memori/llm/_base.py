@@ -111,7 +111,11 @@ class BaseInvoke:
             or llm_is_xai(self.config.framework.provider, self.config.llm.provider)
             or agno_is_openai(self.config.framework.provider, self.config.llm.provider)
         ):
-            if kwargs.get("stream", None):
+            is_responses_api = (
+                "input" in kwargs or "instructions" in kwargs
+            ) and "messages" not in kwargs
+
+            if kwargs.get("stream", None) and not is_responses_api:
                 stream_options = kwargs.get("stream_options", None)
                 if stream_options is None or not isinstance(stream_options, dict):
                     kwargs["stream_options"] = {}

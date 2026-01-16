@@ -137,26 +137,6 @@ def registered_async_openai_client(memori_instance, async_openai_client):
     return async_openai_client
 
 
-@pytest.fixture
-def registered_streaming_openai_client(memori_instance, openai_api_key):
-    from openai import OpenAI
-
-    client = OpenAI(api_key=openai_api_key)
-    memori_instance.llm.register(client)
-    memori_instance.attribution(entity_id="test-entity", process_id="test-process")
-    return client
-
-
-@pytest.fixture
-def registered_async_streaming_client(memori_instance, openai_api_key):
-    from openai import AsyncOpenAI
-
-    client = AsyncOpenAI(api_key=openai_api_key)
-    memori_instance.llm.register(client)
-    memori_instance.attribution(entity_id="test-entity", process_id="test-process")
-    return client
-
-
 @pytest.fixture(scope="session")
 def anthropic_api_key():
     if not ANTHROPIC_API_KEY:
