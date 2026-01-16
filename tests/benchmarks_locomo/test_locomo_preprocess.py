@@ -6,7 +6,7 @@ from pathlib import Path
 from benchmarks.locomo.preprocess import preprocess_locomo_json
 
 
-def test_preprocess_drops_multimodal_samples(tmp_path: Path) -> None:
+def test_preprocess_strips_multimodal_fields(tmp_path: Path) -> None:
     src = tmp_path / "in.json"
     dst = tmp_path / "out.json"
     src.write_text(
@@ -36,11 +36,12 @@ def test_preprocess_drops_multimodal_samples(tmp_path: Path) -> None:
 
     stats = preprocess_locomo_json(src, dst)
     assert stats["samples_in"] == 1
-    assert stats["samples_out"] == 0
-    assert stats["dropped_multimodal"] == 1
+    assert stats["samples_out"] == 1
+    assert stats["removed_multimodal_turns"] == 1
 
     out = json.loads(dst.read_text(encoding="utf-8"))
-    assert out == []
+    turns = out[0]["conversation"]["session_1"]
+    assert "img_url" not in turns[1]
 
 
 def test_preprocess_rewrites_speaker_b_to_assistant(tmp_path: Path) -> None:

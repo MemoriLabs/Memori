@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from memori._search import find_similar_embeddings
+from memori.search import find_similar_embeddings
 
 
 @dataclass(frozen=True, slots=True)

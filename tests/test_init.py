@@ -67,3 +67,27 @@ def test_set_session_resets_cache(mocker):
 
     assert mem.config.cache.conversation_id is None
     assert mem.config.cache.session_id is None
+
+
+def test_embed_texts_uses_config_defaults(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    mem = Memori(conn=lambda: mock_conn)
+    mem.config.embeddings.model = "test-model"
+    mem.config.embeddings.fallback_dimension = 123
+
+    mock_embed = mocker.patch("memori.embed_texts", return_value=[[1.0, 2.0, 3.0]])
+
+    out = mem.embed_texts("hello")
+
+    assert out == [[1.0, 2.0, 3.0]]
+    mock_embed.assert_called_once_with(
+        "hello",
+        model="test-model",
+        fallback_dimension=123,
+        async_=False,
+    )

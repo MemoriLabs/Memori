@@ -18,7 +18,7 @@ from google.protobuf import json_format
 
 from memori._config import Config
 from memori._logging import truncate
-from memori._utils import merge_chunk
+from memori._utils import format_date_created, merge_chunk
 
 if TYPE_CHECKING:
     pass
@@ -538,6 +538,17 @@ class BaseInvoke:
             else:
                 self._append_to_google_system_instruction_obj(config, context)
 
+    def _format_recalled_fact_lines(self, facts: list[dict]) -> list[str]:
+        lines: list[str] = []
+        for fact in facts:
+            content = fact.get("content")
+            if not content:
+                continue
+            ts = format_date_created(fact.get("date_created"))
+            suffix = f" at {ts}" if ts else ""
+            lines.append(f"- {content}{suffix}")
+        return lines
+
     def inject_recalled_facts(self, kwargs: dict) -> dict:
         if self.config.storage is None or self.config.storage.driver is None:
             return kwargs
@@ -577,7 +588,8 @@ class BaseInvoke:
             return kwargs
 
         logger.debug("Injecting %d recalled facts into prompt", len(relevant_facts))
-        fact_lines = [f"- {fact['content']}" for fact in relevant_facts]
+
+        fact_lines = self._format_recalled_fact_lines(relevant_facts)
         recall_context = (
             "\n\n<memori_context>\n"
             "Only use the relevant context if it is relevant to the user's query. "
