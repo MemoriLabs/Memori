@@ -1,5 +1,11 @@
 import pytest
-from openai import AsyncOpenAI, AuthenticationError,BadRequestError, NotFoundError, OpenAI
+from openai import (
+    AsyncOpenAI,
+    AuthenticationError,
+    BadRequestError,
+    NotFoundError,
+    OpenAI,
+)
 
 from tests.integration.conftest import requires_openai
 
