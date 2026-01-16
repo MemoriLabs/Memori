@@ -18,6 +18,7 @@ services:
       - DATABASE_URL=postgresql://memori:memori@postgres:5432/memori_test
       - MONGODB_URL=mongodb://memori:memori@mongodb:27017/memori_test?authSource=admin
       - MYSQL_DATABASE_URL=mysql+pymysql://memori:memori@mysql:3306/memori_test
+      - OCEANBASE_DATABASE_URL=mysql+oceanbase://root:@oceanbase:2881/memori_test?charset=utf8mb4
       - ORACLE_DATABASE_URL=oracle+oracledb://system:memori@oracle:1521/?service_name=FREEPDB1
       - GOOGLE_APPLICATION_CREDENTIALS=/app/google-credentials.json
     command: /bin/bash
@@ -28,6 +29,8 @@ services:
         condition: service_healthy
       mysql:
         condition: service_healthy
+      oceanbase:
+        condition: service_started
       oracle:
         condition: service_healthy
     networks:
@@ -101,6 +104,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - memori-network
+
+  oceanbase:
+    image: quay.io/oceanbase/seekdb:latest
+    ports:
+      - "2882:2881"
     networks:
       - memori-network
 

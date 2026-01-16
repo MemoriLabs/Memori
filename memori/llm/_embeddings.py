@@ -9,6 +9,7 @@ r"""
 """
 
 import asyncio
+import json
 import logging
 import os
 import struct
@@ -71,6 +72,13 @@ def format_embedding_for_db(embedding: list[float], dialect: str) -> Any:
             return bson.Binary(binary_data)
         except ImportError:
             return binary_data
+    if dialect == "oceanbase":
+        try:
+            from pyobvector.util import Vector
+
+            return Vector._to_db(embedding)
+        except Exception:
+            return json.dumps(embedding)
     return binary_data
 
 

@@ -23,6 +23,21 @@ def test_get_dialect(session):
     assert adapter.get_dialect() == "mysql"
 
 
+def test_get_dialect_oceanbase(mocker):
+    class FakeDialect:
+        __module__ = "pyobvector.schema.dialect"
+        name = "mysql"
+
+    mock_bind = mocker.Mock()
+    mock_bind.dialect = FakeDialect()
+    session = mocker.Mock()
+    session.get_bind.return_value = mock_bind
+
+    adapter = SqlAlchemyAdapter(lambda: session)
+
+    assert adapter.get_dialect() == "oceanbase"
+
+
 def test_rollback(session):
     adapter = SqlAlchemyAdapter(lambda: session)
     adapter.rollback()

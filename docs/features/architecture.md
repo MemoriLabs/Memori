@@ -69,6 +69,7 @@ Memori is built with a modular, enterprise-grade architecture focused on simplic
 - DB API 2.0 connections
 - Django ORM connections
 - MongoDB databases
+- OceanBase/SeekDB via SQLAlchemy (pyobvector)
 
 ### 5. Advanced Augmentation
 

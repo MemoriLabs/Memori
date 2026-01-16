@@ -64,6 +64,26 @@ def test_manager_start_sets_cockroachdb_flag_for_mysql():
     assert config.storage_config.cockroachdb is False
 
 
+def test_manager_start_sets_cockroachdb_flag_for_oceanbase():
+    config = Config()
+    manager = Manager(config)
+
+    mock_conn = Mock()
+    mock_adapter = Mock()
+    mock_adapter.get_dialect.return_value = "oceanbase"
+    mock_driver = Mock()
+
+    with patch("memori.storage._manager.Registry") as mock_registry_class:
+        mock_registry = Mock()
+        mock_registry.adapter.return_value = mock_adapter
+        mock_registry.driver.return_value = mock_driver
+        mock_registry_class.return_value = mock_registry
+
+        manager.start(mock_conn)
+
+    assert config.storage_config.cockroachdb is False
+
+
 def test_manager_start_sets_cockroachdb_flag_for_mongodb():
     config = Config()
     manager = Manager(config)

@@ -6,6 +6,7 @@ from memori._config import Config
 from memori.storage import Manager as StorageManager
 from memori.storage._builder import Builder
 from memori.storage.drivers.mysql._driver import Driver as MysqlDriver
+from memori.storage.drivers.oceanbase._driver import Driver as OceanbaseDriver
 from memori.storage.drivers.postgresql._driver import Driver as PostgresqlDriver
 
 
@@ -31,6 +32,7 @@ def test_get_supported_dialects(builder):
 
     # Should contain at least mysql and postgresql
     assert "mysql" in supported
+    assert "oceanbase" in supported
     assert "postgresql" in supported
     assert isinstance(supported, list)
 
@@ -54,6 +56,16 @@ def test_requires_rollback_true(builder):
     """Test rollback requirement for dialects that need it."""
     assert builder._requires_rollback("postgresql") is True
     assert builder._requires_rollback("cockroachdb") is True
+
+
+def test_get_dialect_family_oceanbase(builder):
+    """Test dialect family detection for OceanBase."""
+    assert builder._get_dialect_family("oceanbase") == OceanbaseDriver.migrations
+
+
+def test_requires_rollback_oceanbase(builder):
+    """Test rollback requirement for OceanBase."""
+    assert builder._requires_rollback("oceanbase") is True
 
 
 def test_requires_rollback_false(builder):

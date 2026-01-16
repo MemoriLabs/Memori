@@ -4,6 +4,7 @@ from memori.storage._registry import Registry
 from memori.storage.adapters.sqlalchemy._adapter import (
     Adapter as SqlAlchemyStorageAdapter,
 )
+from memori.storage.drivers.oceanbase._driver import Driver as OceanbaseStorageDriver
 from memori.storage.drivers.mysql._driver import Driver as MysqlStorageDriver
 from memori.storage.drivers.postgresql._driver import Driver as PostgresqlStorageDriver
 
@@ -45,6 +46,15 @@ def test_storage_driver_cockroachdb(mocker):
     driver = Registry().driver(adapter)
 
     assert isinstance(driver, PostgresqlStorageDriver)
+
+
+def test_storage_driver_oceanbase(mocker):
+    oceanbase_adapter = mocker.Mock()
+    oceanbase_adapter.get_dialect.return_value = "oceanbase"
+
+    driver = Registry().driver(oceanbase_adapter)
+
+    assert isinstance(driver, OceanbaseStorageDriver)
 
 
 def test_storage_adapter_raises_for_unsupported_connection():
