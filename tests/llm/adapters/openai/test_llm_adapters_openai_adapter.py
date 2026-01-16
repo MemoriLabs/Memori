@@ -1,6 +1,6 @@
 """Unit tests for OpenAI adapter (Chat Completions and Responses API)."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
