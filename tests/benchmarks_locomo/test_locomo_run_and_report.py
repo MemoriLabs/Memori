@@ -63,9 +63,72 @@ def _fake_embed_texts(
     return [v(x) for x in items]
 
 
+def _seed_reuse_db(
+    *, sqlite_db: Path, provenance_db: Path, run_id: str, sample_id: str
+) -> None:
+    import sqlite3
+
+    from benchmarks.locomo.provenance import FactAttribution, ProvenanceStore
+    from memori import Memori
+
+    def _conn():
+        return sqlite3.connect(str(sqlite_db), check_same_thread=False)
+
+    mem = Memori(conn=_conn)
+    mem.config.storage.build()
+
+    entity_external_id = f"locomo:{run_id}:{sample_id}"
+    entity_db_id = mem.config.storage.driver.entity.create(entity_external_id)
+
+    contents = [
+        "My favorite color is blue.",
+        "Got it.",
+    ]
+    embeddings = _fake_embed_texts(
+        contents,
+        model=mem.config.embeddings.model,
+        fallback_dimension=mem.config.embeddings.fallback_dimension,
+    )
+    mem.config.storage.driver.entity_fact.create(entity_db_id, contents, embeddings)
+
+    with sqlite3.connect(str(sqlite_db), check_same_thread=False) as conn2:
+        rows = conn2.execute(
+            "SELECT id, content FROM memori_entity_fact WHERE entity_id = ? ORDER BY id ASC",
+            (int(entity_db_id),),
+        ).fetchall()
+    fact_id_by_content = {r[1]: int(r[0]) for r in rows if r and r[0] and r[1]}
+
+    prov = ProvenanceStore(provenance_db)
+    prov.upsert_many(
+        [
+            FactAttribution(
+                fact_id=fact_id_by_content["My favorite color is blue."],
+                dia_id="t0",
+                score=1.0,
+            ),
+            FactAttribution(
+                fact_id=fact_id_by_content["Got it."],
+                dia_id="t1",
+                score=1.0,
+            ),
+        ],
+        run_id=run_id,
+        sample_id=sample_id,
+    )
+
+
 def test_run_writes_predictions_and_summary(tmp_path: Path, monkeypatch):
     dataset = _write_locomo_tiny(tmp_path / "locomo_tiny.json")
     out_dir = tmp_path / "run"
+    sqlite_db = tmp_path / "seeded.sqlite"
+    provenance_db = tmp_path / "seeded_prov.sqlite"
+    run_id = "test-run"
+    _seed_reuse_db(
+        sqlite_db=sqlite_db,
+        provenance_db=provenance_db,
+        run_id=run_id,
+        sample_id="sample-001",
+    )
 
     # Prevent embedding model downloads during tests.
     import benchmarks.locomo._run_impl as run_impl_mod
@@ -81,8 +144,13 @@ def test_run_writes_predictions_and_summary(tmp_path: Path, monkeypatch):
             str(dataset),
             "--out",
             str(out_dir),
-            "--ingest",
-            "turn_facts",
+            "--sqlite-db",
+            str(sqlite_db),
+            "--provenance-db",
+            str(provenance_db),
+            "--reuse-db",
+            "--run-id",
+            run_id,
         ]
     )
     assert rc == 0
@@ -107,9 +175,103 @@ def test_run_writes_predictions_and_summary(tmp_path: Path, monkeypatch):
     assert summary_obj["metrics_overall"]["mrr"] == 1.0
 
 
+def test_run_skips_questions_with_evidence_in_removed_sessions(
+    tmp_path: Path, monkeypatch
+):
+    dataset = tmp_path / "locomo_two_sessions.json"
+    data = [
+        {
+            "sample_id": "sample-001",
+            "conversation": [
+                {
+                    "session_id": "s1",
+                    "dialogue": [
+                        {"turn_id": "D1:1", "speaker": "user", "text": "A"},
+                        {"turn_id": "D1:2", "speaker": "assistant", "text": "B"},
+                    ],
+                },
+                {
+                    "session_id": "s2",
+                    "dialogue": [
+                        {"turn_id": "D2:1", "speaker": "user", "text": "C"},
+                        {"turn_id": "D2:2", "speaker": "assistant", "text": "D"},
+                    ],
+                },
+            ],
+            "qa": [
+                {
+                    "question_id": "q_in_s1",
+                    "question": "What was the first user message?",
+                    "answer": "A",
+                    "evidence": ["D1:1"],
+                },
+                {
+                    "question_id": "q_in_s2",
+                    "question": "What was the second session user message?",
+                    "answer": "C",
+                    "evidence": ["D2:1"],
+                },
+            ],
+        }
+    ]
+    dataset.write_text(json.dumps(data), encoding="utf-8")
+
+    # Prevent embedding model downloads during tests.
+    import benchmarks.locomo._run_impl as run_impl_mod
+    import memori.memory.recall as recall_mod
+
+    monkeypatch.setattr(run_impl_mod, "embed_texts", _fake_embed_texts)
+    monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
+
+    sqlite_db = tmp_path / "seeded.sqlite"
+    provenance_db = tmp_path / "seeded_prov.sqlite"
+    run_id = "test-run"
+    _seed_reuse_db(
+        sqlite_db=sqlite_db,
+        provenance_db=provenance_db,
+        run_id=run_id,
+        sample_id="sample-001",
+    )
+
+    out_dir = tmp_path / "run"
+    rc = run_main(
+        [
+            "--dataset",
+            str(dataset),
+            "--out",
+            str(out_dir),
+            "--sqlite-db",
+            str(sqlite_db),
+            "--provenance-db",
+            str(provenance_db),
+            "--reuse-db",
+            "--run-id",
+            run_id,
+            "--max-sessions",
+            "1",
+        ]
+    )
+    assert rc == 0
+
+    lines = (out_dir / "predictions.jsonl").read_text(encoding="utf-8").splitlines()
+    # q_in_s2 should be skipped because its evidence is in session 2 (removed).
+    assert len(lines) == 1
+    row0 = json.loads(lines[0])
+    assert row0["question_id"] == "q_in_s1"
+
+
 def test_report_aggregates_predictions(tmp_path: Path, monkeypatch):
     dataset = _write_locomo_tiny(tmp_path / "locomo_tiny.json")
     out_dir = tmp_path / "run"
+    sqlite_db = tmp_path / "seeded.sqlite"
+    provenance_db = tmp_path / "seeded_prov.sqlite"
+    run_id = "test-run"
+    _seed_reuse_db(
+        sqlite_db=sqlite_db,
+        provenance_db=provenance_db,
+        run_id=run_id,
+        sample_id="sample-001",
+    )
 
     import benchmarks.locomo._run_impl as run_impl_mod
     import memori.memory.recall as recall_mod
@@ -119,7 +281,19 @@ def test_report_aggregates_predictions(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
 
     run_main(
-        ["--dataset", str(dataset), "--out", str(out_dir), "--ingest", "turn_facts"]
+        [
+            "--dataset",
+            str(dataset),
+            "--out",
+            str(out_dir),
+            "--sqlite-db",
+            str(sqlite_db),
+            "--provenance-db",
+            str(provenance_db),
+            "--reuse-db",
+            "--run-id",
+            run_id,
+        ]
     )
 
     summary_out = tmp_path / "summary.json"
@@ -142,38 +316,26 @@ def test_run_can_reuse_existing_sqlite_db_without_ingestion(
 ):
     dataset = _write_locomo_tiny(tmp_path / "locomo_tiny.json")
     sqlite_db = tmp_path / "shared.sqlite"
-    out_dir_1 = tmp_path / "run1"
+    provenance_db = tmp_path / "shared_prov.sqlite"
     out_dir_2 = tmp_path / "run2"
 
     import benchmarks.locomo._run_impl as run_impl_mod
     import memori.memory.recall as recall_mod
 
-    # First run ingests deterministically.
-    # run_mod.embed_texts = _fake_embed_texts
-    monkeypatch.setattr(run_impl_mod, "embed_texts", _fake_embed_texts)
-    monkeypatch.setattr(recall_mod, "embed_texts", _fake_embed_texts)
-
-    rc = run_main(
-        [
-            "--dataset",
-            str(dataset),
-            "--out",
-            str(out_dir_1),
-            "--sqlite-db",
-            str(sqlite_db),
-            "--ingest",
-            "turn_facts",
-        ]
+    run_id = "test-run"
+    _seed_reuse_db(
+        sqlite_db=sqlite_db,
+        provenance_db=provenance_db,
+        run_id=run_id,
+        sample_id="sample-001",
     )
-    assert rc == 0
-    assert sqlite_db.exists()
 
     # Second run must not ingest; make ingestion embedding calls fail if they happen.
     def _should_not_be_called(
         texts: str | list[str], model: str, fallback_dimension: int
     ) -> list[list[int | float]]:
         raise AssertionError(
-            "ingestion embed_texts should not be called when --reuse-db is set"
+            "embed_texts should not be called during --reuse-db scoring"
         )
 
     # run_mod.embed_texts = _should_not_be_called
@@ -188,9 +350,11 @@ def test_run_can_reuse_existing_sqlite_db_without_ingestion(
             str(out_dir_2),
             "--sqlite-db",
             str(sqlite_db),
-            "--ingest",
-            "turn_facts",
+            "--provenance-db",
+            str(provenance_db),
             "--reuse-db",
+            "--run-id",
+            run_id,
         ]
     )
     assert rc2 == 0

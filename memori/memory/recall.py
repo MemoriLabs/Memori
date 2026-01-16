@@ -79,6 +79,7 @@ class Recall:
                     query_embedding,
                     limit,
                     self.config.recall_embeddings_limit,
+                    query_text=query,
                 )
                 logger.debug("Recall complete - found %d facts", len(facts))
                 break
