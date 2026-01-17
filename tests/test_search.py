@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from memori._search import find_similar_embeddings, parse_embedding, search_entity_facts
+from memori.search import find_similar_embeddings, parse_embedding, search_entity_facts
 
 
 def test_parse_embedding_from_bytes_postgresql():
@@ -206,8 +206,8 @@ def test_search_entity_facts_success():
         {"id": 3, "content_embedding": [0.0, 0.0, 1.0]},
     ]
     mock_driver.get_facts_by_ids.return_value = [
-        {"id": 1, "content": "Fact one"},
-        {"id": 2, "content": "Fact two"},
+        {"id": 1, "content": "Fact one", "date_created": "2026-01-01 10:30:00"},
+        {"id": 2, "content": "Fact two", "date_created": "2026-01-02 11:15:00"},
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
@@ -222,6 +222,7 @@ def test_search_entity_facts_success():
     assert len(result) == 2
     assert result[0]["id"] == 1
     assert result[0]["content"] == "Fact one"
+    assert result[0]["date_created"] == "2026-01-01 10:30:00"
     assert "similarity" in result[0]
     assert isinstance(result[0]["similarity"], float)
 
@@ -294,7 +295,7 @@ def test_search_entity_facts_returns_required_keys():
         {"id": 1, "content_embedding": [1.0, 0.0, 0.0]},
     ]
     mock_driver.get_facts_by_ids.return_value = [
-        {"id": 1, "content": "Fact one"},
+        {"id": 1, "content": "Fact one", "date_created": "2026-01-01 10:30:00"},
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
@@ -310,6 +311,7 @@ def test_search_entity_facts_returns_required_keys():
     assert "id" in result[0]
     assert "content" in result[0]
     assert "similarity" in result[0]
+    assert "date_created" in result[0]
 
 
 def test_search_entity_facts_handles_missing_content():
@@ -361,6 +363,38 @@ def test_search_entity_facts_maintains_similarity_order():
     assert result[0]["id"] == 1
     assert result[0]["similarity"] > result[1]["similarity"]
     assert result[1]["similarity"] > result[2]["similarity"]
+
+
+def test_search_entity_facts_can_rerank_with_query_text(mocker):
+    mock_driver = MagicMock()
+    mock_driver.get_embeddings.return_value = [
+        {"id": 1, "content_embedding": [1.0, 0.0]},
+        {"id": 2, "content_embedding": [0.0, 1.0]},
+    ]
+    mock_driver.get_facts_by_ids.return_value = [
+        {"id": 1, "content": "Completely unrelated"},
+        {"id": 2, "content": "This mentions blue explicitly"},
+    ]
+
+    # Force semantic order to prefer id=1, then let lexical rerank pick id=2.
+    mocker.patch(
+        "memori.search._api.find_similar_embeddings",
+        return_value=[(1, 0.9), (2, 0.8)],
+    )
+
+    query_embedding = [1.0, 0.0]
+    result = search_entity_facts(
+        mock_driver,
+        entity_id=42,
+        query_embedding=query_embedding,
+        limit=1,
+        embeddings_limit=1000,
+        query_text="blue",
+    )
+    assert len(result) == 1
+    assert result[0]["id"] == 2
+    assert "lexical_score" in result[0]
+    assert "rank_score" in result[0]
 
 
 def test_search_entity_facts_with_different_db_formats():

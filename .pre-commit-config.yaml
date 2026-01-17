@@ -26,7 +26,7 @@ repos:
 
   - id: pytest
     name: pytest
-    entry: uv run pytest --ignore=tests/benchmarks
+    entry: uv run pytest --ignore=tests/benchmarks --ignore=tests/integration
     language: system
     pass_filenames: false
     always_run: true

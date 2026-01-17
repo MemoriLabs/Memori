@@ -220,7 +220,7 @@ class EntityFact(BaseEntityFact):
             return self
 
         from memori._utils import generate_uniq
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         dialect = self.conn.get_dialect()
 
@@ -275,6 +275,9 @@ class EntityFact(BaseEntityFact):
                        content_embedding
                   FROM memori_entity_fact
                  WHERE entity_id = %s
+                 ORDER BY date_last_time DESC,
+                          num_times DESC,
+                          id DESC
                  LIMIT %s
                 """,
                 (entity_id, limit),
@@ -288,7 +291,8 @@ class EntityFact(BaseEntityFact):
             self.conn.execute(
                 """
                 SELECT id,
-                       content
+                       content,
+                       date_created
                   FROM memori_entity_fact
                  WHERE id = ANY(%s)
                 """,

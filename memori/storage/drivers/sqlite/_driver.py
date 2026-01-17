@@ -219,7 +219,7 @@ class EntityFact(BaseEntityFact):
             return self
 
         from memori._utils import generate_uniq
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         for i, fact in enumerate(facts):
             embedding = (
@@ -275,6 +275,9 @@ class EntityFact(BaseEntityFact):
                        content_embedding
                   FROM memori_entity_fact
                  WHERE entity_id = ?
+                 ORDER BY date_last_time DESC,
+                          num_times DESC,
+                          id DESC
                  LIMIT ?
                 """,
                 (entity_id, limit),
@@ -290,7 +293,8 @@ class EntityFact(BaseEntityFact):
 
         query = f"""
                 SELECT id,
-                       content
+                       content,
+                       date_created
                   FROM memori_entity_fact
                  WHERE id IN ({placeholders})
                 """  # nosec B608: Safe - only interpolating placeholder count, actual values parameterized

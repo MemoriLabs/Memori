@@ -170,7 +170,7 @@ def generate_report(benchmarks, output_format="table"):
         lines.append("=" * 100)
         return "\n".join(lines)
 
-    elif output_format == "csv":
+    if output_format == "csv":
         lines.append(
             "benchmark_id,N,db_type,content_size,p50_ms,p95_ms,p99_ms,mean_ms,min_ms,max_ms,peak_rss_mb"
         )
@@ -196,7 +196,7 @@ def generate_report(benchmarks, output_format="table"):
             )
         return "\n".join(lines)
 
-    elif output_format == "json":
+    if output_format == "json":
         output = {}
         for key in sorted(benchmarks.keys()):
             stats = benchmarks[key]
@@ -222,11 +222,6 @@ def generate_report(benchmarks, output_format="table"):
         return json.dumps(output, indent=2)
 
     return ""
-
-
-def print_report(benchmarks, output_format="table"):
-    """Print percentile report to stdout."""
-    print(generate_report(benchmarks, output_format))
 
 
 def main():
@@ -258,19 +253,14 @@ def main():
     benchmarks = generate_percentile_report(json_file, max_n=max_n)
 
     if not benchmarks:
-        print("No benchmark data found with N values.")
-        if max_n:
-            print(f"(Filtered to N <= {max_n})")
+        print("No benchmark data found.")
         sys.exit(1)
 
     report = generate_report(benchmarks, output_format)
 
     if output_file:
-        output_path = Path(output_file)
-        output_path.write_text(report)
-        print(f"Report written to: {output_path}")
-        if max_n:
-            print(f"(Filtered to N <= {max_n})")
+        Path(output_file).write_text(report, encoding="utf-8")
+        print(f"Report written to: {output_file}")
     else:
         print(report)
 

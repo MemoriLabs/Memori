@@ -50,7 +50,7 @@ run_benchmarks() {
         cd "$REPO_ROOT"
         uv run pytest -m benchmark \
             --benchmark-only \
-            tests/benchmarks/test_recall_benchmarks.py \
+            benchmarks/perf/test_recall_benchmarks.py \
             -k "$filter" \
             -v \
             --benchmark-json="$output_json"
@@ -58,7 +58,7 @@ run_benchmarks() {
         # Automatically convert to CSV
         if [[ -f "$output_json" ]]; then
             echo "Converting results to CSV..."
-            uv run python tests/benchmarks/generate_percentile_report.py \
+            uv run python benchmarks/perf/generate_percentile_report.py \
                 "$output_json" \
                 csv \
                 "$output_csv"

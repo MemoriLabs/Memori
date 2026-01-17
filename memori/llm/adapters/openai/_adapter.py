@@ -27,18 +27,93 @@ class Adapter(BaseLlmAdaptor):
         """
 
         try:
-            messages = payload["conversation"]["query"].get("messages", [])
-            return self._exclude_injected_messages(messages, payload)
+            query = payload["conversation"]["query"]
         except KeyError:
             return []
+
+        if "input" in query or "instructions" in query:
+            messages = []
+            instructions = query.get("instructions", "")
+            if instructions:
+                clean = (
+                    instructions.split("<memori_context>")[0].strip()
+                    if "<memori_context>" in instructions
+                    else instructions
+                )
+                if clean:
+                    messages.append({"role": "system", "content": clean})
+
+            input_val = query.get("input", [])
+            if isinstance(input_val, str):
+                messages.append({"role": "user", "content": input_val})
+            elif isinstance(input_val, list):
+                for item in input_val:
+                    if isinstance(item, dict):
+                        role, content = (
+                            item.get("role", "user"),
+                            item.get("content", ""),
+                        )
+                        if isinstance(content, str):
+                            messages.append({"role": role, "content": content})
+                        elif isinstance(content, list):
+                            text_parts = []
+                            for c in content:
+                                if (
+                                    isinstance(c, dict)
+                                    and c.get("type") == "input_text"
+                                ):
+                                    text_parts.append(c.get("text", ""))
+                                elif isinstance(c, str):
+                                    text_parts.append(c)
+                            text = " ".join(text_parts)
+                            if text.strip():
+                                messages.append({"role": role, "content": text})
+            return self._exclude_injected_messages(messages, payload)
+
+        messages = query.get("messages", [])
+        return self._exclude_injected_messages(messages, payload)
 
     def get_formatted_response(self, payload):
         try:
-            choices = payload["conversation"]["response"].get("choices", None)
+            response = payload["conversation"]["response"]
         except KeyError:
             return []
 
-        response = []
+        if "output" in response or "output_text" in response:
+            results = []
+            for item in response.get("output", []):
+                if isinstance(item, dict) and item.get("type") == "message":
+                    for content in item.get("content", []):
+                        if isinstance(content, dict):
+                            if content.get("type") == "output_text":
+                                results.append(
+                                    {
+                                        "role": "assistant",
+                                        "text": content.get("text", ""),
+                                        "type": "text",
+                                    }
+                                )
+                            elif content.get("type") == "refusal":
+                                results.append(
+                                    {
+                                        "role": "assistant",
+                                        "text": content.get("refusal", ""),
+                                        "type": "refusal",
+                                    }
+                                )
+            if not results and response.get("output_text"):
+                results.append(
+                    {
+                        "role": "assistant",
+                        "text": response.get("output_text", ""),
+                        "type": "text",
+                    }
+                )
+            return results
+
+        # Chat Completions API format
+        choices = response.get("choices", None)
+        results = []
         if choices is not None:
             if payload["conversation"]["query"].get("stream", None) is None:
                 # Unstreamed
@@ -64,7 +139,7 @@ class Adapter(BaseLlmAdaptor):
                     if message is not None:
                         content = message.get("content", None)
                         if content is not None:
-                            response.append(
+                            results.append(
                                 {
                                     "role": message["role"],
                                     "text": content,
@@ -97,8 +172,8 @@ class Adapter(BaseLlmAdaptor):
                             content.append(text_content)
 
                 if len(content) > 0:
-                    response.append(
+                    results.append(
                         {"role": role, "text": "".join(content), "type": "text"}
                     )
 
-        return response
+        return results

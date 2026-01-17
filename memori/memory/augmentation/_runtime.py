@@ -24,10 +24,17 @@ class AugmentationRuntime:
 
     def ensure_started(self, max_workers: int):
         with self.lock:
+            self.max_workers = max_workers
             if self.started:
+                loop = self.loop
+                if loop is not None and self.semaphore is not None:
+
+                    def _set_semaphore() -> None:
+                        self.semaphore = asyncio.Semaphore(self.max_workers)
+
+                    loop.call_soon_threadsafe(_set_semaphore)
                 return
 
-            self.max_workers = max_workers
             self.thread = threading.Thread(
                 target=self._run_loop, daemon=True, name="memori-augmentation"
             )

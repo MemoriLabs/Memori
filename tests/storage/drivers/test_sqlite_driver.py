@@ -332,7 +332,7 @@ def test_entity_fact_create(mock_conn, mocker):
     """Test creating entity facts."""
     mocker.patch("memori._utils.generate_uniq", return_value="uniq123")
     mocker.patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         return_value=b"\x00\x01\x02\x03",  # Binary data
     )
 
@@ -373,7 +373,7 @@ def test_entity_fact_create_without_embeddings(mock_conn, mocker):
     """Test creating entity facts without embeddings."""
     mocker.patch("memori._utils.generate_uniq", return_value="uniq123")
     mocker.patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         return_value=b"",  # Empty binary data
     )
 
@@ -414,6 +414,7 @@ def test_entity_fact_get_embeddings(mock_conn, mock_multiple_results):
     assert "content_embedding" in select_call[0][0].lower()
     assert "from memori_entity_fact" in select_call[0][0].lower()
     assert "where entity_id = ?" in select_call[0][0].lower()
+    assert "order by" in select_call[0][0].lower()
     assert "limit ?" in select_call[0][0].lower()
     assert select_call[0][1] == (123, 100)
 
@@ -434,8 +435,16 @@ def test_entity_fact_get_facts_by_ids(mock_conn, mock_multiple_results):
     """Test retrieving fact content by IDs."""
     mock_conn.execute.return_value = mock_multiple_results(
         [
-            {"id": 1, "content": "User likes Python"},
-            {"id": 2, "content": "User works as engineer"},
+            {
+                "id": 1,
+                "content": "User likes Python",
+                "date_created": "2026-01-01 10:30:00",
+            },
+            {
+                "id": 2,
+                "content": "User works as engineer",
+                "date_created": "2026-01-02 11:15:00",
+            },
         ]
     )
 
@@ -445,13 +454,16 @@ def test_entity_fact_get_facts_by_ids(mock_conn, mock_multiple_results):
     assert len(result) == 2
     assert result[0]["id"] == 1
     assert result[0]["content"] == "User likes Python"
+    assert result[0]["date_created"] == "2026-01-01 10:30:00"
     assert result[1]["id"] == 2
     assert result[1]["content"] == "User works as engineer"
+    assert result[1]["date_created"] == "2026-01-02 11:15:00"
 
     # Verify SELECT query
     select_call = mock_conn.execute.call_args_list[0]
     assert "select id" in select_call[0][0].lower()
     assert "content" in select_call[0][0].lower()
+    assert "date_created" in select_call[0][0].lower()
     assert "from memori_entity_fact" in select_call[0][0].lower()
     assert "where id in (?,?)" in select_call[0][0].lower()
     assert select_call[0][1] == (1, 2)

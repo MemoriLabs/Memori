@@ -449,7 +449,7 @@ def test_entity_fact_create_new_fact(mock_conn, mocker):
     mock_binary = Mock()
     mock_binary.__repr__ = lambda self: "Binary(...)"
     mocker.patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         return_value=mock_binary,
     )
 
@@ -493,7 +493,7 @@ def test_entity_fact_create_existing_fact(mock_conn, mocker):
     mocker.patch("memori._utils.generate_uniq", return_value="uniq123")
     mock_binary = Mock()
     mocker.patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         return_value=mock_binary,
     )
 
@@ -548,7 +548,7 @@ def test_entity_fact_create_multiple_facts(mock_conn, mocker):
     mock_binary1 = Mock()
     mock_binary2 = Mock()
     mocker.patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         side_effect=[mock_binary1, mock_binary2],
     )
 
@@ -571,7 +571,7 @@ def test_entity_fact_create_without_embeddings(mock_conn, mocker):
     mocker.patch("memori._utils.generate_uniq", return_value="uniq123")
     mock_binary = Mock()
     mocker.patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         return_value=mock_binary,
     )
 
@@ -590,11 +590,12 @@ def test_entity_fact_create_without_embeddings(mock_conn, mocker):
 
 def test_entity_fact_get_embeddings(mock_conn):
     """Test retrieving embeddings for an entity."""
-    mock_cursor = [
+    mock_cursor = mock_conn.execute.return_value
+    mock_cursor.sort.return_value = mock_cursor
+    mock_cursor.limit.return_value = [
         {"_id": 1, "content_embedding": b"\x00\x01\x02\x03"},
         {"_id": 2, "content_embedding": b"\x04\x05\x06\x07"},
     ]
-    mock_conn.execute.return_value = mock_cursor
 
     entity_fact = EntityFact(mock_conn)
     result = entity_fact.get_embeddings(entity_id=123, limit=100)
@@ -611,13 +612,20 @@ def test_entity_fact_get_embeddings(mock_conn):
     assert find_call[0][1] == "find"
     assert find_call[0][2] == {"entity_id": 123}
     assert find_call[0][3] == {"_id": 1, "content_embedding": 1}
+    mock_cursor.sort.assert_called_once_with(
+        [("date_last_time", -1), ("num_times", -1), ("_id", -1)]
+    )
+    mock_cursor.limit.assert_called_once_with(100)
 
 
 def test_entity_fact_get_embeddings_with_limit(mock_conn):
     """Test retrieving embeddings respects the limit."""
     # Return more results than the limit
-    mock_cursor = [{"_id": i, "content_embedding": bytes([i])} for i in range(1, 11)]
-    mock_conn.execute.return_value = mock_cursor
+    mock_cursor = mock_conn.execute.return_value
+    mock_cursor.sort.return_value = mock_cursor
+    mock_cursor.limit.return_value = [
+        {"_id": i, "content_embedding": bytes([i])} for i in range(1, 6)
+    ]
 
     entity_fact = EntityFact(mock_conn)
     result = entity_fact.get_embeddings(entity_id=123, limit=5)
@@ -643,8 +651,16 @@ def test_entity_fact_get_embeddings_default_limit(mock_conn):
 def test_entity_fact_get_facts_by_ids(mock_conn):
     """Test retrieving fact content by IDs."""
     mock_cursor = [
-        {"_id": 1, "content": "User likes Python"},
-        {"_id": 2, "content": "User works as engineer"},
+        {
+            "_id": 1,
+            "content": "User likes Python",
+            "date_created": "2026-01-01 10:30:00",
+        },
+        {
+            "_id": 2,
+            "content": "User works as engineer",
+            "date_created": "2026-01-02 11:15:00",
+        },
     ]
     mock_conn.execute.return_value = mock_cursor
 
@@ -654,15 +670,17 @@ def test_entity_fact_get_facts_by_ids(mock_conn):
     assert len(result) == 2
     assert result[0]["id"] == 1
     assert result[0]["content"] == "User likes Python"
+    assert result[0]["date_created"] == "2026-01-01 10:30:00"
     assert result[1]["id"] == 2
     assert result[1]["content"] == "User works as engineer"
+    assert result[1]["date_created"] == "2026-01-02 11:15:00"
 
     # Verify find query
     find_call = mock_conn.execute.call_args_list[0]
     assert find_call[0][0] == "memori_entity_fact"
     assert find_call[0][1] == "find"
     assert find_call[0][2] == {"_id": {"$in": [1, 2]}}
-    assert find_call[0][3] == {"_id": 1, "content": 1}
+    assert find_call[0][3] == {"_id": 1, "content": 1, "date_created": 1}
 
 
 def test_entity_fact_get_facts_by_ids_empty(mock_conn):
