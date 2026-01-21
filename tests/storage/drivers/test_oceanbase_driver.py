@@ -41,7 +41,7 @@ def test_entity_fact_create_uses_formatted_embedding(mock_conn):
     entity_fact = EntityFact(mock_conn)
 
     with patch(
-        "memori.llm._embeddings.format_embedding_for_db",
+        "memori.embeddings.format_embedding_for_db",
         return_value="formatted-embedding",
     ) as format_mock:
         entity_fact.create(

@@ -20,6 +20,7 @@ from memori._exceptions import (
     QuotaExceededError,
     warn_if_legacy_memorisdk_installed,
 )
+from memori.embeddings import embed_texts
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -138,3 +139,11 @@ class Memori:
 
     def recall(self, query: str, limit: int = 5):
         return Recall(self.config).search_facts(query, limit)
+
+    def embed_texts(self, texts: str | list[str], *, async_: bool = False) -> Any:
+        embeddings_cfg = self.config.embeddings
+        return embed_texts(
+            texts,
+            model=embeddings_cfg.model,
+            async_=async_,
+        )

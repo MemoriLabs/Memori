@@ -11,7 +11,7 @@ from benchmarks.perf.fixtures.sample_data import (
     generate_sample_queries,
 )
 from memori import Memori
-from memori.llm._embeddings import embed_texts
+from memori.embeddings import embed_texts
 
 
 @pytest.fixture
@@ -159,7 +159,6 @@ def entity_with_n_facts(memori_instance, fact_content_size, request):
     fact_embeddings = embed_texts(
         facts,
         model=memori_instance.config.embeddings.model,
-        fallback_dimension=memori_instance.config.embeddings.fallback_dimension,
     )
 
     entity_db_id = memori_instance.config.storage.driver.entity.create(entity_id)

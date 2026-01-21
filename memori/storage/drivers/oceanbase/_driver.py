@@ -22,7 +22,7 @@ class EntityFact(MysqlEntityFact):
         if facts is None or len(facts) == 0:
             return self
 
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         dialect = self.conn.get_dialect()
 

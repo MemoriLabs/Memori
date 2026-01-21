@@ -378,7 +378,7 @@ class EntityFact(BaseEntityFact):
         if facts is None or len(facts) == 0:
             return self
 
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         for i, fact in enumerate(facts):
             embedding = (
@@ -433,6 +433,9 @@ class EntityFact(BaseEntityFact):
                        content_embedding
                   FROM memori_entity_fact
                  WHERE entity_id = %s
+                 ORDER BY date_last_time DESC,
+                          num_times DESC,
+                          id DESC
                  LIMIT %s
                 """,
                 (entity_id, limit),
@@ -448,7 +451,8 @@ class EntityFact(BaseEntityFact):
 
         query = f"""
                 SELECT id,
-                       content
+                       content,
+                       date_created
                   FROM memori_entity_fact
                  WHERE id IN ({placeholders})
                 """  # nosec B608: Safe - only interpolating placeholder count, actual values parameterized
