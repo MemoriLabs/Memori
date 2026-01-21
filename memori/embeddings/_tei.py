@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import requests
 
@@ -26,20 +25,14 @@ class TEI:
             timeout=self.timeout,
         )
         r.raise_for_status()
-        payload: Any = r.json()
-        data = payload.get("data") if isinstance(payload, dict) else None
-        if not isinstance(data, list):
-            raise ValueError("TEI response missing 'data' list")
-
-        out: list[list[float]] = []
-        for item in data:
-            if not isinstance(item, dict) or "embedding" not in item:
-                raise ValueError("TEI response items must contain 'embedding'")
-            emb = item["embedding"]
-            if not isinstance(emb, list):
-                raise ValueError("TEI embedding must be a list")
-            out.append(emb)
-        return out
+        try:
+            payload = r.json()
+            data = payload["data"]
+            if not isinstance(data, list):
+                raise TypeError
+            return [item["embedding"] for item in data]
+        except Exception as e:
+            raise ValueError("Invalid TEI response payload") from e
 
     def embed(self, texts: list[str], *, model: str) -> list[list[float]]:
         if not texts:
