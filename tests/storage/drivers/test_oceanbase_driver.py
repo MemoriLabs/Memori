@@ -59,7 +59,7 @@ def test_entity_fact_create_uses_formatted_embedding(mock_conn):
     assert insert_call[0][1][1] == 123
     assert insert_call[0][1][2] == "fact-1"
     assert insert_call[0][1][3] == "formatted-embedding"
-    assert insert_call[0][1][5] == generate_uniq("fact-1")
+    assert insert_call[0][1][5] == generate_uniq(["fact-1"])
 
 
 def test_entity_create(mock_conn, mock_single_result):
