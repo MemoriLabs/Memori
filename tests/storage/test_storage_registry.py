@@ -4,8 +4,8 @@ from memori.storage._registry import Registry
 from memori.storage.adapters.sqlalchemy._adapter import (
     Adapter as SqlAlchemyStorageAdapter,
 )
-from memori.storage.drivers.oceanbase._driver import Driver as OceanbaseStorageDriver
 from memori.storage.drivers.mysql._driver import Driver as MysqlStorageDriver
+from memori.storage.drivers.oceanbase._driver import Driver as OceanbaseStorageDriver
 from memori.storage.drivers.postgresql._driver import Driver as PostgresqlStorageDriver
 
 

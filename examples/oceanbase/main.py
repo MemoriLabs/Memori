@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from memori import Memori
 
 client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY") or os.getenv("OPENAPI_API_KEY"),
+    api_key=os.getenv("OPENAI_API_KEY"),
     base_url=os.getenv("OPENAI_BASE_URL"),
 )
 

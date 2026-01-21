@@ -9,7 +9,6 @@ from memori.storage.drivers.mysql._driver import (
     Entity,
     Process,
     Schema,
-    SchemaVersion,
     Session,
 )
 from memori.storage.drivers.oceanbase._driver import Driver, EntityFact

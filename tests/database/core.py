@@ -42,7 +42,9 @@ MySQLTestDBSession = sessionmaker(
 
 # OceanBase-specific session (via pyobvector dialect)
 try:
-    registry.register("mysql.oceanbase", "pyobvector.schema.dialect", "OceanBaseDialect")
+    registry.register(
+        "mysql.oceanbase", "pyobvector.schema.dialect", "OceanBaseDialect"
+    )
 except Exception:
     pass
 
