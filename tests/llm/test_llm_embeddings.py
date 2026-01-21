@@ -455,19 +455,23 @@ def test_embed_texts_uses_tei_remote(mocker):
     tei = TEI(url="http://localhost:8080/v1/embeddings")
     mock_post = mocker.patch("memori.embeddings._tei.requests.post")
     mock_response = mocker.Mock()
-    mock_response.json.return_value = {
-        "data": [{"embedding": [1.0, 0.0]}, {"embedding": [0.0, 1.0]}]
-    }
+    mock_response.json.side_effect = [
+        {"data": [{"embedding": [1.0, 0.0]}]},
+        {"data": [{"embedding": [0.0, 1.0]}]},
+    ]
     mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
     out = embed_texts(["a", "b"], model="tei-model", tei=tei)
 
     assert out == [[1.0, 0.0], [0.0, 1.0]]
-    mock_post.assert_called_once()
-    _, kwargs = mock_post.call_args
-    assert kwargs["json"] == {"input": ["a", "b"], "model": "tei-model"}
-    assert kwargs["timeout"] == 30.0
+    assert mock_post.call_count == 2
+    first_kwargs = mock_post.call_args_list[0].kwargs
+    second_kwargs = mock_post.call_args_list[1].kwargs
+    assert first_kwargs["json"] == {"input": ["a"], "model": "tei-model"}
+    assert second_kwargs["json"] == {"input": ["b"], "model": "tei-model"}
+    assert first_kwargs["timeout"] == 30.0
+    assert second_kwargs["timeout"] == 30.0
 
 
 def test_embed_texts_tei_token_chunks_and_pools(mocker):

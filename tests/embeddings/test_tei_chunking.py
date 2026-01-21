@@ -47,12 +47,17 @@ def test_chunk_text_by_tokens_falls_back_when_missing_input_ids(mocker):
 
 def test_embed_texts_via_tei_no_tokenizer_calls_server_once(mocker):
     tei = mocker.Mock()
-    tei.embed.return_value = [[1.0, 2.0], [3.0, 4.0]]
+    tei.embed.side_effect = [[[1.0, 2.0]], [[3.0, 4.0]]]
 
-    out = embed_texts_via_tei(texts=["a", "b"], model="m", tei=tei, tokenizer=None)
+    out = [
+        embed_texts_via_tei(text=t, model="m", tei=tei, tokenizer=None)
+        for t in ["a", "b"]
+    ]
 
     assert out == [[1.0, 2.0], [3.0, 4.0]]
-    tei.embed.assert_called_once_with(["a", "b"], model="m")
+    assert tei.embed.call_count == 2
+    tei.embed.assert_any_call(["a"], model="m")
+    tei.embed.assert_any_call(["b"], model="m")
 
 
 def test_embed_texts_via_tei_tokenizer_chunks_and_pools(mocker):
@@ -65,13 +70,12 @@ def test_embed_texts_via_tei_tokenizer_chunks_and_pools(mocker):
     tokenizer.decode.side_effect = ["c1", "c2"]
 
     out = embed_texts_via_tei(
-        texts=["abcd"],
+        text="abcd",
         model="m",
         tei=tei,
         tokenizer=tokenizer,
         chunk_size=2,
     )
 
-    assert len(out) == 1
-    assert out[0] == pytest.approx([0.707106, 0.707106], rel=1e-5)
+    assert out == pytest.approx([0.707106, 0.707106], rel=1e-5)
     tei.embed.assert_called_once_with(["c1", "c2"], model="m")
