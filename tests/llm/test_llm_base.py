@@ -796,3 +796,37 @@ def test_inject_conversation_messages_openai_success():
     assert result["messages"][1]["content"] == "Previous answer"
     assert result["messages"][2]["content"] == "New question"
     assert invoke._injected_message_count == 2
+
+
+def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
+    config = Config()
+    config.session_id = "session-uuid"
+    config.llm.provider = OPENAI_LLM_PROVIDER
+
+    mock_driver = mocker.MagicMock()
+    mock_driver.session.read.return_value = 11
+    mock_driver.conversation.read_id_by_session_id.return_value = 22
+    mock_driver.conversation.messages.read.return_value = [
+        {"role": "user", "content": "Previous question"},
+        {"role": "assistant", "content": "Previous answer"},
+    ]
+
+    mock_storage = mocker.MagicMock()
+    mock_storage.driver = mock_driver
+    config.storage = mock_storage
+
+    invoke = BaseInvoke(config, "test_method")
+    kwargs = {"messages": [{"role": "user", "content": "New question"}]}
+
+    result = invoke.inject_conversation_messages(kwargs)
+
+    assert config.cache.session_id == 11
+    assert config.cache.conversation_id == 22
+    mock_driver.session.read.assert_called_once_with("session-uuid")
+    mock_driver.conversation.read_id_by_session_id.assert_called_once_with(11)
+    mock_driver.conversation.messages.read.assert_called_once_with(22)
+    assert [m["content"] for m in result["messages"]] == [
+        "Previous question",
+        "Previous answer",
+        "New question",
+    ]

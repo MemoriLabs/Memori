@@ -105,6 +105,34 @@ class BaseInvoke:
         self._uses_protobuf = False
         self._injected_message_count = 0
 
+    def _ensure_cached_conversation_id(self) -> bool:
+        if self.config.storage is None or self.config.storage.driver is None:
+            return False
+
+        if self.config.session_id is None:
+            return False
+
+        driver = self.config.storage.driver
+
+        if self.config.cache.session_id is None:
+            if not hasattr(driver.session, "read"):
+                return False
+            self.config.cache.session_id = driver.session.read(
+                str(self.config.session_id)
+            )
+
+        if self.config.cache.session_id is None:
+            return False
+
+        if self.config.cache.conversation_id is None:
+            if not hasattr(driver.conversation, "read_id_by_session_id"):
+                return False
+            self.config.cache.conversation_id = (
+                driver.conversation.read_id_by_session_id(self.config.cache.session_id)
+            )
+
+        return self.config.cache.conversation_id is not None
+
     def configure_for_streaming_usage(self, kwargs: dict) -> dict:
         if (
             llm_is_openai(self.config.framework.provider, self.config.llm.provider)
@@ -626,11 +654,12 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
-        if self.config.cache.conversation_id is None:
-            return kwargs
-
         if self.config.storage is None or self.config.storage.driver is None:
             return kwargs
+
+        if self.config.cache.conversation_id is None:
+            if not self._ensure_cached_conversation_id():
+                return kwargs
 
         messages = self.config.storage.driver.conversation.messages.read(
             self.config.cache.conversation_id
