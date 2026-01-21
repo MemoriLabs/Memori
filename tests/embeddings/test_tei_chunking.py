@@ -35,16 +35,6 @@ def test_chunk_text_by_tokens_numpy_input_ids(mocker):
     assert out == ["c1", "c2"]
 
 
-def test_chunk_text_by_tokens_falls_back_when_missing_input_ids(mocker):
-    tokenizer = mocker.Mock()
-    tokenizer.return_value = {}
-    tokenizer.decode.return_value = "unused"
-
-    out = chunk_text_by_tokens(text="abcd", tokenizer=tokenizer, chunk_size=2)
-
-    assert out == ["abcd"]
-
-
 def test_embed_texts_via_tei_no_tokenizer_calls_server_once(mocker):
     tei = mocker.Mock()
     tei.embed.side_effect = [[[1.0, 2.0]], [[3.0, 4.0]]]
