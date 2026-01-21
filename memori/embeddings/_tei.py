@@ -38,7 +38,7 @@ class TEI:
             emb = item["embedding"]
             if not isinstance(emb, list):
                 raise ValueError("TEI embedding must be a list")
-            out.append([float(x) for x in emb])
+            out.append(emb)
         return out
 
     def embed(self, texts: list[str], *, model: str) -> list[list[float]]:
