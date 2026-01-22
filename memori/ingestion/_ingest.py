@@ -169,7 +169,7 @@ class ValidationError(Exception):
     pass
 
 
-def validate_message(message: dict[str, Any], index: int) -> list[str]:
+def validate_message(message: Any, index: int) -> list[str]:
     """
     Validate a single message.
 
@@ -203,7 +203,7 @@ def validate_message(message: dict[str, Any], index: int) -> list[str]:
     return errors
 
 
-def validate_conversation(conversation: dict[str, Any]) -> tuple[bool, list[str]]:
+def validate_conversation(conversation: Any) -> tuple[bool, list[str]]:
     """
     Validate a conversation structure.
 
@@ -295,9 +295,7 @@ class IngestionClient:
                 entity=EntityData(id=hash_id(self.entity_id)),
                 process=ProcessData(id=hash_id(self.process_id)),
             ),
-            framework=FrameworkData(
-                provider=self.config.framework.provider or "seed"
-            ),
+            framework=FrameworkData(provider=self.config.framework.provider or "seed"),
             llm=LlmData(
                 model=ModelData(
                     provider=self.config.llm.provider or "seed",
