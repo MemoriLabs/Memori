@@ -10,11 +10,33 @@ r"""
 
 import json
 import struct
+from collections.abc import Iterator, Mapping
 from unittest.mock import MagicMock
 
 import numpy as np
 
-from memori.search import find_similar_embeddings, parse_embedding, search_entity_facts
+from memori.search import (
+    HostedSemanticFact,
+    HostedSemanticFactSet,
+    find_similar_embeddings,
+    parse_embedding,
+    search_entity_facts,
+    search_hosted_semantic_results,
+)
+
+
+class _MappingRow(Mapping[str, object]):
+    def __init__(self, data: dict[str, object]) -> None:
+        self._data = data
+
+    def __getitem__(self, key: str) -> object:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 def test_parse_embedding_from_bytes_postgresql():
@@ -421,3 +443,86 @@ def test_search_entity_facts_with_different_db_formats():
 
     assert len(result) == 3
     assert result[0]["id"] == 1
+
+
+def test_search_entity_facts_accepts_mapping_rows_for_content(mocker):
+    mock_driver = MagicMock()
+    mock_driver.get_embeddings.return_value = [
+        {"id": 1, "content_embedding": [1.0, 0.0]},
+        {"id": 2, "content_embedding": [0.0, 1.0]},
+    ]
+    mock_driver.get_facts_by_ids.return_value = [
+        _MappingRow({"id": 1, "content": "USER_ID has favorite color blue"}),
+        _MappingRow({"id": 2, "content": "USER_ID lives in Paris"}),
+    ]
+
+    # Force semantic order so lexical has something to rerank.
+    mocker.patch(
+        "memori.search._api.find_similar_embeddings",
+        return_value=[(2, 0.8), (1, 0.7)],
+    )
+
+    query_embedding = [1.0, 0.0]
+    result = search_entity_facts(
+        mock_driver,
+        entity_id=42,
+        query_embedding=query_embedding,
+        limit=2,
+        embeddings_limit=1000,
+        query_text="favorite color",
+    )
+
+    assert len(result) == 2
+    assert result[0]["id"] == 1
+    assert result[0]["lexical_score"] > 0.0
+
+
+def test_search_hosted_semantic_results_success():
+    hosted = HostedSemanticFactSet(
+        facts=[
+            HostedSemanticFact(
+                fact_id="a",
+                fact="Fact A",
+                similarity=0.99,
+            ),
+            HostedSemanticFact(
+                fact_id="b",
+                fact="Fact B",
+                similarity=0.5,
+            ),
+        ]
+    )
+
+    result = search_hosted_semantic_results(hosted, limit=1)
+
+    assert len(result) == 1
+    assert result[0]["id"] == "a"
+    assert result[0]["content"] == "Fact A"
+    assert "similarity" in result[0]
+
+
+def test_search_hosted_semantic_results_can_rerank_with_query_text():
+    hosted = HostedSemanticFactSet(
+        facts=[
+            HostedSemanticFact(
+                fact_id="a",
+                fact="Completely unrelated",
+                similarity=0.9,
+            ),
+            HostedSemanticFact(
+                fact_id="b",
+                fact="This mentions blue explicitly",
+                similarity=0.8,
+            ),
+        ]
+    )
+
+    result = search_hosted_semantic_results(
+        hosted,
+        limit=1,
+        query_text="blue",
+    )
+    assert len(result) == 1
+    assert result[0]["id"] == "b"
+    assert "lexical_score" in result[0]
+    assert "rank_score" in result[0]

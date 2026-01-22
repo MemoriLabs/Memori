@@ -1,10 +1,42 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
+from memori.search._types import HostedSemanticFactSet
+
 logger = logging.getLogger(__name__)
+
+
+def _hosted_candidate_pool(
+    hosted: HostedSemanticFactSet, *, limit: int, query_text: str | None
+) -> tuple[
+    list[int], dict[int, float], dict[int, str], dict[int, str], dict[int, dict]
+]:
+    results = hosted.facts
+    if not results:
+        return [], {}, {}, {}, {}
+
+    idx_to_original_id = {i: r.fact_id for i, r in enumerate(results)}
+    content_map = {i: r.fact for i, r in enumerate(results)}
+    similarities_map = {i: float(r.similarity) for i, r in enumerate(results)}
+
+    cand_limit = _candidate_limit(
+        limit=limit, total_embeddings=len(results), query_text=query_text
+    )
+    candidate_ids = sorted(
+        similarities_map,
+        key=lambda i: float(similarities_map.get(i, 0.0)),
+        reverse=True,
+    )[:cand_limit]
+
+    # Mimic DB shape just enough for _build_fact_rows (date_created is optional).
+    fact_rows: dict[int, dict] = {
+        i: {"id": idx_to_original_id.get(i)} for i in candidate_ids
+    }
+
+    return candidate_ids, similarities_map, content_map, idx_to_original_id, fact_rows
 
 
 def _get_embeddings_rows(
@@ -36,11 +68,21 @@ def _fetch_content_maps(
 ) -> tuple[dict[int, dict], dict[int, str]]:
     logger.debug("Fetching content for %d fact IDs", len(candidate_ids))
     content_results = entity_fact_driver.get_facts_by_ids(candidate_ids)
-    fact_rows: dict[int, dict] = {
-        int(row["id"]): row
-        for row in content_results
-        if isinstance(row, dict) and row.get("id") is not None
-    }
+
+    fact_rows: dict[int, dict] = {}
+    for row in content_results or []:
+        if not isinstance(row, Mapping):
+            continue
+        rid = row.get("id")
+        if rid is None:
+            continue
+        try:
+            fid = int(rid)
+        except (TypeError, ValueError):
+            continue
+        # Ensure we store a plain dict for downstream `.get(...)` usage.
+        fact_rows[fid] = dict(row)
+
     content_map: dict[int, str] = {}
     for fid, row in fact_rows.items():
         content = row.get("content")
@@ -128,33 +170,48 @@ def search_entity_facts_core(
     embeddings_limit: int,
     *,
     query_text: str | None,
+    hosted_semantic_results: HostedSemanticFactSet | None = None,
     find_similar_embeddings: Callable[
         [list[tuple[int, Any]], list[float], int], list[tuple[int, float]]
     ],
     lexical_scores_for_ids: Callable[..., dict[int, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
 ) -> list[dict]:
-    results = _get_embeddings_rows(
-        entity_fact_driver, entity_id=entity_id, embeddings_limit=embeddings_limit
-    )
-    if not results:
-        return []
+    if hosted_semantic_results is not None:
+        (
+            candidate_ids,
+            similarities_map,
+            content_map,
+            idx_to_original_id,
+            fact_rows,
+        ) = _hosted_candidate_pool(
+            hosted_semantic_results, limit=limit, query_text=query_text
+        )
+        if not candidate_ids:
+            return []
+    else:
+        results = _get_embeddings_rows(
+            entity_fact_driver, entity_id=entity_id, embeddings_limit=embeddings_limit
+        )
+        if not results:
+            return []
 
-    embeddings = [(row["id"], row["content_embedding"]) for row in results]
-    cand_limit = _candidate_limit(
-        limit=limit, total_embeddings=len(embeddings), query_text=query_text
-    )
-    similar = find_similar_embeddings(embeddings, query_embedding, cand_limit)
-    if not similar:
-        logger.debug("No similar embeddings found")
-        return []
+        embeddings = [(row["id"], row["content_embedding"]) for row in results]
+        cand_limit = _candidate_limit(
+            limit=limit, total_embeddings=len(embeddings), query_text=query_text
+        )
+        similar = find_similar_embeddings(embeddings, query_embedding, cand_limit)
+        if not similar:
+            logger.debug("No similar embeddings found")
+            return []
 
-    candidate_ids = [fact_id for fact_id, _ in similar]
-    similarities_map = dict(similar)
+        candidate_ids = [fact_id for fact_id, _ in similar]
+        similarities_map = dict(similar)
 
-    fact_rows, content_map = _fetch_content_maps(
-        entity_fact_driver, candidate_ids=candidate_ids
-    )
+        fact_rows, content_map = _fetch_content_maps(
+            entity_fact_driver, candidate_ids=candidate_ids
+        )
+
     base_order, rank_score_map, lex_scores = _rank_candidates(
         candidate_ids=candidate_ids,
         similarities_map=similarities_map,
@@ -175,6 +232,14 @@ def search_entity_facts_core(
         lex_scores=lex_scores,
         rank_score_map=rank_score_map,
     )
+
+    if hosted_semantic_results is not None:
+        # Remap back to original hosted IDs.
+        for row in facts_with_similarity:
+            idx = row.get("id")
+            if isinstance(idx, int) and idx in idx_to_original_id:  # type: ignore[name-defined]
+                row["id"] = idx_to_original_id[idx]  # type: ignore[name-defined]
+
     logger.debug(
         "Returning %d facts with similarity scores", len(facts_with_similarity)
     )
