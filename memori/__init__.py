@@ -20,6 +20,7 @@ from memori._exceptions import (
     QuotaExceededError,
     warn_if_legacy_memorisdk_installed,
 )
+from memori.ingestion import SeedConfig, SeedData, SeedResult, SeedType
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -31,7 +32,14 @@ from memori.memory.augmentation import Manager as AugmentationManager
 from memori.memory.recall import Recall
 from memori.storage import Manager as StorageManager
 
-__all__ = ["Memori", "QuotaExceededError"]
+__all__ = [
+    "Memori",
+    "QuotaExceededError",
+    "SeedType",
+    "SeedData",
+    "SeedResult",
+    "SeedConfig",
+]
 
 warn_if_legacy_memorisdk_installed()
 
@@ -138,3 +146,53 @@ class Memori:
 
     def recall(self, query: str, limit: int = 5):
         return Recall(self.config).search_facts(query, limit)
+
+    async def seed(
+        self,
+        seed_data: "SeedData",
+        seed_config: "SeedConfig | None" = None,
+        batch_size: int = 10,
+        on_progress=None,
+    ) -> "SeedResult":
+        from memori.ingestion import SeedType, ingest_conversations
+
+        if batch_size < 1:
+            raise ValueError("batch_size must be >= 1")
+        if not seed_data.entity_id:
+            raise ValueError("entity_id is required")
+        if len(str(seed_data.entity_id)) > 100:
+            raise ValueError("entity_id cannot be greater than 100 characters")
+        if seed_data.process_id and len(str(seed_data.process_id)) > 100:
+            raise ValueError("process_id cannot be greater than 100 characters")
+
+        if seed_data.seed_type == SeedType.CONVERSATION:
+            return await ingest_conversations(
+                config=self.config,
+                driver=self.config.storage.driver,
+                entity_id=seed_data.entity_id,
+                conversations=seed_data.data,
+                process_id=seed_data.process_id,
+                batch_size=batch_size,
+                ingestion_config=seed_config,
+                on_progress=on_progress,
+            )
+        else:
+            raise ValueError(f"Unsupported seed type: {seed_data.seed_type}")
+
+    def seed_sync(
+        self,
+        seed_data: "SeedData",
+        seed_config: "SeedConfig | None" = None,
+        batch_size: int = 10,
+        on_progress=None,
+    ) -> "SeedResult":
+        import asyncio
+
+        return asyncio.run(
+            self.seed(
+                seed_data=seed_data,
+                seed_config=seed_config,
+                batch_size=batch_size,
+                on_progress=on_progress,
+            )
+        )

@@ -16,6 +16,7 @@ from memori._config import Config
 from memori._setup import Manager as SetupManager
 from memori.api._quota import Manager as ApiQuotaManager
 from memori.api._sign_up import Manager as ApiSignUpManager
+from memori.ingestion._cli import Manager as IngestionManager
 from memori.storage.cockroachdb._cluster_manager import (
     ClusterManager as CockroachDBClusterManager,
 )
@@ -30,6 +31,11 @@ def main():
             "description": "Manager a CockroachDB cluster",
             "params": ["cluster", "<start | claim | delete>"],
             "obj": CockroachDBClusterManager,
+        },
+        "ingest": {
+            "description": "Bulk ingest conversations for memory seeding",
+            "params": ["<file.json>", "[options]"],
+            "obj": IngestionManager,
         },
         "quota": {
             "description": "Check your quota",
