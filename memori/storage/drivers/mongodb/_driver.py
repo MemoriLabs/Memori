@@ -105,6 +105,14 @@ class Conversation(BaseConversation):
 
         return conversation
 
+    def read_id_by_session_id(self, session_id):
+        existing = self.conn.execute(
+            "memori_conversation", "find_one", {"session_id": session_id}
+        )
+        if not existing:
+            return None
+        return existing.get("_id")
+
 
 class ConversationMessage(BaseConversationMessage):
     def create(self, conversation_id: int, role: str, type: str, content: str):
@@ -481,6 +489,12 @@ class Session(BaseSession):
         result = self.conn.execute("memori_session", "insert_one", session_doc)
 
         return result.inserted_id
+
+    def read(self, uuid: str):
+        existing = self.conn.execute("memori_session", "find_one", {"uuid": str(uuid)})
+        if not existing:
+            return None
+        return existing.get("_id")
 
 
 class Schema(BaseSchema):

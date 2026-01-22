@@ -39,7 +39,7 @@ facts = mem.recall("Mars color")
 - **Framework Integration**: Native support for LangChain and Pydantic AI
 - **Platform Support**: Nebius AI Studio
 - **Universal Database Support**: DB API 2.0, SQLAlchemy, Django ORM
-- **Multiple Datastores**: PostgreSQL, MySQL/MariaDB, SQLite, MongoDB, CockroachDB, Neon, Supabase, Oracle, and more
+- **Multiple Datastores**: PostgreSQL, MySQL/MariaDB, OceanBase, SQLite, MongoDB, CockroachDB, Neon, Supabase, Oracle, and more
 - **Attribution System**: Track memories by entity (user), process (agent), and session
 - **Recall API**: Semantic search across facts using embeddings
 - **Advanced Augmentation**: AI-powered memory augmentation with no latency impact

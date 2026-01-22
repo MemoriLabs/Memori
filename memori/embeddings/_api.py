@@ -28,13 +28,16 @@ def _embed_texts(
         logger.debug("embed_texts called with empty input")
         return []
     if tei is not None:
-        return embed_texts_via_tei(
-            texts=inputs,
-            model=model,
-            tei=tei,
-            tokenizer=tokenizer,
-            chunk_size=chunk_size,
-        )
+        return [
+            embed_texts_via_tei(
+                text=t,
+                model=model,
+                tei=tei,
+                tokenizer=tokenizer,
+                chunk_size=chunk_size,
+            )
+            for t in inputs
+        ]
     return get_sentence_transformers_embedder(model).embed(
         inputs, fallback_dimension=_FALLBACK_DIMENSION
     )

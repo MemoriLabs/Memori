@@ -1,21 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import logging
 from typing import Any
 
-
-def _as_token_id_list(value: Any) -> list[int] | None:
-    if value is None:
-        return None
-    if isinstance(value, list):
-        try:
-            return [int(x) for x in value]
-        except Exception:
-            return None
-    try:
-        return [int(x) for x in value.tolist()]  # type: ignore[attr-defined]
-    except Exception:
-        return None
+logger = logging.getLogger(__name__)
 
 
 def chunk_text_by_tokens(
@@ -35,34 +23,10 @@ def chunk_text_by_tokens(
         raise ValueError("chunk_size must be > 0")
 
     tokens = tokenizer(text, return_tensors="np")
-    input_ids_raw = tokens.get("input_ids") if isinstance(tokens, dict) else None
-    if input_ids_raw is None:
-        return [text]
+    num_tokens = len(tokens["input_ids"][0])
 
-    ids_2d: list[list[int]] | None = None
-    if (
-        isinstance(input_ids_raw, list)
-        and input_ids_raw
-        and isinstance(input_ids_raw[0], list)
-    ):
-        ids_2d = [[int(x) for x in input_ids_raw[0]]]
-    else:
-        ids_1d = (
-            _as_token_id_list(input_ids_raw[0])
-            if hasattr(input_ids_raw, "__getitem__")
-            else None
-        )
-        if ids_1d is not None:
-            ids_2d = [ids_1d]
+    chunks = []
+    for i in range(0, num_tokens, chunk_size):
+        chunks.append(tokenizer.decode(tokens["input_ids"][0][i : i + chunk_size]))
 
-    if not ids_2d or not ids_2d[0]:
-        return [text]
-
-    ids = ids_2d[0]
-    chunks: list[str] = []
-    decode: Callable[[Any], str] = tokenizer.decode
-    for i in range(0, len(ids), chunk_size):
-        chunk_text = decode(ids[i : i + chunk_size])
-        if chunk_text:
-            chunks.append(chunk_text)
-    return chunks or [text]
+    return chunks

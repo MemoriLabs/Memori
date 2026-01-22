@@ -81,6 +81,22 @@ def test_format_embedding_for_db_mongodb_no_bson():
     assert list(unpacked) == pytest.approx(embedding)
 
 
+def test_format_embedding_for_db_oceanbase_uses_pyobvector(mocker):
+    embedding = [1.0, 2.0, 3.0]
+    mock_vector = mocker.MagicMock()
+    mock_vector._to_db.return_value = "vector-bytes"
+    mock_util = mocker.MagicMock(Vector=mock_vector)
+    mock_pkg = mocker.MagicMock(util=mock_util)
+    mocker.patch.dict(
+        "sys.modules", {"pyobvector": mock_pkg, "pyobvector.util": mock_util}
+    )
+
+    result = format_embedding_for_db(embedding, "oceanbase")
+
+    assert result == "vector-bytes"
+    mock_vector._to_db.assert_called_once_with(embedding)
+
+
 def test_format_embedding_for_db_unknown_dialect():
     embedding = [1.0, 2.0, 3.0]
     result = format_embedding_for_db(embedding, "unknown_db")
@@ -439,19 +455,23 @@ def test_embed_texts_uses_tei_remote(mocker):
     tei = TEI(url="http://localhost:8080/v1/embeddings")
     mock_post = mocker.patch("memori.embeddings._tei.requests.post")
     mock_response = mocker.Mock()
-    mock_response.json.return_value = {
-        "data": [{"embedding": [1.0, 0.0]}, {"embedding": [0.0, 1.0]}]
-    }
+    mock_response.json.side_effect = [
+        {"data": [{"embedding": [1.0, 0.0]}]},
+        {"data": [{"embedding": [0.0, 1.0]}]},
+    ]
     mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
     out = embed_texts(["a", "b"], model="tei-model", tei=tei)
 
     assert out == [[1.0, 0.0], [0.0, 1.0]]
-    mock_post.assert_called_once()
-    _, kwargs = mock_post.call_args
-    assert kwargs["json"] == {"input": ["a", "b"], "model": "tei-model"}
-    assert kwargs["timeout"] == 30.0
+    assert mock_post.call_count == 2
+    first_kwargs = mock_post.call_args_list[0].kwargs
+    second_kwargs = mock_post.call_args_list[1].kwargs
+    assert first_kwargs["json"] == {"input": ["a"], "model": "tei-model"}
+    assert second_kwargs["json"] == {"input": ["b"], "model": "tei-model"}
+    assert first_kwargs["timeout"] == 30.0
+    assert second_kwargs["timeout"] == 30.0
 
 
 def test_embed_texts_tei_token_chunks_and_pools(mocker):

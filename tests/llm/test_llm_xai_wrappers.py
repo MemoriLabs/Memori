@@ -22,6 +22,39 @@ def test_inject_conversation_history_no_conversation_id(xai_wrappers):
     assert result == {"messages": ["msg1", "msg2"]}
 
 
+def test_inject_conversation_history_cache_miss_loads_from_session(
+    xai_wrappers, config, mocker
+):
+    mock_user = mocker.patch("xai_sdk.chat.user")
+    mock_assistant = mocker.patch("xai_sdk.chat.assistant")
+
+    config.session_id = "session-uuid"
+
+    mock_driver = mocker.MagicMock()
+    mock_driver.session.read.return_value = 11
+    mock_driver.conversation.read_id_by_session_id.return_value = "conv123"
+    mock_driver.conversation.messages.read.return_value = [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi"},
+    ]
+    mock_storage = mocker.MagicMock()
+    mock_storage.driver = mock_driver
+    config.storage = mock_storage
+
+    mock_user.return_value = "user_msg"
+    mock_assistant.return_value = "assistant_msg"
+
+    kwargs = {"messages": ["new_msg"]}
+    result = xai_wrappers.inject_conversation_history(kwargs)
+
+    assert config.cache.session_id == 11
+    assert config.cache.conversation_id == "conv123"
+    mock_driver.session.read.assert_called_once_with("session-uuid")
+    mock_driver.conversation.read_id_by_session_id.assert_called_once_with(11)
+    mock_driver.conversation.messages.read.assert_called_once_with("conv123")
+    assert result == {"messages": ["user_msg", "assistant_msg", "new_msg"]}
+
+
 def test_inject_conversation_history_empty_messages(xai_wrappers, config, mocker):
     config.cache.conversation_id = "conv123"
     mock_driver = mocker.MagicMock()

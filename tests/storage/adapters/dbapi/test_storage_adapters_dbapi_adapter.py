@@ -42,6 +42,22 @@ def mock_pymysql_conn(mocker):
 
 
 @pytest.fixture
+def mock_pyobvector_conn(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "pyobvector"
+    type(mock_conn).__module__ = "pyobvector.dbapi"
+
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute = mocker.MagicMock()
+    mock_cursor.close = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+    mock_conn.commit = mocker.MagicMock()
+    mock_conn.rollback = mocker.MagicMock()
+
+    return mock_conn
+
+
+@pytest.fixture
 def mock_sqlite3_conn(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "sqlite3"
@@ -125,6 +141,11 @@ def test_get_dialect_pymysql(mock_pymysql_conn):
     assert adapter.get_dialect() == "mysql"
 
 
+def test_get_dialect_pyobvector(mock_pyobvector_conn):
+    adapter = DBAPIAdapter(lambda: mock_pyobvector_conn)
+    assert adapter.get_dialect() == "oceanbase"
+
+
 def test_rollback_pymysql(mock_pymysql_conn):
     adapter = DBAPIAdapter(lambda: mock_pymysql_conn)
     result = adapter.rollback()
@@ -193,6 +214,10 @@ def test_is_dbapi_connection_psycopg2(mock_psycopg2_conn):
 
 def test_is_dbapi_connection_pymysql(mock_pymysql_conn):
     assert is_dbapi_connection(mock_pymysql_conn) is True
+
+
+def test_is_dbapi_connection_pyobvector(mock_pyobvector_conn):
+    assert is_dbapi_connection(mock_pyobvector_conn) is True
 
 
 def test_is_dbapi_connection_sqlite3(mock_sqlite3_conn):

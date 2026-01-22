@@ -49,6 +49,7 @@ class TestClientRegistration:
         memori_instance.llm.register(chatbedrock=client)
 
         assert client.invoke is original_invoke
+        assert hasattr(client, "_memori_installed")
         assert client._memori_installed is True
 
     @requires_bedrock
