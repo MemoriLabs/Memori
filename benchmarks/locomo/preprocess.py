@@ -15,7 +15,7 @@ def preprocess_locomo_json(in_path: str | Path, out_path: str | Path) -> dict[st
     """
     Preprocess LoCoMo into a Memori-friendly role format.
 
-    - Drops any sample that contains multimodal turn fields (img_url, blip_caption, query).
+    - Removes multimodal turn fields (img_url, blip_caption, query).
     - Rewrites turn speakers so conversation.speaker_b becomes "assistant" and all others "user".
       If conversation.speaker_b is missing, the sample is kept and left unchanged.
     """
@@ -28,6 +28,7 @@ def preprocess_locomo_json(in_path: str | Path, out_path: str | Path) -> dict[st
 
     kept: list[dict[str, Any]] = []
     dropped_reasons: Counter[str] = Counter()
+    removed_multimodal_turns = 0
 
     for _idx, sample in enumerate(data):
         if not isinstance(sample, dict):
@@ -35,9 +36,7 @@ def preprocess_locomo_json(in_path: str | Path, out_path: str | Path) -> dict[st
             continue
 
         conv = sample.get("conversation")
-        if _has_multimodal(conv):
-            dropped_reasons["multimodal"] += 1
-            continue
+        removed_multimodal_turns += _strip_multimodal_fields_inplace(conv)
 
         speaker_b = None
         if isinstance(conv, dict):
@@ -57,17 +56,21 @@ def preprocess_locomo_json(in_path: str | Path, out_path: str | Path) -> dict[st
     return {
         "samples_in": len(data),
         "samples_out": len(kept),
-        "dropped_multimodal": int(dropped_reasons.get("multimodal", 0)),
+        "removed_multimodal_turns": int(removed_multimodal_turns),
         "dropped_invalid_sample": int(dropped_reasons.get("invalid_sample", 0)),
     }
 
 
-def _has_multimodal(conversation: Any) -> bool:
-    turns_iter = _iter_turn_dicts(conversation)
-    for turn in turns_iter:
-        if any(k in turn for k in _MULTIMODAL_KEYS):
-            return True
-    return False
+def _strip_multimodal_fields_inplace(conversation: Any) -> int:
+    removed = 0
+    for turn in _iter_turn_dicts(conversation):
+        if not isinstance(turn, dict):
+            continue
+        before = len(turn)
+        for k in _MULTIMODAL_KEYS:
+            turn.pop(k, None)
+        removed += int(len(turn) != before)
+    return removed
 
 
 def _rewrite_speakers_inplace(conversation: Any, *, assistant_speaker: str) -> None:
@@ -129,7 +132,7 @@ def _coerce_str(value: Any) -> str | None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Preprocess LoCoMo: skip multimodal samples and map speaker_b -> assistant."
+        description="Preprocess LoCoMo: strip multimodal fields and map speaker_b -> assistant."
     )
     parser.add_argument(
         "--in", dest="in_path", required=True, help="Input LoCoMo JSON path."
@@ -143,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "[locomo][preprocess] "
         f"samples_in={stats['samples_in']} samples_out={stats['samples_out']} "
-        f"dropped_multimodal={stats['dropped_multimodal']} "
+        f"removed_multimodal_turns={stats['removed_multimodal_turns']} "
         f"dropped_invalid_sample={stats['dropped_invalid_sample']}"
     )
     return 0

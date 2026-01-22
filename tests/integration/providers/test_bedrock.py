@@ -20,7 +20,7 @@ class TestClientRegistration:
         from langchain_aws import ChatBedrock
 
         client = ChatBedrock(
-            model_id=MODEL_ID,
+            model=MODEL_ID,
             region_name=aws_credentials["region_name"],
         )
 
@@ -39,7 +39,7 @@ class TestClientRegistration:
         from langchain_aws import ChatBedrock
 
         client = ChatBedrock(
-            model_id=MODEL_ID,
+            model=MODEL_ID,
             region_name=aws_credentials["region_name"],
         )
 
@@ -49,6 +49,7 @@ class TestClientRegistration:
         memori_instance.llm.register(chatbedrock=client)
 
         assert client.invoke is original_invoke
+        assert hasattr(client, "_memori_installed")
         assert client._memori_installed is True
 
     @requires_bedrock
@@ -59,7 +60,7 @@ class TestClientRegistration:
         from langchain_aws import ChatBedrock
 
         client = ChatBedrock(
-            model_id=MODEL_ID,
+            model=MODEL_ID,
             region_name=aws_credentials["region_name"],
         )
 
@@ -246,7 +247,7 @@ class TestErrorHandling:
             },
         ):
             client = ChatBedrock(
-                model_id=MODEL_ID,
+                model=MODEL_ID,
                 region_name="us-east-1",
             )
             memori_instance.llm.register(chatbedrock=client)
@@ -260,7 +261,7 @@ class TestErrorHandling:
         from langchain_aws import ChatBedrock
 
         client = ChatBedrock(
-            model_id="invalid-model-xyz",
+            model="invalid-model-xyz",
             region_name=aws_credentials["region_name"],
         )
         memori_instance.llm.register(chatbedrock=client)
@@ -277,7 +278,7 @@ class TestErrorHandling:
         from langchain_aws import ChatBedrock
 
         client = ChatBedrock(
-            model_id="invalid-model-xyz",
+            model="invalid-model-xyz",
             region_name=aws_credentials["region_name"],
         )
         memori_instance.llm.register(chatbedrock=client)
@@ -334,12 +335,12 @@ class TestMemoriIntegration:
         from langchain_aws import ChatBedrock
 
         unwrapped_client = ChatBedrock(
-            model_id=MODEL_ID,
+            model=MODEL_ID,
             region_name=aws_credentials["region_name"],
         )
 
         wrapped_client = ChatBedrock(
-            model_id=MODEL_ID,
+            model=MODEL_ID,
             region_name=aws_credentials["region_name"],
         )
         memori_instance.llm.register(chatbedrock=wrapped_client)
@@ -356,7 +357,7 @@ class TestMemoriIntegration:
         from langchain_aws import ChatBedrock
 
         client = ChatBedrock(
-            model_id=MODEL_ID,
+            model=MODEL_ID,
             region_name=aws_credentials["region_name"],
         )
         memori_instance.llm.register(chatbedrock=client)

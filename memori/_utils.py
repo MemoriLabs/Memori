@@ -11,6 +11,7 @@ r"""
 import hashlib
 import json
 import re
+from datetime import datetime, timezone
 
 
 def bytes_to_json(obj):
@@ -67,3 +68,30 @@ def merge_chunk(data: dict, chunk: dict):
             data[key] = chunk_value
 
     return data
+
+
+def format_date_created(value) -> str | None:
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        dt = value.astimezone(timezone.utc) if value.tzinfo else value
+        return dt.strftime("%Y-%m-%d %H:%M")
+
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            normalized = s[:-1] + "+00:00" if s.endswith("Z") else s
+            if "T" not in normalized and " " in normalized:
+                normalized = normalized.replace(" ", "T", 1)
+            dt = datetime.fromisoformat(normalized)
+            dt = dt.astimezone(timezone.utc) if dt.tzinfo else dt
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            if len(s) >= 16 and s[4] == "-" and s[7] == "-" and s[10] in ("T", " "):
+                return s[:16].replace("T", " ")
+            return None
+
+    return None

@@ -32,12 +32,41 @@ class XAiWrappers:
     def __init__(self, config):
         self.config = config
 
+    def _ensure_cached_conversation_id(self) -> bool:
+        if self.config.storage is None or self.config.storage.driver is None:
+            return False
+
+        if self.config.session_id is None:
+            return False
+
+        driver = self.config.storage.driver
+
+        if self.config.cache.session_id is None:
+            if not hasattr(driver.session, "read"):
+                return False
+            self.config.cache.session_id = driver.session.read(
+                str(self.config.session_id)
+            )
+
+        if self.config.cache.session_id is None:
+            return False
+
+        if self.config.cache.conversation_id is None:
+            if not hasattr(driver.conversation, "read_id_by_session_id"):
+                return False
+            self.config.cache.conversation_id = (
+                driver.conversation.read_id_by_session_id(self.config.cache.session_id)
+            )
+
+        return self.config.cache.conversation_id is not None
+
     def inject_conversation_history(self, kwargs):
         """Inject conversation history into messages using XAI message format."""
         from xai_sdk.chat import assistant, user
 
         if self.config.cache.conversation_id is None:
-            return kwargs
+            if not self._ensure_cached_conversation_id():
+                return kwargs
 
         messages = self.config.storage.driver.conversation.messages.read(
             self.config.cache.conversation_id

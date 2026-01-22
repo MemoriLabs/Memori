@@ -95,6 +95,11 @@ Use the correct format for your database:
 "mysql+pymysql://user:password@host:3306/database"
 ```
 
+**OceanBase:**
+```python
+"mysql+oceanbase://user:password@host:2881/database?charset=utf8mb4"
+```
+
 **SQLite:**
 ```python
 "sqlite:///memori.db"  # Relative path
@@ -700,9 +705,9 @@ from memori import Memori
 
 ```
 DEBUG | memori.memory.recall - Recall started - query: "What's my favorite..." (25 chars)
-DEBUG | memori.llm._embeddings - Generating embedding using model: all-mpnet-base-v2
-DEBUG | memori._search - Retrieved 156 embeddings from database
-DEBUG | memori._search - FAISS similarity search complete - top 5 matches: [0.92, 0.87, 0.84]
+DEBUG | memori.embeddings._sentence_transformers - Generating embedding using model: all-mpnet-base-v2 for 1 text(s)
+DEBUG | memori.search._api - Retrieved 156 embeddings from database
+DEBUG | memori.search._faiss - FAISS similarity search complete - top 5 matches: [0.92, 0.87, 0.84]
 DEBUG | memori.llm._invoke - Sending request to LLM - provider: openai, model: gpt-4o-mini
 DEBUG | memori.llm._base - LLM response received - latency: 1.23s
 DEBUG | memori.memory._writer - Transaction committed - conversation_id: 42
