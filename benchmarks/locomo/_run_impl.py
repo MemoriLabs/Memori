@@ -889,7 +889,7 @@ def _build_per_pair_requests(
 
 def _format_top_k(
     *,
-    results: list[dict],
+    results: list,
     prov_store: ProvenanceStore,
     run_id: str,
     sample_id: str,
@@ -899,8 +899,15 @@ def _format_top_k(
 ) -> list[dict[str, object]]:
     out: list[dict[str, object]] = []
     for r in results:
-        content = r.get("content", "")
-        fact_id = r.get("id")
+        if isinstance(r, dict):
+            content = r.get("content", "")
+            fact_id = r.get("id")
+            similarity = r.get("similarity")
+        else:
+            # Assume FactSearchResult or similar object with attributes
+            content = getattr(r, "content", "")
+            fact_id = getattr(r, "id", None)
+            similarity = getattr(r, "similarity", None)
 
         turn_ids: list[str] = []
         if isinstance(fact_id, int):
@@ -924,7 +931,7 @@ def _format_top_k(
                 "turn_id": turn_id,
                 "turn_ids": turn_ids,
                 "fact_id": fact_id,
-                "similarity": r.get("similarity"),
+                "similarity": similarity,
                 "content": content,
             }
         )

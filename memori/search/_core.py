@@ -4,26 +4,26 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from memori.search._types import HostedSemanticFactSet
+from memori.search._types import FactCandidates, FactSearchResult
 
 logger = logging.getLogger(__name__)
 
 
-def _hosted_candidate_pool(
-    hosted: HostedSemanticFactSet, *, limit: int, query_text: str | None
+def _candidate_pool_from_candidates(
+    candidates: FactCandidates, *, limit: int, query_text: str | None
 ) -> tuple[
     list[int], dict[int, float], dict[int, str], dict[int, str], dict[int, dict]
 ]:
-    results = hosted.facts
-    if not results:
+    facts = candidates.facts
+    if not facts:
         return [], {}, {}, {}, {}
 
-    idx_to_original_id = {i: r.fact_id for i, r in enumerate(results)}
-    content_map = {i: r.fact for i, r in enumerate(results)}
-    similarities_map = {i: float(r.similarity) for i, r in enumerate(results)}
+    idx_to_original_id = {i: r.id for i, r in enumerate(facts)}
+    content_map = {i: r.content for i, r in enumerate(facts)}
+    similarities_map = {i: float(r.score) for i, r in enumerate(facts)}
 
     cand_limit = _candidate_limit(
-        limit=limit, total_embeddings=len(results), query_text=query_text
+        limit=limit, total_embeddings=len(facts), query_text=query_text
     )
     candidate_ids = sorted(
         similarities_map,
@@ -134,30 +134,26 @@ def _build_fact_rows(
     fact_rows: dict[int, dict],
     content_map: dict[int, str],
     similarities_map: dict[int, float],
-    query_text: str | None,
-    lex_scores: dict[int, float],
     rank_score_map: dict[int, float],
-) -> list[dict]:
-    facts_with_similarity: list[dict] = []
+) -> list[FactSearchResult]:
+    facts_with_similarity: list[FactSearchResult] = []
     for fact_id in ordered_ids:
         fact_row = fact_rows.get(int(fact_id), {})
         content = content_map.get(int(fact_id))
         if content is None:
             continue
-        row: dict[str, object] = {
-            "id": fact_id,
-            "content": content,
-            "similarity": float(similarities_map.get(fact_id, 0.0)),
-        }
-        if "date_created" in fact_row and fact_row.get("date_created") is not None:
-            row["date_created"] = fact_row.get("date_created")
-        facts_with_similarity.append(row)
-
-    if query_text and facts_with_similarity:
-        for r in facts_with_similarity:
-            fid = int(r["id"])
-            r["lexical_score"] = float(lex_scores.get(fid, 0.0))
-            r["rank_score"] = float(rank_score_map.get(fid, float(r["similarity"])))
+        date_created = fact_row.get("date_created")
+        similarity = float(similarities_map.get(fact_id, 0.0))
+        rank_score = float(rank_score_map.get(fact_id, similarity))
+        facts_with_similarity.append(
+            FactSearchResult(
+                id=fact_id,
+                content=content,
+                similarity=similarity,
+                rank_score=rank_score,
+                date_created=str(date_created) if date_created is not None else None,
+            )
+        )
 
     return facts_with_similarity
 
@@ -170,22 +166,22 @@ def search_entity_facts_core(
     embeddings_limit: int,
     *,
     query_text: str | None,
-    hosted_semantic_results: HostedSemanticFactSet | None = None,
+    fact_candidates: FactCandidates | None = None,
     find_similar_embeddings: Callable[
         [list[tuple[int, Any]], list[float], int], list[tuple[int, float]]
     ],
     lexical_scores_for_ids: Callable[..., dict[int, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
-) -> list[dict]:
-    if hosted_semantic_results is not None:
+) -> list[FactSearchResult]:
+    if fact_candidates is not None:
         (
             candidate_ids,
             similarities_map,
             content_map,
             idx_to_original_id,
             fact_rows,
-        ) = _hosted_candidate_pool(
-            hosted_semantic_results, limit=limit, query_text=query_text
+        ) = _candidate_pool_from_candidates(
+            fact_candidates, limit=limit, query_text=query_text
         )
         if not candidate_ids:
             return []
@@ -228,19 +224,30 @@ def search_entity_facts_core(
         fact_rows=fact_rows,
         content_map=content_map,
         similarities_map=similarities_map,
-        query_text=query_text,
-        lex_scores=lex_scores,
         rank_score_map=rank_score_map,
     )
 
-    if hosted_semantic_results is not None:
+    if fact_candidates is not None:
         # Remap back to original hosted IDs.
+        remapped: list[FactSearchResult] = []
         for row in facts_with_similarity:
-            idx = row.get("id")
-            if isinstance(idx, int) and idx in idx_to_original_id:  # type: ignore[name-defined]
-                row["id"] = idx_to_original_id[idx]  # type: ignore[name-defined]
+            rid = row.id
+            if isinstance(rid, int) and rid in idx_to_original_id:  # type: ignore[name-defined]
+                remapped.append(
+                    FactSearchResult(
+                        id=idx_to_original_id[rid],  # type: ignore[name-defined]
+                        content=row.content,
+                        similarity=row.similarity,
+                        rank_score=row.rank_score,
+                        date_created=row.date_created,
+                    )
+                )
+            else:
+                remapped.append(row)
+        facts_with_similarity = remapped
 
     logger.debug(
         "Returning %d facts with similarity scores", len(facts_with_similarity)
     )
+
     return facts_with_similarity

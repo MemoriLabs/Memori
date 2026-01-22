@@ -12,6 +12,7 @@ import copy
 import inspect
 import json
 import logging
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from google.protobuf import json_format
@@ -36,6 +37,23 @@ from memori.llm._utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _score_for_recall_threshold(fact: Mapping[str, object]) -> float:
+    """
+    Extract a numeric score for recall relevance thresholding.
+
+    Prefer rank_score when present; fall back to similarity.
+    """
+    raw = fact.get("rank_score", fact.get("similarity", 0.0))
+    if raw is None:
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 class BaseClient:
@@ -566,14 +584,16 @@ class BaseInvoke:
             else:
                 self._append_to_google_system_instruction_obj(config, context)
 
-    def _format_recalled_fact_lines(self, facts: list[dict]) -> list[str]:
+    def _format_recalled_fact_lines(
+        self, facts: list[Mapping[str, object]]
+    ) -> list[str]:
         lines: list[str] = []
         for fact in facts:
             content = fact.get("content")
             if not content:
                 continue
             ts = format_date_created(fact.get("date_created"))
-            suffix = f" at {ts}" if ts else ""
+            suffix = f". Stated at {ts}" if ts else ""
             lines.append(f"- {content}{suffix}")
         return lines
 
@@ -605,7 +625,7 @@ class BaseInvoke:
         relevant_facts = [
             f
             for f in facts
-            if f.get("similarity", 0) >= self.config.recall_relevance_threshold
+            if _score_for_recall_threshold(f) >= self.config.recall_relevance_threshold
         ]
 
         if not relevant_facts:
