@@ -21,7 +21,7 @@ from typing import Any
 
 from memori._config import Config
 from memori._network import Api
-from memori.llm._embeddings import embed_texts_async
+from memori.embeddings import embed_texts_async
 from memori.memory._struct import Memories
 from memori.memory.augmentation._models import (
     AttributionData,

@@ -20,8 +20,8 @@ from memori._exceptions import (
     QuotaExceededError,
     warn_if_legacy_memorisdk_installed,
 )
-from memori.ingestion import SeedConfig, SeedData, SeedResult, SeedType
 from memori.embeddings import embed_texts
+from memori.ingestion import SeedConfig, SeedData, SeedResult, SeedType
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -196,6 +196,8 @@ class Memori:
                 batch_size=batch_size,
                 on_progress=on_progress,
             )
+        )
+
     def embed_texts(self, texts: str | list[str], *, async_: bool = False) -> Any:
         embeddings_cfg = self.config.embeddings
         return embed_texts(
