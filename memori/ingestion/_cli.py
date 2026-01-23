@@ -43,8 +43,7 @@ class Manager:
         self.cli.print("  }")
         self.cli.print("")
         self.cli.print("Environment:")
-        self.cli.print("  MEMORI_API_KEY                    Required for AA access")
-        self.cli.print("  MEMORI_COCKROACHDB_CONNECTION_STRING  Database connection")
+        self.cli.print("  MEMORI_API_KEY    Required for AA access")
 
     def execute(self):
         args = sys.argv[2:]
@@ -134,13 +133,6 @@ class Manager:
                 "Warning: MEMORI_API_KEY not set - running in anonymous mode"
             )
             self.cli.print("")
-
-        if not os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING"):
-            self.cli.print("Error: MEMORI_COCKROACHDB_CONNECTION_STRING not set")
-            self.cli.print(
-                "Set this environment variable to your database connection string."
-            )
-            return
 
         self._run_ingestion(
             file_path=file_path,
