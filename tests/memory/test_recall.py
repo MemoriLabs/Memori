@@ -83,7 +83,13 @@ def test_search_facts_uses_provided_entity_id():
 
         with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.return_value = [
-                FactSearchResult(id=1, content="fact 1", similarity=0.9, rank_score=0.9)
+                FactSearchResult(
+                    id=1,
+                    content="fact 1",
+                    similarity=0.9,
+                    rank_score=0.9,
+                    date_created="2026-01-01 10:30:00",
+                )
             ]
 
             result = recall.search_facts("test query", entity_id=42)
@@ -108,10 +114,18 @@ def test_search_facts_success():
         with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.return_value = [
                 FactSearchResult(
-                    id=1, content="User likes pizza", similarity=0.9, rank_score=0.9
+                    id=1,
+                    content="User likes pizza",
+                    similarity=0.9,
+                    rank_score=0.9,
+                    date_created="2026-01-01 10:30:00",
                 ),
                 FactSearchResult(
-                    id=2, content="User lives in NYC", similarity=0.85, rank_score=0.85
+                    id=2,
+                    content="User lives in NYC",
+                    similarity=0.85,
+                    rank_score=0.85,
+                    date_created="2026-01-02 11:15:00",
                 ),
             ]
 

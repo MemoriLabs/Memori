@@ -19,7 +19,7 @@ class FactSearchResult:
     content: str
     similarity: float
     rank_score: float
-    date_created: str | None = None
+    date_created: str
 
     def to_dict(self) -> dict[str, object]:
         return {

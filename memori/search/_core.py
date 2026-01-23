@@ -151,7 +151,7 @@ def _build_fact_rows(
                 content=content,
                 similarity=similarity,
                 rank_score=rank_score,
-                date_created=str(date_created) if date_created is not None else None,
+                date_created=str(date_created) if date_created is not None else "",
             )
         )
 
