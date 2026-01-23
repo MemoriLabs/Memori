@@ -42,43 +42,10 @@ from memori.memory.augmentation._models import (
 
 logger = logging.getLogger(__name__)
 
-
-# =============================================================================
-# Constants for conversation size limits
-# =============================================================================
-# These values are based on empirical testing (January 2026) with authenticated
-# API requests against production AA service.
-#
-# Tested limits:
-#   5000 messages (~906KB): ✅ Works in 11-18s
-#   6000 messages (~1.1MB): ❌ HTTP 500 (server limit)
-#
-# Latency observations:
-#   100-3000 msgs: 4-10 seconds (fairly flat)
-#   4000-5000 msgs: 12-18 seconds
-#
-# The actual server limit is ~5000 messages or ~1MB payload.
-# We use 80% safety margin for the default threshold.
-# =============================================================================
-
-# Maximum messages before we chunk (to avoid server errors)
-# Actual limit is ~5000, we use 4000 for safety margin
 DEFAULT_MAX_MESSAGES_PER_REQUEST = 4000
-
-# Maximum estimated characters before chunking (~800KB)
-# Actual limit is ~1MB, we use 800KB for safety margin
 DEFAULT_MAX_CHARS_PER_REQUEST = 800_000
-
-# Maximum retry attempts for transient failures
 DEFAULT_MAX_RETRIES = 3
-
-# Base delay for exponential backoff (seconds)
 DEFAULT_RETRY_DELAY = 2.0
-
-
-# =============================================================================
-# Seed Types
-# =============================================================================
 
 
 class SeedType(Enum):
@@ -107,11 +74,6 @@ class SeedData:
         )
 
 
-# =============================================================================
-# Data Classes
-# =============================================================================
-
-
 @dataclass
 class SeedResult:
     total: int = 0
@@ -131,15 +93,13 @@ class SeedResult:
 
 @dataclass
 class ConversationResult:
-    """Result of processing a single conversation."""
-
     conversation_id: str
     success: bool
     triples_count: int = 0
     summary: str | None = None
     error: str | None = None
     duration_ms: float = 0
-    chunks_processed: int = 1  # For large conversations that were chunked
+    chunks_processed: int = 1
     warnings: list[str] = field(default_factory=list)
 
 
@@ -158,23 +118,11 @@ class SeedConfig:
 IngestionConfig = SeedConfig
 
 
-# =============================================================================
-# Validation
-# =============================================================================
-
-
 class ValidationError(Exception):
-    """Raised when conversation validation fails."""
-
     pass
 
 
 def validate_message(message: Any, index: int) -> list[str]:
-    """
-    Validate a single message.
-
-    Returns list of validation errors (empty if valid).
-    """
     errors = []
 
     if not isinstance(message, dict):
@@ -183,7 +131,6 @@ def validate_message(message: Any, index: int) -> list[str]:
         )
         return errors
 
-    # Check required fields
     if "role" not in message:
         errors.append(f"Message {index}: missing required field 'role'")
     elif message["role"] not in ("user", "assistant", "system"):
@@ -204,11 +151,6 @@ def validate_message(message: Any, index: int) -> list[str]:
 
 
 def validate_conversation(conversation: Any) -> tuple[bool, list[str]]:
-    """
-    Validate a conversation structure.
-
-    Returns (is_valid, list_of_errors).
-    """
     errors = []
 
     if not isinstance(conversation, dict):
@@ -226,7 +168,6 @@ def validate_conversation(conversation: Any) -> tuple[bool, list[str]]:
         errors.append(f"'messages' must be a list, got {type(messages).__name__}")
         return False, errors
 
-    # Validate each message
     for i, msg in enumerate(messages):
         msg_errors = validate_message(msg, i)
         errors.extend(msg_errors)
@@ -235,27 +176,11 @@ def validate_conversation(conversation: Any) -> tuple[bool, list[str]]:
 
 
 def estimate_conversation_size(messages: list[dict[str, Any]]) -> tuple[int, int]:
-    """
-    Estimate conversation size.
-
-    Returns (message_count, total_characters).
-    """
     total_chars = sum(len(m.get("content", "")) for m in messages)
     return len(messages), total_chars
 
 
-# =============================================================================
-# Ingestion Client
-# =============================================================================
-
-
 class IngestionClient:
-    """
-    Client for bulk memory ingestion.
-
-    Handles communication with AA service and storage of results.
-    """
-
     def __init__(
         self,
         config: Config,
@@ -278,11 +203,7 @@ class IngestionClient:
         self.on_progress = on_progress
         self.api = Api(config)
 
-    def _build_payload(
-        self,
-        messages: list[dict[str, Any]],
-        summary: str | None = None,
-    ) -> dict[str, Any]:
+    def _build_payload(self, messages: list[dict[str, Any]], summary: str | None = None) -> dict[str, Any]:
         dialect = self.driver.conversation.conn.get_dialect()
 
         conversation = ConversationData(
@@ -317,7 +238,6 @@ class IngestionClient:
         return payload.to_dict()
 
     def _should_chunk_conversation(self, messages: list[dict[str, Any]]) -> bool:
-        """Determine if conversation needs to be chunked."""
         msg_count, total_chars = estimate_conversation_size(messages)
 
         return (
@@ -325,14 +245,7 @@ class IngestionClient:
             or total_chars > self.ingestion_config.max_chars_per_request
         )
 
-    def _chunk_messages(
-        self, messages: list[dict[str, Any]]
-    ) -> list[list[dict[str, Any]]]:
-        """
-        Split messages into chunks that fit within limits.
-
-        Tries to keep chunks balanced and respects message boundaries.
-        """
+    def _chunk_messages(self, messages: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
         max_msgs = self.ingestion_config.max_messages_per_request
         max_chars = self.ingestion_config.max_chars_per_request
 
@@ -343,12 +256,10 @@ class IngestionClient:
         for msg in messages:
             msg_chars = len(msg.get("content", ""))
 
-            # Check if adding this message would exceed limits
             would_exceed_msgs = len(current_chunk) >= max_msgs
             would_exceed_chars = current_chars + msg_chars > max_chars and current_chunk
 
             if would_exceed_msgs or would_exceed_chars:
-                # Save current chunk and start new one
                 if current_chunk:
                     chunks.append(current_chunk)
                 current_chunk = [msg]
@@ -357,16 +268,12 @@ class IngestionClient:
                 current_chunk.append(msg)
                 current_chars += msg_chars
 
-        # Don't forget the last chunk
         if current_chunk:
             chunks.append(current_chunk)
 
         return chunks
 
-    async def _call_aa_with_retry(
-        self,
-        payload: dict[str, Any],
-    ) -> dict[str, Any]:
+    async def _call_aa_with_retry(self, payload: dict[str, Any]) -> dict[str, Any]:
         last_error: Exception | None = None
 
         for attempt in range(self.ingestion_config.max_retries):
@@ -394,15 +301,10 @@ class IngestionClient:
             raise last_error
         raise RuntimeError("No retries attempted")
 
-    async def _process_single_conversation(
-        self,
-        conversation: dict[str, Any],
-    ) -> ConversationResult:
-        """Process a single conversation through AA."""
+    async def _process_single_conversation(self, conversation: dict[str, Any]) -> ConversationResult:
         conv_id = conversation.get("id")
         messages = conversation.get("messages", [])
 
-        # Validate conversation ID
         if not conv_id:
             return ConversationResult(
                 conversation_id="<missing>",
@@ -410,9 +312,8 @@ class IngestionClient:
                 error="Conversation missing required 'id' field",
             )
 
-        conv_id = str(conv_id)  # Ensure string
+        conv_id = str(conv_id)
 
-        # Validate conversation
         is_valid, validation_errors = validate_conversation(conversation)
         if not is_valid:
             return ConversationResult(
@@ -425,7 +326,6 @@ class IngestionClient:
         warnings = []
 
         try:
-            # Check if chunking is needed
             if self._should_chunk_conversation(messages):
                 if not self.ingestion_config.chunk_large_conversations:
                     msg_count, char_count = estimate_conversation_size(messages)
@@ -436,12 +336,10 @@ class IngestionClient:
                         duration_ms=(time.perf_counter() - start) * 1000,
                     )
 
-                # Process in chunks with summary chaining
                 return await self._process_chunked_conversation(
                     conv_id, messages, start
                 )
 
-            # Process as single request (normal case)
             payload = self._build_payload(messages)
             response = await self._call_aa_with_retry(payload)
 
@@ -455,10 +353,8 @@ class IngestionClient:
                     duration_ms=duration,
                 )
 
-            # Process response
             memories = await self._process_response(response)
 
-            # Store results
             storage_error = await self._store_memories(conv_id, memories)
             if storage_error:
                 return ConversationResult(
@@ -491,17 +387,8 @@ class IngestionClient:
             )
 
     async def _process_chunked_conversation(
-        self,
-        conv_id: str,
-        messages: list[dict[str, Any]],
-        start_time: float,
+        self, conv_id: str, messages: list[dict[str, Any]], start_time: float
     ) -> ConversationResult:
-        """
-        Process a large conversation in chunks with summary chaining.
-
-        Note: This sacrifices some entity resolution quality for large conversations
-        that would otherwise timeout.
-        """
         chunks = self._chunk_messages(messages)
         logger.info(f"Conversation {conv_id} split into {len(chunks)} chunks")
 
@@ -521,12 +408,10 @@ class IngestionClient:
                     warnings.append(f"Chunk {i + 1} returned empty response")
                     continue
 
-                # Extract triples and summary
                 entity_data = response.get("entity", {})
                 triples = entity_data.get("triples", [])
                 all_triples.extend(triples)
 
-                # Update summary for next chunk
                 conv_data = response.get("conversation", {})
                 current_summary = conv_data.get("summary")
                 successful_chunks += 1
@@ -535,7 +420,6 @@ class IngestionClient:
                 logger.warning(f"Chunk {i + 1}/{len(chunks)} failed for {conv_id}: {e}")
                 warnings.append(f"Chunk {i + 1} failed: {str(e)[:50]}")
 
-        # Fail if all chunks failed
         if successful_chunks == 0:
             duration = (time.perf_counter() - start_time) * 1000
             return ConversationResult(
@@ -547,14 +431,12 @@ class IngestionClient:
                 warnings=warnings,
             )
 
-        # Process combined response for storage
         combined_response = {
             "entity": {"triples": all_triples},
             "conversation": {"summary": current_summary},
             "process": {"attributes": []},
         }
 
-        # Generate embeddings for combined facts
         if all_triples:
             facts = [
                 f"{t['subject']['name']} {t['predicate']} {t['object']['name']}"
@@ -573,7 +455,6 @@ class IngestionClient:
 
         memories = Memories().configure_from_advanced_augmentation(combined_response)
 
-        # Store results
         storage_error = await self._store_memories(conv_id, memories)
 
         duration = (time.perf_counter() - start_time) * 1000
@@ -599,12 +480,10 @@ class IngestionClient:
         )
 
     async def _process_response(self, response: dict[str, Any]) -> Memories:
-        """Process AA response and generate embeddings."""
         entity_data = response.get("entity", {})
         facts = entity_data.get("facts", [])
         triples = entity_data.get("triples", [])
 
-        # Generate facts from triples if needed
         if not facts and triples:
             facts = [
                 f"{t['subject']['name']} {t['predicate']} {t['object']['name']}"
@@ -612,7 +491,6 @@ class IngestionClient:
                 if t.get("subject") and t.get("predicate") and t.get("object")
             ]
 
-        # Generate embeddings for facts
         if facts:
             embeddings_config = self.config.embeddings
             fact_embeddings = await embed_texts_async(
@@ -626,19 +504,12 @@ class IngestionClient:
         return Memories().configure_from_advanced_augmentation(response)
 
     async def _store_memories(self, conv_id: str, memories: Memories) -> str | None:
-        """
-        Store extracted memories to database.
-
-        Returns error message if storage fails, None on success.
-        """
-        # Create entity if needed
         entity_id = self.driver.entity.create(self.entity_id)
         if not entity_id:
             error_msg = f"Failed to create entity for {self.entity_id}"
             logger.error(error_msg)
             return error_msg
 
-        # Store facts with embeddings
         facts = memories.entity.facts
         embeddings = memories.entity.fact_embeddings
 
@@ -661,13 +532,11 @@ class IngestionClient:
         if facts and embeddings:
             self.driver.entity_fact.create(entity_id, facts, embeddings)
 
-        # Store knowledge graph triples
         if memories.entity.semantic_triples:
             self.driver.knowledge_graph.create(
                 entity_id, memories.entity.semantic_triples
             )
 
-        # Store process attributes if process_id provided
         if self.process_id:
             process_id = self.driver.process.create(self.process_id)
             if process_id and memories.process.attributes:
@@ -675,31 +544,14 @@ class IngestionClient:
                     process_id, memories.process.attributes
                 )
 
-        # Store conversation summary
         if memories.conversation.summary:
             self.driver.conversation.update(conv_id, memories.conversation.summary)
 
-        return None  # Success
+        return None
 
-    async def ingest(
-        self,
-        conversations: list[dict[str, Any]],
-    ) -> IngestResult:
-        """
-        Ingest multiple conversations.
-
-        Args:
-            conversations: List of conversation dicts with 'id' and 'messages'
-
-        Returns:
-            IngestResult with aggregated statistics
-
-        Raises:
-            ValueError: If duplicate conversation IDs are found
-        """
+    async def ingest(self, conversations: list[dict[str, Any]]) -> IngestResult:
         start = time.perf_counter()
 
-        # Check for duplicate conversation IDs
         conv_ids = [c.get("id") for c in conversations if c.get("id")]
         seen = set()
         duplicates = []
@@ -715,11 +567,9 @@ class IngestionClient:
 
         result = IngestResult(total=len(conversations))
 
-        # Process in batches for controlled parallelism
         for batch_start in range(0, len(conversations), self.batch_size):
             batch = conversations[batch_start : batch_start + self.batch_size]
 
-            # Process batch in parallel
             tasks = [self._process_single_conversation(conv) for conv in batch]
             batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -751,11 +601,6 @@ class IngestionClient:
         return result
 
 
-# =============================================================================
-# Public Functions
-# =============================================================================
-
-
 async def ingest_conversations(
     config: Config,
     driver,
@@ -766,22 +611,6 @@ async def ingest_conversations(
     ingestion_config: IngestionConfig | None = None,
     on_progress: Callable[[int, int, ConversationResult], None] | None = None,
 ) -> IngestResult:
-    """
-    Bulk ingest conversations into Memori.
-
-    Args:
-        config: Memori configuration
-        driver: Storage driver
-        entity_id: Entity ID to associate memories with
-        conversations: List of conversations, each with 'id' and 'messages'
-        process_id: Optional process ID for attribution
-        batch_size: Number of concurrent requests (default: 10)
-        ingestion_config: Optional configuration for ingestion behavior
-        on_progress: Optional callback for progress updates
-
-    Returns:
-        IngestResult with statistics and per-conversation results
-    """
     client = IngestionClient(
         config=config,
         driver=driver,
@@ -805,37 +634,6 @@ def ingest_from_file(
     ingestion_config: IngestionConfig | None = None,
     on_progress: Callable[[int, int, ConversationResult], None] | None = None,
 ) -> IngestResult:
-    """
-    Ingest conversations from a JSON file.
-
-    Expected file format:
-    {
-        "entity_id": "user-123",  # Optional if provided as argument
-        "process_id": "process-456",  # Optional
-        "conversations": [
-            {
-                "id": "conv-1",
-                "messages": [
-                    {"role": "user", "content": "Hello"},
-                    {"role": "assistant", "content": "Hi there!"}
-                ]
-            }
-        ]
-    }
-
-    Args:
-        config: Memori configuration
-        driver: Storage driver
-        file_path: Path to JSON file
-        entity_id: Entity ID (overrides file if provided)
-        process_id: Process ID (overrides file if provided)
-        batch_size: Number of concurrent requests
-        ingestion_config: Optional configuration for ingestion behavior
-        on_progress: Optional callback for progress updates
-
-    Returns:
-        IngestResult with statistics
-    """
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
@@ -843,20 +641,16 @@ def ingest_from_file(
     with open(path) as f:
         data = json.load(f)
 
-    # Extract entity_id from file if not provided
     final_entity_id = entity_id or data.get("entity_id")
     if not final_entity_id:
         raise ValueError("entity_id must be provided either as argument or in file")
 
-    # Extract process_id from file if not provided
     final_process_id = process_id or data.get("process_id")
 
-    # Get conversations
     conversations = data.get("conversations", [])
     if not conversations:
         raise ValueError("No conversations found in file")
 
-    # Run async ingestion
     return asyncio.run(
         ingest_conversations(
             config=config,
@@ -870,10 +664,6 @@ def ingest_from_file(
         )
     )
 
-
-# =============================================================================
-# Aliases (preferred naming)
-# =============================================================================
 
 seed_conversations = ingest_conversations
 seed_from_file = ingest_from_file

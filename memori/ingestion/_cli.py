@@ -18,8 +18,6 @@ from memori._config import Config
 
 
 class Manager:
-    """CLI Manager for ingestion command."""
-
     def __init__(self, config: Config):
         self.config = config
         self.cli = Cli(config)
@@ -49,13 +47,12 @@ class Manager:
         self.cli.print("  MEMORI_COCKROACHDB_CONNECTION_STRING  Database connection")
 
     def execute(self):
-        args = sys.argv[2:]  # Skip 'memori' and 'ingest'
+        args = sys.argv[2:]
 
         if not args:
             self.usage()
             return
 
-        # Parse arguments
         file_path = None
         entity_id = None
         process_id = None
@@ -91,13 +88,11 @@ class Manager:
             self.usage()
             return
 
-        # Validate file exists
         path = Path(file_path)
         if not path.exists():
             self.cli.print(f"Error: File not found: {file_path}")
             return
 
-        # Load and validate file
         try:
             with open(path) as f:
                 data = json.load(f)
@@ -105,7 +100,6 @@ class Manager:
             self.cli.print(f"Error: Invalid JSON: {e}")
             return
 
-        # Extract and validate entity_id
         final_entity_id = entity_id or data.get("entity_id")
         if not final_entity_id:
             self.cli.print(
@@ -113,16 +107,13 @@ class Manager:
             )
             return
 
-        # Extract process_id
         final_process_id = process_id or data.get("process_id")
 
-        # Get conversations
         conversations = data.get("conversations", [])
         if not conversations:
             self.cli.print("Error: No conversations found in file")
             return
 
-        # Calculate stats
         total_messages = sum(len(c.get("messages", [])) for c in conversations)
 
         self.cli.print(f"File: {file_path}")
@@ -138,14 +129,12 @@ class Manager:
             self._print_preview(conversations[:3])
             return
 
-        # Check for API key
         if not os.environ.get("MEMORI_API_KEY"):
             self.cli.print(
                 "Warning: MEMORI_API_KEY not set - running in anonymous mode"
             )
             self.cli.print("")
 
-        # Check for database connection
         if not os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING"):
             self.cli.print("Error: MEMORI_COCKROACHDB_CONNECTION_STRING not set")
             self.cli.print(
@@ -153,7 +142,6 @@ class Manager:
             )
             return
 
-        # Run ingestion
         self._run_ingestion(
             file_path=file_path,
             entity_id=final_entity_id,
@@ -163,7 +151,6 @@ class Manager:
         )
 
     def _print_preview(self, conversations):
-        """Print preview of first few conversations."""
         self.cli.print("Preview of conversations:")
         self.cli.print("-" * 50)
 
@@ -172,7 +159,6 @@ class Manager:
             messages = conv.get("messages", [])
             self.cli.print(f"  {conv_id}: {len(messages)} messages")
 
-            # Show first message preview
             if messages:
                 first_msg = messages[0]
                 content = first_msg.get("content", "")[:50]
@@ -189,14 +175,12 @@ class Manager:
         batch_size: int,
         total_conversations: int,
     ):
-        """Run the actual ingestion."""
         from memori import Memori
         from memori.ingestion import ingest_from_file
 
         self.cli.print("Starting ingestion...")
         self.cli.print("")
 
-        # Progress tracking
         last_percent = -1
 
         def on_progress(processed, total, result):
@@ -209,13 +193,10 @@ class Manager:
                 last_percent = percent
 
         try:
-            # Initialize Memori
             m = Memori()
 
-            # Get the driver from config
             driver = m.config.storage.driver
 
-            # Run ingestion
             result = ingest_from_file(
                 config=m.config,
                 driver=driver,
@@ -226,8 +207,7 @@ class Manager:
                 on_progress=on_progress,
             )
 
-            # Print results
-            print("")  # New line after progress bar
+            print("")
             self.cli.print("")
             self.cli.print("=" * 50)
             self.cli.print("INGESTION COMPLETE")
