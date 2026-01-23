@@ -12,7 +12,6 @@ import copy
 import inspect
 import json
 import logging
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast
 
 from google.protobuf import json_format
