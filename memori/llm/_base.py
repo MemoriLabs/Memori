@@ -13,7 +13,7 @@ import inspect
 import json
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from google.protobuf import json_format
 
@@ -47,7 +47,10 @@ def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object]) -
     Prefer rank_score when present; fall back to similarity.
     """
     if isinstance(fact, Mapping):
-        raw = fact.get("rank_score", fact.get("similarity", 0.0))
+        fact_map = cast(Mapping[str, object], fact)
+        raw = fact_map.get("rank_score")
+        if raw is None:
+            raw = fact_map.get("similarity", 0.0)
     else:
         raw = fact.rank_score
     if raw is None:
@@ -55,7 +58,7 @@ def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object]) -
     if isinstance(raw, (int, float)):
         return float(raw)
     try:
-        return float(raw)
+        return float(cast(Any, raw))
     except (TypeError, ValueError):
         return 0.0
 
@@ -594,11 +597,15 @@ class BaseInvoke:
         lines: list[str] = []
         for fact in facts:
             if isinstance(fact, Mapping):
-                content = fact.get("content")
-                date_created = fact.get("date_created")
-            else:
+                fact_map = cast(Mapping[str, object], fact)
+                content = fact_map.get("content")
+                date_created = fact_map.get("date_created")
+            elif hasattr(fact, "content") and hasattr(fact, "date_created"):
                 content = fact.content
                 date_created = fact.date_created
+            else:
+                continue
+
             if not content:
                 continue
             ts = format_date_created(date_created)
