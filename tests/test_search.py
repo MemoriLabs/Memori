@@ -478,12 +478,12 @@ def test_search_facts_candidates_success():
     candidates = FactCandidates(
         facts=[
             FactCandidate(
-                id="a",
+                id=1,
                 content="Fact A",
                 score=0.99,
             ),
             FactCandidate(
-                id="b",
+                id=2,
                 content="Fact B",
                 score=0.5,
             ),
@@ -493,7 +493,7 @@ def test_search_facts_candidates_success():
     result = search_facts(candidates=candidates, limit=1)
 
     assert len(result) == 1
-    assert result[0].id == "a"
+    assert result[0].id == 1
     assert result[0].content == "Fact A"
     assert isinstance(result[0].similarity, float)
 
@@ -502,12 +502,12 @@ def test_search_facts_candidates_can_rerank_with_query_text():
     candidates = FactCandidates(
         facts=[
             FactCandidate(
-                id="a",
+                id=1,
                 content="Completely unrelated",
                 score=0.9,
             ),
             FactCandidate(
-                id="b",
+                id=2,
                 content="This mentions blue explicitly",
                 score=0.8,
             ),
@@ -520,4 +520,4 @@ def test_search_facts_candidates_can_rerank_with_query_text():
         query_text="blue",
     )
     assert len(result) == 1
-    assert result[0].id == "b"
+    assert result[0].id == 2

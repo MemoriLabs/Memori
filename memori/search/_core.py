@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _candidate_pool_from_candidates(
     candidates: FactCandidates, *, limit: int, query_text: str | None
 ) -> tuple[
-    list[int], dict[int, float], dict[int, str], dict[int, str], dict[int, dict]
+    list[int], dict[int, float], dict[int, str], dict[int, int], dict[int, dict]
 ]:
     facts = candidates.facts
     if not facts:
@@ -232,7 +232,7 @@ def search_entity_facts_core(
         remapped: list[FactSearchResult] = []
         for row in facts_with_similarity:
             rid = row.id
-            if isinstance(rid, int) and rid in idx_to_original_id:  # type: ignore[name-defined]
+            if rid in idx_to_original_id:  # type: ignore[name-defined]
                 remapped.append(
                     FactSearchResult(
                         id=idx_to_original_id[rid],  # type: ignore[name-defined]
