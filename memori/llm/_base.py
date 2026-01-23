@@ -12,7 +12,8 @@ import copy
 import inspect
 import json
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from google.protobuf import json_format
 
@@ -39,12 +40,14 @@ from memori.llm._utils import (
 logger = logging.getLogger(__name__)
 
 
-def _score_for_recall_threshold(fact: FactSearchResult | dict[str, Any]) -> float:
-    if isinstance(fact, dict):
-        d = cast(dict[str, Any], fact)
-        raw = d.get("rank_score")
-        if raw is None:
-            raw = d.get("similarity", 0.0)
+def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object]) -> float:
+    """
+    Extract a numeric score for recall relevance thresholding.
+
+    Prefer rank_score when present; fall back to similarity.
+    """
+    if isinstance(fact, Mapping):
+        raw = fact.get("rank_score", fact.get("similarity", 0.0))
     else:
         raw = fact.rank_score
     if raw is None:
@@ -52,7 +55,7 @@ def _score_for_recall_threshold(fact: FactSearchResult | dict[str, Any]) -> floa
     if isinstance(raw, (int, float)):
         return float(raw)
     try:
-        return float(raw)  # type: ignore[arg-type]
+        return float(raw)
     except (TypeError, ValueError):
         return 0.0
 
@@ -586,14 +589,13 @@ class BaseInvoke:
                 self._append_to_google_system_instruction_obj(config, context)
 
     def _format_recalled_fact_lines(
-        self, facts: list[FactSearchResult | dict[str, Any]]
+        self, facts: list[FactSearchResult | Mapping[str, object]]
     ) -> list[str]:
         lines: list[str] = []
         for fact in facts:
-            if isinstance(fact, dict):
-                d = cast(dict[str, Any], fact)
-                content = d.get("content")
-                date_created = d.get("date_created")
+            if isinstance(fact, Mapping):
+                content = fact.get("content")
+                date_created = fact.get("date_created")
             else:
                 content = fact.content
                 date_created = fact.date_created

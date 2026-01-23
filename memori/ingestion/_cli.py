@@ -8,6 +8,7 @@ r"""
                        memorilabs.ai
 """
 
+import argparse
 import json
 import os
 import sys
@@ -22,110 +23,99 @@ class Manager:
         self.config = config
         self.cli = Cli(config)
 
+    def _create_parser(self) -> argparse.ArgumentParser:
+        parser = argparse.ArgumentParser(
+            prog="python -m memori seed",
+            description="Bulk seed conversations for memory creation",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog="""
+File format:
+  {
+    "entity_id": "user-123",
+    "conversations": [
+      {"id": "conv-1", "messages": [...]}
+    ]
+  }
+
+Environment variables:
+  MEMORI_API_KEY                       Required for AA access
+  MEMORI_COCKROACHDB_CONNECTION_STRING Database connection
+""",
+        )
+        parser.add_argument(
+            "file",
+            metavar="<file.json>",
+            help="Path to JSON file containing conversations",
+        )
+        parser.add_argument(
+            "--entity-id",
+            metavar="ID",
+            help="Entity ID (overrides file value)",
+        )
+        parser.add_argument(
+            "--process-id",
+            metavar="ID",
+            help="Process ID (overrides file value)",
+        )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            default=10,
+            metavar="N",
+            help="Concurrent requests (default: 10)",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Validate file without seeding",
+        )
+        return parser
+
     def usage(self):
-        self.cli.print("Usage: python -m memori seed <file.json> [options]")
-        self.cli.print("")
-        self.cli.print("Arguments:")
-        self.cli.print("  <file.json>       Path to JSON file containing conversations")
-        self.cli.print("")
-        self.cli.print("Options:")
-        self.cli.print("  --entity-id ID    Entity ID (overrides file value)")
-        self.cli.print("  --process-id ID   Process ID (overrides file value)")
-        self.cli.print("  --batch-size N    Concurrent requests (default: 10)")
-        self.cli.print("  --dry-run         Validate file without ingesting")
-        self.cli.print("")
-        self.cli.print("File format:")
-        self.cli.print("  {")
-        self.cli.print('    "entity_id": "user-123",')
-        self.cli.print('    "conversations": [')
-        self.cli.print('      {"id": "conv-1", "messages": [...]}')
-        self.cli.print("    ]")
-        self.cli.print("  }")
-        self.cli.print("")
-        self.cli.print("Environment:")
-        self.cli.print("  MEMORI_API_KEY                    Required for AA access")
-        self.cli.print("  MEMORI_COCKROACHDB_CONNECTION_STRING  Database connection")
+        self._create_parser().print_help()
 
     def execute(self):
-        args = sys.argv[2:]
+        parser = self._create_parser()
+        args = parser.parse_args(sys.argv[2:])
 
-        if not args:
-            self.usage()
-            return
-
-        file_path = None
-        entity_id = None
-        process_id = None
-        batch_size = 10
-        dry_run = False
-
-        i = 0
-        while i < len(args):
-            arg = args[i]
-
-            if arg == "--entity-id" and i + 1 < len(args):
-                entity_id = args[i + 1]
-                i += 2
-            elif arg == "--process-id" and i + 1 < len(args):
-                process_id = args[i + 1]
-                i += 2
-            elif arg == "--batch-size" and i + 1 < len(args):
-                batch_size = int(args[i + 1])
-                i += 2
-            elif arg == "--dry-run":
-                dry_run = True
-                i += 1
-            elif arg.startswith("--"):
-                self.cli.print(f"Unknown option: {arg}")
-                self.usage()
-                return
-            else:
-                file_path = arg
-                i += 1
-
-        if not file_path:
-            self.cli.print("Error: No file specified")
-            self.usage()
-            return
-
-        path = Path(file_path)
+        path = Path(args.file)
         if not path.exists():
-            self.cli.print(f"Error: File not found: {file_path}")
-            return
+            self.cli.print(f"Error: File not found: {args.file}")
+            sys.exit(1)
 
         try:
             with open(path) as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
             self.cli.print(f"Error: Invalid JSON: {e}")
-            return
+            sys.exit(1)
 
-        final_entity_id = entity_id or data.get("entity_id")
-        if not final_entity_id:
+        entity_id = args.entity_id or data.get("entity_id")
+        if not entity_id:
             self.cli.print(
                 "Error: entity_id must be provided via --entity-id or in file"
             )
-            return
+            sys.exit(1)
 
-        final_process_id = process_id or data.get("process_id")
+        process_id = args.process_id or data.get("process_id")
 
         conversations = data.get("conversations", [])
         if not conversations:
             self.cli.print("Error: No conversations found in file")
-            return
+            sys.exit(1)
 
         total_messages = sum(len(c.get("messages", [])) for c in conversations)
 
-        self.cli.print(f"File: {file_path}")
-        self.cli.print(f"Entity ID: {final_entity_id}")
-        self.cli.print(f"Process ID: {final_process_id or 'None'}")
+        self.cli.print(f"File: {args.file}")
+        self.cli.print(f"Entity ID: {entity_id}")
+        self.cli.print(f"Process ID: {process_id or 'None'}")
         self.cli.print(f"Conversations: {len(conversations)}")
         self.cli.print(f"Total messages: {total_messages}")
-        self.cli.print(f"Batch size: {batch_size}")
+        self.cli.print(f"Batch size: {args.batch_size}")
         self.cli.print("")
 
-        if dry_run:
-            self.cli.print("Dry run - validation complete, no data ingested.")
+        if args.dry_run:
+            self.cli.print("Dry run - validation complete, no data seeded.")
             self._print_preview(conversations[:3])
             return
 
@@ -140,14 +130,13 @@ class Manager:
             self.cli.print(
                 "Set this environment variable to your database connection string."
             )
-            return
+            sys.exit(1)
 
-        self._run_ingestion(
-            file_path=file_path,
-            entity_id=final_entity_id,
-            process_id=final_process_id,
-            batch_size=batch_size,
-            total_conversations=len(conversations),
+        self._run_seeding(
+            file_path=args.file,
+            entity_id=entity_id,
+            process_id=process_id,
+            batch_size=args.batch_size,
         )
 
     def _print_preview(self, conversations):
@@ -167,18 +156,17 @@ class Manager:
         if len(conversations) < 3:
             self.cli.print("  ... and more")
 
-    def _run_ingestion(
+    def _run_seeding(
         self,
         file_path: str,
         entity_id: str,
-        process_id: str,
+        process_id: str | None,
         batch_size: int,
-        total_conversations: int,
     ):
         from memori import Memori
         from memori.ingestion import ingest_from_file
 
-        self.cli.print("Starting ingestion...")
+        self.cli.print("Starting seeding...")
         self.cli.print("")
 
         last_percent = -1
@@ -210,7 +198,7 @@ class Manager:
             print("")
             self.cli.print("")
             self.cli.print("=" * 50)
-            self.cli.print("INGESTION COMPLETE")
+            self.cli.print("SEEDING COMPLETE")
             self.cli.print("=" * 50)
             self.cli.print(f"Total conversations: {result.total}")
             self.cli.print(f"Successful: {result.successful}")
@@ -227,5 +215,5 @@ class Manager:
                         self.cli.print(f"  - {conv.conversation_id}: {conv.error}")
 
         except Exception as e:
-            self.cli.print(f"\nError during ingestion: {e}")
+            self.cli.print(f"\nError during seeding: {e}")
             raise
