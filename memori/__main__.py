@@ -32,8 +32,8 @@ def main():
             "params": ["cluster", "<start | claim | delete>"],
             "obj": CockroachDBClusterManager,
         },
-        "ingest": {
-            "description": "Bulk ingest conversations for memory seeding",
+        "seed": {
+            "description": "Bulk seed conversations for memory creation",
             "params": ["<file.json>", "[options]"],
             "obj": IngestionManager,
         },

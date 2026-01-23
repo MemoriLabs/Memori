@@ -8,6 +8,10 @@ Bulk import historical conversations to bootstrap user memories. Perfect for onb
 
 Memory seeding processes historical conversations through Memori's Advanced Augmentation service to extract facts, preferences, skills, and events - just like real-time conversations, but in bulk.
 
+> **Important:**
+> - **API Key Required**: Memory seeding requires a valid `MEMORI_API_KEY` to access the Advanced Augmentation service.
+> - **Quota Usage**: Each conversation seeded counts against your Memori creation quota, just like real-time memory creation.
+
 ### How It Works
 
 ```mermaid
@@ -217,7 +221,7 @@ config = SeedConfig(chunk_large_conversations=False)
 Seed from a JSON file:
 
 ```bash
-python -m memori ingest path/to/conversations.json --entity-id user-123
+python -m memori seed path/to/conversations.json --entity-id user-123
 ```
 
 **JSON file format:**

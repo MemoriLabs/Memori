@@ -21,7 +21,7 @@ from typing import Any
 
 from memori._config import Config
 from memori._network import Api
-from memori.embeddings import embed_texts_async
+from memori.embeddings import embed_texts
 from memori.memory._struct import Memories
 from memori.memory.augmentation._models import (
     AttributionData,
@@ -451,10 +451,10 @@ class IngestionClient:
             ]
             if facts:
                 embeddings_config = self.config.embeddings
-                embeddings = await embed_texts_async(
+                embeddings = await embed_texts(
                     facts,
                     model=embeddings_config.model,
-                    fallback_dimension=embeddings_config.fallback_dimension,
+                    async_=True,
                 )
                 combined_response["entity"]["facts"] = facts
                 combined_response["entity"]["fact_embeddings"] = embeddings
@@ -499,10 +499,10 @@ class IngestionClient:
 
         if facts:
             embeddings_config = self.config.embeddings
-            fact_embeddings = await embed_texts_async(
+            fact_embeddings = await embed_texts(
                 facts,
                 model=embeddings_config.model,
-                fallback_dimension=embeddings_config.fallback_dimension,
+                async_=True,
             )
             response["entity"]["fact_embeddings"] = fact_embeddings
             response["entity"]["facts"] = facts
@@ -527,10 +527,10 @@ class IngestionClient:
 
             if facts_from_triples:
                 embeddings_config = self.config.embeddings
-                embeddings_from_triples = await embed_texts_async(
+                embeddings_from_triples = await embed_texts(
                     facts_from_triples,
                     model=embeddings_config.model,
-                    fallback_dimension=embeddings_config.fallback_dimension,
+                    async_=True,
                 )
                 facts = (facts or []) + facts_from_triples
                 embeddings = (embeddings or []) + embeddings_from_triples

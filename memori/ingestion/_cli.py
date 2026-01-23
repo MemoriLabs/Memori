@@ -23,7 +23,7 @@ class Manager:
         self.cli = Cli(config)
 
     def usage(self):
-        self.cli.print("Usage: python -m memori ingest <file.json> [options]")
+        self.cli.print("Usage: python -m memori seed <file.json> [options]")
         self.cli.print("")
         self.cli.print("Arguments:")
         self.cli.print("  <file.json>       Path to JSON file containing conversations")
@@ -43,7 +43,8 @@ class Manager:
         self.cli.print("  }")
         self.cli.print("")
         self.cli.print("Environment:")
-        self.cli.print("  MEMORI_API_KEY    Required for AA access")
+        self.cli.print("  MEMORI_API_KEY                    Required for AA access")
+        self.cli.print("  MEMORI_COCKROACHDB_CONNECTION_STRING  Database connection")
 
     def execute(self):
         args = sys.argv[2:]
@@ -133,6 +134,13 @@ class Manager:
                 "Warning: MEMORI_API_KEY not set - running in anonymous mode"
             )
             self.cli.print("")
+
+        if not os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING"):
+            self.cli.print("Error: MEMORI_COCKROACHDB_CONNECTION_STRING not set")
+            self.cli.print(
+                "Set this environment variable to your database connection string."
+            )
+            return
 
         self._run_ingestion(
             file_path=file_path,
