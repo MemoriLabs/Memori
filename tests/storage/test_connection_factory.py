@@ -96,3 +96,46 @@ def test_connection_lifecycle_close(mocker):
     adapter.close()
     mock_conn.close.assert_called_once()
     assert adapter.conn is None
+
+
+def test_connection_factory_supports_release_tuple(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback", "close"])
+    mock_conn.__module__ = "psycopg2"
+    type(mock_conn).__module__ = "psycopg2"
+
+    release = mocker.Mock()
+
+    def factory():
+        return mock_conn, release
+
+    adapter = DBAPIAdapter(factory)
+
+    adapter.close()
+    release.assert_called_once()
+    mock_conn.close.assert_not_called()
+    assert adapter.conn is None
+
+
+def test_connection_factory_supports_context_manager(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback", "close"])
+    mock_conn.__module__ = "psycopg2"
+    type(mock_conn).__module__ = "psycopg2"
+
+    release = mocker.Mock()
+
+    class PoolConn:
+        def __enter__(self):
+            return mock_conn
+
+        def __exit__(self, exc_type, exc, tb):
+            release()
+
+    def factory():
+        return PoolConn()
+
+    adapter = DBAPIAdapter(factory)
+    adapter.close()
+
+    release.assert_called_once()
+    mock_conn.close.assert_not_called()
+    assert adapter.conn is None
