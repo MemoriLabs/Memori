@@ -287,7 +287,7 @@ def test_embed_texts_custom_model():
         result = embed_texts("test", model="custom-model")
 
         mock_get.assert_called_once_with("custom-model")
-        mock_embedder.embed.assert_called_once_with(["test"])
+        mock_embedder.embed.assert_called_once_with(["test"], fallback_dimension=768)
         assert len(result) == 1
 
 
