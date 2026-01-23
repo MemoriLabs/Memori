@@ -10,11 +10,32 @@ r"""
 
 import json
 import struct
+from collections.abc import Iterator, Mapping
 from unittest.mock import MagicMock
 
 import numpy as np
 
-from memori.search import find_similar_embeddings, parse_embedding, search_entity_facts
+from memori.search import (
+    FactCandidate,
+    FactCandidates,
+    find_similar_embeddings,
+    parse_embedding,
+    search_facts,
+)
+
+
+class _MappingRow(Mapping[str, object]):
+    def __init__(self, data: dict[str, object]) -> None:
+        self._data = data
+
+    def __getitem__(self, key: str) -> object:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
 
 def test_parse_embedding_from_bytes_postgresql():
@@ -211,20 +232,20 @@ def test_search_entity_facts_success():
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=2,
         embeddings_limit=1000,
     )
 
     assert len(result) == 2
-    assert result[0]["id"] == 1
-    assert result[0]["content"] == "Fact one"
-    assert result[0]["date_created"] == "2026-01-01 10:30:00"
-    assert "similarity" in result[0]
-    assert isinstance(result[0]["similarity"], float)
+    assert result[0].id == 1
+    assert result[0].content == "Fact one"
+    assert result[0].date_created == "2026-01-01 10:30:00"
+    assert isinstance(result[0].similarity, float)
+    assert isinstance(result[0].rank_score, float)
 
     mock_driver.get_embeddings.assert_called_once_with(42, 1000)
     mock_driver.get_facts_by_ids.assert_called_once()
@@ -235,10 +256,10 @@ def test_search_entity_facts_no_embeddings():
     mock_driver.get_embeddings.return_value = []
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=5,
         embeddings_limit=1000,
     )
@@ -255,10 +276,10 @@ def test_search_entity_facts_no_similar_results():
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=5,
         embeddings_limit=1000,
     )
@@ -278,10 +299,10 @@ def test_search_entity_facts_respects_limit():
     ]
 
     query_embedding = [1.0, 0.0, 0.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=3,
         embeddings_limit=1000,
     )
@@ -299,19 +320,19 @@ def test_search_entity_facts_returns_required_keys():
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=5,
         embeddings_limit=1000,
     )
 
     assert len(result) == 1
-    assert "id" in result[0]
-    assert "content" in result[0]
-    assert "similarity" in result[0]
-    assert "date_created" in result[0]
+    assert result[0].id == 1
+    assert result[0].content == "Fact one"
+    assert result[0].date_created == "2026-01-01 10:30:00"
+    assert isinstance(result[0].similarity, float)
 
 
 def test_search_entity_facts_handles_missing_content():
@@ -325,16 +346,16 @@ def test_search_entity_facts_handles_missing_content():
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=2,
         embeddings_limit=1000,
     )
 
     assert len(result) == 1
-    assert result[0]["id"] == 1
+    assert result[0].id == 1
 
 
 def test_search_entity_facts_maintains_similarity_order():
@@ -351,18 +372,18 @@ def test_search_entity_facts_maintains_similarity_order():
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=3,
         embeddings_limit=1000,
     )
 
     assert len(result) == 3
-    assert result[0]["id"] == 1
-    assert result[0]["similarity"] > result[1]["similarity"]
-    assert result[1]["similarity"] > result[2]["similarity"]
+    assert result[0].id == 1
+    assert result[0].similarity > result[1].similarity
+    assert result[1].similarity > result[2].similarity
 
 
 def test_search_entity_facts_can_rerank_with_query_text(mocker):
@@ -383,18 +404,16 @@ def test_search_entity_facts_can_rerank_with_query_text(mocker):
     )
 
     query_embedding = [1.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=1,
         embeddings_limit=1000,
         query_text="blue",
     )
     assert len(result) == 1
-    assert result[0]["id"] == 2
-    assert "lexical_score" in result[0]
-    assert "rank_score" in result[0]
+    assert result[0].id == 2
 
 
 def test_search_entity_facts_with_different_db_formats():
@@ -411,13 +430,100 @@ def test_search_entity_facts_with_different_db_formats():
     ]
 
     query_embedding = [1.0, 0.0, 0.0]
-    result = search_entity_facts(
+    result = search_facts(
         mock_driver,
-        entity_id=42,
-        query_embedding=query_embedding,
+        42,
+        query_embedding,
         limit=3,
         embeddings_limit=1000,
     )
 
     assert len(result) == 3
-    assert result[0]["id"] == 1
+    assert result[0].id == 1
+
+
+def test_search_entity_facts_accepts_mapping_rows_for_content(mocker):
+    mock_driver = MagicMock()
+    mock_driver.get_embeddings.return_value = [
+        {"id": 1, "content_embedding": [1.0, 0.0]},
+        {"id": 2, "content_embedding": [0.0, 1.0]},
+    ]
+    mock_driver.get_facts_by_ids.return_value = [
+        _MappingRow({"id": 1, "content": "USER_ID has favorite color blue"}),
+        _MappingRow({"id": 2, "content": "USER_ID lives in Paris"}),
+    ]
+
+    # Force semantic order so lexical has something to rerank.
+    mocker.patch(
+        "memori.search._api.find_similar_embeddings",
+        return_value=[(2, 0.8), (1, 0.7)],
+    )
+
+    query_embedding = [1.0, 0.0]
+    result = search_facts(
+        mock_driver,
+        42,
+        query_embedding,
+        limit=2,
+        embeddings_limit=1000,
+        query_text="favorite color",
+    )
+
+    assert len(result) == 2
+    assert result[0].id == 1
+    assert result[0].similarity >= 0.0
+
+
+def test_search_facts_candidates_success():
+    candidates = FactCandidates(
+        facts=[
+            FactCandidate(
+                id=1,
+                content="Fact A",
+                score=0.99,
+                date_created="2026-01-01 10:30:00",
+            ),
+            FactCandidate(
+                id=2,
+                content="Fact B",
+                score=0.5,
+                date_created="2026-01-02 11:15:00",
+            ),
+        ]
+    )
+
+    result = search_facts(candidates=candidates, limit=1)
+
+    assert len(result) == 1
+    assert result[0].id == 1
+    assert result[0].content == "Fact A"
+    assert isinstance(result[0].similarity, float)
+    assert result[0].date_created == "2026-01-01 10:30:00"
+
+
+def test_search_facts_candidates_can_rerank_with_query_text():
+    candidates = FactCandidates(
+        facts=[
+            FactCandidate(
+                id=1,
+                content="Completely unrelated",
+                score=0.9,
+                date_created="2026-01-01 10:30:00",
+            ),
+            FactCandidate(
+                id=2,
+                content="This mentions blue explicitly",
+                score=0.8,
+                date_created="2026-01-02 11:15:00",
+            ),
+        ]
+    )
+
+    result = search_facts(
+        candidates=candidates,
+        limit=1,
+        query_text="blue",
+    )
+    assert len(result) == 1
+    assert result[0].id == 2
+    assert result[0].date_created == "2026-01-02 11:15:00"

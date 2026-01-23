@@ -16,7 +16,8 @@ from sqlalchemy.exc import OperationalError
 from memori._config import Config
 from memori._logging import truncate
 from memori.embeddings import embed_texts
-from memori.search import search_entity_facts
+from memori.search import search_facts as search_facts_api
+from memori.search._types import FactSearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +56,14 @@ class Recall:
 
     def _search_with_retries(
         self, *, entity_id: int, query: str, query_embedding: list[float], limit: int
-    ) -> list[dict]:
-        facts: list[dict] = []
+    ) -> list[FactSearchResult]:
+        facts: list[FactSearchResult] = []
         for attempt in range(MAX_RETRIES):
             try:
                 logger.debug(
-                    f"Executing search_entity_facts - entity_id: {entity_id}, limit: {limit}, embeddings_limit: {self.config.recall_embeddings_limit}"
+                    f"Executing search_facts - entity_id: {entity_id}, limit: {limit}, embeddings_limit: {self.config.recall_embeddings_limit}"
                 )
-                facts = search_entity_facts(
+                facts = search_facts_api(
                     self.config.storage.driver.entity_fact,
                     entity_id,
                     query_embedding,
@@ -85,7 +86,7 @@ class Recall:
 
     def search_facts(
         self, query: str, limit: int | None = None, entity_id: int | None = None
-    ) -> list[dict]:
+    ) -> list[FactSearchResult]:
         logger.debug(
             "Recall started - query: %s (%d chars), limit: %s",
             truncate(query, 50),

@@ -513,7 +513,10 @@ def test_inject_recalled_facts_success():
     assert len(result["messages"]) == 2
     assert result["messages"][0]["role"] == "system"
     assert "User likes pizza" in result["messages"][0]["content"]
-    assert "User likes pizza at 2026-01-01 10:30" in result["messages"][0]["content"]
+    assert (
+        "User likes pizza. Stated at 2026-01-01 10:30"
+        in result["messages"][0]["content"]
+    )
     assert "User likes coding" in result["messages"][0]["content"]
     assert result["messages"][1]["role"] == "user"
 

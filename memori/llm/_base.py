@@ -12,6 +12,7 @@ import copy
 import inspect
 import json
 import logging
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from google.protobuf import json_format
@@ -19,6 +20,7 @@ from google.protobuf import json_format
 from memori._config import Config
 from memori._logging import truncate
 from memori._utils import format_date_created, merge_chunk
+from memori.search._types import FactSearchResult
 
 if TYPE_CHECKING:
     pass
@@ -36,6 +38,26 @@ from memori.llm._utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object]) -> float:
+    """
+    Extract a numeric score for recall relevance thresholding.
+
+    Prefer rank_score when present; fall back to similarity.
+    """
+    if isinstance(fact, Mapping):
+        raw = fact.get("rank_score", fact.get("similarity", 0.0))
+    else:
+        raw = fact.rank_score
+    if raw is None:
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 class BaseClient:
@@ -566,14 +588,21 @@ class BaseInvoke:
             else:
                 self._append_to_google_system_instruction_obj(config, context)
 
-    def _format_recalled_fact_lines(self, facts: list[dict]) -> list[str]:
+    def _format_recalled_fact_lines(
+        self, facts: list[FactSearchResult | Mapping[str, object]]
+    ) -> list[str]:
         lines: list[str] = []
         for fact in facts:
-            content = fact.get("content")
+            if isinstance(fact, Mapping):
+                content = fact.get("content")
+                date_created = fact.get("date_created")
+            else:
+                content = fact.content
+                date_created = fact.date_created
             if not content:
                 continue
-            ts = format_date_created(fact.get("date_created"))
-            suffix = f" at {ts}" if ts else ""
+            ts = format_date_created(date_created)
+            suffix = f". Stated at {ts}" if ts else ""
             lines.append(f"- {content}{suffix}")
         return lines
 
@@ -605,7 +634,7 @@ class BaseInvoke:
         relevant_facts = [
             f
             for f in facts
-            if f.get("similarity", 0) >= self.config.recall_relevance_threshold
+            if _score_for_recall_threshold(f) >= self.config.recall_relevance_threshold
         ]
 
         if not relevant_facts:
