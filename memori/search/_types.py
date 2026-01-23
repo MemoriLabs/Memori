@@ -6,6 +6,7 @@ class FactCandidate:
     id: int
     content: str
     score: float
+    date_created: str
 
 
 @dataclass(frozen=True)

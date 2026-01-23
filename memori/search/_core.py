@@ -21,6 +21,7 @@ def _candidate_pool_from_candidates(
     idx_to_original_id = {i: r.id for i, r in enumerate(facts)}
     content_map = {i: r.content for i, r in enumerate(facts)}
     similarities_map = {i: float(r.score) for i, r in enumerate(facts)}
+    date_created_map = {i: r.date_created for i, r in enumerate(facts)}
 
     cand_limit = _candidate_limit(
         limit=limit, total_embeddings=len(facts), query_text=query_text
@@ -31,9 +32,13 @@ def _candidate_pool_from_candidates(
         reverse=True,
     )[:cand_limit]
 
-    # Mimic DB shape just enough for _build_fact_rows (date_created is optional).
+    # Mimic DB shape just enough for _build_fact_rows.
     fact_rows: dict[int, dict] = {
-        i: {"id": idx_to_original_id.get(i)} for i in candidate_ids
+        i: {
+            "id": idx_to_original_id.get(i),
+            "date_created": date_created_map.get(i, ""),
+        }
+        for i in candidate_ids
     }
 
     return candidate_ids, similarities_map, content_map, idx_to_original_id, fact_rows
