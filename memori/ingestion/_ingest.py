@@ -203,7 +203,9 @@ class IngestionClient:
         self.on_progress = on_progress
         self.api = Api(config)
 
-    def _build_payload(self, messages: list[dict[str, Any]], summary: str | None = None) -> dict[str, Any]:
+    def _build_payload(
+        self, messages: list[dict[str, Any]], summary: str | None = None
+    ) -> dict[str, Any]:
         dialect = self.driver.conversation.conn.get_dialect()
 
         conversation = ConversationData(
@@ -245,7 +247,9 @@ class IngestionClient:
             or total_chars > self.ingestion_config.max_chars_per_request
         )
 
-    def _chunk_messages(self, messages: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    def _chunk_messages(
+        self, messages: list[dict[str, Any]]
+    ) -> list[list[dict[str, Any]]]:
         max_msgs = self.ingestion_config.max_messages_per_request
         max_chars = self.ingestion_config.max_chars_per_request
 
@@ -301,7 +305,9 @@ class IngestionClient:
             raise last_error
         raise RuntimeError("No retries attempted")
 
-    async def _process_single_conversation(self, conversation: dict[str, Any]) -> ConversationResult:
+    async def _process_single_conversation(
+        self, conversation: dict[str, Any]
+    ) -> ConversationResult:
         conv_id = conversation.get("id")
         messages = conversation.get("messages", [])
 
