@@ -197,6 +197,7 @@ class Memori:
                 on_progress=on_progress,
             )
         )
+
     def close(self) -> None:
         """Close the underlying storage connection/session, if any.
 
