@@ -66,7 +66,7 @@ class Manager:
 
         db_writer = get_db_writer()
         db_writer.configure(self)
-        db_writer.ensure_started(self.conn_factory)
+        db_writer.ensure_started()
 
         return self
 
@@ -153,9 +153,12 @@ class Manager:
 
     def _enqueue_writes(self, writes: list[dict[str, Any]]) -> None:
         db_writer = get_db_writer()
+        if self.conn_factory is None:
+            return
 
         for write_op in writes:
             task = WriteTask(
+                conn_factory=self.conn_factory,
                 method_path=write_op["method_path"],
                 args=write_op["args"],
                 kwargs=write_op["kwargs"],

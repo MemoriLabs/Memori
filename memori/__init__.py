@@ -197,6 +197,26 @@ class Memori:
                 on_progress=on_progress,
             )
         )
+    def close(self) -> None:
+        """Close the underlying storage connection/session, if any.
+
+        This is especially important for long-running processes (e.g. web servers)
+        where you want to explicitly release database connections.
+        """
+        storage = getattr(self.config, "storage", None)
+        adapter = getattr(storage, "adapter", None) if storage is not None else None
+        if adapter is None:
+            return
+        try:
+            adapter.close()
+        except Exception:  # nosec B110
+            pass
+
+    def __enter__(self) -> "Memori":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 
     def embed_texts(self, texts: str | list[str], *, async_: bool = False) -> Any:
         embeddings_cfg = self.config.embeddings

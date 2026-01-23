@@ -185,7 +185,9 @@ def test_manager_wait_for_db_writer_queue():
         test_queue = Queue()
         db_writer.queue = test_queue
 
-        task = WriteTask(method_path="test.method", args=(), kwargs={})
+        task = WriteTask(
+            conn_factory=mock_conn, method_path="test.method", args=(), kwargs={}
+        )
         test_queue.put(task)
 
         with concurrent.futures.ThreadPoolExecutor() as executor:

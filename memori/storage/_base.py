@@ -13,13 +13,75 @@ class BaseStorageAdapter:
     def __init__(self, conn):
         if not callable(conn):
             raise TypeError("conn must be a callable")
-        self.conn = conn()
+        self._release = None
+        self._cm = None
+
+        resource = conn()
+        if isinstance(resource, tuple) and len(resource) == 2 and callable(resource[1]):
+            self.conn = resource[0]
+            self._release = resource[1]
+            return
+
+        # Support factories that return a context manager, e.g.
+        # psycopg_pool.ConnectionPool.connection() which must be exited to
+        # return the connection to the pool.
+        if self._is_managed_resource(resource):
+            self._cm = resource
+            self.conn = resource.__enter__()
+
+            def _release():
+                try:
+                    self._cm.__exit__(None, None, None)
+                finally:
+                    self._cm = None
+
+            self._release = _release
+            return
+
+        self.conn = resource
 
     def close(self):
         if self.conn is not None:
+            if self._release is not None:
+                try:
+                    self._release()
+                finally:
+                    self._release = None
+                    self.conn = None
+                return
+
             if hasattr(self.conn, "close"):
                 self.conn.close()
             self.conn = None
+
+    @staticmethod
+    def _is_managed_resource(obj) -> bool:
+        # Only treat as a managed resource if it looks like a context manager
+        # and does NOT look like a DB connection/session itself.
+        if not (hasattr(obj, "__enter__") and hasattr(obj, "__exit__")):
+            return False
+
+        # DB-API connections commonly have cursor/commit/rollback.
+        if (
+            hasattr(obj, "cursor")
+            and hasattr(obj, "commit")
+            and hasattr(obj, "rollback")
+        ):
+            return False
+
+        # SQLAlchemy Session has get_bind.
+        if hasattr(obj, "get_bind"):
+            return False
+
+        # Django connection has vendor.
+        if hasattr(obj, "vendor"):
+            return False
+
+        # MongoDB clients/dbs have list_collection_names.
+        if hasattr(obj, "list_collection_names"):
+            return False
+
+        return True
 
     def commit(self):
         raise NotImplementedError
