@@ -17,7 +17,6 @@ import numpy as np
 
 from memori.search import (
     FactCandidate,
-    FactCandidates,
     find_similar_embeddings,
     parse_embedding,
     search_facts,
@@ -475,22 +474,20 @@ def test_search_entity_facts_accepts_mapping_rows_for_content(mocker):
 
 
 def test_search_facts_candidates_success():
-    candidates = FactCandidates(
-        facts=[
-            FactCandidate(
-                id=1,
-                content="Fact A",
-                score=0.99,
-                date_created="2026-01-01 10:30:00",
-            ),
-            FactCandidate(
-                id=2,
-                content="Fact B",
-                score=0.5,
-                date_created="2026-01-02 11:15:00",
-            ),
-        ]
-    )
+    candidates = [
+        FactCandidate(
+            id=1,
+            content="Fact A",
+            score=0.99,
+            date_created="2026-01-01 10:30:00",
+        ),
+        FactCandidate(
+            id=2,
+            content="Fact B",
+            score=0.5,
+            date_created="2026-01-02 11:15:00",
+        ),
+    ]
 
     result = search_facts(candidates=candidates, limit=1)
 
@@ -502,22 +499,20 @@ def test_search_facts_candidates_success():
 
 
 def test_search_facts_candidates_can_rerank_with_query_text():
-    candidates = FactCandidates(
-        facts=[
-            FactCandidate(
-                id=1,
-                content="Completely unrelated",
-                score=0.9,
-                date_created="2026-01-01 10:30:00",
-            ),
-            FactCandidate(
-                id=2,
-                content="This mentions blue explicitly",
-                score=0.8,
-                date_created="2026-01-02 11:15:00",
-            ),
-        ]
-    )
+    candidates = [
+        FactCandidate(
+            id=1,
+            content="Completely unrelated",
+            score=0.9,
+            date_created="2026-01-01 10:30:00",
+        ),
+        FactCandidate(
+            id=2,
+            content="This mentions blue explicitly",
+            score=0.8,
+            date_created="2026-01-02 11:15:00",
+        ),
+    ]
 
     result = search_facts(
         candidates=candidates,

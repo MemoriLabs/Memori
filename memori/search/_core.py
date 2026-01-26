@@ -4,27 +4,26 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from memori.search._types import FactCandidates, FactSearchResult
+from memori.search._types import FactCandidate, FactSearchResult
 
 logger = logging.getLogger(__name__)
 
 
 def _candidate_pool_from_candidates(
-    candidates: FactCandidates, *, limit: int, query_text: str | None
+    candidates: list[FactCandidate], *, limit: int, query_text: str | None
 ) -> tuple[
     list[int], dict[int, float], dict[int, str], dict[int, int], dict[int, dict]
 ]:
-    facts = candidates.facts
-    if not facts:
+    if not candidates:
         return [], {}, {}, {}, {}
 
-    idx_to_original_id = {i: r.id for i, r in enumerate(facts)}
-    content_map = {i: r.content for i, r in enumerate(facts)}
-    similarities_map = {i: float(r.score) for i, r in enumerate(facts)}
-    date_created_map = {i: r.date_created for i, r in enumerate(facts)}
+    idx_to_original_id = {i: r.id for i, r in enumerate(candidates)}
+    content_map = {i: r.content for i, r in enumerate(candidates)}
+    similarities_map = {i: float(r.score) for i, r in enumerate(candidates)}
+    date_created_map = {i: r.date_created for i, r in enumerate(candidates)}
 
     cand_limit = _candidate_limit(
-        limit=limit, total_embeddings=len(facts), query_text=query_text
+        limit=limit, total_embeddings=len(candidates), query_text=query_text
     )
     candidate_ids = sorted(
         similarities_map,
@@ -171,13 +170,14 @@ def search_entity_facts_core(
     embeddings_limit: int,
     *,
     query_text: str | None,
-    fact_candidates: FactCandidates | None = None,
+    fact_candidates: list[FactCandidate] | None = None,
     find_similar_embeddings: Callable[
         [list[tuple[int, Any]], list[float], int], list[tuple[int, float]]
     ],
     lexical_scores_for_ids: Callable[..., dict[int, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
 ) -> list[FactSearchResult]:
+    idx_to_original_id: dict[int, int] = {}
     if fact_candidates is not None:
         (
             candidate_ids,
@@ -237,10 +237,10 @@ def search_entity_facts_core(
         remapped: list[FactSearchResult] = []
         for row in facts_with_similarity:
             rid = row.id
-            if rid in idx_to_original_id:  # type: ignore[name-defined]
+            if rid in idx_to_original_id:
                 remapped.append(
                     FactSearchResult(
-                        id=idx_to_original_id[rid],  # type: ignore[name-defined]
+                        id=idx_to_original_id[rid],
                         content=row.content,
                         similarity=row.similarity,
                         rank_score=row.rank_score,

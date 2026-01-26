@@ -10,11 +10,6 @@ class FactCandidate:
 
 
 @dataclass(frozen=True)
-class FactCandidates:
-    facts: list[FactCandidate]
-
-
-@dataclass(frozen=True)
 class FactSearchResult:
     id: int
     content: str

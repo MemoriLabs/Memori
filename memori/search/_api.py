@@ -7,7 +7,7 @@ from memori.search._core import (
 )
 from memori.search._faiss import find_similar_embeddings
 from memori.search._lexical import dense_lexical_weights, lexical_scores_for_ids
-from memori.search._types import FactCandidates, FactSearchResult
+from memori.search._types import FactCandidate, FactSearchResult
 
 
 def search_facts(
@@ -18,13 +18,13 @@ def search_facts(
     embeddings_limit: int = 1000,
     *,
     query_text: str | None = None,
-    candidates: FactCandidates | None = None,
+    candidates: list[FactCandidate] | None = None,
 ) -> list[FactSearchResult]:
     """
     Unified search entrypoint.
 
     - DB-backed mode: provide entity_fact_driver, entity_id, query_embedding, embeddings_limit
-    - Pre-scored mode: provide candidates (FactCandidates)
+    - Pre-scored mode: provide candidates (list[FactCandidate])
     """
     if candidates is not None:
         return search_entity_facts_core(
