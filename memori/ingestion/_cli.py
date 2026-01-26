@@ -39,7 +39,6 @@ File format:
 
 Environment variables:
   MEMORI_API_KEY                       Required for AA access
-  MEMORI_COCKROACHDB_CONNECTION_STRING Database connection
 """,
         )
         parser.add_argument(
@@ -125,13 +124,6 @@ Environment variables:
             )
             self.cli.print("")
 
-        if not os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING"):
-            self.cli.print("Error: MEMORI_COCKROACHDB_CONNECTION_STRING not set")
-            self.cli.print(
-                "Set this environment variable to your database connection string."
-            )
-            sys.exit(1)
-
         self._run_seeding(
             file_path=args.file,
             entity_id=entity_id,
@@ -183,7 +175,15 @@ Environment variables:
         try:
             m = Memori()
 
-            driver = m.config.storage.driver
+            storage = m.config.storage
+            if storage is None:
+                self.cli.print("Error: No database connection configured")
+                sys.exit(1)
+
+            driver = getattr(storage, "driver", None)
+            if driver is None:
+                self.cli.print("Error: No database driver configured")
+                sys.exit(1)
 
             result = ingest_from_file(
                 config=m.config,
