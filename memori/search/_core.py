@@ -68,26 +68,21 @@ def _candidate_limit(
 
 
 def _fetch_content_maps(
-    entity_fact_driver: Any, *, candidate_ids: list[int]
-) -> tuple[dict[int, dict], dict[int, str]]:
+    entity_fact_driver: Any, *, candidate_ids: list[Any]
+) -> tuple[dict[Any, dict], dict[Any, str]]:
     logger.debug("Fetching content for %d fact IDs", len(candidate_ids))
     content_results = entity_fact_driver.get_facts_by_ids(candidate_ids)
 
-    fact_rows: dict[int, dict] = {}
+    fact_rows: dict[Any, dict] = {}
     for row in content_results or []:
         if not isinstance(row, Mapping):
             continue
         rid = row.get("id")
         if rid is None:
             continue
-        try:
-            fid = int(rid)
-        except (TypeError, ValueError):
-            continue
-        # Ensure we store a plain dict for downstream `.get(...)` usage.
-        fact_rows[fid] = dict(row)
+        fact_rows[rid] = dict(row)
 
-    content_map: dict[int, str] = {}
+    content_map: dict[Any, str] = {}
     for fid, row in fact_rows.items():
         content = row.get("content")
         if isinstance(content, str):
@@ -97,14 +92,14 @@ def _fetch_content_maps(
 
 def _rank_candidates(
     *,
-    candidate_ids: list[int],
-    similarities_map: dict[int, float],
+    candidate_ids: list[Any],
+    similarities_map: dict[Any, float],
     query_text: str | None,
-    content_map: dict[int, str],
-    lexical_scores_for_ids: Callable[..., dict[int, float]],
+    content_map: dict[Any, str],
+    lexical_scores_for_ids: Callable[..., dict[Any, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
-) -> tuple[list[int], dict[int, float], dict[int, float]]:
-    lex_scores: dict[int, float] = {}
+) -> tuple[list[Any], dict[Any, float], dict[Any, float]]:
+    lex_scores: dict[Any, float] = {}
 
     if query_text:
         lex_scores = lexical_scores_for_ids(
@@ -117,7 +112,7 @@ def _rank_candidates(
             for fid in candidate_ids
         }
 
-        def key(fid: int) -> tuple[float, float]:
+        def key(fid: Any) -> tuple[float, float]:
             return (
                 float(rank_score_map.get(fid, 0.0)),
                 float(similarities_map.get(fid, 0.0)),
@@ -134,16 +129,16 @@ def _rank_candidates(
 
 def _build_fact_rows(
     *,
-    ordered_ids: list[int],
-    fact_rows: dict[int, dict],
-    content_map: dict[int, str],
-    similarities_map: dict[int, float],
-    rank_score_map: dict[int, float],
+    ordered_ids: list[Any],
+    fact_rows: dict[Any, dict],
+    content_map: dict[Any, str],
+    similarities_map: dict[Any, float],
+    rank_score_map: dict[Any, float],
 ) -> list[FactSearchResult]:
     facts_with_similarity: list[FactSearchResult] = []
     for fact_id in ordered_ids:
-        fact_row = fact_rows.get(int(fact_id), {})
-        content = content_map.get(int(fact_id))
+        fact_row = fact_rows.get(fact_id, {})
+        content = content_map.get(fact_id)
         if content is None:
             continue
         date_created = fact_row.get("date_created")
@@ -172,12 +167,12 @@ def search_entity_facts_core(
     query_text: str | None,
     fact_candidates: list[FactCandidate] | None = None,
     find_similar_embeddings: Callable[
-        [list[tuple[int, Any]], list[float], int], list[tuple[int, float]]
+        [list[tuple[Any, Any]], list[float], int], list[tuple[Any, float]]
     ],
-    lexical_scores_for_ids: Callable[..., dict[int, float]],
+    lexical_scores_for_ids: Callable[..., dict[Any, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
 ) -> list[FactSearchResult]:
-    idx_to_original_id: dict[int, int] = {}
+    idx_to_original_id: dict[Any, Any] = {}
     if fact_candidates is not None:
         (
             candidate_ids,
