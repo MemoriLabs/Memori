@@ -8,34 +8,30 @@ r"""
                        memorilabs.ai
 """
 
-from memori.ingestion._ingest import (
+from memori.seed._ingest import (
     ConversationResult,
-    IngestionConfig,
-    IngestResult,
+    SeedClient,
     SeedConfig,
     SeedData,
     SeedResult,
     SeedType,
     estimate_conversation_size,
-    ingest_conversations,
-    ingest_from_file,
     seed_conversations,
     seed_from_file,
     validate_conversation,
+    validate_message,
 )
 
 __all__ = [
     "ConversationResult",
-    "IngestResult",
-    "IngestionConfig",
+    "SeedClient",
     "SeedConfig",
     "SeedData",
     "SeedResult",
     "SeedType",
     "estimate_conversation_size",
-    "ingest_conversations",
-    "ingest_from_file",
     "seed_conversations",
     "seed_from_file",
     "validate_conversation",
+    "validate_message",
 ]

@@ -2,13 +2,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from memori.ingestion._ingest import (
+from memori.seed._ingest import (
     DEFAULT_MAX_CHARS_PER_REQUEST,
     DEFAULT_MAX_MESSAGES_PER_REQUEST,
     DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_DELAY,
     ConversationResult,
-    IngestionClient,
+    SeedClient,
     SeedConfig,
     SeedData,
     SeedResult,
@@ -308,13 +308,13 @@ class TestEstimateConversationSize:
         assert char_count == 0
 
 
-class TestIngestionClientInit:
+class TestSeedClientInit:
     def test_batch_size_validation(self):
         config = MagicMock()
         driver = MagicMock()
 
         with pytest.raises(ValueError, match="batch_size must be >= 1"):
-            IngestionClient(
+            SeedClient(
                 config=config,
                 driver=driver,
                 entity_id="user-123",
@@ -326,38 +326,38 @@ class TestIngestionClientInit:
         driver = MagicMock()
 
         with pytest.raises(ValueError, match="batch_size must be >= 1"):
-            IngestionClient(
+            SeedClient(
                 config=config,
                 driver=driver,
                 entity_id="user-123",
                 batch_size=-1,
             )
 
-    def test_default_ingestion_config(self):
+    def test_default_seed_config(self):
         config = MagicMock()
         driver = MagicMock()
 
-        client = IngestionClient(
+        client = SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
         )
 
-        assert client.ingestion_config is not None
-        assert isinstance(client.ingestion_config, SeedConfig)
+        assert client.seed_config is not None
+        assert isinstance(client.seed_config, SeedConfig)
 
 
-class TestIngestionClientChunking:
+class TestSeedClientChunking:
     @pytest.fixture
     def client(self):
         config = MagicMock()
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
-            ingestion_config=SeedConfig(
+            seed_config=SeedConfig(
                 max_messages_per_request=5,
                 max_chars_per_request=100,
             ),
@@ -402,13 +402,13 @@ class TestIngestionClientChunking:
             assert msg["content"] == f"msg-{i}"
 
 
-class TestIngestionClientDuplicateDetection:
+class TestSeedClientDuplicateDetection:
     @pytest.fixture
     def client(self):
         config = MagicMock()
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
@@ -423,7 +423,7 @@ class TestIngestionClientDuplicateDetection:
         ]
 
         with pytest.raises(ValueError, match="Duplicate conversation IDs"):
-            await client.ingest(conversations)
+            await client.seed(conversations)
 
     @pytest.mark.asyncio
     async def test_multiple_duplicates_reported(self, client):
@@ -435,19 +435,19 @@ class TestIngestionClientDuplicateDetection:
         ]
 
         with pytest.raises(ValueError) as exc_info:
-            await client.ingest(conversations)
+            await client.seed(conversations)
 
         error_msg = str(exc_info.value)
         assert "dup-1" in error_msg or "dup-2" in error_msg
 
 
-class TestIngestionClientMissingId:
+class TestSeedClientMissingId:
     @pytest.fixture
     def client(self):
         config = MagicMock()
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
@@ -461,7 +461,7 @@ class TestIngestionClientMissingId:
             {"messages": [{"role": "user", "content": "Hi"}]},
         ]
 
-        result = await client.ingest(conversations)
+        result = await client.seed(conversations)
 
         assert result.failed == 1
         assert result.successful == 0
@@ -475,7 +475,7 @@ class TestProgressCallback:
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
         driver.entity.create.return_value = 1
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
@@ -502,39 +502,23 @@ class TestProgressCallback:
             {"id": "conv-2", "messages": [{"role": "user", "content": "Hello"}]},
         ]
 
-        await client.ingest(conversations)
+        await client.seed(conversations)
 
         assert len(progress_calls) == 2
         assert progress_calls[0] == (1, 2, "conv-1")
         assert progress_calls[1] == (2, 2, "conv-2")
 
 
-class TestAliases:
-    def test_ingest_result_alias(self):
-        from memori.ingestion._ingest import IngestResult, SeedResult
-
-        assert IngestResult is SeedResult
-
-    def test_ingestion_config_alias(self):
-        from memori.ingestion._ingest import IngestionConfig, SeedConfig
-
-        assert IngestionConfig is SeedConfig
-
-    def test_seed_conversations_alias(self):
-        from memori.ingestion._ingest import ingest_conversations, seed_conversations
-
-        assert seed_conversations is ingest_conversations
-
-
 class TestModuleExports:
-    def test_exports_from_ingestion_init(self):
-        from memori.ingestion import (
+    def test_exports_from_seed_init(self):
+        from memori.seed import (
             ConversationResult,
+            SeedClient,
             SeedConfig,
             SeedData,
             SeedResult,
             SeedType,
-            ingest_conversations,
+            seed_conversations,
         )
 
         assert SeedType is not None
@@ -542,7 +526,8 @@ class TestModuleExports:
         assert SeedResult is not None
         assert SeedConfig is not None
         assert ConversationResult is not None
-        assert ingest_conversations is not None
+        assert SeedClient is not None
+        assert seed_conversations is not None
 
     def test_exports_from_memori_init(self):
         from memori import SeedConfig, SeedData, SeedResult, SeedType
@@ -553,7 +538,7 @@ class TestModuleExports:
         assert SeedConfig is not None
 
 
-class TestIngestConversations:
+class TestSeedConversations:
     @pytest.fixture
     def mock_config(self):
         config = MagicMock()
@@ -576,11 +561,11 @@ class TestIngestConversations:
         return driver
 
     @pytest.mark.asyncio
-    async def test_ingest_conversations_success(self, mock_config, mock_driver, mocker):
-        from memori.ingestion._ingest import ingest_conversations
+    async def test_seed_conversations_success(self, mock_config, mock_driver, mocker):
+        from memori.seed._ingest import seed_conversations
 
         mocker.patch(
-            "memori.ingestion._client.Api.augmentation_async",
+            "memori.seed._client.Api.augmentation_async",
             new_callable=AsyncMock,
             return_value={
                 "entity": {"triples": [], "facts": []},
@@ -593,7 +578,7 @@ class TestIngestConversations:
             {"id": "conv-1", "messages": [{"role": "user", "content": "Hello"}]},
         ]
 
-        result = await ingest_conversations(
+        result = await seed_conversations(
             config=mock_config,
             driver=mock_driver,
             entity_id="user-123",
@@ -605,7 +590,7 @@ class TestIngestConversations:
         assert result.failed == 0
 
 
-class TestIngestFromFile:
+class TestSeedFromFile:
     @pytest.fixture
     def mock_config(self):
         config = MagicMock()
@@ -626,60 +611,56 @@ class TestIngestFromFile:
         driver.entity.create.return_value = 1
         return driver
 
-    def test_ingest_from_file_not_found(self, mock_config, mock_driver):
-        from memori.ingestion._ingest import ingest_from_file
+    def test_seed_from_file_not_found(self, mock_config, mock_driver):
+        from memori.seed._ingest import seed_from_file
 
         with pytest.raises(FileNotFoundError):
-            ingest_from_file(
+            seed_from_file(
                 config=mock_config,
                 driver=mock_driver,
                 file_path="/nonexistent/file.json",
                 entity_id="user-123",
             )
 
-    def test_ingest_from_file_missing_entity_id(
-        self, mock_config, mock_driver, tmp_path
-    ):
+    def test_seed_from_file_missing_entity_id(self, mock_config, mock_driver, tmp_path):
         import json
 
-        from memori.ingestion._ingest import ingest_from_file
+        from memori.seed._ingest import seed_from_file
 
         file_path = tmp_path / "test.json"
         file_path.write_text(json.dumps({"conversations": []}))
 
         with pytest.raises(ValueError, match="entity_id must be provided"):
-            ingest_from_file(
+            seed_from_file(
                 config=mock_config,
                 driver=mock_driver,
                 file_path=str(file_path),
             )
 
-    def test_ingest_from_file_no_conversations(
-        self, mock_config, mock_driver, tmp_path
-    ):
+    def test_seed_from_file_no_conversations(self, mock_config, mock_driver, tmp_path):
         import json
 
-        from memori.ingestion._ingest import ingest_from_file
+        from memori.seed._ingest import seed_from_file
 
         file_path = tmp_path / "test.json"
         file_path.write_text(json.dumps({"entity_id": "user-123", "conversations": []}))
 
         with pytest.raises(ValueError, match="No conversations found"):
-            ingest_from_file(
+            seed_from_file(
                 config=mock_config,
                 driver=mock_driver,
                 file_path=str(file_path),
             )
 
-    def test_ingest_from_file_uses_file_entity_id(
+    def test_seed_from_file_uses_file_entity_id(
         self, mock_config, mock_driver, tmp_path, mocker
     ):
         import json
 
-        from memori.ingestion._ingest import ingest_from_file
+        from memori.seed._ingest import seed_from_file
 
         mocker.patch(
-            "memori.ingestion._client.Api.augmentation_async",
+            "memori.seed._client.Api.augmentation_async",
             new_callable=AsyncMock,
             return_value={
                 "entity": {"triples": [], "facts": []},
@@ -703,7 +684,7 @@ class TestIngestFromFile:
             )
         )
 
-        result = ingest_from_file(
+        result = seed_from_file(
             config=mock_config,
             driver=mock_driver,
             file_path=str(file_path),
@@ -712,18 +693,18 @@ class TestIngestFromFile:
         assert result.total == 1
 
 
-class TestIngestionClientRetry:
+class TestSeedClientRetry:
     @pytest.fixture
     def client(self):
         config = MagicMock()
         config.embeddings.model = "test-model"
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
-            ingestion_config=SeedConfig(max_retries=3, retry_delay=0.01),
+            seed_config=SeedConfig(max_retries=3, retry_delay=0.01),
         )
 
     @pytest.mark.asyncio
@@ -776,7 +757,7 @@ class TestIngestionClientRetry:
             await client._call_aa_with_retry({"test": "payload"})
 
 
-class TestIngestionClientProcessing:
+class TestSeedClientProcessing:
     @pytest.fixture
     def client(self):
         config = MagicMock()
@@ -785,7 +766,7 @@ class TestIngestionClientProcessing:
         driver.conversation.conn.get_dialect.return_value = "postgresql"
         driver.entity.create.return_value = 1
         driver.process.create.return_value = 1
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
@@ -802,7 +783,7 @@ class TestIngestionClientProcessing:
             }
         )
         mocker.patch(
-            "memori.ingestion._client.embed_texts",
+            "memori.seed._client.embed_texts",
             new_callable=AsyncMock,
             return_value=[[0.1, 0.2]],
         )
@@ -858,7 +839,7 @@ class TestIngestionClientProcessing:
         assert "API error" in result.error
 
 
-class TestIngestionClientStorage:
+class TestSeedClientStorage:
     @pytest.fixture
     def client(self):
         config = MagicMock()
@@ -867,7 +848,7 @@ class TestIngestionClientStorage:
         driver.conversation.conn.get_dialect.return_value = "postgresql"
         driver.entity.create.return_value = 1
         driver.process.create.return_value = 1
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
@@ -892,7 +873,7 @@ class TestIngestionClientStorage:
         from memori.memory._struct import Memories
 
         mocker.patch(
-            "memori.ingestion._client.embed_texts",
+            "memori.seed._client.embed_texts",
             new_callable=AsyncMock,
             return_value=[[0.1, 0.2]],
         )
@@ -919,17 +900,17 @@ class TestIngestionClientStorage:
         client.driver.process_attribute.create.assert_called_once()
 
 
-class TestIngestionClientChunkingDisabled:
+class TestSeedClientChunkingDisabled:
     @pytest.fixture
     def client(self):
         config = MagicMock()
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
-            ingestion_config=SeedConfig(
+            seed_config=SeedConfig(
                 max_messages_per_request=5,
                 chunk_large_conversations=False,
             ),
@@ -962,7 +943,7 @@ class TestBuildPayload:
         config.version = "1.0.0"
         driver = MagicMock()
         driver.conversation.conn.get_dialect.return_value = "postgresql"
-        return IngestionClient(
+        return SeedClient(
             config=config,
             driver=driver,
             entity_id="user-123",
@@ -985,49 +966,43 @@ class TestBuildPayload:
         assert payload["conversation"]["summary"] == "Previous context"
 
 
-class TestCliManager:
+class TestSeedManager:
     @pytest.fixture
-    def cli_manager(self):
+    def seed_manager(self):
         from memori._config import Config
-        from memori.ingestion._cli import Manager
+        from memori.seed._cli import SeedManager
 
         config = Config()
-        return Manager(config)
+        return SeedManager(config)
 
-    def test_create_parser(self, cli_manager):
-        parser = cli_manager._create_parser()
+    def test_create_parser(self, seed_manager):
+        parser = seed_manager._create_parser()
 
         assert parser is not None
         assert parser.prog == "python -m memori seed"
 
-    def test_parser_has_required_arguments(self, cli_manager):
-        parser = cli_manager._create_parser()
+    def test_parser_has_required_arguments(self, seed_manager):
+        parser = seed_manager._create_parser()
 
         args = parser.parse_args(["test.json"])
         assert args.file == "test.json"
 
-    def test_parser_optional_arguments(self, cli_manager):
-        parser = cli_manager._create_parser()
+    def test_parser_optional_arguments(self, seed_manager):
+        parser = seed_manager._create_parser()
 
         args = parser.parse_args(
             [
                 "test.json",
-                "--entity-id",
-                "user-123",
-                "--process-id",
-                "proc-1",
                 "--batch-size",
                 "20",
                 "--dry-run",
             ]
         )
 
-        assert args.entity_id == "user-123"
-        assert args.process_id == "proc-1"
         assert args.batch_size == 20
         assert args.dry_run is True
 
-    def test_print_preview(self, cli_manager, capsys):
+    def test_print_preview(self, seed_manager, capsys):
         conversations = [
             {
                 "id": "conv-1",
@@ -1039,7 +1014,7 @@ class TestCliManager:
             },
         ]
 
-        cli_manager._print_preview(conversations)
+        seed_manager._print_preview(conversations)
 
         captured = capsys.readouterr()
         assert "conv-1" in captured.out

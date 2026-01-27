@@ -15,60 +15,56 @@ from pathlib import Path
 from typing import Any
 
 from memori._config import Config
-from memori.ingestion._client import IngestionClient
-from memori.ingestion._types import (
+from memori.seed._client import SeedClient
+from memori.seed._types import (
     DEFAULT_MAX_CHARS_PER_REQUEST,
     DEFAULT_MAX_MESSAGES_PER_REQUEST,
     DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_DELAY,
     ConversationResult,
-    IngestionConfig,
-    IngestResult,
     SeedConfig,
     SeedData,
     SeedResult,
     SeedType,
-)
-from memori.ingestion._validation import (
     estimate_conversation_size,
     validate_conversation,
     validate_message,
 )
 
 
-async def ingest_conversations(
+async def seed_conversations(
     config: Config,
     driver,
     entity_id: str,
     conversations: list[dict[str, Any]],
     process_id: str | None = None,
     batch_size: int = 10,
-    ingestion_config: IngestionConfig | None = None,
+    seed_config: SeedConfig | None = None,
     on_progress: Callable[[int, int, ConversationResult], None] | None = None,
-) -> IngestResult:
-    client = IngestionClient(
+) -> SeedResult:
+    client = SeedClient(
         config=config,
         driver=driver,
         entity_id=entity_id,
         process_id=process_id,
         batch_size=batch_size,
-        ingestion_config=ingestion_config,
+        seed_config=seed_config,
         on_progress=on_progress,
     )
 
-    return await client.ingest(conversations)
+    return await client.seed(conversations)
 
 
-def ingest_from_file(
+def seed_from_file(
     config: Config,
     driver,
     file_path: str,
     entity_id: str | None = None,
     process_id: str | None = None,
     batch_size: int = 10,
-    ingestion_config: IngestionConfig | None = None,
+    seed_config: SeedConfig | None = None,
     on_progress: Callable[[int, int, ConversationResult], None] | None = None,
-) -> IngestResult:
+) -> SeedResult:
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"File not found: {file_path}")
@@ -87,21 +83,18 @@ def ingest_from_file(
         raise ValueError("No conversations found in file")
 
     return asyncio.run(
-        ingest_conversations(
+        seed_conversations(
             config=config,
             driver=driver,
             entity_id=final_entity_id,
             conversations=conversations,
             process_id=final_process_id,
             batch_size=batch_size,
-            ingestion_config=ingestion_config,
+            seed_config=seed_config,
             on_progress=on_progress,
         )
     )
 
-
-seed_conversations = ingest_conversations
-seed_from_file = ingest_from_file
 
 __all__ = [
     "DEFAULT_MAX_CHARS_PER_REQUEST",
@@ -109,16 +102,12 @@ __all__ = [
     "DEFAULT_MAX_RETRIES",
     "DEFAULT_RETRY_DELAY",
     "ConversationResult",
-    "IngestResult",
-    "IngestionClient",
-    "IngestionConfig",
+    "SeedClient",
     "SeedConfig",
     "SeedData",
     "SeedResult",
     "SeedType",
     "estimate_conversation_size",
-    "ingest_conversations",
-    "ingest_from_file",
     "seed_conversations",
     "seed_from_file",
     "validate_conversation",

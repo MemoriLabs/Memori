@@ -102,21 +102,40 @@ result = await m.seed(seed_data, on_progress=on_progress)
 ## CLI
 
 ```bash
-python -m memori seed conversations.json --entity-id user-123
+# Set your API key first
+export MEMORI_API_KEY=your_api_key
+
+# Run seeding
+python -m memori seed conversations.json
+
+# Dry run (validate without seeding)
+python -m memori seed conversations.json --dry-run
+
+# Custom batch size
+python -m memori seed conversations.json --batch-size 20
 ```
 
 **File format:**
 
+The JSON file must include `entity_id` at the top level:
+
 ```json
 {
   "entity_id": "user-123",
+  "process_id": "optional-process-id",
   "conversations": [
     {"id": "conv-1", "messages": [{"role": "user", "content": "Hello!"}]}
   ]
 }
 ```
 
+| CLI Option | Description |
+|------------|-------------|
+| `--batch-size N` | Concurrent requests (default: 10) |
+| `--dry-run` | Validate file without seeding |
+
 ## Requirements
 
-- `MEMORI_API_KEY` environment variable
-- Each conversation counts against your quota
+- **`MEMORI_API_KEY` environment variable is required** - seeding will fail without it
+- Each conversation counts against your memory creation quota
+- An API key can be obtained by signing up at [memorilabs.ai](https://memorilabs.ai)

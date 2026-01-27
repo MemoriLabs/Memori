@@ -21,7 +21,6 @@ from memori._exceptions import (
     warn_if_legacy_memorisdk_installed,
 )
 from memori.embeddings import embed_texts
-from memori.ingestion import SeedConfig, SeedData, SeedResult, SeedType
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -31,6 +30,7 @@ from memori.llm._providers import PydanticAi as LlmProviderPydanticAi
 from memori.llm._providers import XAi as LlmProviderXAi
 from memori.memory.augmentation import Manager as AugmentationManager
 from memori.memory.recall import Recall
+from memori.seed import SeedConfig, SeedData, SeedResult, SeedType
 from memori.storage import Manager as StorageManager
 
 __all__ = [
@@ -155,7 +155,7 @@ class Memori:
         batch_size: int = 10,
         on_progress=None,
     ) -> "SeedResult":
-        from memori.ingestion import SeedType, ingest_conversations
+        from memori.seed import SeedType, seed_conversations
 
         if batch_size < 1:
             raise ValueError("batch_size must be >= 1")
@@ -167,36 +167,18 @@ class Memori:
             raise ValueError("process_id cannot be greater than 100 characters")
 
         if seed_data.seed_type == SeedType.CONVERSATION:
-            return await ingest_conversations(
+            return await seed_conversations(
                 config=self.config,
                 driver=self.config.storage.driver,
                 entity_id=seed_data.entity_id,
                 conversations=seed_data.data,
                 process_id=seed_data.process_id,
                 batch_size=batch_size,
-                ingestion_config=seed_config,
+                seed_config=seed_config,
                 on_progress=on_progress,
             )
         else:
             raise ValueError(f"Unsupported seed type: {seed_data.seed_type}")
-
-    def seed_sync(
-        self,
-        seed_data: "SeedData",
-        seed_config: "SeedConfig | None" = None,
-        batch_size: int = 10,
-        on_progress=None,
-    ) -> "SeedResult":
-        import asyncio
-
-        return asyncio.run(
-            self.seed(
-                seed_data=seed_data,
-                seed_config=seed_config,
-                batch_size=batch_size,
-                on_progress=on_progress,
-            )
-        )
 
     def close(self) -> None:
         """Close the underlying storage connection/session, if any.

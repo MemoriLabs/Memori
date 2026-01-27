@@ -17,15 +17,6 @@ from typing import Any
 from memori._config import Config
 from memori._network import Api
 from memori.embeddings import embed_texts
-from memori.ingestion._types import (
-    ConversationResult,
-    IngestionConfig,
-    IngestResult,
-)
-from memori.ingestion._validation import (
-    estimate_conversation_size,
-    validate_conversation,
-)
 from memori.memory._struct import Memories
 from memori.memory.augmentation._models import (
     AttributionData,
@@ -43,11 +34,18 @@ from memori.memory.augmentation._models import (
     StorageData,
     hash_id,
 )
+from memori.seed._types import (
+    ConversationResult,
+    SeedConfig,
+    SeedResult,
+    estimate_conversation_size,
+    validate_conversation,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class IngestionClient:
+class SeedClient:
     def __init__(
         self,
         config: Config,
@@ -55,7 +53,7 @@ class IngestionClient:
         entity_id: str,
         process_id: str | None = None,
         batch_size: int = 10,
-        ingestion_config: IngestionConfig | None = None,
+        seed_config: SeedConfig | None = None,
         on_progress: Callable[[int, int, ConversationResult], None] | None = None,
     ):
         if batch_size < 1:
@@ -66,7 +64,7 @@ class IngestionClient:
         self.entity_id = entity_id
         self.process_id = process_id
         self.batch_size = batch_size
-        self.ingestion_config = ingestion_config or IngestionConfig()
+        self.seed_config = seed_config or SeedConfig()
         self.on_progress = on_progress
         self.api = Api(config)
 
@@ -110,15 +108,15 @@ class IngestionClient:
         msg_count, total_chars = estimate_conversation_size(messages)
 
         return (
-            msg_count > self.ingestion_config.max_messages_per_request
-            or total_chars > self.ingestion_config.max_chars_per_request
+            msg_count > self.seed_config.max_messages_per_request
+            or total_chars > self.seed_config.max_chars_per_request
         )
 
     def _chunk_messages(
         self, messages: list[dict[str, Any]]
     ) -> list[list[dict[str, Any]]]:
-        max_msgs = self.ingestion_config.max_messages_per_request
-        max_chars = self.ingestion_config.max_chars_per_request
+        max_msgs = self.seed_config.max_messages_per_request
+        max_chars = self.seed_config.max_chars_per_request
 
         chunks = []
         current_chunk = []
@@ -147,7 +145,7 @@ class IngestionClient:
     async def _call_aa_with_retry(self, payload: dict[str, Any]) -> dict[str, Any]:
         last_error: Exception | None = None
 
-        for attempt in range(self.ingestion_config.max_retries):
+        for attempt in range(self.seed_config.max_retries):
             try:
                 response = await self.api.augmentation_async(payload)
                 return response
@@ -160,10 +158,10 @@ class IngestionClient:
                 if "quota" in error_str or "429" in error_str:
                     raise
 
-                if attempt < self.ingestion_config.max_retries - 1:
-                    delay = self.ingestion_config.retry_delay * (2**attempt)
+                if attempt < self.seed_config.max_retries - 1:
+                    delay = self.seed_config.retry_delay * (2**attempt)
                     logger.warning(
-                        f"AA request failed (attempt {attempt + 1}/{self.ingestion_config.max_retries}), "
+                        f"AA request failed (attempt {attempt + 1}/{self.seed_config.max_retries}), "
                         f"retrying in {delay:.1f}s: {e}"
                     )
                     await asyncio.sleep(delay)
@@ -200,7 +198,7 @@ class IngestionClient:
 
         try:
             if self._should_chunk_conversation(messages):
-                if not self.ingestion_config.chunk_large_conversations:
+                if not self.seed_config.chunk_large_conversations:
                     msg_count, char_count = estimate_conversation_size(messages)
                     return ConversationResult(
                         conversation_id=conv_id,
@@ -422,7 +420,7 @@ class IngestionClient:
 
         return None
 
-    async def ingest(self, conversations: list[dict[str, Any]]) -> IngestResult:
+    async def seed(self, conversations: list[dict[str, Any]]) -> SeedResult:
         start = time.perf_counter()
 
         conv_ids = [c.get("id") for c in conversations if c.get("id")]
@@ -438,7 +436,7 @@ class IngestionClient:
                 f"Duplicate conversation IDs found: {duplicates[:5]}{'...' if len(duplicates) > 5 else ''}"
             )
 
-        result = IngestResult(total=len(conversations))
+        result = SeedResult(total=len(conversations))
 
         for batch_start in range(0, len(conversations), self.batch_size):
             batch = conversations[batch_start : batch_start + self.batch_size]

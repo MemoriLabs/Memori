@@ -18,7 +18,7 @@ from memori._cli import Cli
 from memori._config import Config
 
 
-class Manager:
+class SeedManager:
     def __init__(self, config: Config):
         self.config = config
         self.cli = Cli(config)
@@ -45,16 +45,6 @@ Environment variables:
             "file",
             metavar="<file.json>",
             help="Path to JSON file containing conversations",
-        )
-        parser.add_argument(
-            "--entity-id",
-            metavar="ID",
-            help="Entity ID (overrides file value)",
-        )
-        parser.add_argument(
-            "--process-id",
-            metavar="ID",
-            help="Process ID (overrides file value)",
         )
         parser.add_argument(
             "--batch-size",
@@ -89,14 +79,12 @@ Environment variables:
             self.cli.print(f"Error: Invalid JSON: {e}")
             sys.exit(1)
 
-        entity_id = args.entity_id or data.get("entity_id")
+        entity_id = data.get("entity_id")
         if not entity_id:
-            self.cli.print(
-                "Error: entity_id must be provided via --entity-id or in file"
-            )
+            self.cli.print("Error: entity_id is required in the JSON file")
             sys.exit(1)
 
-        process_id = args.process_id or data.get("process_id")
+        process_id = data.get("process_id")
 
         conversations = data.get("conversations", [])
         if not conversations:
@@ -110,8 +98,7 @@ Environment variables:
         self.cli.print(f"Process ID: {process_id or 'None'}")
         self.cli.print(f"Conversations: {len(conversations)}")
         self.cli.print(f"Total messages: {total_messages}")
-        self.cli.print(f"Batch size: {args.batch_size}")
-        self.cli.print("")
+        self.cli.print(f"Batch size: {args.batch_size}\n")
 
         if args.dry_run:
             self.cli.print("Dry run - validation complete, no data seeded.")
@@ -119,10 +106,9 @@ Environment variables:
             return
 
         if not os.environ.get("MEMORI_API_KEY"):
-            self.cli.print(
-                "Warning: MEMORI_API_KEY not set - running in anonymous mode"
-            )
-            self.cli.print("")
+            self.cli.print("Error: MEMORI_API_KEY is required for seeding.")
+            self.cli.print("Set your API key: export MEMORI_API_KEY=<your_key>")
+            sys.exit(1)
 
         self._run_seeding(
             file_path=args.file,
@@ -156,10 +142,9 @@ Environment variables:
         batch_size: int,
     ):
         from memori import Memori
-        from memori.ingestion import ingest_from_file
+        from memori.seed import seed_from_file
 
-        self.cli.print("Starting seeding...")
-        self.cli.print("")
+        self.cli.print("Starting seeding...\n")
 
         last_percent = -1
 
@@ -185,7 +170,7 @@ Environment variables:
                 self.cli.print("Error: No database driver configured")
                 sys.exit(1)
 
-            result = ingest_from_file(
+            result = seed_from_file(
                 config=m.config,
                 driver=driver,
                 file_path=file_path,
@@ -195,8 +180,7 @@ Environment variables:
                 on_progress=on_progress,
             )
 
-            print("")
-            self.cli.print("")
+            print("")  # newline after progress bar
             self.cli.print("=" * 50)
             self.cli.print("SEEDING COMPLETE")
             self.cli.print("=" * 50)
