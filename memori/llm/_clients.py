@@ -467,28 +467,44 @@ class OpenAi(BaseClient):
 )
 class PydanticAi(BaseClient):
     def register(self, client):
-        if not hasattr(client, "chat"):
+        # Check if we received an Agent or Model object and extract the underlying client
+        # We need to be careful because we want to support:
+        # 1. Direct OpenAI client (has chat attribute)
+        # 2. pydantic_ai.Agent (has model.client structure)  
+        # 3. pydantic_ai.models.Model (has client attribute)
+        
+        actual_client = client
+        client_type_name = type(client).__name__
+        
+        # Check for Agent type - it has model attribute with a client
+        if client_type_name == "Agent" and hasattr(client, "model") and hasattr(client.model, "client"):
+            actual_client = client.model.client
+        # Check for Model types - they have client attribute but the type name contains "Model"
+        elif "Model" in client_type_name and hasattr(client, "client"):
+            actual_client = client.client
+
+        if not hasattr(actual_client, "chat"):
             raise RuntimeError("client provided was not instantiated using PydanticAi")
 
-        if not hasattr(client, "_memori_installed"):
-            client.chat.completions.actual_chat_completions_create = (
-                client.chat.completions.create
+        if not hasattr(actual_client, "_memori_installed"):
+            actual_client.chat.completions.actual_chat_completions_create = (
+                actual_client.chat.completions.create
             )
 
-            client.chat.completions.create = (
+            actual_client.chat.completions.create = (
                 InvokeAsyncIterator(
                     self.config,
-                    client.chat.completions.actual_chat_completions_create,
+                    actual_client.chat.completions.actual_chat_completions_create,
                 )
                 .set_client(
                     PYDANTIC_AI_FRAMEWORK_PROVIDER,
                     PYDANTIC_AI_OPENAI_LLM_PROVIDER,
-                    client._version,
+                    actual_client._version,
                 )
                 .invoke
             )
 
-            client._memori_installed = True
+            actual_client._memori_installed = True
 
         return self
 

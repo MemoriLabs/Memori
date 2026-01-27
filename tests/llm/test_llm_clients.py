@@ -250,6 +250,48 @@ def test_pydantic_ai_register_raises_without_chat_attr(pydantic_client, mocker):
         pydantic_client.register(mock_client)
 
 
+def test_pydantic_ai_register_with_agent_object(pydantic_client, mocker):
+    """Test that PydanticAi can register Agent objects by extracting the underlying client."""
+    # Create a mock Agent object with nested client structure
+    mock_agent = mocker.MagicMock()
+    type(mock_agent).__name__ = "Agent"
+    mock_client = mocker.MagicMock()
+    mock_client._version = "1.0.0"
+    mock_client.chat.completions.create = mocker.MagicMock()
+    del mock_client._memori_installed
+    
+    # Agent.model.client structure
+    mock_agent.model.client = mock_client
+
+    result = pydantic_client.register(mock_agent)
+
+    assert result is pydantic_client
+    assert hasattr(mock_client, "_memori_installed")
+    assert mock_client._memori_installed is True
+    assert hasattr(mock_client.chat.completions, "actual_chat_completions_create")
+
+
+def test_pydantic_ai_register_with_model_object(pydantic_client, mocker):
+    """Test that PydanticAi can register Model objects by extracting the underlying client."""
+    # Create a mock Model object with client attribute but without chat attribute
+    mock_model = mocker.MagicMock(spec=["client"])
+    type(mock_model).__name__ = "OpenAIChatModel"
+    mock_client = mocker.MagicMock()
+    mock_client._version = "1.0.0"
+    mock_client.chat.completions.create = mocker.MagicMock()
+    del mock_client._memori_installed
+    
+    # Model.client structure
+    mock_model.client = mock_client
+
+    result = pydantic_client.register(mock_model)
+
+    assert result is pydantic_client
+    assert hasattr(mock_client, "_memori_installed")
+    assert mock_client._memori_installed is True
+    assert hasattr(mock_client.chat.completions, "actual_chat_completions_create")
+
+
 def test_langchain_register_without_any_client_raises(langchain_client):
     with pytest.raises(RuntimeError, match="called without client"):
         langchain_client.register()
