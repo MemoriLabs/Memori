@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _candidate_pool_from_candidates(
     candidates: list[FactCandidate], *, limit: int, query_text: str | None
 ) -> tuple[
-    list[int], dict[int, float], dict[int, str], dict[int, int], dict[int, dict]
+    list[int], dict[int, float], dict[int, str], dict[int, Any], dict[int, dict]
 ]:
     if not candidates:
         return [], {}, {}, {}, {}

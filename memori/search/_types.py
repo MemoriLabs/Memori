@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
 class FactCandidate:
-    id: int
+    id: Any  # int for SQL, ObjectId for MongoDB
     content: str
     score: float
     date_created: str
@@ -11,7 +12,7 @@ class FactCandidate:
 
 @dataclass(frozen=True)
 class FactSearchResult:
-    id: int
+    id: Any  # int for SQL, ObjectId for MongoDB
     content: str
     similarity: float
     rank_score: float

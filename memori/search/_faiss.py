@@ -16,10 +16,10 @@ def _query_dim(query_embedding: list[float]) -> int:
 
 
 def _parse_valid_embeddings(
-    embeddings: list[tuple[int, Any]], *, query_dim: int
-) -> tuple[list[np.ndarray], list[int]]:
+    embeddings: list[tuple[Any, Any]], *, query_dim: int
+) -> tuple[list[np.ndarray], list[Any]]:
     embeddings_list: list[np.ndarray] = []
-    id_list: list[int] = []
+    id_list: list[Any] = []
 
     for fact_id, raw in embeddings:
         try:
@@ -47,9 +47,9 @@ def _faiss_search(
     *,
     embeddings_array: np.ndarray,
     query_embedding: list[float],
-    id_list: list[int],
+    id_list: list[Any],
     limit: int,
-) -> list[tuple[int, float]]:
+) -> list[tuple[Any, float]]:
     faiss.normalize_L2(embeddings_array)
     query_array = np.asarray([query_embedding], dtype=np.float32)
 
@@ -69,7 +69,7 @@ def _faiss_search(
     k = min(limit, len(embeddings_array))
     similarities, indices = index.search(query_array, k)  # type: ignore[call-arg]
 
-    results: list[tuple[int, float]] = []
+    results: list[tuple[Any, float]] = []
     for result_idx, embedding_idx in enumerate(indices[0]):
         if 0 <= embedding_idx < len(id_list):
             results.append((id_list[embedding_idx], float(similarities[0][result_idx])))
@@ -78,10 +78,10 @@ def _faiss_search(
 
 
 def find_similar_embeddings(
-    embeddings: list[tuple[int, Any]],
+    embeddings: list[tuple[Any, Any]],
     query_embedding: list[float],
     limit: int = 5,
-) -> list[tuple[int, float]]:
+) -> list[tuple[Any, float]]:
     """Find most similar embeddings using FAISS cosine similarity."""
     if not embeddings:
         logger.debug("find_similar_embeddings called with empty embeddings")
