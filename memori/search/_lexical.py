@@ -59,9 +59,7 @@ def _tokenize(text: str) -> list[str]:
     return [t for t in tokens if t not in _STOPWORDS]
 
 
-def lexical_scores_for_ids(
-    *, query_text: str, ids: list, content_map: dict
-) -> dict:
+def lexical_scores_for_ids(*, query_text: str, ids: list, content_map: dict) -> dict:
     """
     Compute a BM25 score in [0, 1] for each doc over the candidate pool.
     """
