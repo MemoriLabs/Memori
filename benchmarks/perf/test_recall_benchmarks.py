@@ -3,6 +3,7 @@
 import datetime
 import os
 from time import perf_counter
+from typing import cast
 
 import pytest
 
@@ -13,6 +14,7 @@ from memori.embeddings import embed_texts
 from memori.memory.recall import Recall
 from memori.search import find_similar_embeddings
 from memori.search._lexical import lexical_scores_for_ids  # noqa: PLC2701
+from memori.search._types import FactId
 
 
 def _default_benchmark_csv_path() -> str:
@@ -332,7 +334,9 @@ class TestLexicalBenchmarks:
 
         def _score():
             return lexical_scores_for_ids(
-                query_text=query_text, ids=ids, content_map=content_map
+                query_text=query_text,
+                ids=cast(list[FactId], ids),
+                content_map=cast(dict[FactId, str], content_map),
             )
 
         _, peak_rss = measure_peak_rss_bytes(_score)

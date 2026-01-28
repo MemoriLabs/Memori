@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 import struct
 from dataclasses import dataclass
+from typing import cast
 
 from memori._config import Config
 from memori.memory.recall import Recall
@@ -154,7 +155,8 @@ def test_recall_eval_harness_reports_expected_metrics(mocker):
     results_by_query: dict[str, list[int]] = {}
     for c in cases:
         rows = recall.search_facts(query=c.query, limit=3, entity_id=1)
-        results_by_query[c.query] = [int(r.id) for r in rows]
+        # Test uses int IDs from _FakeEntityFactDriver, cast for type checker
+        results_by_query[c.query] = [cast(int, r.id) for r in rows]
 
     recall_at_1 = _recall_at_k(cases=cases, results_by_query=results_by_query, k=1)
     mrr_at_3 = _mrr_at_k(cases=cases, results_by_query=results_by_query, k=3)

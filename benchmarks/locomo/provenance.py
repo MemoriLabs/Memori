@@ -5,6 +5,7 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from memori.search import find_similar_embeddings
 
@@ -153,7 +154,9 @@ def attribute_facts_to_turn_ids(
 
         mapped: list[tuple[str, float]] = []
         scored: list[tuple[int, float]] = []
-        for idx, score in similar:
+        for raw_idx, score in similar:
+            # idx is always int here (from enumerate), cast for type checker
+            idx = cast(int, raw_idx)
             if idx < 0 or idx >= len(turn_ids):
                 continue
             lex = float(lexical_scores[idx]) if lexical_scores is not None else 0.0

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, cast
 
 from memori.search._types import FactCandidate, FactId, FactSearchResult
 
@@ -92,14 +92,14 @@ def _fetch_content_maps(
 
 def _rank_candidates(
     *,
-    candidate_ids: list[Any],
-    similarities_map: dict[Any, float],
+    candidate_ids: list[FactId],
+    similarities_map: dict[FactId, float],
     query_text: str | None,
-    content_map: dict[Any, str],
-    lexical_scores_for_ids: Callable[..., dict[Any, float]],
+    content_map: dict[FactId, str],
+    lexical_scores_for_ids: Callable[..., dict[FactId, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
-) -> tuple[list[Any], dict[Any, float], dict[Any, float]]:
-    lex_scores: dict[Any, float] = {}
+) -> tuple[list[FactId], dict[FactId, float], dict[FactId, float]]:
+    lex_scores: dict[FactId, float] = {}
 
     if query_text:
         lex_scores = lexical_scores_for_ids(
@@ -112,7 +112,7 @@ def _rank_candidates(
             for fid in candidate_ids
         }
 
-        def key(fid: Any) -> tuple[float, float]:
+        def key(fid: FactId) -> tuple[float, float]:
             return (
                 float(rank_score_map.get(fid, 0.0)),
                 float(similarities_map.get(fid, 0.0)),
@@ -129,11 +129,11 @@ def _rank_candidates(
 
 def _build_fact_rows(
     *,
-    ordered_ids: list[Any],
-    fact_rows: dict[Any, dict],
-    content_map: dict[Any, str],
-    similarities_map: dict[Any, float],
-    rank_score_map: dict[Any, float],
+    ordered_ids: list[FactId],
+    fact_rows: dict[FactId, dict],
+    content_map: dict[FactId, str],
+    similarities_map: dict[FactId, float],
+    rank_score_map: dict[FactId, float],
 ) -> list[FactSearchResult]:
     facts_with_similarity: list[FactSearchResult] = []
     for fact_id in ordered_ids:
@@ -208,11 +208,13 @@ def search_entity_facts_core(
             entity_fact_driver, candidate_ids=candidate_ids
         )
 
+    # Cast to FactId types - in hosted path these are int indices,
+    # in DB path these are already FactId. Both are valid FactId values.
     base_order, rank_score_map, lex_scores = _rank_candidates(
-        candidate_ids=candidate_ids,
-        similarities_map=similarities_map,
+        candidate_ids=cast(list[FactId], candidate_ids),
+        similarities_map=cast(dict[FactId, float], similarities_map),
         query_text=query_text,
-        content_map=content_map,
+        content_map=cast(dict[FactId, str], content_map),
         lexical_scores_for_ids=lexical_scores_for_ids,
         dense_lexical_weights=dense_lexical_weights,
     )
@@ -221,9 +223,9 @@ def search_entity_facts_core(
 
     facts_with_similarity = _build_fact_rows(
         ordered_ids=ordered_ids,
-        fact_rows=fact_rows,
-        content_map=content_map,
-        similarities_map=similarities_map,
+        fact_rows=cast(dict[FactId, dict], fact_rows),
+        content_map=cast(dict[FactId, str], content_map),
+        similarities_map=cast(dict[FactId, float], similarities_map),
         rank_score_map=rank_score_map,
     )
 
