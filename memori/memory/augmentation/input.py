@@ -9,7 +9,8 @@ r"""
 """
 
 from dataclasses import dataclass
-from typing import Any
+
+from memori.memory.augmentation._message import ConversationMessage
 
 
 @dataclass
@@ -19,5 +20,5 @@ class AugmentationInput:
     conversation_id: str | None
     entity_id: str | None
     process_id: str | None
-    conversation_messages: list[dict[str, Any]]
+    conversation_messages: list[ConversationMessage]
     system_prompt: str | None = None

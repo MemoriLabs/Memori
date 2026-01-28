@@ -12,6 +12,7 @@ import asyncio
 import logging
 import os
 import ssl
+from enum import Enum
 
 import aiohttp
 import certifi
@@ -31,8 +32,14 @@ from memori._exceptions import (
 logger = logging.getLogger(__name__)
 
 
+class ApiSubdomain(str, Enum):
+    OSS = "api"
+    HOSTED = "hosted-api"
+    COLLECTOR = "collector"
+
+
 class Api:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, subdomain: ApiSubdomain = ApiSubdomain.OSS):
         test_mode = os.environ.get("MEMORI_TEST_MODE") == "1"
 
         self.__base = os.environ.get("MEMORI_API_URL_BASE")
@@ -41,11 +48,11 @@ class Api:
             if test_mode:
                 # Use staging for test mode
                 self.__x_api_key = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
-                self.__base = "https://staging-api.memorilabs.ai"
+                self.__base = f"https://staging-{subdomain.value}.memorilabs.ai"
             else:
                 # Use production
                 self.__x_api_key = "96a7ea3e-11c2-428c-b9ae-5a168363dc80"
-                self.__base = "https://api.memorilabs.ai"
+                self.__base = f"https://{subdomain.value}.memorilabs.ai"
         else:
             # Custom URL provided, use staging key as default
             self.__x_api_key = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
@@ -184,10 +191,13 @@ class Api:
     async def patch_async(self, route, json=None):
         return await self.__request_async("PATCH", route, json=json)
 
-    def post(self, route, json=None):
+    def post(self, route, json=None, status_code: bool = False):
         logger.debug("POST request to %s", route)
         r = self.__session().post(self.url(route), headers=self.headers(), json=json)
         logger.debug("POST response - status: %d", r.status_code)
+
+        if status_code:
+            return int(r.status_code)
 
         r.raise_for_status()
 
@@ -214,7 +224,6 @@ class Api:
         attempts = 0
         max_retries = 5
         backoff_factor = 1
-        print(url)
 
         while True:
             try:

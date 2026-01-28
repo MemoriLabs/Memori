@@ -1,27 +1,14 @@
-from memori.llm._constants import OPENAI_LLM_PROVIDER
 from memori.memory._writer import Writer
 
 
 def test_execute(config, mocker):
-    mock_messages = [
-        {"role": "user", "content": "abc"},
-        {"role": "assistant", "content": "def"},
-        {"role": "assistant", "content": "ghi"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = mock_messages
-
     Writer(config).execute(
         {
-            "conversation": {
-                "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-                "query": {"messages": [{"content": "abc", "role": "user"}]},
-                "response": {
-                    "choices": [
-                        {"message": {"content": "def", "role": "assistant"}},
-                        {"message": {"content": "ghi", "role": "assistant"}},
-                    ]
-                },
-            }
+            "messages": [
+                {"role": "user", "type": None, "text": "abc"},
+                {"role": "assistant", "type": "text", "text": "def"},
+                {"role": "assistant", "type": "text", "text": "ghi"},
+            ]
         }
     )
 
@@ -45,28 +32,13 @@ def test_execute_with_entity_and_process(config, mocker):
     config.entity_id = "123"
     config.process_id = "456"
 
-    mock_messages = [
-        {"role": "user", "content": "abc"},
-        {"role": "assistant", "content": "def"},
-        {"role": "assistant", "content": "ghi"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = mock_messages
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchone.return_value = {
-        "external_id": "123"
-    }
-
     Writer(config).execute(
         {
-            "conversation": {
-                "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-                "query": {"messages": [{"content": "abc", "role": "user"}]},
-                "response": {
-                    "choices": [
-                        {"message": {"content": "def", "role": "assistant"}},
-                        {"message": {"content": "ghi", "role": "assistant"}},
-                    ]
-                },
-            }
+            "messages": [
+                {"role": "user", "type": None, "text": "abc"},
+                {"role": "assistant", "type": "text", "text": "def"},
+                {"role": "assistant", "type": "text", "text": "ghi"},
+            ]
         }
     )
 
@@ -89,37 +61,42 @@ def test_execute_with_entity_and_process(config, mocker):
     assert config.storage.driver.conversation.message.create.call_count == 3
 
 
-def test_execute_skips_system_messages(config, mocker):
-    mock_messages = [
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi there!"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = mock_messages
-
+def test_execute_includes_system_messages(config, mocker):
     Writer(config).execute(
         {
-            "conversation": {
-                "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-                "query": {
-                    "messages": [
-                        {"content": "You are a helpful assistant", "role": "system"},
-                        {"content": "Hello", "role": "user"},
-                    ]
+            "messages": [
+                {
+                    "role": "system",
+                    "type": None,
+                    "text": "You are a helpful assistant",
                 },
-                "response": {
-                    "choices": [
-                        {"message": {"content": "Hi there!", "role": "assistant"}}
-                    ]
-                },
-            }
+                {"role": "user", "type": None, "text": "Hello"},
+                {"role": "assistant", "type": "text", "text": "Hi there!"},
+            ]
         }
     )
 
-    assert config.storage.driver.conversation.message.create.call_count == 2
+    assert config.storage.driver.conversation.message.create.call_count == 3
 
     calls = config.storage.driver.conversation.message.create.call_args_list
-    assert calls[0][0][1] == "user"
-    assert calls[0][0][3] == "Hello"
-    assert calls[1][0][1] == "assistant"
-    assert calls[1][0][3] == "Hi there!"
+    assert calls[0][0][1] == "system"
+    assert calls[0][0][3] == "You are a helpful assistant"
+    assert calls[1][0][1] == "user"
+    assert calls[1][0][3] == "Hello"
+    assert calls[2][0][1] == "assistant"
+    assert calls[2][0][3] == "Hi there!"
+
+
+def test_execute_writes_response_type(config, mocker):
+    Writer(config).execute(
+        {
+            "messages": [
+                {"role": "user", "type": None, "text": "hello"},
+                {"role": "assistant", "type": "text", "text": "ok"},
+            ]
+        }
+    )
+
+    calls = config.storage.driver.conversation.message.create.call_args_list
+    assert calls[0][0][2] is None
+    assert calls[1][0][2] == "text"

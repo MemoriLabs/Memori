@@ -7,6 +7,7 @@ import pytest
 from memori._config import Config
 from memori._exceptions import QuotaExceededError
 from memori.memory.augmentation._manager import Manager
+from memori.memory.augmentation._message import ConversationMessage
 from memori.memory.augmentation.input import AugmentationInput
 
 
@@ -21,7 +22,7 @@ def augmentation_input():
         entity_id="user123",
         process_id="test-process",
         conversation_id="1",
-        conversation_messages=[{"role": "user", "content": "test"}],
+        conversation_messages=[ConversationMessage(role="user", content="test")],
         system_prompt=None,
     )
 
@@ -76,7 +77,7 @@ def test_quota_error_does_not_prevent_when_authenticated():
             entity_id="user123",
             process_id="test-process",
             conversation_id="1",
-            conversation_messages=[{"role": "user", "content": "test"}],
+            conversation_messages=[ConversationMessage(role="user", content="test")],
             system_prompt=None,
         )
 

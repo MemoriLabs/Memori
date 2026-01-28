@@ -12,4 +12,27 @@ from memori.memory.augmentation.augmentations.memori._augmentation import (
     AdvancedAugmentation,
 )
 
-__all__ = ["AdvancedAugmentation"]
+__all__ = [
+    "AdvancedAugmentation",
+    "AugmentationInputData",
+    "AttributionData",
+    "EntityData",
+    "ProcessData",
+    "SessionData",
+]
+from memori.memory.augmentation.augmentations.memori.models import (
+    AttributionData,
+    AugmentationInputData,
+    EntityData,
+    ProcessData,
+    SessionData,
+)
+
+__all__ = [
+    "AdvancedAugmentation",
+    "AugmentationInputData",
+    "AttributionData",
+    "EntityData",
+    "ProcessData",
+    "SessionData",
+]

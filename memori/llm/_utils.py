@@ -51,8 +51,10 @@ def llm_is_google(provider, title):
 
 
 def llm_is_openai(provider, title):
-    return title == OPENAI_LLM_PROVIDER or (
-        provider_is_langchain(provider) and title == LANGCHAIN_OPENAI_LLM_PROVIDER
+    return (
+        title == OPENAI_LLM_PROVIDER
+        or title == "openai_responses"
+        or (provider_is_langchain(provider) and title == LANGCHAIN_OPENAI_LLM_PROVIDER)
     )
 
 
