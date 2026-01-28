@@ -470,12 +470,12 @@ class PydanticAi(BaseClient):
         # Check if we received an Agent or Model object and extract the underlying client
         # We need to be careful because we want to support:
         # 1. Direct OpenAI client (has chat attribute)
-        # 2. pydantic_ai.Agent (has model.client structure)  
+        # 2. pydantic_ai.Agent (has model.client structure)
         # 3. pydantic_ai.models.Model (has client attribute)
-        
+
         actual_client = client
         client_type_name = type(client).__name__
-        
+
         # Check for Agent type - it has model attribute with a client
         if client_type_name == "Agent" and hasattr(client, "model") and hasattr(client.model, "client"):
             actual_client = client.model.client

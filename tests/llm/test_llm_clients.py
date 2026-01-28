@@ -259,7 +259,7 @@ def test_pydantic_ai_register_with_agent_object(pydantic_client, mocker):
     mock_client._version = "1.0.0"
     mock_client.chat.completions.create = mocker.MagicMock()
     del mock_client._memori_installed
-    
+
     # Agent.model.client structure
     mock_agent.model.client = mock_client
 
@@ -280,7 +280,7 @@ def test_pydantic_ai_register_with_model_object(pydantic_client, mocker):
     mock_client._version = "1.0.0"
     mock_client.chat.completions.create = mocker.MagicMock()
     del mock_client._memori_installed
-    
+
     # Model.client structure
     mock_model.client = mock_client
 
