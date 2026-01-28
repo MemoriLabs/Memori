@@ -617,12 +617,16 @@ def _create_conversation_and_persist_messages(
 def _enqueue_aa(
     mem: Memori, conv_id: int, entity_external_id: str, msgs: list[dict[str, str]]
 ) -> None:
+    from memori.memory.augmentation._message import ConversationMessage
+
     mem.augmentation.enqueue(
         AugmentationInput(
             conversation_id=str(conv_id),
             entity_id=entity_external_id,
             process_id="locomo-benchmark",
-            conversation_messages=msgs,
+            conversation_messages=[
+                ConversationMessage(role=m["role"], content=m["content"]) for m in msgs
+            ],
             system_prompt=None,
         )
     )

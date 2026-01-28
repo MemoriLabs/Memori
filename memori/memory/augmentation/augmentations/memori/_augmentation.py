@@ -9,6 +9,7 @@ r"""
 """
 
 import logging
+from dataclasses import asdict, is_dataclass
 
 from memori._network import Api
 from memori.embeddings import embed_texts
@@ -55,10 +56,15 @@ class AdvancedAugmentation(BaseAugmentation):
         if not messages or not isinstance(messages, list):
             return []
 
+        def _role(msg) -> str | None:
+            if isinstance(msg, dict):
+                return msg.get("role")
+            return getattr(msg, "role", None)
+
         assistant_idx = None
         for i in range(len(messages) - 1, -1, -1):
             msg = messages[i]
-            if isinstance(msg, dict) and msg.get("role") == "assistant":
+            if _role(msg) == "assistant":
                 assistant_idx = i
                 break
 
@@ -68,7 +74,7 @@ class AdvancedAugmentation(BaseAugmentation):
         user_idx = None
         for i in range(assistant_idx - 1, -1, -1):
             msg = messages[i]
-            if isinstance(msg, dict) and msg.get("role") == "user":
+            if _role(msg) == "user":
                 user_idx = i
                 break
 
@@ -131,8 +137,16 @@ class AdvancedAugmentation(BaseAugmentation):
         messages = self._select_messages_for_summary(
             ctx.payload.conversation_messages, summary
         )
+
+        normalized_messages: list[dict] = []
+        for m in messages:
+            if is_dataclass(m):
+                normalized_messages.append(asdict(m))
+            elif isinstance(m, dict):
+                normalized_messages.append(m)
+
         payload = self._build_api_payload(
-            messages,
+            normalized_messages,
             summary,
             ctx.payload.system_prompt,
             dialect,
