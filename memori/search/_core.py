@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, cast
 
-from memori.search._types import FactCandidate, FactSearchResult
+from memori.search._types import FactCandidate, FactId, FactSearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _candidate_pool_from_candidates(
     candidates: list[FactCandidate], *, limit: int, query_text: str | None
 ) -> tuple[
-    list[int], dict[int, float], dict[int, str], dict[int, int], dict[int, dict]
+    list[int], dict[int, float], dict[int, str], dict[int, FactId], dict[int, dict]
 ]:
     if not candidates:
         return [], {}, {}, {}, {}
@@ -68,26 +68,21 @@ def _candidate_limit(
 
 
 def _fetch_content_maps(
-    entity_fact_driver: Any, *, candidate_ids: list[int]
-) -> tuple[dict[int, dict], dict[int, str]]:
+    entity_fact_driver: Any, *, candidate_ids: list[FactId]
+) -> tuple[dict[FactId, dict], dict[FactId, str]]:
     logger.debug("Fetching content for %d fact IDs", len(candidate_ids))
     content_results = entity_fact_driver.get_facts_by_ids(candidate_ids)
 
-    fact_rows: dict[int, dict] = {}
+    fact_rows: dict[FactId, dict] = {}
     for row in content_results or []:
         if not isinstance(row, Mapping):
             continue
-        rid = row.get("id")
+        rid: FactId = row.get("id")
         if rid is None:
             continue
-        try:
-            fid = int(rid)
-        except (TypeError, ValueError):
-            continue
-        # Ensure we store a plain dict for downstream `.get(...)` usage.
-        fact_rows[fid] = dict(row)
+        fact_rows[rid] = dict(row)
 
-    content_map: dict[int, str] = {}
+    content_map: dict[FactId, str] = {}
     for fid, row in fact_rows.items():
         content = row.get("content")
         if isinstance(content, str):
@@ -97,14 +92,14 @@ def _fetch_content_maps(
 
 def _rank_candidates(
     *,
-    candidate_ids: list[int],
-    similarities_map: dict[int, float],
+    candidate_ids: list[FactId],
+    similarities_map: dict[FactId, float],
     query_text: str | None,
-    content_map: dict[int, str],
-    lexical_scores_for_ids: Callable[..., dict[int, float]],
+    content_map: dict[FactId, str],
+    lexical_scores_for_ids: Callable[..., dict[FactId, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
-) -> tuple[list[int], dict[int, float], dict[int, float]]:
-    lex_scores: dict[int, float] = {}
+) -> tuple[list[FactId], dict[FactId, float], dict[FactId, float]]:
+    lex_scores: dict[FactId, float] = {}
 
     if query_text:
         lex_scores = lexical_scores_for_ids(
@@ -117,7 +112,7 @@ def _rank_candidates(
             for fid in candidate_ids
         }
 
-        def key(fid: int) -> tuple[float, float]:
+        def key(fid: FactId) -> tuple[float, float]:
             return (
                 float(rank_score_map.get(fid, 0.0)),
                 float(similarities_map.get(fid, 0.0)),
@@ -134,16 +129,16 @@ def _rank_candidates(
 
 def _build_fact_rows(
     *,
-    ordered_ids: list[int],
-    fact_rows: dict[int, dict],
-    content_map: dict[int, str],
-    similarities_map: dict[int, float],
-    rank_score_map: dict[int, float],
+    ordered_ids: list[FactId],
+    fact_rows: dict[FactId, dict],
+    content_map: dict[FactId, str],
+    similarities_map: dict[FactId, float],
+    rank_score_map: dict[FactId, float],
 ) -> list[FactSearchResult]:
     facts_with_similarity: list[FactSearchResult] = []
     for fact_id in ordered_ids:
-        fact_row = fact_rows.get(int(fact_id), {})
-        content = content_map.get(int(fact_id))
+        fact_row = fact_rows.get(fact_id, {})
+        content = content_map.get(fact_id)
         if content is None:
             continue
         date_created = fact_row.get("date_created")
@@ -172,12 +167,12 @@ def search_entity_facts_core(
     query_text: str | None,
     fact_candidates: list[FactCandidate] | None = None,
     find_similar_embeddings: Callable[
-        [list[tuple[int, Any]], list[float], int], list[tuple[int, float]]
+        [list[tuple[FactId, Any]], list[float], int], list[tuple[FactId, float]]
     ],
-    lexical_scores_for_ids: Callable[..., dict[int, float]],
+    lexical_scores_for_ids: Callable[..., dict[FactId, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
 ) -> list[FactSearchResult]:
-    idx_to_original_id: dict[int, int] = {}
+    idx_to_original_id: dict[int, FactId] = {}
     if fact_candidates is not None:
         (
             candidate_ids,
@@ -213,11 +208,13 @@ def search_entity_facts_core(
             entity_fact_driver, candidate_ids=candidate_ids
         )
 
+    # Cast to FactId types - in hosted path these are int indices,
+    # in DB path these are already FactId. Both are valid FactId values.
     base_order, rank_score_map, lex_scores = _rank_candidates(
-        candidate_ids=candidate_ids,
-        similarities_map=similarities_map,
+        candidate_ids=cast(list[FactId], candidate_ids),
+        similarities_map=cast(dict[FactId, float], similarities_map),
         query_text=query_text,
-        content_map=content_map,
+        content_map=cast(dict[FactId, str], content_map),
         lexical_scores_for_ids=lexical_scores_for_ids,
         dense_lexical_weights=dense_lexical_weights,
     )
@@ -226,9 +223,9 @@ def search_entity_facts_core(
 
     facts_with_similarity = _build_fact_rows(
         ordered_ids=ordered_ids,
-        fact_rows=fact_rows,
-        content_map=content_map,
-        similarities_map=similarities_map,
+        fact_rows=cast(dict[FactId, dict], fact_rows),
+        content_map=cast(dict[FactId, str], content_map),
+        similarities_map=cast(dict[FactId, float], similarities_map),
         rank_score_map=rank_score_map,
     )
 
@@ -237,7 +234,8 @@ def search_entity_facts_core(
         remapped: list[FactSearchResult] = []
         for row in facts_with_similarity:
             rid = row.id
-            if rid in idx_to_original_id:
+            # In hosted path, rid is always int (internal index)
+            if isinstance(rid, int) and rid in idx_to_original_id:
                 remapped.append(
                     FactSearchResult(
                         id=idx_to_original_id[rid],

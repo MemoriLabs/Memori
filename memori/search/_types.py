@@ -1,9 +1,19 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bson import ObjectId
+
+    FactId = int | ObjectId
+else:
+    FactId = int | object  # object allows ObjectId at runtime
 
 
 @dataclass(frozen=True)
 class FactCandidate:
-    id: int
+    id: FactId
     content: str
     score: float
     date_created: str
@@ -11,7 +21,7 @@ class FactCandidate:
 
 @dataclass(frozen=True)
 class FactSearchResult:
-    id: int
+    id: FactId
     content: str
     similarity: float
     rank_score: float
