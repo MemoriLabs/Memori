@@ -6,6 +6,8 @@ import os
 import re
 from collections import Counter
 
+from memori.search._types import FactId
+
 logger = logging.getLogger(__name__)
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -59,7 +61,9 @@ def _tokenize(text: str) -> list[str]:
     return [t for t in tokens if t not in _STOPWORDS]
 
 
-def lexical_scores_for_ids(*, query_text: str, ids: list, content_map: dict) -> dict:
+def lexical_scores_for_ids(
+    *, query_text: str, ids: list[FactId], content_map: dict[FactId, str]
+) -> dict[FactId, float]:
     """
     Compute a BM25 score in [0, 1] for each doc over the candidate pool.
     """
@@ -67,8 +71,8 @@ def lexical_scores_for_ids(*, query_text: str, ids: list, content_map: dict) -> 
     if not q_tokens:
         return dict.fromkeys(ids, 0.0)
 
-    docs_tf: dict = {}
-    doc_len: dict = {}
+    docs_tf: dict[FactId, Counter[str]] = {}
+    doc_len: dict[FactId, int] = {}
     for i in ids:
         content = content_map.get(i, "")
         toks = _tokenize(content)
@@ -90,7 +94,7 @@ def lexical_scores_for_ids(*, query_text: str, ids: list, content_map: dict) -> 
         dft = float(df.get(t, 0))
         return math.log(1.0 + ((n_docs - dft + 0.5) / (dft + 0.5)))
 
-    raw: dict = {}
+    raw: dict[FactId, float] = {}
     for i in ids:
         tf = docs_tf.get(i, Counter())
         dl = float(doc_len.get(i, 0))

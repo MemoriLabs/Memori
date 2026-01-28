@@ -1,10 +1,17 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Union
+
+if TYPE_CHECKING:
+    from bson import ObjectId
+
+    FactId = Union[int, ObjectId]
+else:
+    FactId = Union[int, object]  # object allows ObjectId at runtime
 
 
 @dataclass(frozen=True)
 class FactCandidate:
-    id: Any  # int for SQL, ObjectId for MongoDB
+    id: FactId
     content: str
     score: float
     date_created: str
@@ -12,7 +19,7 @@ class FactCandidate:
 
 @dataclass(frozen=True)
 class FactSearchResult:
-    id: Any  # int for SQL, ObjectId for MongoDB
+    id: FactId
     content: str
     similarity: float
     rank_score: float

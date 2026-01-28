@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from memori.search._types import FactCandidate, FactSearchResult
+from memori.search._types import FactCandidate, FactId, FactSearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _candidate_pool_from_candidates(
     candidates: list[FactCandidate], *, limit: int, query_text: str | None
 ) -> tuple[
-    list[int], dict[int, float], dict[int, str], dict[int, Any], dict[int, dict]
+    list[int], dict[int, float], dict[int, str], dict[int, FactId], dict[int, dict]
 ]:
     if not candidates:
         return [], {}, {}, {}, {}
@@ -68,12 +68,12 @@ def _candidate_limit(
 
 
 def _fetch_content_maps(
-    entity_fact_driver: Any, *, candidate_ids: list[Any]
-) -> tuple[dict[Any, dict], dict[Any, str]]:
+    entity_fact_driver: Any, *, candidate_ids: list[FactId]
+) -> tuple[dict[FactId, dict], dict[FactId, str]]:
     logger.debug("Fetching content for %d fact IDs", len(candidate_ids))
     content_results = entity_fact_driver.get_facts_by_ids(candidate_ids)
 
-    fact_rows: dict[Any, dict] = {}
+    fact_rows: dict[FactId, dict] = {}
     for row in content_results or []:
         if not isinstance(row, Mapping):
             continue
@@ -82,7 +82,7 @@ def _fetch_content_maps(
             continue
         fact_rows[rid] = dict(row)
 
-    content_map: dict[Any, str] = {}
+    content_map: dict[FactId, str] = {}
     for fid, row in fact_rows.items():
         content = row.get("content")
         if isinstance(content, str):
@@ -92,14 +92,14 @@ def _fetch_content_maps(
 
 def _rank_candidates(
     *,
-    candidate_ids: list[Any],
-    similarities_map: dict[Any, float],
+    candidate_ids: list[FactId],
+    similarities_map: dict[FactId, float],
     query_text: str | None,
-    content_map: dict[Any, str],
-    lexical_scores_for_ids: Callable[..., dict[Any, float]],
+    content_map: dict[FactId, str],
+    lexical_scores_for_ids: Callable[..., dict[FactId, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
-) -> tuple[list[Any], dict[Any, float], dict[Any, float]]:
-    lex_scores: dict[Any, float] = {}
+) -> tuple[list[FactId], dict[FactId, float], dict[FactId, float]]:
+    lex_scores: dict[FactId, float] = {}
 
     if query_text:
         lex_scores = lexical_scores_for_ids(
@@ -112,7 +112,7 @@ def _rank_candidates(
             for fid in candidate_ids
         }
 
-        def key(fid: Any) -> tuple[float, float]:
+        def key(fid: FactId) -> tuple[float, float]:
             return (
                 float(rank_score_map.get(fid, 0.0)),
                 float(similarities_map.get(fid, 0.0)),
@@ -129,11 +129,11 @@ def _rank_candidates(
 
 def _build_fact_rows(
     *,
-    ordered_ids: list[Any],
-    fact_rows: dict[Any, dict],
-    content_map: dict[Any, str],
-    similarities_map: dict[Any, float],
-    rank_score_map: dict[Any, float],
+    ordered_ids: list[FactId],
+    fact_rows: dict[FactId, dict],
+    content_map: dict[FactId, str],
+    similarities_map: dict[FactId, float],
+    rank_score_map: dict[FactId, float],
 ) -> list[FactSearchResult]:
     facts_with_similarity: list[FactSearchResult] = []
     for fact_id in ordered_ids:
@@ -167,12 +167,12 @@ def search_entity_facts_core(
     query_text: str | None,
     fact_candidates: list[FactCandidate] | None = None,
     find_similar_embeddings: Callable[
-        [list[tuple[Any, Any]], list[float], int], list[tuple[Any, float]]
+        [list[tuple[FactId, Any]], list[float], int], list[tuple[FactId, float]]
     ],
-    lexical_scores_for_ids: Callable[..., dict[Any, float]],
+    lexical_scores_for_ids: Callable[..., dict[FactId, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
 ) -> list[FactSearchResult]:
-    idx_to_original_id: dict[Any, Any] = {}
+    idx_to_original_id: dict[int, FactId] = {}
     if fact_candidates is not None:
         (
             candidate_ids,
