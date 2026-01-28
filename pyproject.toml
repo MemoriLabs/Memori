@@ -136,6 +136,9 @@ exclude = [
 [tool.ty.environment]
 python-version = "3.12"
 
+[tool.ty.rules]
+possibly-missing-attribute = "ignore"
+
 
 [dependency-groups]
 dev = [
