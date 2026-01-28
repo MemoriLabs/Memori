@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bson import ObjectId
 
-    FactId = Union[int, ObjectId]
+    FactId = int | ObjectId
 else:
-    FactId = Union[int, object]  # object allows ObjectId at runtime
+    FactId = int | object  # object allows ObjectId at runtime
 
 
 @dataclass(frozen=True)

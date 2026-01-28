@@ -77,7 +77,7 @@ def _fetch_content_maps(
     for row in content_results or []:
         if not isinstance(row, Mapping):
             continue
-        rid = row.get("id")
+        rid: FactId = row.get("id")
         if rid is None:
             continue
         fact_rows[rid] = dict(row)
@@ -92,14 +92,14 @@ def _fetch_content_maps(
 
 def _rank_candidates(
     *,
-    candidate_ids: list[FactId],
-    similarities_map: dict[FactId, float],
+    candidate_ids: list[Any],
+    similarities_map: dict[Any, float],
     query_text: str | None,
-    content_map: dict[FactId, str],
-    lexical_scores_for_ids: Callable[..., dict[FactId, float]],
+    content_map: dict[Any, str],
+    lexical_scores_for_ids: Callable[..., dict[Any, float]],
     dense_lexical_weights: Callable[..., tuple[float, float]],
-) -> tuple[list[FactId], dict[FactId, float], dict[FactId, float]]:
-    lex_scores: dict[FactId, float] = {}
+) -> tuple[list[Any], dict[Any, float], dict[Any, float]]:
+    lex_scores: dict[Any, float] = {}
 
     if query_text:
         lex_scores = lexical_scores_for_ids(
@@ -112,7 +112,7 @@ def _rank_candidates(
             for fid in candidate_ids
         }
 
-        def key(fid: FactId) -> tuple[float, float]:
+        def key(fid: Any) -> tuple[float, float]:
             return (
                 float(rank_score_map.get(fid, 0.0)),
                 float(similarities_map.get(fid, 0.0)),
@@ -129,11 +129,11 @@ def _rank_candidates(
 
 def _build_fact_rows(
     *,
-    ordered_ids: list[FactId],
-    fact_rows: dict[FactId, dict],
-    content_map: dict[FactId, str],
-    similarities_map: dict[FactId, float],
-    rank_score_map: dict[FactId, float],
+    ordered_ids: list[Any],
+    fact_rows: dict[Any, dict],
+    content_map: dict[Any, str],
+    similarities_map: dict[Any, float],
+    rank_score_map: dict[Any, float],
 ) -> list[FactSearchResult]:
     facts_with_similarity: list[FactSearchResult] = []
     for fact_id in ordered_ids:
@@ -232,7 +232,8 @@ def search_entity_facts_core(
         remapped: list[FactSearchResult] = []
         for row in facts_with_similarity:
             rid = row.id
-            if rid in idx_to_original_id:
+            # In hosted path, rid is always int (internal index)
+            if isinstance(rid, int) and rid in idx_to_original_id:
                 remapped.append(
                     FactSearchResult(
                         id=idx_to_original_id[rid],
