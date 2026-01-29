@@ -79,7 +79,7 @@ class Memori:
 
         self.config = Config()
         self.config.api_key = os.environ.get("MEMORI_API_KEY", None)
-        self.config.enterprise = os.environ.get("MEMORI_ENTERPRISE", "0") == "1"
+        self.config.hosted = os.environ.get("MEMORI_HOSTED", "0") == "1"
         self.config.session_id = uuid4()
         self.config.debug_truncate = debug_truncate
         set_truncate_enabled(debug_truncate)

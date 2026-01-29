@@ -340,7 +340,7 @@ class BaseInvoke:
         messages = list(parse_payload_conversation_messages(payload))
         payload["messages"] = messages
 
-        if self.config.enterprise is True:
+        if self.config.hosted is True:
             return {
                 "attribution": {
                     "entity": {"id": self.config.entity_id},
@@ -706,7 +706,7 @@ class BaseInvoke:
         from memori.memory.recall import Recall
 
         facts = Recall(self.config).search_facts(
-            user_query, entity_id=entity_id, hosted=self.config.enterprise
+            user_query, entity_id=entity_id, hosted=self.config.hosted
         )
 
         if not facts:
@@ -765,7 +765,7 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
-        if self.config.enterprise is True:
+        if self.config.hosted is True:
             messages = self._fetch_hosted_conversation_messages()
             if not messages:
                 return kwargs

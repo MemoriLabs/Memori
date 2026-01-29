@@ -35,7 +35,7 @@ def _build_meta(config) -> dict[str, object]:
     provider = getattr(getattr(config, "platform", None), "provider", None)
     platform = {"provider": provider} if provider else None
 
-    if config.enterprise is True:
+    if config.hosted is True:
         storage = None
     else:
         storage = {
@@ -108,7 +108,7 @@ def handle_augmentation(
         return
 
     payload_dict = asdict(payload)
-    if config.enterprise is True:
+    if config.hosted is True:
         aug_payload = {
             "conversation": {
                 "messages": payload_dict["messages"],

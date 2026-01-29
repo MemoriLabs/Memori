@@ -792,9 +792,9 @@ def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
     ]
 
 
-def test_inject_conversation_messages_enterprise_fetches_from_hosted(mocker):
+def test_inject_conversation_messages_hosted_fetches_from_hosted(mocker):
     config = Config()
-    config.enterprise = True
+    config.hosted = True
     config.session_id = "session-uuid"
     config.llm.provider = OPENAI_LLM_PROVIDER
 

@@ -67,7 +67,7 @@ class Config:
             _env_str("MEMORI_EMBEDDINGS_MODEL", self.embeddings.model)
             or self.embeddings.model
         )
-        self.enterprise = False
+        self.hosted = False
         self.llm = Llm()
         self.framework = Framework()
         self.platform = Platform()

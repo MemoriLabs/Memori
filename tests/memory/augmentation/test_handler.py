@@ -10,9 +10,9 @@ from memori.memory.augmentation.augmentations.memori.models import (
 )
 
 
-def test_handle_augmentation_enterprise_posts_hosted_payload(mocker):
+def test_handle_augmentation_hosted_posts_hosted_payload(mocker):
     cfg = Config()
-    cfg.enterprise = True
+    cfg.hosted = True
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.framework.provider = "agno"
@@ -69,9 +69,9 @@ def test_handle_augmentation_enterprise_posts_hosted_payload(mocker):
     assert sent["conversation"]["summary"] is None
 
 
-def test_handle_augmentation_non_enterprise_enqueues(mocker):
+def test_handle_augmentation_non_hosted_enqueues(mocker):
     cfg = Config()
-    cfg.enterprise = False
+    cfg.hosted = False
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.cache.conversation_id = 123
@@ -102,9 +102,9 @@ def test_handle_augmentation_non_enterprise_enqueues(mocker):
     assert input_data.conversation_messages[0].content == "hi"
 
 
-def test_handle_augmentation_enterprise_logs_error_on_failed_post(mocker):
+def test_handle_augmentation_hosted_logs_error_on_failed_post(mocker):
     cfg = Config()
-    cfg.enterprise = True
+    cfg.hosted = True
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.thread_pool_executor = mocker.Mock()
@@ -139,7 +139,7 @@ def test_handle_augmentation_enterprise_logs_error_on_failed_post(mocker):
 
 def test_handle_augmentation_no_attribution_noops(mocker):
     cfg = Config()
-    cfg.enterprise = True
+    cfg.hosted = True
     cfg.entity_id = None
     cfg.process_id = None
     cfg.thread_pool_executor = mocker.Mock()
@@ -166,9 +166,9 @@ def test_handle_augmentation_no_attribution_noops(mocker):
     api.post.assert_not_called()
 
 
-def test_handle_augmentation_enterprise_without_executor_posts_inline(mocker):
+def test_handle_augmentation_hosted_without_executor_posts_inline(mocker):
     cfg = Config()
-    cfg.enterprise = True
+    cfg.hosted = True
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.thread_pool_executor = None
