@@ -706,7 +706,7 @@ class BaseInvoke:
         from memori.memory.recall import Recall
 
         facts = Recall(self.config).search_facts(
-            user_query, entity_id=entity_id, hosted=self.config.hosted
+            user_query, entity_id=entity_id, hosted=bool(self.config.hosted)
         )
 
         if not facts:

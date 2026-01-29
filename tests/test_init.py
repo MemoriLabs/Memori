@@ -3,6 +3,41 @@ import pytest
 from memori import Memori
 
 
+def test_hosted_false_when_conn_provided(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    mem = Memori(conn=lambda: mock_conn)
+    assert mem.config.hosted is False
+
+
+def test_hosted_true_when_no_conn(monkeypatch):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    mem = Memori(conn=None)
+    assert mem.config.hosted is True
+
+
+def test_hosted_false_when_connection_string_set(monkeypatch, mocker):
+    monkeypatch.setenv(
+        "MEMORI_COCKROACHDB_CONNECTION_STRING",
+        "postgresql://user:pass@localhost:26257/defaultdb?sslmode=disable",
+    )
+
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    mocker.patch("memori.psycopg.connect", return_value=mock_conn)
+
+    mem = Memori(conn=None)
+    assert mem.config.hosted is False
+
+
 def test_attribution_exceptions(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
