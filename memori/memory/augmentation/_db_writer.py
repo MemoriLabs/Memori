@@ -8,6 +8,7 @@ r"""
                        memorilabs.ai
 """
 
+import logging
 import queue as queue_module
 import threading
 import time
@@ -15,11 +16,19 @@ from collections.abc import Callable
 
 from memori.storage._connection import connection_context
 
+logger = logging.getLogger(__name__)
+
 
 class WriteTask:
     def __init__(
-        self, method_path: str, args: tuple | None = None, kwargs: dict | None = None
+        self,
+        *,
+        conn_factory: Callable,
+        method_path: str,
+        args: tuple | None = None,
+        kwargs: dict | None = None,
     ):
+        self.conn_factory = conn_factory
         self.method_path = method_path
         self.args = args or ()
         self.kwargs = kwargs or {}
@@ -44,7 +53,6 @@ class WriteTask:
 class DbWriterRuntime:
     def __init__(self):
         self.queue = None
-        self.conn_factory = None
         self.batch_size = 100
         self.batch_timeout = 0.1
         self.thread = None
@@ -60,12 +68,11 @@ class DbWriterRuntime:
 
         return self
 
-    def ensure_started(self, conn_factory: Callable) -> None:
+    def ensure_started(self) -> None:
         with self.lock:
             if self.started:
                 return
 
-            self.conn_factory = conn_factory
             self.thread = threading.Thread(
                 target=self._run_loop, daemon=True, name="memori-db-writer"
             )
@@ -82,40 +89,58 @@ class DbWriterRuntime:
             return False
 
     def _run_loop(self) -> None:
-        if self.conn_factory is None:
-            return
-
+        logger.debug("AA DB writer thread started")
         while True:
             try:
-                with connection_context(self.conn_factory) as (conn, adapter, driver):
-                    while True:
-                        batch = self._collect_batch()
-
-                        if not batch:
-                            time.sleep(self.batch_timeout)
-                            continue
-
-                        try:
-                            for task in batch:
-                                task.execute(driver)
-
-                            if adapter:
-                                adapter.flush()
-                                adapter.commit()
-                        except Exception:
-                            import traceback
-
-                            traceback.print_exc()
-                            if adapter:
-                                try:
-                                    adapter.rollback()
-                                except Exception:  # nosec B110
-                                    pass
+                self._drain_batches()
             except Exception:
                 import traceback
 
                 traceback.print_exc()
                 time.sleep(1)
+
+    def _drain_batches(self) -> None:
+        """Drain queued writes, only holding a DB connection while busy.
+
+        This opens a DB connection when there is at least one pending task, processes
+        batches until the queue is idle, then closes the connection by exiting the
+        connection context.
+        """
+        if self.queue is None:
+            return
+
+        batch = self._collect_batch()
+        if not batch:
+            return
+
+        while batch:
+            by_factory: dict[Callable, list[WriteTask]] = {}
+            for task in batch:
+                by_factory.setdefault(task.conn_factory, []).append(task)
+
+            for factory, tasks in by_factory.items():
+                with connection_context(factory) as (_conn, adapter, driver):
+                    logger.debug("AA DB writer batch started - %d writes", len(tasks))
+                    try:
+                        for task in tasks:
+                            task.execute(driver)
+
+                        if adapter:
+                            adapter.flush()
+                            adapter.commit()
+                        logger.debug("AA DB writer completing - batch committed")
+                    except Exception:
+                        import traceback
+
+                        logger.debug("AA DB writer batch failed - rolling back")
+                        traceback.print_exc()
+                        if adapter:
+                            try:
+                                adapter.rollback()
+                            except Exception:  # nosec B110
+                                pass
+
+            batch = self._collect_batch()
 
     def _collect_batch(self) -> list[WriteTask]:
         batch = []

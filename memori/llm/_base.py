@@ -8,15 +8,19 @@ r"""
                        memorilabs.ai
 """
 
-import asyncio
 import copy
+import inspect
 import json
-from typing import TYPE_CHECKING
+import logging
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, cast
 
 from google.protobuf import json_format
 
 from memori._config import Config
-from memori._utils import merge_chunk
+from memori._logging import truncate
+from memori._utils import format_date_created, merge_chunk
+from memori.search._types import FactSearchResult
 
 if TYPE_CHECKING:
     pass
@@ -32,6 +36,31 @@ from memori.llm._utils import (
     llm_is_xai,
     provider_is_langchain,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object]) -> float:
+    """
+    Extract a numeric score for recall relevance thresholding.
+
+    Prefer rank_score when present; fall back to similarity.
+    """
+    if isinstance(fact, Mapping):
+        fact_map = cast(Mapping[str, object], fact)
+        raw = fact_map.get("rank_score")
+        if raw is None:
+            raw = fact_map.get("similarity", 0.0)
+    else:
+        raw = fact.rank_score
+    if raw is None:
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    try:
+        return float(cast(Any, raw))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 class BaseClient:
@@ -76,10 +105,13 @@ class BaseClient:
 
         original = getattr(backup_obj, backup_attr)
 
-        try:
-            asyncio.get_running_loop()
+        is_async = inspect.iscoroutinefunction(original) or type(
+            obj
+        ).__name__.startswith("Async")
+
+        if is_async:
             wrapper_class = InvokeAsyncStream if stream else InvokeAsync
-        except RuntimeError:
+        else:
             wrapper_class = InvokeStream if stream else Invoke
 
         setattr(
@@ -98,13 +130,45 @@ class BaseInvoke:
         self._uses_protobuf = False
         self._injected_message_count = 0
 
+    def _ensure_cached_conversation_id(self) -> bool:
+        if self.config.storage is None or self.config.storage.driver is None:
+            return False
+
+        if self.config.session_id is None:
+            return False
+
+        driver = self.config.storage.driver
+
+        if self.config.cache.session_id is None:
+            if not hasattr(driver.session, "read"):
+                return False
+            self.config.cache.session_id = driver.session.read(
+                str(self.config.session_id)
+            )
+
+        if self.config.cache.session_id is None:
+            return False
+
+        if self.config.cache.conversation_id is None:
+            if not hasattr(driver.conversation, "read_id_by_session_id"):
+                return False
+            self.config.cache.conversation_id = (
+                driver.conversation.read_id_by_session_id(self.config.cache.session_id)
+            )
+
+        return self.config.cache.conversation_id is not None
+
     def configure_for_streaming_usage(self, kwargs: dict) -> dict:
         if (
             llm_is_openai(self.config.framework.provider, self.config.llm.provider)
             or llm_is_xai(self.config.framework.provider, self.config.llm.provider)
             or agno_is_openai(self.config.framework.provider, self.config.llm.provider)
         ):
-            if kwargs.get("stream", None):
+            is_responses_api = (
+                "input" in kwargs or "instructions" in kwargs
+            ) and "messages" not in kwargs
+
+            if kwargs.get("stream", None) and not is_responses_api:
                 stream_options = kwargs.get("stream_options", None)
                 if stream_options is None or not isinstance(stream_options, dict):
                     kwargs["stream_options"] = {}
@@ -113,16 +177,47 @@ class BaseInvoke:
 
         return kwargs
 
-    def _convert_to_json(self, obj):
-        """Recursively convert objects to JSON-serializable format."""
-        if isinstance(obj, list):
-            return [self._convert_to_json(item) for item in obj]
-        elif isinstance(obj, dict):
-            return {key: self._convert_to_json(value) for key, value in obj.items()}
-        elif hasattr(obj, "__dict__"):
-            return self._convert_to_json(obj.__dict__)
-        else:
+    def _convert_to_json(self, obj, _seen=None):
+        """Recursively convert objects to JSON-serializable format.
+
+        Uses a seen set to prevent infinite recursion from circular references.
+        """
+        if _seen is None:
+            _seen = set()
+
+        obj_id = id(obj)
+        if obj_id in _seen:
+            return None
+        _seen.add(obj_id)
+
+        try:
+            if obj is None or isinstance(obj, (bool, int, float, str)):
+                return obj
+            elif isinstance(obj, list):
+                return [self._convert_to_json(item, _seen.copy()) for item in obj]
+            elif isinstance(obj, dict):
+                return {
+                    key: self._convert_to_json(value, _seen.copy())
+                    for key, value in obj.items()
+                    if not key.startswith("_")
+                }
+            elif hasattr(obj, "model_dump"):
+                try:
+                    return obj.model_dump()
+                except Exception:
+                    pass
+            elif hasattr(obj, "__dict__"):
+                filtered_dict = {
+                    k: v
+                    for k, v in obj.__dict__.items()
+                    if not k.startswith("_") and not callable(v)
+                }
+                if filtered_dict:
+                    return self._convert_to_json(filtered_dict, _seen.copy())
+                return None
             return obj
+        except Exception:
+            return None
 
     def dict_to_json(self, dict_: dict) -> dict:
         return self._convert_to_json(dict_)
@@ -199,17 +294,84 @@ class BaseInvoke:
 
         return payload
 
+    def _safe_copy(self, obj):
+        """Safely copy an object, handling unpicklable types like _thread.RLock.
+
+        Falls back to alternative copy methods if deepcopy fails.
+        """
+        try:
+            return copy.deepcopy(obj)
+        except (TypeError, AttributeError):
+            pass
+
+        if isinstance(obj, list):
+            result = []
+            for item in obj:
+                result.append(self._safe_copy(item))
+            return result
+
+        if isinstance(obj, dict):
+            result = {}
+            for key, value in obj.items():
+                result[key] = self._safe_copy(value)
+            return result
+
+        if hasattr(obj, "model_dump"):
+            try:
+                return obj.model_dump()
+            except Exception:
+                pass
+
+        if hasattr(obj, "to_dict"):
+            try:
+                return obj.to_dict()
+            except Exception:
+                pass
+
+        if hasattr(obj, "__dict__"):
+            try:
+                return copy.copy(obj)
+            except Exception:
+                pass
+
+        return obj
+
     def _format_response(self, raw_response):
-        formatted_response = copy.deepcopy(raw_response)
+        formatted_response = self._safe_copy(raw_response)
         if self._uses_protobuf:
             if not isinstance(formatted_response, list):
                 if (
                     hasattr(formatted_response, "__dict__")
                     and "_pb" in formatted_response.__dict__
                 ):
+                    # Old google-generativeai format (protobuf)
                     formatted_response = json.loads(
                         json_format.MessageToJson(formatted_response.__dict__["_pb"])
                     )
+                elif hasattr(formatted_response, "candidates"):
+                    # New google-genai format (dict with candidates)
+                    result = {}
+                    if formatted_response.candidates:
+                        candidates = []
+                        for candidate in formatted_response.candidates:
+                            candidate_data = {}
+                            if hasattr(candidate, "content") and candidate.content:
+                                content_data = {}
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
+                                    parts = []
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text"):
+                                            parts.append({"text": part.text})
+                                    content_data["parts"] = parts
+                                if hasattr(candidate.content, "role"):
+                                    content_data["role"] = candidate.content.role
+                                candidate_data["content"] = content_data
+                            candidates.append(candidate_data)
+                        result["candidates"] = candidates
+                    formatted_response = result
                 else:
                     formatted_response = {}
 
@@ -231,6 +393,12 @@ class BaseInvoke:
             """
 
             return json.loads(raw_response.text)
+
+        if hasattr(raw_response, "output") and hasattr(raw_response, "output_text"):
+            if hasattr(raw_response, "model_dump"):
+                return raw_response.model_dump()
+            elif hasattr(raw_response, "__dict__"):
+                return self._convert_to_json(raw_response)
 
         return raw_response
 
@@ -268,6 +436,25 @@ class BaseInvoke:
                 if msg.get("role") == "user":
                     return msg.get("content", "")
 
+        if "input" in kwargs:
+            input_val = kwargs.get("input", "")
+            if isinstance(input_val, str):
+                return input_val
+            if isinstance(input_val, list):
+                for item in reversed(input_val):
+                    if isinstance(item, dict) and item.get("role") == "user":
+                        content = item.get("content", "")
+                        if isinstance(content, str):
+                            return content
+                        if isinstance(content, list):
+                            for c in content:
+                                if (
+                                    isinstance(c, dict)
+                                    and c.get("type") == "input_text"
+                                ):
+                                    return c.get("text", "")
+                                if isinstance(c, str):
+                                    return c
         if "contents" in kwargs:
             result = self._extract_from_contents(kwargs["contents"])
             if result:
@@ -404,6 +591,28 @@ class BaseInvoke:
             else:
                 self._append_to_google_system_instruction_obj(config, context)
 
+    def _format_recalled_fact_lines(
+        self, facts: list[FactSearchResult | Mapping[str, object]]
+    ) -> list[str]:
+        lines: list[str] = []
+        for fact in facts:
+            if isinstance(fact, Mapping):
+                fact_map = cast(Mapping[str, object], fact)
+                content = fact_map.get("content")
+                date_created = fact_map.get("date_created")
+            elif hasattr(fact, "content") and hasattr(fact, "date_created"):
+                content = fact.content
+                date_created = fact.date_created
+            else:
+                continue
+
+            if not content:
+                continue
+            ts = format_date_created(date_created)
+            suffix = f". Stated at {ts}" if ts else ""
+            lines.append(f"- {content}{suffix}")
+        return lines
+
     def inject_recalled_facts(self, kwargs: dict) -> dict:
         if self.config.storage is None or self.config.storage.driver is None:
             return kwargs
@@ -419,23 +628,32 @@ class BaseInvoke:
         if not user_query:
             return kwargs
 
+        logger.debug("User query: %s", truncate(user_query))
+
         from memori.memory.recall import Recall
 
         facts = Recall(self.config).search_facts(user_query, entity_id=entity_id)
 
         if not facts:
+            logger.debug("No facts found to inject into prompt")
             return kwargs
 
         relevant_facts = [
             f
             for f in facts
-            if f.get("similarity", 0) >= self.config.recall_relevance_threshold
+            if _score_for_recall_threshold(f) >= self.config.recall_relevance_threshold
         ]
 
         if not relevant_facts:
+            logger.debug(
+                "No facts above relevance threshold (%.2f)",
+                self.config.recall_relevance_threshold,
+            )
             return kwargs
 
-        fact_lines = [f"- {fact['content']}" for fact in relevant_facts]
+        logger.debug("Injecting %d recalled facts into prompt", len(relevant_facts))
+
+        fact_lines = self._format_recalled_fact_lines(relevant_facts)
         recall_context = (
             "\n\n<memori_context>\n"
             "Only use the relevant context if it is relevant to the user's query. "
@@ -453,6 +671,11 @@ class BaseInvoke:
             self.config.framework.provider, self.config.llm.provider
         ) or agno_is_google(self.config.framework.provider, self.config.llm.provider):
             self._inject_google_system_instruction(kwargs, recall_context)
+        elif (
+            "input" in kwargs or "instructions" in kwargs
+        ) and "messages" not in kwargs:
+            existing_instructions = kwargs.get("instructions", "") or ""
+            kwargs["instructions"] = existing_instructions + recall_context
         else:
             messages = kwargs.get("messages", [])
             if messages and messages[0].get("role") == "system":
@@ -467,11 +690,12 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
-        if self.config.cache.conversation_id is None:
-            return kwargs
-
         if self.config.storage is None or self.config.storage.driver is None:
             return kwargs
+
+        if self.config.cache.conversation_id is None:
+            if not self._ensure_cached_conversation_id():
+                return kwargs
 
         messages = self.config.storage.driver.conversation.messages.read(
             self.config.cache.conversation_id
@@ -480,6 +704,25 @@ class BaseInvoke:
             return kwargs
 
         self._injected_message_count = len(messages)
+        logger.debug("Injecting %d conversation messages from history", len(messages))
+
+        if ("input" in kwargs or "instructions" in kwargs) and "messages" not in kwargs:
+            history_items = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role == "system":
+                    continue
+                history_items.append({"role": role, "content": content})
+
+            existing_input = kwargs.get("input")
+            if existing_input is None:
+                existing_input = []
+            elif isinstance(existing_input, str):
+                existing_input = [{"role": "user", "content": existing_input}]
+
+            kwargs["input"] = history_items + existing_input
+            return kwargs
 
         if (
             llm_is_openai(self.config.framework.provider, self.config.llm.provider)
@@ -657,6 +900,9 @@ class BaseInvoke:
             else:
                 content = ""
 
+            if content:
+                logger.debug("Response content: %s", truncate(str(content)))
+
             messages_for_aug.append(
                 {
                     "role": "assistant",
@@ -679,6 +925,7 @@ class BaseInvoke:
                 conversation_messages=messages_for_aug,
                 system_prompt=system_prompt,
             )
+            logger.debug("Kicking off AA - enqueueing augmentation")
             self.config.augmentation.enqueue(augmentation_input)
 
 
@@ -699,15 +946,52 @@ class BaseIterator:
         return self
 
     def process_chunk(self, chunk):
+        if hasattr(chunk, "type") and chunk.type == "response.completed":
+            if hasattr(chunk, "response"):
+                response = chunk.response
+                if hasattr(response, "model_dump"):
+                    self.raw_response = response.model_dump()
+                else:
+                    self.raw_response = self.invoke._convert_to_json(response)
+            return self
+
         if self.invoke._uses_protobuf is True:
             formatted_chunk = copy.deepcopy(chunk)
             if isinstance(self.raw_response, list):
                 if "_pb" in formatted_chunk.__dict__:
+                    # Old google-generativeai format (protobuf)
                     self.raw_response.append(
                         json.loads(
                             json_format.MessageToJson(formatted_chunk.__dict__["_pb"])
                         )
                     )
+                elif "candidates" in formatted_chunk.__dict__:
+                    # New google-genai format (dict with candidates)
+                    chunk_data = {}
+                    if (
+                        hasattr(formatted_chunk, "candidates")
+                        and formatted_chunk.candidates
+                    ):
+                        candidates = []
+                        for candidate in formatted_chunk.candidates:
+                            candidate_data = {}
+                            if hasattr(candidate, "content") and candidate.content:
+                                content_data = {}
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
+                                    parts = []
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text"):
+                                            parts.append({"text": part.text})
+                                    content_data["parts"] = parts
+                                if hasattr(candidate.content, "role"):
+                                    content_data["role"] = candidate.content.role
+                                candidate_data["content"] = content_data
+                            candidates.append(candidate_data)
+                        chunk_data["candidates"] = candidates
+                    self.raw_response.append(chunk_data)
         else:
             if isinstance(self.raw_response, dict):
                 self.raw_response = merge_chunk(self.raw_response, chunk.__dict__)

@@ -44,11 +44,14 @@ class AsyncIterator(BaseIterator):
             raise
 
     async def __aenter__(self):
-        await self.source_iterator.__aenter__()
+        if hasattr(self.source_iterator, "__aenter__"):
+            await self.source_iterator.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        return await self.source_iterator.__aexit__(exc_type, exc, tb)
+        if hasattr(self.source_iterator, "__aexit__"):
+            return await self.source_iterator.__aexit__(exc_type, exc, tb)
+        return False
 
 
 class Iterator(BaseIterator):
@@ -79,8 +82,11 @@ class Iterator(BaseIterator):
             raise
 
     def __enter__(self):
-        self.source_iterator.__enter__()
+        if hasattr(self.source_iterator, "__enter__"):
+            self.source_iterator.__enter__()
         return self
 
     def __exit__(self, exc_type, exc, tb):
-        return self.source_iterator.__exit__(exc_type, exc, tb)
+        if hasattr(self.source_iterator, "__exit__"):
+            return self.source_iterator.__exit__(exc_type, exc, tb)
+        return False

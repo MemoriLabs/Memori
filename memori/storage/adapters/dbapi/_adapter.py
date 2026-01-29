@@ -87,6 +87,7 @@ class Adapter(BaseStorageAdapter):
         dialect_mapping = {
             "postgresql": ["psycopg"],
             "mysql": ["mysql", "MySQLdb", "pymysql"],
+            "oceanbase": ["pyobvector"],
             "sqlite": ["sqlite"],
             "oracle": ["cx_Oracle", "oracledb"],
         }

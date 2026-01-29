@@ -26,6 +26,9 @@ prune tests
 prune docs
 prune htmlcov
 
+# Exclude benchmarks (not shipped with the SDK)
+prune benchmarks
+
 # Exclude version control and CI
 prune .git
 prune .github

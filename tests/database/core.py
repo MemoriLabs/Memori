@@ -2,6 +2,7 @@ import os
 
 from pymongo import MongoClient
 from sqlalchemy import create_engine, event
+from sqlalchemy.dialects import registry
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 
@@ -37,6 +38,27 @@ mysql_test_db_core = create_engine(mysql_test_uri, pool_pre_ping=True, pool_recy
 
 MySQLTestDBSession = sessionmaker(
     autocommit=False, autoflush=False, bind=mysql_test_db_core
+)
+
+# OceanBase-specific session (via pyobvector dialect)
+try:
+    registry.register(
+        "mysql.oceanbase", "pyobvector.schema.dialect", "OceanBaseDialect"
+    )
+except Exception:
+    pass
+
+oceanbase_test_uri = os.environ.get(
+    "OCEANBASE_DATABASE_URL",
+    "mysql+oceanbase://root:@127.0.0.1:2882/memori_test?charset=utf8mb4",
+)
+
+oceanbase_test_db_core = create_engine(
+    oceanbase_test_uri, pool_pre_ping=True, pool_recycle=300
+)
+
+OceanBaseTestDBSession = sessionmaker(
+    autocommit=False, autoflush=False, bind=oceanbase_test_db_core
 )
 
 # SQLite-specific session

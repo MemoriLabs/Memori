@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memori"
-version = "3.1.2"
+version = "3.1.6"
 description = "Memori Python SDK"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
 license = {text = "Apache-2.0"}
@@ -88,17 +88,25 @@ python_functions = ["test_*"]
 markers = [
     "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
     "benchmark: marks tests as performance benchmarks",
+    "integration: marks tests as integration tests requiring external API keys",
 ]
 asyncio_mode = "auto"
 addopts = [
     "-v",
     "--strict-markers",
+    "--ignore=tests/benchmarks",
+    "--ignore=tests/integration",
     "-m",
     "not benchmark",
     "--cov=memori",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::UserWarning:langsmith",
 ]
 
 [tool.coverage.run]
@@ -159,4 +167,6 @@ dev = [
     "sqlalchemy>=2.0.44",
     "sqlalchemy-cockroachdb>=1.4.0",
     "xai-sdk>=1.3.1",
+    "langchain-aws>=0.2.0",
+    "pyobvector>=0.2.1",
 ]

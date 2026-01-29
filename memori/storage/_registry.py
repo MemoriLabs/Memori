@@ -37,12 +37,28 @@ class Registry:
     def adapter(self, conn: Any) -> BaseStorageAdapter:
         conn_to_check = conn() if callable(conn) else conn
 
+        # Support factories that return (conn, release) tuples.
+        conn_for_match = (
+            conn_to_check[0] if isinstance(conn_to_check, tuple) else conn_to_check
+        )
+
+        # Support factories that return a context manager (e.g. psycopg_pool).
+        if BaseStorageAdapter._is_managed_resource(conn_for_match):
+            cm = conn_for_match
+            real_conn = cm.__enter__()
+
+            def _release(cm=cm):
+                return cm.__exit__(None, None, None)
+
+            conn_to_check = (real_conn, _release)
+            conn_for_match = real_conn
+
         for matcher, adapter_class in self._adapters.items():
-            if matcher(conn_to_check):
+            if matcher(conn_for_match):
                 return adapter_class(lambda: conn_to_check)
 
         raise RuntimeError(
-            f"Unsupported database: {type(conn_to_check).__module__}.{type(conn_to_check).__name__}"
+            f"Unsupported database: {type(conn_for_match).__module__}.{type(conn_for_match).__name__}"
         )
 
     def driver(self, conn: BaseStorageAdapter):

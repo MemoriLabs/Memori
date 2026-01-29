@@ -28,7 +28,11 @@ class Adapter(BaseStorageAdapter):
         return self
 
     def get_dialect(self):
-        return self.conn.get_bind().dialect.name
+        dialect = self.conn.get_bind().dialect
+        module_name = dialect.__class__.__module__
+        if module_name.startswith("pyobvector."):
+            return "oceanbase"
+        return dialect.name
 
     def rollback(self):
         self.conn.rollback()
