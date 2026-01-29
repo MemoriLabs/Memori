@@ -14,27 +14,45 @@ Memori is LLM, database and framework agnostic and works with the tools you alre
 - Python 3.10 or higher
 - An OpenAI API key
 
-## Step 1: Install Libraries
+## Step 1: Install (recommended: virtualenv)
 
-Install Memori:
+On macOS (especially with Homebrew Python), installing packages system-wide can fail with:
+- `externally-managed-environment` (PEP 668)
+- or you may accidentally install into one Python but run another
 
-```bash
-pip install memori
-```
-
-For this example, you may also need to install:
+The most reliable first run is a virtual environment:
 
 ```bash
-pip install openai
+mkdir memori-quickstart && cd memori-quickstart
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install -U pip
+python -m pip install memori openai sqlalchemy
 ```
+
+Notes:
+- Use `python -m pip ...` to ensure you’re installing into the same interpreter you’re about to run.
+- `brew install memori` is not expected to work — Memori is installed from PyPI via `pip`.
+- Some Memori code paths import `sqlalchemy`, so we install it here to avoid a first-run import error.
 
 ## Step 2: Set environment variables
 
-Set your OpenAI API key in an environment variable:
+### OpenAI API key (required for this example)
 
 ```bash
 export OPENAI_API_KEY="your-api-key-here"
 ```
+
+### Memori Labs API key (optional but recommended)
+
+`MEMORI_API_KEY` is used for **Advanced Augmentation** (background enrichment of memories). Memori can still store/recall without it, but you may be rate-limited without an account.
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key-here"
+```
+
+> If you prefer a `.env` file, you can use one, but Memori ultimately reads standard environment variables.
 
 ## Step 3: Run Your First Memori Application
 
@@ -91,10 +109,19 @@ print(response.choices[0].message.content + "\n")
 
 ## Step 4: Run the Application
 
-Execute your Python file:
+Execute your Python file **from the same virtualenv**:
 
 ```bash
-python quickstart.py
+python3 quickstart.py
+```
+
+If you see `zsh: command not found: python`, that’s normal on some macOS setups — use `python3`.
+
+If you see `ModuleNotFoundError: No module named 'memori'`, it almost always means you installed into a different Python than the one you’re running. Re-check:
+
+```bash
+which python3
+python3 -m pip show memori
 ```
 
 You should see the AI respond to both questions, with the second response correctly recalling that your favorite color is blue!
