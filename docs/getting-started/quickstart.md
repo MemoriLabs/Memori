@@ -47,6 +47,36 @@ Tip: use `python -m pip ...` to ensure you install into the same interpreter you
 
 > `brew install memori` is not expected to work — Memori is installed from PyPI via `pip`.
 
+### Common first-run errors
+
+**`zsh: command not found: python`**
+
+Some macOS setups don’t provide a `python` shim. Use `python3`:
+
+```bash
+python3 quickstart.py
+```
+
+**`ModuleNotFoundError: No module named 'memori'` (or `openai` / `sqlalchemy`)**
+
+This almost always means you installed into a different Python environment than the one you’re running.
+
+Quick checks:
+
+```bash
+which python3
+python3 -m pip show memori
+python3 -m pip show openai
+python3 -m pip show sqlalchemy
+```
+
+If you’re using a virtualenv, also confirm it’s activated:
+
+```bash
+which python
+python -m pip --version
+```
+
 ## Step 2: Set environment variables
 
 ### OpenAI API key (required for this example)
@@ -119,19 +149,10 @@ print(response.choices[0].message.content + "\n")
 
 ## Step 4: Run the Application
 
-Execute your Python file **from the same virtualenv**:
+Execute your Python file:
 
 ```bash
 python3 quickstart.py
-```
-
-If you see `zsh: command not found: python`, that’s normal on some macOS setups — use `python3`.
-
-If you see `ModuleNotFoundError: No module named 'memori'`, it almost always means you installed into a different Python than the one you’re running. Re-check:
-
-```bash
-which python3
-python3 -m pip show memori
 ```
 
 You should see the AI respond to both questions, with the second response correctly recalling that your favorite color is blue!
