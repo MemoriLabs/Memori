@@ -141,12 +141,10 @@ migrations = {
                     ],
                     "kwargs": {"name": "idx_memori_entity_fact_entity_id_freq"},
                 },
-                {
-                    "collection": "memori_entity_fact",
-                    "method": "create_index",
-                    "args": [[("entity_id", 1), ("_id", 1)]],
-                    "kwargs": {"name": "idx_memori_entity_fact_embedding_search"},
-                },
+                # NOTE: We intentionally do not create a second index with the same
+                # key pattern as the unique (entity_id, _id) index above. MongoDB
+                # will raise IndexOptionsConflict if an index already exists with
+                # different options (e.g. unique vs non-unique).
             ],
         },
         {
