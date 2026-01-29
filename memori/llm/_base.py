@@ -687,14 +687,7 @@ class BaseInvoke:
         return lines
 
     def inject_recalled_facts(self, kwargs: dict) -> dict:
-        if self.config.storage is None or self.config.storage.driver is None:
-            return kwargs
-
         if self.config.entity_id is None:
-            return kwargs
-
-        entity_id = self.config.storage.driver.entity.create(self.config.entity_id)
-        if entity_id is None:
             return kwargs
 
         user_query = self._extract_user_query(kwargs)
@@ -706,7 +699,7 @@ class BaseInvoke:
         from memori.memory.recall import Recall
 
         facts = Recall(self.config).search_facts(
-            user_query, entity_id=entity_id, hosted=bool(self.config.hosted)
+            user_query, entity_id=self.config.entity_id, hosted=bool(self.config.hosted)
         )
 
         if not facts:

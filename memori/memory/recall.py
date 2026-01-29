@@ -111,14 +111,13 @@ class Recall:
             limit,
         )
 
-        if hosted:
+        if self.config.hosted:
             logger.debug(
                 "Recall started - query: %s (%d chars), limit: %s, hosted: true",
                 truncate(query, 50),
                 len(query),
                 limit,
             )
-            print(hosted)
             return self._search_with_retries_hosted(query)
 
         if self.config.storage is None or self.config.storage.driver is None:

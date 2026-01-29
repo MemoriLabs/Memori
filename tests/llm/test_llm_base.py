@@ -376,20 +376,6 @@ def test_inject_recalled_facts_no_entity_id():
     assert result == kwargs
 
 
-def test_inject_recalled_facts_entity_create_returns_none():
-    config = Config()
-    config.storage = Mock()
-    config.storage.driver = Mock()
-    config.storage.driver.entity.create.return_value = None
-    config.entity_id = "test-entity"
-    invoke = BaseInvoke(config, "test_method")
-
-    kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_recalled_facts(kwargs)
-
-    assert result == kwargs
-
-
 def test_inject_recalled_facts_no_user_query():
     config = Config()
     config.storage = Mock()
