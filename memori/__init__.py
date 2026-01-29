@@ -17,6 +17,7 @@ import psycopg
 
 from memori._config import Config
 from memori._exceptions import (
+    MissingMemoriApiKeyError,
     QuotaExceededError,
     warn_if_legacy_memorisdk_installed,
 )
@@ -108,11 +109,9 @@ class Memori:
             return lambda: psycopg.connect(connection_string)
 
         self.config.hosted = True
-        if (
-            os.environ.get("MEMORI_API_KEY", None) is None
-            or os.environ.get("MEMORI_API_KEY", None) == ""
-        ):
-            raise RuntimeError("A MEMORI_API_KEY is required to use the hosted API.")
+        api_key = os.environ.get("MEMORI_API_KEY", None)
+        if api_key is None or api_key == "":
+            raise MissingMemoriApiKeyError()
         return None
 
     def attribution(self, entity_id=None, process_id=None):

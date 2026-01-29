@@ -1,6 +1,7 @@
 import pytest
 
 from memori import Memori
+from memori._exceptions import MissingMemoriApiKeyError
 
 
 def test_hosted_false_when_conn_provided(mocker):
@@ -17,15 +18,18 @@ def test_hosted_false_when_conn_provided(mocker):
 def test_hosted_true_when_no_conn(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
     mem = Memori()
     assert mem.config.hosted is True
 
 
 def test_hosted_raises_error_when_no_api_key(monkeypatch):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.delenv("MEMORI_API_KEY", raising=False)
-    with pytest.raises(RuntimeError) as e:
+    with pytest.raises(MissingMemoriApiKeyError) as e:
         Memori()
-    assert str(e.value) == "A MEMORI_API_KEY is required to use the hosted API."
+    assert e.value.env_var == "MEMORI_API_KEY"
+    assert "MEMORI_API_KEY" in str(e.value)
 
 
 def test_hosted_false_when_connection_string_set(monkeypatch, mocker):
