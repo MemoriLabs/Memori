@@ -39,6 +39,27 @@
 
 ---
 
+## Why Memori?
+
+AI agents forget everything between sessions. Memori fixes this with **zero code changes** to your existing LLM calls.
+
+```python
+# Without Memori - AI forgets everything
+Session 1: "My name is Alice" → "Nice to meet you!"
+Session 2: "What's my name?" → "I don't know your name."
+
+# With Memori - AI remembers across sessions
+Session 1: "My name is Alice" → "Nice to meet you!"
+Session 2: "What's my name?" → "Your name is Alice!"
+```
+
+**Key benefits:**
+- **One line integration** - Wrap your existing LLM client, nothing else changes
+- **Automatic memory extraction** - Facts are captured in the background with zero latency
+- **Works everywhere** - Any LLM, any database, any framework
+
+---
+
 ## Getting Started
 
 Install Memori:
@@ -107,17 +128,71 @@ print(response.choices[0].message.content + "\n")
 /bin/echo "select * from memori_knowledge_graph" | /usr/bin/sqlite3 memori.db
 ```
 
+---
+
+## Supported Integrations
+
+### LLM Providers
+
+| Provider | Status | Notes |
+|----------|--------|-------|
+| OpenAI | Stable | Chat Completions & Responses API |
+| Anthropic | Stable | Claude models |
+| AWS Bedrock | Stable | All supported models |
+| Google Gemini | Stable | Gemini models |
+| xAI (Grok) | Stable | Grok models |
+
+_All providers support unstreamed, streamed, synchronous and asynchronous modes._
+
+### Frameworks
+
+| Framework | Status | Notes |
+|-----------|--------|-------|
+| LangChain | Stable | Register base client, not wrapper (see [Troubleshooting](#langchain-unsupported-client-type)) |
+| Agno | Stable | Native integration |
+| Pydantic AI | Beta | Native integration |
+
+### Platforms
+
+| Platform | Status |
+|----------|--------|
+| Nebius AI Studio | Stable |
+
+### Databases
+
+| Database | Status | Example |
+|----------|--------|---------|
+| [SQLite](https://github.com/MemoriLabs/Memori/tree/main/examples/sqlite) | Stable | Zero config, great for development |
+| [PostgreSQL](https://github.com/MemoriLabs/Memori/tree/main/examples/postgres) | Stable | Production recommended |
+| [MySQL](https://github.com/MemoriLabs/Memori/tree/main/examples/mysql) | Stable | |
+| MariaDB | Stable | |
+| [MongoDB](https://github.com/MemoriLabs/Memori/tree/main/examples/mongodb) | Stable | Document store |
+| [CockroachDB](https://github.com/MemoriLabs/Memori/tree/main/examples/cockroachdb) | Stable | Distributed SQL |
+| [Neon](https://github.com/MemoriLabs/Memori/tree/main/examples/neon) | Stable | Serverless Postgres |
+| [OceanBase](https://github.com/MemoriLabs/Memori/tree/main/examples/oceanbase) | Stable | |
+| Oracle | Stable | |
+| Supabase | Stable | Use Postgres connection |
+
+**Database Integrations:**
+- **DB API 2.0** - Any Python driver implementing [PEP 249](https://peps.python.org/pep-0249/) (`psycopg`, `pymysql`, `sqlite3`, etc.)
+- **Django** - Native ORM integration
+- **SQLAlchemy** - Session factory support
+
+---
+
 ## What's New In v3?
 
-- Significant performance improvements using Advanced Augmentation.
-- Threaded, zero latency replacement for the v2 extraction agent.
-- LLM agnostic with support for all of the major foundational models.
-- Datastore agnostic with support for all major databases and document stores.
-- Adapter/driver architecture to make contributions easier.
-- Vectorized memories and in-memory semantic search for more accurate context.
-- Third normal form schema including storage of semantic triples for a knowledge graph.
-- Reduced development overhead to a single line of code.
-- Automatic schema migrations.
+- Significant performance improvements using Advanced Augmentation
+- Threaded, zero latency replacement for the v2 extraction agent
+- LLM agnostic with support for all major foundational models
+- Datastore agnostic with support for all major databases and document stores
+- Adapter/driver architecture to make contributions easier
+- Vectorized memories and in-memory semantic search for more accurate context
+- Third normal form schema including storage of semantic triples for a knowledge graph
+- Reduced development overhead to a single line of code
+- Automatic schema migrations
+
+---
 
 ## Attribution
 
@@ -177,47 +252,7 @@ This step is not necessary but will prep your environment for faster execution. 
     mem = Memori(conn=db_session_factory).llm.register(client)
     ```
 
-## Supported LLM
-
-- Anthropic
-- Bedrock
-- Gemini
-- Grok (xAI)
-- OpenAI (Chat Completions & Responses API)
-
-_(unstreamed, streamed, synchronous and asynchronous)_
-
-## Supported Frameworks
-
-- Agno
-- LangChain
-
-## Supported Platforms
-
-- Nebius AI Studio
-
-## Supported Database Integrations
-
-- **DB API 2.0** - Direct support for any Python database driver that implements the [PEP 249 Database API Specification v2.0](https://peps.python.org/pep-0249/). This includes drivers like `psycopg`, `pymysql`, `MySQLdb`, `cx_Oracle`, `oracledb`, and `sqlite3`.
-- **Django** - Native integration with Django's ORM and database layer
-- SQLAlchemy
-
-## Supported Datastores
-
-- [CockroachDB](https://github.com/MemoriLabs/Memori/tree/main/examples/cockroachdb) - Full example with setup instructions
-- MariaDB
-- [MongoDB](https://github.com/MemoriLabs/Memori/tree/main/examples/mongodb) - Full example with setup instructions
-- MySQL
-- [OceanBase](https://github.com/MemoriLabs/Memori/tree/main/examples/oceanbase) - Full example with setup instructions
-- [Neon](https://github.com/MemoriLabs/Memori/tree/main/examples/neon) - Full example with setup instructions
-- Oracle
-- [PostgreSQL](https://github.com/MemoriLabs/Memori/tree/main/examples/postgres) - Full example with setup instructions
-- [SQLite](https://github.com/MemoriLabs/Memori/tree/main/examples/sqlite) - Full example with setup instructions
-- Supabase
-
-## Examples
-
-For more examples and demos, check out the [Memori Cookbook](https://github.com/MemoriLabs/memori-cookbook).
+---
 
 ## Memori Advanced Augmentation
 
@@ -265,6 +300,108 @@ python -m memori quota
 Or by checking your account at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
 
 If your API key exceeds its quota limits we will email you and let you know.
+
+---
+
+## Troubleshooting
+
+### LangChain: Unsupported Client Type
+
+**Error:** `RuntimeError: Unsupported LLM client type: langchain_openai.chat_models.base.ChatOpenAI`
+
+**Cause:** Memori captures at the LLM client level, not the LangChain wrapper level.
+
+**Solution:** Register the underlying client, not the LangChain wrapper:
+
+```python
+# Wrong - registering LangChain wrapper
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI()
+mem.llm.register(llm)  # This will fail
+
+# Correct - register the base client
+from openai import OpenAI
+client = OpenAI()
+mem = Memori(conn=get_connection).llm.register(client)
+
+# Use client.chat.completions.create() for calls you want Memori to capture
+# LangChain can still be used for orchestration separately
+```
+
+### Database Shows Empty Despite API Calls
+
+**Symptoms:** Logs show `[Memori] Registered client has chat: True` but database tables are empty.
+
+**Common causes and solutions:**
+
+1. **Script exits before async processing completes**
+
+   Memori extracts facts asynchronously to avoid adding latency. If your script exits immediately after API calls, memories may not be persisted.
+
+   ```python
+   # Add this before your script exits
+   memori.augmentation.wait()
+   ```
+
+2. **Missing attribution**
+
+   Memori requires attribution to store memories:
+
+   ```python
+   memori.attribution(entity_id="user_123", process_id="my_agent")
+   ```
+
+3. **Schema not initialized**
+
+   Run this once per database:
+
+   ```python
+   memori.config.storage.build()
+   ```
+
+4. **Debug with logging**
+
+   Enable debug logs to trace the data flow:
+
+   ```python
+   import logging
+   logging.getLogger('memori').setLevel(logging.DEBUG)
+   ```
+
+### Docker + Postgres Connection Issues
+
+**Error:** `Connection refused` or `could not translate host name`
+
+**Solution:** Use the correct hostname based on where your app runs:
+
+```python
+# If your app runs INSIDE Docker (same network as Postgres)
+conn = "postgresql://user:pass@postgres:5432/memori"  # Use service name
+
+# If your app runs OUTSIDE Docker (on host machine)
+conn = "postgresql://user:pass@localhost:5432/memori"  # Use localhost
+```
+
+### Windows: "make command not found"
+
+The Makefile requires Make, which isn't included with Windows.
+
+**Option 1:** Use Docker Compose directly:
+```bash
+docker compose up -d    # instead of: make dev-up
+docker compose down     # instead of: make dev-down
+```
+
+**Option 2:** Install Make via [Chocolatey](https://chocolatey.org/):
+```bash
+choco install make
+```
+
+---
+
+## Examples
+
+For more examples and demos, check out the [Memori Cookbook](https://github.com/MemoriLabs/memori-cookbook).
 
 ## Command Line Interface (CLI)
 
