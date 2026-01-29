@@ -60,3 +60,5 @@ results/
 !pyproject.toml
 !package.json
 !composer.json
+!devrel/package-lock.json
+!devrel/vercel.json
