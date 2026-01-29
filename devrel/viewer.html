@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori Documentation Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00D4AA;
+            --primary-dark: #00B890;
+            --bg-dark: #0D1117;
+            --bg-medium: #161B22;
+            --bg-light: #21262D;
+            --border: #30363D;
+            --text-primary: #C9D1D9;
+            --text-secondary: #8B949E;
+            --accent: #58A6FF;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-medium);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .home-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .home-link:hover {
+            color: var(--primary);
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            height: calc(100vh - 65px);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 300px;
+            background: var(--bg-medium);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 2rem 0;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+            padding: 0 1.5rem;
+        }
+
+        .nav-section h3 {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-light);
+            border-color: var(--border);
+        }
+
+        .nav-item.active {
+            background: var(--bg-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .nav-item-icon {
+            margin-right: 0.5rem;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 3rem;
+        }
+
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-secondary);
+        }
+
+        /* Markdown Styles */
+        .markdown-body {
+            font-size: 1rem;
+        }
+
+        .markdown-body h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .markdown-body h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 2.5rem 0 1rem;
+            color: var(--text-primary);
+            padding-bottom: 0.3rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .markdown-body h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            color: var(--text-primary);
+        }
+
+        .markdown-body h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .markdown-body p {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        .markdown-body li {
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-body a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .markdown-body a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-body code {
+            background: var(--bg-light);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            color: var(--primary);
+        }
+
+        .markdown-body pre {
+            background: var(--bg-light);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .markdown-body pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
+        }
+
+        .markdown-body blockquote {
+            border-left: 4px solid var(--primary);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .markdown-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        .markdown-body th {
+            background: var(--bg-light);
+            padding: 0.75rem;
+            text-align: left;
+            border: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .markdown-body td {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .markdown-body tr:hover {
+            background: var(--bg-medium);
+        }
+
+        .markdown-body hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2rem 0;
+        }
+
+        /* Checkboxes */
+        .markdown-body input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
+        /* Badges/Labels */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .badge-available {
+            background: rgba(0, 212, 170, 0.2);
+            color: var(--primary);
+        }
+
+        .badge-claimed {
+            background: rgba(255, 180, 0, 0.2);
+            color: #FFB400;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -300px;
+                top: 65px;
+                height: calc(100vh - 65px);
+                transition: left 0.3s;
+                z-index: 50;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: var(--primary);
+            color: var(--bg-dark);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Scroll styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* Search Box */
+        .search-box {
+            padding: 0 1.5rem 1rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Memori Documentation</div>
+        <div>
+            <button class="mobile-toggle" onclick="toggleSidebar()">☰ Menu</button>
+            <a href="index.html" class="home-link">← Back to Home</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="sidebar" id="sidebar">
+            <div class="search-box">
+                <input type="text" placeholder="Search documentation..." id="searchInput" onkeyup="filterDocs()">
+            </div>
+
+            <div class="nav-section">
+                <h3>Programs</h3>
+                <a class="nav-item active" data-doc="bounty-system">
+                    <span class="nav-item-icon">💰</span>
+                    Bounty System
+                </a>
+                <a class="nav-item" data-doc="workshops">
+                    <span class="nav-item-icon">🎓</span>
+                    Weekly Workshops
+                </a>
+                <a class="nav-item" data-doc="hackathons">
+                    <span class="nav-item-icon">🏆</span>
+                    Quarterly Hackathons
+                </a>
+                <a class="nav-item" data-doc="meetups">
+                    <span class="nav-item-icon">🎉</span>
+                    Monthly Meetups
+                </a>
+                <a class="nav-item" data-doc="co-working">
+                    <span class="nav-item-icon">💼</span>
+                    Co-working & Office Hours
+                </a>
+                <a class="nav-item" data-doc="mcp-marketplace">
+                    <span class="nav-item-icon">🛒</span>
+                    Memory Marketplace
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Applications</h3>
+                <a class="nav-item" data-doc="hacker-house-app">
+                    <span class="nav-item-icon">🏠</span>
+                    Residency Application
+                </a>
+                <a class="nav-item" data-doc="grant-application">
+                    <span class="nav-item-icon">🎯</span>
+                    Grant Application
+                </a>
+                <a class="nav-item" data-doc="bounty-submission">
+                    <span class="nav-item-icon">📝</span>
+                    Bounty Submission
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Program Details</h3>
+                <a class="nav-item" data-doc="hacker-house-details">
+                    <span class="nav-item-icon">🏠</span>
+                    Residency Details
+                </a>
+                <a class="nav-item" data-doc="grant-details">
+                    <span class="nav-item-icon">💡</span>
+                    Grant Program Details
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Tutorials</h3>
+                <a class="nav-item" data-doc="getting-started">
+                    <span class="nav-item-icon">🚀</span>
+                    Getting Started
+                </a>
+                <a class="nav-item" data-doc="mcp-quickstart">
+                    <span class="nav-item-icon">⚡</span>
+                    Memory Quick Start
+                </a>
+                <a class="nav-item" data-doc="advanced-workflows">
+                    <span class="nav-item-icon">🔧</span>
+                    Advanced Workflows
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Strategy</h3>
+                <a class="nav-item" data-doc="30-60-90-plan">
+                    <span class="nav-item-icon">📅</span>
+                    30-60-90 Day Plan
+                </a>
+                <a class="nav-item" data-doc="devrel-kpis">
+                    <span class="nav-item-icon">📊</span>
+                    DevRel KPIs
+                </a>
+                <a class="nav-item" data-doc="founder-lessons">
+                    <span class="nav-item-icon">💡</span>
+                    Founder Lessons
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <h3>Resources</h3>
+                <a class="nav-item" href="ecosystem.html" target="_blank">
+                    <span class="nav-item-icon">🔌</span>
+                    Ecosystem
+                </a>
+                <a class="nav-item" href="metrics-dashboard.html" target="_blank">
+                    <span class="nav-item-icon">📊</span>
+                    Metrics Dashboard
+                </a>
+                <a class="nav-item" href="presentation.html" target="_blank">
+                    <span class="nav-item-icon">📽️</span>
+                    Strategy Presentation
+                </a>
+                <a class="nav-item" href="gleeees.html" target="_blank">
+                    <span class="nav-item-icon">🚀</span>
+                    Gleeees
+                </a>
+            </div>
+        </nav>
+
+        <main class="content">
+            <div class="content-wrapper">
+                <div id="documentContent" class="markdown-body">
+                    <div class="loading">Loading documentation...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // Document mapping
+        const documents = {
+            // Programs
+            'bounty-system': {
+                title: 'Memori Bounty System',
+                path: 'docs/bounty-system.md'
+            },
+            'workshops': {
+                title: 'Memori Weekly Workshops',
+                path: 'docs/workshops.md'
+            },
+            'hackathons': {
+                title: 'Quarterly Hackathons',
+                path: 'docs/hackathons.md'
+            },
+            'meetups': {
+                title: 'Monthly Meetups',
+                path: 'docs/meetups.md'
+            },
+            'co-working': {
+                title: 'Co-working & Office Hours',
+                path: 'docs/co-working-space.md'
+            },
+            'mcp-marketplace': {
+                title: 'Memory Marketplace',
+                path: 'docs/mcp-marketplace.md'
+            },
+            // Applications
+            'hacker-house-app': {
+                title: 'Residency Application',
+                path: 'programs/hacker-house-application.md'
+            },
+            'grant-application': {
+                title: 'Grant Application',
+                path: 'programs/grant-application-template.md'
+            },
+            'bounty-submission': {
+                title: 'Bounty Submission Template',
+                path: 'programs/bounty-submission-template.md'
+            },
+            // Program Details
+            'hacker-house-details': {
+                title: 'Startup Program Details',
+                path: 'docs/hacker-house.md'
+            },
+            'grant-details': {
+                title: 'Grant Program Details',
+                path: 'docs/grant-program.md'
+            },
+            // Tutorials
+            'getting-started': {
+                title: 'Getting Started with Memori',
+                path: 'tutorials/getting-started.md'
+            },
+            'mcp-quickstart': {
+                title: 'Memory Quick Start Guide',
+                path: 'tutorials/mcp-quickstart.md'
+            },
+            'advanced-workflows': {
+                title: 'Advanced Workflows',
+                path: 'tutorials/advanced-workflows.md'
+            },
+            // Strategy
+            '30-60-90-plan': {
+                title: '30-60-90 Day Implementation Plan',
+                path: 'docs/30-60-90-plan.md'
+            },
+            'devrel-kpis': {
+                title: 'DevRel KPIs',
+                path: 'docs/devrel-kpis.md'
+            },
+            'founder-lessons': {
+                title: 'Founder Lessons & Strategic Realignment',
+                path: 'docs/founder-lessons.md'
+            },
+            'memori-academy': {
+                title: 'Memori Memory Academy',
+                path: 'learning-paths.html'
+            }
+        };
+
+        // Configure marked for better rendering
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            headerIds: true
+        });
+
+        // Load document
+        async function loadDocument(docId) {
+            const doc = documents[docId];
+            if (!doc) return;
+
+            const contentDiv = document.getElementById('documentContent');
+            contentDiv.innerHTML = '<div class="loading">Loading documentation...</div>';
+
+            try {
+                const response = await fetch(doc.path);
+                if (!response.ok) throw new Error('Failed to load document');
+                
+                const markdown = await response.text();
+                const html = marked.parse(markdown);
+                
+                contentDiv.innerHTML = html;
+                
+                // Update document title
+                document.title = `${doc.title} - Memori Documentation`;
+                
+                // Update active state
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelector(`[data-doc="${docId}"]`).classList.add('active');
+                
+                // Scroll to top
+                document.querySelector('.content').scrollTop = 0;
+                
+                // Close sidebar on mobile
+                if (window.innerWidth <= 768) {
+                    document.getElementById('sidebar').classList.remove('open');
+                }
+            } catch (error) {
+                contentDiv.innerHTML = `
+                    <div style="padding: 2rem; text-align: center; color: #ff6b6b;">
+                        <h2>Error Loading Document</h2>
+                        <p>Failed to load ${doc.title}. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Navigation click handlers
+        document.querySelectorAll('.nav-item[data-doc]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const docId = item.getAttribute('data-doc');
+                loadDocument(docId);
+                
+                // Update URL without reload
+                history.pushState({ doc: docId }, '', `?doc=${docId}`);
+            });
+        });
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', (e) => {
+            const docId = e.state?.doc || getDocFromURL();
+            if (docId && documents[docId]) {
+                loadDocument(docId);
+            }
+        });
+
+        // Get doc ID from URL
+        function getDocFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('doc') || 'bounty-system';
+        }
+
+        // Filter/search functionality
+        function filterDocs() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const navItems = document.querySelectorAll('.nav-item[data-doc]');
+            
+            navItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // Initialize - load document from URL or default
+        window.addEventListener('DOMContentLoaded', () => {
+            const docId = getDocFromURL();
+            loadDocument(docId);
+            
+            // Set initial state
+            history.replaceState({ doc: docId }, '', `?doc=${docId}`);
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.querySelector('.content').addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        });
+    </script>
+</body>
+</html>

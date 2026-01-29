@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDK Feedback: Local Development Mode | Memori DevRel</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .feedback-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+        .feedback-header {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .feedback-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .feedback-meta {
+            display: flex;
+            gap: 2rem;
+            color: var(--text-gray);
+            font-size: 0.95rem;
+        }
+        .feedback-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-block {
+            margin-bottom: 3rem;
+        }
+        .section-block h2 {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+        .section-block h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .code-block {
+            background-color: var(--darker-bg);
+            color: #e5e7eb;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 1rem 0;
+        }
+        .code-block .comment { color: #6b7280; }
+        .code-block .keyword { color: #f472b6; }
+        .code-block .string { color: #34d399; }
+        .code-block .function { color: #60a5fa; }
+        .tradeoff-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .tradeoff-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .tradeoff-card.pro {
+            background-color: rgba(16, 185, 129, 0.1);
+            border-color: var(--success-color);
+        }
+        .tradeoff-card.con {
+            background-color: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger-color);
+        }
+        .tradeoff-card h4 {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tradeoff-card ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        .tradeoff-card li {
+            margin-bottom: 0.5rem;
+        }
+        .callout {
+            background-color: rgba(0, 102, 255, 0.1);
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .callout strong {
+            color: var(--secondary-color);
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-gray);
+        }
+        .back-link:hover {
+            color: var(--primary-color);
+        }
+        @media (max-width: 768px) {
+            .tradeoff-grid {
+                grid-template-columns: 1fr;
+            }
+            .feedback-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <h1>Memori DevRel</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="portal.html">Portal</a></li>
+                <li><a href="ecosystem.html">Ecosystem</a></li>
+                <li><a href="presentation.html" class="cta-btn">View Presentation</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="feedback-page">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="feedback-header">
+            <h1>SDK Feedback: Add Local Development Mode</h1>
+            <div class="feedback-meta">
+                <span>Category: Developer Experience</span>
+                <span>Priority: High</span>
+                <span>Effort: Medium</span>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Summary</h2>
+            <p>
+                Introduce a <strong>local development mode</strong> to the Memori SDK that allows developers to build, test, and iterate on memory-powered applications without requiring API credentials or network connectivity. This mode would use an embedded SQLite database with simulated memory operations, enabling a true "zero-config" first experience.
+            </p>
+        </div>
+
+        <div class="section-block">
+            <h2>The Problem</h2>
+            <p>
+                Today, developers must obtain API credentials before writing their first line of Memori code. This creates friction at the most critical moment in the developer journey: first contact. Based on common patterns in developer onboarding:
+            </p>
+            <ul>
+                <li><strong>Credential barriers delay experimentation.</strong> Developers exploring Memori must sign up, wait for approval, and configure environment variables before seeing any working code.</li>
+                <li><strong>Network dependency slows iteration.</strong> Every memory operation requires an API round-trip, making the feedback loop slower than it needs to be during active development.</li>
+                <li><strong>CI/CD pipelines require secrets management.</strong> Running integration tests against the production API means managing credentials in CI environments and paying for API calls on every build.</li>
+                <li><strong>Offline development is impossible.</strong> Developers on planes, trains, or spotty WiFi cannot work on Memori integrations.</li>
+            </ul>
+        </div>
+
+        <div class="section-block">
+            <h2>Proposed Solution</h2>
+            <p>
+                Add a <code>local=True</code> parameter to the SDK client that activates an embedded, fully-functional memory layer backed by SQLite. The local mode should be API-compatible with production, so switching environments requires only a configuration change.
+            </p>
+
+            <h3>Developer Experience</h3>
+            <div class="code-block">
+<span class="keyword">from</span> memori <span class="keyword">import</span> MemoriClient
+
+<span class="comment"># Local development - no credentials needed</span>
+client = MemoriClient(<span class="function">local</span>=<span class="keyword">True</span>)
+
+<span class="comment"># Same API as production</span>
+client.memory.store(
+    <span class="function">content</span>=<span class="string">"User prefers dark mode"</span>,
+    <span class="function">attribution</span>=<span class="string">"user:123"</span>,
+    <span class="function">type</span>=<span class="string">"preference"</span>
+)
+
+memories = client.memory.recall(
+    <span class="function">query</span>=<span class="string">"What are the user's UI preferences?"</span>,
+    <span class="function">attribution</span>=<span class="string">"user:123"</span>
+)
+
+<span class="comment"># When ready for production, just change the config</span>
+<span class="comment"># client = MemoriClient(api_key=os.environ["MEMORI_API_KEY"])</span>
+            </div>
+
+            <h3>Core Capabilities</h3>
+            <ul>
+                <li><strong>Embedded SQLite storage</strong> - Memory persists to <code>~/.memori/local.db</code> by default, or an in-memory database for tests</li>
+                <li><strong>Simulated embedding generation</strong> - Use a lightweight local embedding model (e.g., sentence-transformers) or deterministic hashing for semantic similarity</li>
+                <li><strong>Full API parity</strong> - All memory operations (store, recall, forget, search) work identically to production</li>
+                <li><strong>Debug tooling</strong> - Built-in memory inspector to see stored memories, their embeddings, and recall scores</li>
+            </ul>
+
+            <div class="callout">
+                <strong>Key Design Principle:</strong> Code written against local mode should work unchanged in production. The local mode is a development convenience, not a separate API.
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Trade-offs Considered</h2>
+
+            <div class="tradeoff-grid">
+                <div class="tradeoff-card pro">
+                    <h4>Benefits</h4>
+                    <ul>
+                        <li>Zero-friction onboarding - developers can experiment immediately</li>
+                        <li>Faster development iteration with local operations</li>
+                        <li>Free CI/CD testing without API costs or secrets</li>
+                        <li>Offline development capability</li>
+                        <li>Deterministic tests without network flakiness</li>
+                        <li>Lower barrier to contribution for open-source projects</li>
+                    </ul>
+                </div>
+                <div class="tradeoff-card con">
+                    <h4>Drawbacks</h4>
+                    <ul>
+                        <li>Additional code path to maintain and test</li>
+                        <li>Local embeddings won't match production quality exactly</li>
+                        <li>Risk of developers shipping local mode to production accidentally</li>
+                        <li>Increases SDK package size with SQLite and embedding dependencies</li>
+                        <li>May delay developers discovering production-specific issues</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Mitigations</h3>
+            <ul>
+                <li><strong>Production guard rails:</strong> Emit clear warnings when local mode is used, and fail loudly if <code>local=True</code> is detected in a production environment (e.g., via <code>MEMORI_ENV=production</code>)</li>
+                <li><strong>Optional dependencies:</strong> Make local mode dependencies (SQLite driver, embedding model) optional installs via <code>pip install memori[local]</code></li>
+                <li><strong>Fidelity documentation:</strong> Clearly document which behaviors differ between local and production modes</li>
+                <li><strong>Shared test suite:</strong> Run the same integration tests against both local and production modes to catch API drift</li>
+            </ul>
+        </div>
+
+        <div class="section-block">
+            <h2>Alternatives Considered</h2>
+
+            <h3>1. Mock Client Only</h3>
+            <p>
+                Provide a <code>MockMemoriClient</code> that returns canned responses. <em>Rejected</em> because it doesn't allow meaningful development - developers can't build real memory-powered features against mocks.
+            </p>
+
+            <h3>2. Free Tier API Access</h3>
+            <p>
+                Offer a generous free tier with rate limits. <em>Complements but doesn't replace</em> local mode - developers still need credentials and network access, and free tier costs Memori infrastructure.
+            </p>
+
+            <h3>3. Docker-based Local Server</h3>
+            <p>
+                Ship a Docker image with a full Memori server. <em>Rejected</em> as too heavyweight - requires Docker, takes time to start, and adds operational complexity for simple use cases.
+            </p>
+        </div>
+
+        <div class="section-block">
+            <h2>Success Metrics</h2>
+            <ul>
+                <li><strong>Time to first working code:</strong> Target < 2 minutes from <code>pip install</code> to running memory operations</li>
+                <li><strong>Adoption rate:</strong> Track percentage of new developers who start with local mode</li>
+                <li><strong>Conversion rate:</strong> Measure how many local-mode users upgrade to production API keys within 7 days</li>
+                <li><strong>CI usage:</strong> Monitor local mode usage in test environments via telemetry (opt-in)</li>
+            </ul>
+        </div>
+
+        <div class="section-block">
+            <h2>Implementation Sketch</h2>
+            <div class="code-block">
+<span class="comment"># memori/client.py</span>
+<span class="keyword">class</span> <span class="function">MemoriClient</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, api_key=<span class="keyword">None</span>, instance=<span class="keyword">None</span>, local=<span class="keyword">False</span>):
+        <span class="keyword">if</span> local:
+            self._backend = LocalBackend()
+            self._warn_if_production()
+        <span class="keyword">else</span>:
+            <span class="keyword">if not</span> api_key:
+                <span class="keyword">raise</span> ConfigurationError(<span class="string">"api_key required for production mode"</span>)
+            self._backend = APIBackend(api_key, instance)
+
+        <span class="comment"># Same interface regardless of backend</span>
+        self.memory = MemoryService(self._backend)
+
+<span class="comment"># memori/backends/local.py</span>
+<span class="keyword">class</span> <span class="function">LocalBackend</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, db_path=<span class="string">"~/.memori/local.db"</span>):
+        self.db = sqlite3.connect(db_path)
+        self._init_schema()
+        self.embedder = LocalEmbedder()  <span class="comment"># lightweight model</span>
+
+    <span class="keyword">def</span> <span class="function">store</span>(self, content, attribution, type):
+        embedding = self.embedder.encode(content)
+        <span class="comment"># Store in SQLite with embedding</span>
+        ...
+
+    <span class="keyword">def</span> <span class="function">recall</span>(self, query, attribution, limit=10):
+        query_embedding = self.embedder.encode(query)
+        <span class="comment"># Cosine similarity search in SQLite</span>
+        ...
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Recommendation</h2>
+            <p>
+                Ship local development mode as a first-class feature of the SDK. The reduction in onboarding friction and the enablement of proper local testing workflows will accelerate developer adoption and improve the overall quality of Memori integrations. The trade-offs are manageable with the proposed mitigations, and the alternative approaches don't adequately solve the core problem.
+            </p>
+            <p>
+                <strong>Proposed timeline:</strong> Beta release within 4-6 weeks, targeting the Python SDK first, with TypeScript following based on adoption patterns.
+            </p>
+        </div>
+
+        <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+            <h3 style="text-align: center; margin-bottom: 1rem;">Related Feedback</h3>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="sdk-feedback-observability.html" class="btn btn-outline">Memory Observability Tools</a>
+            </div>
+        </div>
+
+        <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); text-align: center;">
+            <p style="color: var(--text-gray);">
+                Have feedback on this proposal? Open an issue on <a href="https://github.com/MemoriLabs/Memori/issues">GitHub Issues</a>,
+                explore the <a href="https://github.com/MemoriLabs/memori-cookbook">Memori Cookbook</a>,
+                or check the <a href="https://memorilabs.ai/docs/">official docs</a>.
+            </p>
+            <a href="index.html" class="btn btn-primary" style="margin-top: 1rem;">Back to Home</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Memori. Built with care by the Memori Community</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

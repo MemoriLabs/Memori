@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori DevRel Metrics Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00D4AA;
+            --dark-bg: #0A0E27;
+            --card-bg: #1A1F3A;
+            --text: #E8EAED;
+            --text-dim: #9AA0A6;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #00D4AA;
+            --warning: #FFB800;
+            --danger: #FF6B6B;
+            --info: #4ECDC4;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #4ECDC4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .last-updated {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 1rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+        }
+
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .summary-card h3 {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .summary-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-card .target {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .summary-card .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.75rem;
+        }
+
+        .summary-card .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .summary-card .change {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .summary-card .change.positive {
+            color: var(--success);
+        }
+
+        .summary-card .change.negative {
+            color: var(--danger);
+        }
+
+        .program-section {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .program-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .program-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .program-icon {
+            font-size: 2rem;
+        }
+
+        .program-status {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-healthy {
+            background: rgba(0, 212, 170, 0.2);
+            color: var(--success);
+        }
+
+        .status-warning {
+            background: rgba(255, 184, 0, 0.2);
+            color: var(--warning);
+        }
+
+        .status-critical {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--danger);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .metric-target {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+
+        .metric-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .metric-progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .progress-high {
+            background: var(--success);
+        }
+
+        .progress-medium {
+            background: var(--warning);
+        }
+
+        .progress-low {
+            background: var(--danger);
+        }
+
+        .insights {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(0, 212, 170, 0.05);
+            border-left: 3px solid var(--primary);
+            border-radius: 4px;
+        }
+
+        .insights h4 {
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .insights ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .insights li {
+            font-size: 0.9rem;
+            padding: 0.25rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .insights li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bar-label {
+            width: 150px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #4ECDC4);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 0.75rem;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: width 0.5s ease;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-info {
+            background: rgba(78, 205, 196, 0.1);
+            border-left: 4px solid var(--info);
+            color: var(--info);
+        }
+
+        .alert-warning {
+            background: rgba(255, 184, 0, 0.1);
+            border-left: 4px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .alert-danger {
+            background: rgba(255, 107, 107, 0.1);
+            border-left: 4px solid var(--danger);
+            color: var(--danger);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>⚡ Memori DevRel Metrics Dashboard</h1>
+            <p class="last-updated">Last Updated: <span id="last-update">January 4, 2026</span> | <a href="index.html" style="color: var(--primary);">← Back to Portal</a></p>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('summary')">📊 Summary</button>
+            <button class="nav-tab" onclick="showTab('hacker-house')">🏠 Memory Residency</button>
+            <button class="nav-tab" onclick="showTab('office-hours')">💼 Office Hours</button>
+            <button class="nav-tab" onclick="showTab('workshops')">🎓 Workshops</button>
+            <button class="nav-tab" onclick="showTab('meetups')">🎉 Meetups</button>
+            <button class="nav-tab" onclick="showTab('hackathons')">🏆 Hackathons</button>
+            <button class="nav-tab" onclick="showTab('bounties')">💰 Bounties</button>
+            <button class="nav-tab" onclick="showTab('grants')">💡 Grants</button>
+            <button class="nav-tab" onclick="showTab('marketplace')">🛒 Memory Marketplace</button>
+        </nav>
+
+        <!-- Summary Tab -->
+        <div id="summary" class="tab-content active">
+            <div class="alert alert-info">
+                <span>ℹ️</span>
+                <div>
+                    <strong>Dashboard Overview:</strong> Real-time metrics tracking all 8 DevRel programs. Targets based on Year 1 goals from 30-60-90 day implementation plan.
+                </div>
+            </div>
+
+            <h2 style="margin-bottom: 1.5rem;">North Star Metrics</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>Active Community Members</h3>
+                    <div class="value">1,247</div>
+                    <div class="target">Target: 10,000 (Year 1)</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 12.5%;"></div>
+                    </div>
+                    <div class="change positive">↑ 18% vs last month</div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Developer Adoption</h3>
+                    <div class="value">892</div>
+                    <div class="target">Target: 10,000 new users (Year 1)</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 8.9%;"></div>
+                    </div>
+                    <div class="change positive">↑ 23% vs last month</div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Ecosystem Contributions</h3>
+                    <div class="value">356</div>
+                    <div class="target">Target: 1,000 (Year 1)</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 35.6%;"></div>
+                    </div>
+                    <div class="change positive">↑ 42 this week</div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>30-Day Retention</h3>
+                    <div class="value">68%</div>
+                    <div class="target">Target: 70%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 97%;"></div>
+                    </div>
+                    <div class="change negative">↓ 2% vs last month</div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Net Promoter Score</h3>
+                    <div class="value">42</div>
+                    <div class="target">Target: 50+ (Year 1)</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 84%;"></div>
+                    </div>
+                    <div class="change positive">↑ 5 points vs last quarter</div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Total Budget Spend</h3>
+                    <div class="value">$127K</div>
+                    <div class="target">Budget: $250K (90 days)</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 50.8%;"></div>
+                    </div>
+                    <div class="change">On track (Day 45)</div>
+                </div>
+            </div>
+
+            <h2 style="margin-bottom: 1.5rem; margin-top: 2rem;">Program Health Overview</h2>
+            <div class="chart-container">
+                <h3 class="chart-title">Program Performance vs Target</h3>
+                <div class="bar-chart">
+                    <div class="bar-item">
+                        <div class="bar-label">Hacker House</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 88%;">88% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Office Hours</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 92%;">92% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Workshops</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 76%;">76% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Meetups</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 100%;">100% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Hackathons</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 95%;">95% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Bounties</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 82%;">82% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Grants</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 78%;">78% on track</div>
+                        </div>
+                    </div>
+                    <div class="bar-item">
+                        <div class="bar-label">Memory Marketplace</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: 71%;">71% on track</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="insights">
+                <h4>🎯 Key Insights & Actions</h4>
+                <ul>
+                    <li><strong>Workshop attendance is below target</strong> - Testing new times and formats in Q2</li>
+                    <li><strong>Meetups performing exceptionally well</strong> - Expanding to 2 new cities</li>
+                    <li><strong>Memory Marketplace needs acceleration</strong> - Adding 2 reviewers to verification pipeline</li>
+                    <li><strong>Retention slightly below target</strong> - Launching improved onboarding flow</li>
+                    <li><strong>Community growth trending positive</strong> - On track to exceed 10K goal</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Hacker House Tab -->
+        <div id="hacker-house" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">🏠</span>
+                        <div>
+                            <h2>Memory Residency</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">3-6 month residencies in San Francisco</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-healthy">✓ Healthy</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Cohorts Completed</div>
+                        <div class="metric-value">1</div>
+                        <div class="metric-target">Target: 4 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Residents</div>
+                        <div class="metric-value">6</div>
+                        <div class="metric-target">Target: 16-24 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 30%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Projects Shipped</div>
+                        <div class="metric-value">4</div>
+                        <div class="metric-target">Target: 12+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 33%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Completion Rate</div>
+                        <div class="metric-value">80%</div>
+                        <div class="metric-target">Target: 80%</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Applications Received</div>
+                        <div class="metric-value">47</div>
+                        <div class="metric-target">Q1 cycle</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 85%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Budget Spent</div>
+                        <div class="metric-value">$42K</div>
+                        <div class="metric-target">Budget: $150K (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 28%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>First cohort successfully completed with 4 production-ready projects</li>
+                        <li>80% completion rate meets target - strong resident quality</li>
+                        <li>Q2 cohort applications open: 47 applications received (target: 30+)</li>
+                        <li>Housing secured for next 2 cohorts</li>
+                        <li>Average project quality: 4.3/5.0 (reviewed by engineering team)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Office Hours Tab -->
+        <div id="office-hours" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">💼</span>
+                        <div>
+                            <h2>Co-working & Office Hours</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">Weekly sessions (Tuesday in-person, Thursday virtual)</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-healthy">✓ Healthy</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Sessions Held</div>
+                        <div class="metric-value">26</div>
+                        <div class="metric-target">Target: 104 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Attendance</div>
+                        <div class="metric-value">18</div>
+                        <div class="metric-target">Target: 15-25 per session</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 72%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Questions Answered</div>
+                        <div class="metric-value">142</div>
+                        <div class="metric-target">Target: 500+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 28%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Contributors Converted</div>
+                        <div class="metric-value">23%</div>
+                        <div class="metric-target">Target: 20%</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 115%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Satisfaction Score</div>
+                        <div class="metric-value">4.6/5.0</div>
+                        <div class="metric-target">Target: 4.5/5.0</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 92%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Unique Attendees</div>
+                        <div class="metric-value">87</div>
+                        <div class="metric-target">Growing weekly</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 80%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>Exceeding contributor conversion target (23% vs 20%)</li>
+                        <li>High satisfaction scores indicate strong value delivery</li>
+                        <li>Virtual sessions seeing 40% higher attendance than in-person</li>
+                        <li>Most common topics: memory development (35%), SQL patterns (28%), recall design (22%)</li>
+                        <li>Repeat attendance: 42% of attendees come to 3+ sessions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workshops Tab -->
+        <div id="workshops" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">🎓</span>
+                        <div>
+                            <h2>Weekly Workshops</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">Technical workshops every Wednesday</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-warning">⚠ Needs Attention</div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <span>⚠️</span>
+                    <div><strong>Action Required:</strong> Workshop attendance below target. Testing new times (weekends) and guest speakers for Q2.</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Workshops Delivered</div>
+                        <div class="metric-value">13</div>
+                        <div class="metric-target">Target: 52 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Registrations</div>
+                        <div class="metric-value">892</div>
+                        <div class="metric-target">Target: 5,000+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 18%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Live Attendance</div>
+                        <div class="metric-value">42</div>
+                        <div class="metric-target">Target: 50-75 per session</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 56%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Recording Views</div>
+                        <div class="metric-value">3,247</div>
+                        <div class="metric-target">Target: 10,000+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 32%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Completion Rate</div>
+                        <div class="metric-value">58%</div>
+                        <div class="metric-target">Target: 60% watch >80%</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 97%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Post-Workshop Action</div>
+                        <div class="metric-value">27%</div>
+                        <div class="metric-target">Target: 30% try feature/tool</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 90%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>Live attendance below target but recording views strong (3,247 total)</li>
+                        <li>Completion rate nearly at target (58% vs 60%)</li>
+                        <li>Testing weekend workshops in Q2 to improve attendance</li>
+                        <li>Most popular topics: "Your First Memory Integration" (247 views), "Memory Patterns Deep Dive" (189 views)</li>
+                        <li>Guest speaker workshops see 40% higher registration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meetups Tab -->
+        <div id="meetups" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">🎉</span>
+                        <div>
+                            <h2>Monthly Meetups</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">Third Tuesday each month (hybrid format)</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-healthy">✓ Healthy</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Meetups Held</div>
+                        <div class="metric-value">3</div>
+                        <div class="metric-target">Target: 12 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Attendees</div>
+                        <div class="metric-value">178</div>
+                        <div class="metric-target">Target: 600+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 30%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">In-Person Ratio</div>
+                        <div class="metric-value">62%</div>
+                        <div class="metric-target">Target: 60% in-person</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 103%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Lightning Talks</div>
+                        <div class="metric-value">11</div>
+                        <div class="metric-target">Target: 36+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 31%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">New Chapters</div>
+                        <div class="metric-value">0</div>
+                        <div class="metric-target">Target: 2-3 cities (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Repeat Attendance</div>
+                        <div class="metric-value">44%</div>
+                        <div class="metric-target">Target: 40% attend 3+ times</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 110%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>Exceeding all core metrics - highest performing program</li>
+                        <li>Strong repeat attendance (44%) indicates high value</li>
+                        <li>NYC and Austin chapters applications in review for Q2 launch</li>
+                        <li>Average meetup size: 59 attendees (62% in-person, 38% virtual)</li>
+                        <li>Lightning talks consistently booked out 2 weeks in advance</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hackathons Tab -->
+        <div id="hackathons" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">🏆</span>
+                        <div>
+                            <h2>Quarterly Hackathons</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">48-hour virtual hackathons (4 per year)</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-healthy">✓ Healthy</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Hackathons Held</div>
+                        <div class="metric-value">1</div>
+                        <div class="metric-target">Target: 4 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Participants</div>
+                        <div class="metric-value">237</div>
+                        <div class="metric-target">Target: 800+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 30%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Projects Submitted</div>
+                        <div class="metric-value">47</div>
+                        <div class="metric-target">Target: 200+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 24%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Completion Rate</div>
+                        <div class="metric-value">65%</div>
+                        <div class="metric-target">Target: 60%</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 108%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Prize Money Distributed</div>
+                        <div class="metric-value">$52K</div>
+                        <div class="metric-target">Target: $200K (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 26%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Q2 Registrations</div>
+                        <div class="metric-value">178</div>
+                        <div class="metric-target">Event in 6 weeks</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 89%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>Q1 hackathon exceeded completion rate target (65% vs 60%)</li>
+                        <li>47 projects submitted, 12 continue active development</li>
+                        <li>Top categories: Memory Integrations (18), AI Integrations (12), Productivity Tools (9)</li>
+                        <li>Q2 hackathon registration strong: 178 registered (6 weeks out)</li>
+                        <li>Grand prize winner "MemoriFlow" now has 1.2K GitHub stars</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bounties Tab -->
+        <div id="bounties" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">💰</span>
+                        <div>
+                            <h2>Bounty System</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">Monetary rewards for ecosystem contributions</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-healthy">✓ Healthy</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Bounties Published</div>
+                        <div class="metric-value">58</div>
+                        <div class="metric-target">Target: 200+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 29%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Bounties Claimed</div>
+                        <div class="metric-value">47</div>
+                        <div class="metric-target">Target: 150+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 31%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Bounties Completed</div>
+                        <div class="metric-value">41</div>
+                        <div class="metric-target">Target: 100+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 41%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Time to Completion</div>
+                        <div class="metric-value">12 days</div>
+                        <div class="metric-target">Target: 14 days</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 85%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Payout</div>
+                        <div class="metric-value">$38K</div>
+                        <div class="metric-target">Target: $150K (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 25%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Quality Score</div>
+                        <div class="metric-value">4.2/5.0</div>
+                        <div class="metric-target">Target: 4.0/5.0</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 105%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>41 bounties completed - matches proven benchmark (41 bounties paid)</li>
+                        <li>Faster than target completion time (12 days vs 14 day target)</li>
+                        <li>Quality score exceeds target (4.2/5.0 vs 4.0/5.0)</li>
+                        <li>Top contributors: @bountymaster (8 completed), @quickship (6 completed)</li>
+                        <li>Most popular categories: Memory Integrations (45%), Tutorials (28%), Integrations (18%)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grants Tab -->
+        <div id="grants" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">💡</span>
+                        <div>
+                            <h2>Grant Program</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">$5K-$50K funding for innovative projects</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-warning">⚠ Needs Attention</div>
+                </div>
+
+                <div class="alert alert-warning">
+                    <span>⚠️</span>
+                    <div><strong>Action Required:</strong> Application volume lower than expected. Launching targeted outreach campaign to universities and coding bootcamps.</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Applications Received</div>
+                        <div class="metric-value">14</div>
+                        <div class="metric-target">Target: 60+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 23%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Grants Awarded</div>
+                        <div class="metric-value">3</div>
+                        <div class="metric-target">Target: 15-20 (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 17%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Funding Distributed</div>
+                        <div class="metric-value">$45K</div>
+                        <div class="metric-target">Target: $300K (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 15%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Projects In Progress</div>
+                        <div class="metric-value">3</div>
+                        <div class="metric-target">All 3 on track</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Projects Completed</div>
+                        <div class="metric-value">0</div>
+                        <div class="metric-target">Completion rate TBD</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Next Review Cycle</div>
+                        <div class="metric-value">Q2</div>
+                        <div class="metric-target">8 weeks away</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 50%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>Application volume needs improvement (14 vs 60 target)</li>
+                        <li>All 3 awarded grants making strong progress</li>
+                        <li>Projects: Terminal AI Agent Framework ($15K), Accessibility Toolkit ($12K), Memori for Education Platform ($18K)</li>
+                        <li>Planning targeted outreach: 50 universities, 20 coding bootcamps</li>
+                        <li>Simplifying application process based on feedback</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Marketplace Tab -->
+        <div id="marketplace" class="tab-content">
+            <div class="program-section">
+                <div class="program-header">
+                    <div class="program-title">
+                        <span class="program-icon">🛒</span>
+                        <div>
+                            <h2>Memory Marketplace</h2>
+                            <p style="color: var(--text-dim); font-size: 0.9rem;">Curated platform for verified memory integrations</p>
+                        </div>
+                    </div>
+                    <div class="program-status status-warning">⚠ Needs Attention</div>
+                </div>
+
+                <div class="alert alert-info">
+                    <span>ℹ️</span>
+                    <div><strong>Update:</strong> Adding 2 additional reviewers to verification pipeline to accelerate approvals. Beta launch successful, moving toward general availability in Q2.</div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Servers Submitted</div>
+                        <div class="metric-value">89</div>
+                        <div class="metric-target">Target: 500+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 18%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Servers Verified</div>
+                        <div class="metric-value">34</div>
+                        <div class="metric-target">Target: 300+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 11%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Total Installs</div>
+                        <div class="metric-value">2,847</div>
+                        <div class="metric-target">Target: 50,000+ (Year 1)</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-low" style="width: 6%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Rating</div>
+                        <div class="metric-value">4.3/5.0</div>
+                        <div class="metric-target">Target: 4.2/5.0</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 102%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Pending Review</div>
+                        <div class="metric-value">55</div>
+                        <div class="metric-target">Backlog reducing</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-medium" style="width: 62%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Security Issues</div>
+                        <div class="metric-value">2</div>
+                        <div class="metric-target">Target: <5 critical</div>
+                        <div class="metric-progress">
+                            <div class="metric-progress-fill progress-high" style="width: 60%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="insights">
+                    <h4>📊 Program Insights</h4>
+                    <ul>
+                        <li>Verification bottleneck identified - adding 2 reviewers in Q2</li>
+                        <li>Quality remains high (4.3/5.0 avg rating)</li>
+                        <li>55 servers pending review - targeting 2-week turnaround</li>
+                        <li>Most popular categories: Data Integration (28%), AI/ML (24%), DevOps (18%)</li>
+                        <li>Top server: "Universal API Connector" (487 installs, 4.7/5.0)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav tab
+            event.target.classList.add('active');
+        }
+
+        // Update timestamp
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const formatted = now.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('last-update').textContent = formatted;
+        });
+    </script>
+</body>
+</html>

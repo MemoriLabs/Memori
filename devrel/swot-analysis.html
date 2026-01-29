@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori SWOT Analysis - Competitive Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00D4AA;
+            --dark-bg: #0A0E27;
+            --card-bg: #1A1F3A;
+            --text: #E8EAED;
+            --text-dim: #9AA0A6;
+            --border: rgba(255, 255, 255, 0.1);
+            --strengths: #00D4AA;
+            --weaknesses: #FF6B6B;
+            --opportunities: #4ECDC4;
+            --threats: #FF8C42;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #4ECDC4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin: 2rem 0 1rem;
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+        }
+
+        .meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-top: 1rem;
+        }
+
+        .executive-summary {
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1), rgba(78, 205, 196, 0.1));
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 3rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .key-finding {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            border-left: 4px solid #4ECDC4;
+        }
+
+        .swot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0 3rem;
+        }
+
+        .swot-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-top: 4px solid;
+        }
+
+        .swot-card.strengths {
+            border-color: var(--strengths);
+        }
+
+        .swot-card.weaknesses {
+            border-color: var(--weaknesses);
+        }
+
+        .swot-card.opportunities {
+            border-color: var(--opportunities);
+        }
+
+        .swot-card.threats {
+            border-color: var(--threats);
+        }
+
+        .swot-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .swot-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .swot-card li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .swot-card li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+        }
+
+        .competitive-matrix {
+            overflow-x: auto;
+            margin: 2rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th {
+            background: rgba(0, 212, 170, 0.1);
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .threat-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .threat-critical {
+            background: rgba(255, 107, 107, 0.2);
+            color: #FF6B6B;
+        }
+
+        .threat-high {
+            background: rgba(255, 140, 66, 0.2);
+            color: #FF8C42;
+        }
+
+        .threat-medium {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ECDC4;
+        }
+
+        .recommendations {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+        }
+
+        .timeline {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .timeline-item {
+            padding: 1.5rem;
+            background: rgba(0, 212, 170, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .timeline-item h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-item ol {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .conclusion {
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.1), rgba(78, 205, 196, 0.1));
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 3rem 0 2rem;
+            border: 2px solid var(--primary);
+        }
+
+        .critical-factors {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .factor {
+            padding: 0.75rem 1rem;
+            background: var(--card-bg);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nav {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav a {
+            padding: 0.75rem 1.5rem;
+            background: var(--card-bg);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: 8px;
+            border: 1px solid var(--primary);
+            transition: all 0.3s;
+        }
+
+        .nav a:hover {
+            background: var(--primary);
+            color: var(--dark-bg);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .swot-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav {
+                position: static;
+                justify-content: center;
+                margin-bottom: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">← Home</a>
+        <a href="swot-analysis.html" target="_blank">Full Report</a>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Memori.dev SWOT Analysis</h1>
+            <p class="subtitle">Competitive Intelligence Report</p>
+            <div class="meta">
+                <span>📅 January 4, 2026</span>
+                <span>👤 DevRel Strategy Team</span>
+                <span>📊 Version 1.0</span>
+            </div>
+        </header>
+
+        <section class="executive-summary">
+            <h2>Executive Summary</h2>
+            <p>Memori is positioned as the <strong>memory fabric for enterprise AI</strong>, providing persistent, structured memory that reduces LLM costs and latency. With SQL-native storage, explainable lineage, and drop-in SDKs, Memori differentiates from vector databases and ad-hoc memory layers. The market is early but growing as enterprises demand governance, personalization, and cost control for AI agents.</p>
+            
+            <div class="key-finding">
+                <strong>🎯 Key Finding:</strong> Memori's greatest strength is SQL-native, explainable memory for AI agents. Its greatest risk is market education and competition from vector DBs moving into memory.
+            </div>
+        </section>
+
+        <h2>SWOT Analysis Overview</h2>
+        <div class="swot-grid">
+            <div class="swot-card strengths">
+                <h3>💪 Strengths</h3>
+                <ul>
+                    <li><strong>SQL-Native Memory</strong> - Familiar, governed storage in existing databases</li>
+                    <li><strong>Explainable Lineage</strong> - Trace memory sources by entity, time, and process</li>
+                    <li><strong>Cost Reduction</strong> - 60-80% LLM savings via selective recall</li>
+                    <li><strong>Drop-in SDKs</strong> - Zero-config integration across stacks</li>
+                    <li><strong>Broad Compatibility</strong> - LLM + framework agnostic</li>
+                    <li><strong>Enterprise Controls</strong> - RBAC, retention policies, compliance readiness</li>
+                </ul>
+            </div>
+
+            <div class="swot-card weaknesses">
+                <h3>⚠️ Weaknesses</h3>
+                <ul>
+                    <li><strong>Category Education</strong> - Memory vs RAG confusion in market</li>
+                    <li><strong>Benchmark Visibility</strong> - Needs third-party validation</li>
+                    <li><strong>Integration Maturity</strong> - Variability across frameworks</li>
+                    <li><strong>Observability Gaps</strong> - Emerging memory analytics market</li>
+                    <li><strong>Go-To-Market Focus</strong> - Requires strong enterprise enablement</li>
+                </ul>
+            </div>
+
+            <div class="swot-card opportunities">
+                <h3>🚀 Opportunities</h3>
+                <ul>
+                    <li><strong>Enterprise Memory Adoption</strong> - Persistent memory as a new standard</li>
+                    <li><strong>RAG + Memory Hybrid</strong> - Full-context agent architectures</li>
+                    <li><strong>Database Partnerships</strong> - Co-marketing with SQL providers</li>
+                    <li><strong>Observability Tools</strong> - Memory analytics and lineage products</li>
+                    <li><strong>Vertical Solutions</strong> - Support, e-commerce, finance personalization</li>
+                </ul>
+            </div>
+
+            <div class="swot-card threats">
+                <h3>⚡ Threats</h3>
+                <ul>
+                    <li><strong>Vector DB Expansion</strong> - Vendors adding memory layers</li>
+                    <li><strong>Framework-Native Memory</strong> - Built-in memory in LangChain, etc.</li>
+                    <li><strong>Open Source Memory</strong> - Free community alternatives</li>
+                    <li><strong>In-House Builds</strong> - Enterprises building custom memory stacks</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>Competitive Landscape</h2>
+        <div class="competitive-matrix">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Competitor</th>
+                        <th>Strengths vs Memori</th>
+                        <th>Weaknesses vs Memori</th>
+                        <th>Threat Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Vector DBs</strong></td>
+                        <td>Embeddings scale, incumbent adoption</td>
+                        <td>Weak memory governance, lack of lineage</td>
+                        <td><span class="threat-badge threat-high">🟡 High</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Framework Memory</strong></td>
+                        <td>Built-in, low friction</td>
+                        <td>Limited governance and explainability</td>
+                        <td><span class="threat-badge threat-high">🟡 High</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Custom In-House</strong></td>
+                        <td>Tailored to enterprise stack</td>
+                        <td>High maintenance, limited scalability</td>
+                        <td><span class="threat-badge threat-medium">🟢 Medium</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <section class="recommendations">
+            <h2>Strategic Recommendations</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>Immediate (0-3 months)</h4>
+                    <ol>
+                        <li><strong>Benchmark Memory vs RAG</strong> - Publish third-party validations</li>
+                        <li><strong>Security Guidance</strong> - PCI/SOC2-ready memory playbooks</li>
+                        <li><strong>SDK Adoption</strong> - Expand framework adapters</li>
+                        <li><strong>Memory Observatory</strong> - Launch analytics MVP</li>
+                    </ol>
+                </div>
+                <div class="timeline-item">
+                    <h4>Short-Term (3-6 months)</h4>
+                    <ol>
+                        <li><strong>Memori Memory Academy</strong> - Certifications + enterprise training</li>
+                        <li><strong>Database Partnerships</strong> - Co-marketing with SQL providers</li>
+                        <li><strong>Memory Marketplace</strong> - Curated integrations catalog</li>
+                        <li><strong>Developer Relations 2.0</strong> - Hackathons, bounties, influencer partnerships</li>
+                    </ol>
+                </div>
+                <div class="timeline-item">
+                    <h4>Medium-Term (6-12 months)</h4>
+                    <ol>
+                        <li><strong>Enterprise Go-to-Market</strong> - Case studies and ROI metrics</li>
+                        <li><strong>Platform Ecosystem</strong> - Open-source SDKs and integrations</li>
+                        <li><strong>AI Differentiation</strong> - Memory-first agent experiences</li>
+                        <li><strong>Strategic Partnerships</strong> - Cloud providers, observability tools</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section class="conclusion">
+            <h2>Conclusion</h2>
+            <p>Memori occupies a unique and defensible position as the <strong>memory fabric for enterprise AI</strong>. Its strengths—SQL-native storage, explainable lineage, and drop-in SDKs—create genuine differentiation in a crowded market. The biggest risk is competitive movement from vector DBs and framework-native memory.</p>
+            
+            <h3>Critical Success Factors (2026)</h3>
+            <div class="critical-factors">
+                <div class="factor">✅ <strong>Publish memory benchmarks</strong> (build trust)</div>
+                <div class="factor">✅ <strong>Expand SDK adoption</strong> (reduce friction)</div>
+                <div class="factor">✅ <strong>Enterprise security posture</strong> (governance)</div>
+                <div class="factor">✅ <strong>Grow marketplace</strong> (ecosystem scale)</div>
+                <div class="factor">✅ <strong>Enterprise adoption</strong> (increase ACV)</div>
+            </div>
+
+            <p style="margin-top: 1.5rem;"><strong>Bottom Line:</strong> Memori can win if it leads the memory category with strong benchmarks, partnerships, and enterprise governance. Failure to define the category early risks commoditization.</p>
+            
+            <p style="margin-top: 1rem; font-size: 1.25rem; color: var(--primary);"><strong>Recommended Strategy:</strong> "Memory-First, SQL-Native, Enterprise-Ready"</p>
+        </section>
+
+        <section style="margin-top: 3rem; text-align: center; padding: 2rem; background: var(--card-bg); border-radius: 12px;">
+            <h3>Market Opportunity</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-top: 1.5rem;">
+                <div>
+                    <div style="font-size: 2.5rem; color: var(--primary); font-weight: bold;">$4B</div>
+                    <div style="color: var(--text-dim);">AI Memory Layer TAM</div>
+                </div>
+                <div>
+                    <div style="font-size: 2.5rem; color: var(--primary); font-weight: bold;">10K+</div>
+                    <div style="color: var(--text-dim);">Target Enterprise Teams</div>
+                </div>
+                <div>
+                    <div style="font-size: 2.5rem; color: var(--primary); font-weight: bold;">$200M</div>
+                    <div style="color: var(--text-dim);">ARR Target (3 years)</div>
+                </div>
+            </div>
+        </section>
+
+        <footer style="margin-top: 3rem; text-align: center; color: var(--text-dim); padding: 2rem;">
+            <p>For the complete analysis including market sizing, risk mitigation, and competitive feature matrix, see the <a href="swot-analysis.html" style="color: var(--primary);">full report</a>.</p>
+        </footer>
+    </div>
+</body>
+</html>

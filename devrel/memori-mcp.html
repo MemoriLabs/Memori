@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori MCP Server | Memori DevRel</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .mcp-page {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+        .mcp-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .mcp-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .mcp-header .tagline {
+            font-size: 1.25rem;
+            color: var(--text-gray);
+            max-width: 700px;
+            margin: 0 auto 1.5rem;
+        }
+        .repo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--dark-bg);
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .repo-badge:hover {
+            background: var(--darker-bg);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        .feature-banner {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .feature-item {
+            background: var(--light-bg);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .feature-item .icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .feature-item .label {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        .section-block {
+            margin: 3rem 0;
+        }
+        .section-block h2 {
+            font-size: 1.75rem;
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        .section-block h3 {
+            font-size: 1.25rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+        }
+        .code-block {
+            background-color: var(--darker-bg);
+            color: #e5e7eb;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+        }
+        .code-block .comment { color: #6b7280; }
+        .code-block .string { color: #34d399; }
+        .code-block .key { color: #60a5fa; }
+        .code-block .cmd { color: #fbbf24; }
+        .code-header {
+            background: #2d2d3f;
+            color: #9ca3af;
+            padding: 0.5rem 1rem;
+            border-radius: 8px 8px 0 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            margin-bottom: -1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .code-header + .code-block {
+            border-radius: 0 0 8px 8px;
+        }
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .security-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border-left: 4px solid var(--success-color);
+        }
+        .security-card h4 {
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .security-card p {
+            color: var(--text-gray);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+        .tool-card {
+            background: var(--light-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .tool-card h4 {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: var(--secondary-color);
+            margin-bottom: 0.75rem;
+        }
+        .tool-card .description {
+            color: var(--text-gray);
+            margin-bottom: 1rem;
+        }
+        .env-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .env-table th, .env-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .env-table th {
+            background: var(--light-bg);
+            font-weight: 600;
+        }
+        .env-table code {
+            background: var(--darker-bg);
+            color: var(--primary-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .client-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: -1px;
+            position: relative;
+            z-index: 1;
+        }
+        .client-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-gray);
+            transition: all 0.2s ease;
+        }
+        .client-tab.active {
+            background: var(--darker-bg);
+            color: var(--primary-color);
+            border-color: var(--darker-bg);
+        }
+        .client-content {
+            display: none;
+        }
+        .client-content.active {
+            display: block;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-gray);
+        }
+        .back-link:hover {
+            color: var(--primary-color);
+        }
+        .cta-box {
+            background: linear-gradient(135deg, var(--dark-bg), var(--darker-bg));
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin: 3rem 0;
+        }
+        .cta-box h3 {
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        .cta-box p {
+            color: #9ca3af;
+            margin-bottom: 1.5rem;
+        }
+        .cta-box .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+            .feature-banner {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .security-grid {
+                grid-template-columns: 1fr;
+            }
+            .client-tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <h1>Memori DevRel</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="portal.html">Portal</a></li>
+                <li><a href="ai-assistants.html">AI Assistants</a></li>
+                <li><a href="ecosystem.html">Ecosystem</a></li>
+                <li><a href="presentation.html" class="cta-btn">View Presentation</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="mcp-page">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="mcp-header">
+            <h1>Memori MCP Server</h1>
+            <p class="tagline">
+                Security-first MCP server exposing Memori-backed <code>remember</code> and <code>recall</code> tools for IDE agents like Claude Code, Cursor, and Cline.
+            </p>
+            <a href="https://github.com/colygon/memori-mcp" class="repo-badge" target="_blank">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                colygon/memori-mcp
+            </a>
+        </div>
+
+        <div class="feature-banner">
+            <div class="feature-item">
+                <div class="icon">🔒</div>
+                <div class="label">Security-First</div>
+            </div>
+            <div class="feature-item">
+                <div class="icon">🐍</div>
+                <div class="label">Python 3.10+</div>
+            </div>
+            <div class="feature-item">
+                <div class="icon">📦</div>
+                <div class="label">pip install</div>
+            </div>
+            <div class="feature-item">
+                <div class="icon">🔌</div>
+                <div class="label">stdio Transport</div>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Overview</h2>
+            <p>
+                <strong>memori-mcp</strong> is an MCP (Model Context Protocol) server that gives AI coding assistants
+                persistent memory capabilities. It exposes two simple tools - <code>remember</code> and <code>recall</code> -
+                backed by Memori's semantic memory layer.
+            </p>
+            <p>
+                The server is designed with security as the primary concern, following
+                <a href="https://modelcontextprotocol-security.io/" target="_blank">MCP security best practices</a>
+                to ensure safe operation in agentic environments.
+            </p>
+        </div>
+
+        <div class="section-block">
+            <h2>Security Design</h2>
+            <p>This server follows MCP security guidance and implements multiple layers of protection:</p>
+
+            <div class="security-grid">
+                <div class="security-card">
+                    <h4>🎯 Least Privilege</h4>
+                    <p>Only two tools exposed. No file-system access, no network calls, no shell execution.</p>
+                </div>
+                <div class="security-card">
+                    <h4>🔐 Scoped Memory</h4>
+                    <p>Memories are isolated by <code>entity_id</code> + <code>process_id</code> to prevent cross-project leakage.</p>
+                </div>
+                <div class="security-card">
+                    <h4>📏 Input Limits</h4>
+                    <p>Size caps and validation on all tool inputs to prevent abuse and resource exhaustion.</p>
+                </div>
+                <div class="security-card">
+                    <h4>🙈 No Secrets in Logs</h4>
+                    <p>Structured logging avoids dumping request payloads by default.</p>
+                </div>
+                <div class="security-card">
+                    <h4>🚫 No Code Execution</h4>
+                    <p>Tools validate inputs and never execute arbitrary code (MCP-01 mitigation).</p>
+                </div>
+                <div class="security-card">
+                    <h4>🔒 Local by Default</h4>
+                    <p>stdio transport with no open network listeners (MCP-05 mitigation).</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Installation</h2>
+
+            <h3>From PyPI (Recommended)</h3>
+            <div class="code-header">Terminal</div>
+            <div class="code-block">
+<span class="cmd">pip install memori-mcp</span>
+            </div>
+
+            <h3>From Source</h3>
+            <div class="code-header">Terminal</div>
+            <div class="code-block">
+<span class="cmd">git clone</span> https://github.com/colygon/memori-mcp
+<span class="cmd">cd</span> memori-mcp
+python3 -m venv .venv
+<span class="cmd">source</span> .venv/bin/activate
+<span class="cmd">pip install</span> -e .
+            </div>
+
+            <h3>Dependencies</h3>
+            <ul>
+                <li><code>memori>=3.1.5</code> - Memori SDK for memory operations</li>
+                <li><code>mcp>=1.26.0</code> - Model Context Protocol SDK</li>
+                <li><code>pydantic>=2.5</code> - Input validation</li>
+                <li><code>sqlalchemy>=2.0</code> - Database abstraction</li>
+            </ul>
+        </div>
+
+        <div class="section-block">
+            <h2>Configuration</h2>
+            <p>Configure the server using environment variables:</p>
+
+            <table class="env-table">
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Default</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>MEMORI_MCP_DB</code></td>
+                        <td><code>sqlite:///./memori.db</code></td>
+                        <td>Database connection string</td>
+                    </tr>
+                    <tr>
+                        <td><code>MEMORI_MCP_ENTITY_ID</code></td>
+                        <td>Current OS user</td>
+                        <td>User/entity identifier for memory scoping</td>
+                    </tr>
+                    <tr>
+                        <td><code>MEMORI_MCP_PROCESS_ID</code></td>
+                        <td>Current working directory name</td>
+                        <td>Project/process identifier for memory scoping</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-block">
+            <h2>Available Tools</h2>
+
+            <div class="tool-card">
+                <h4>memori.remember</h4>
+                <p class="description">Stores a memory snippet such as decisions, preferences, TODOs, or architectural notes.</p>
+                <div class="code-block">
+<span class="comment"># Example usage by the AI assistant</span>
+{
+  <span class="key">"tool"</span>: <span class="string">"memori.remember"</span>,
+  <span class="key">"arguments"</span>: {
+    <span class="key">"content"</span>: <span class="string">"This project uses PostgreSQL with Prisma ORM"</span>,
+    <span class="key">"type"</span>: <span class="string">"fact"</span>  <span class="comment">// preference | fact | summary | rule | todo</span>
+  }
+}
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h4>memori.recall</h4>
+                <p class="description">Recalls relevant memories using semantic search based on the query.</p>
+                <div class="code-block">
+<span class="comment"># Example usage by the AI assistant</span>
+{
+  <span class="key">"tool"</span>: <span class="string">"memori.recall"</span>,
+  <span class="key">"arguments"</span>: {
+    <span class="key">"query"</span>: <span class="string">"What database does this project use?"</span>,
+    <span class="key">"limit"</span>: 5
+  }
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Client Configuration</h2>
+            <p>Configure your AI coding assistant to use the Memori MCP server:</p>
+
+            <div class="client-tabs">
+                <button class="client-tab active" onclick="showClient('claude')">Claude Code</button>
+                <button class="client-tab" onclick="showClient('cursor')">Cursor</button>
+                <button class="client-tab" onclick="showClient('cline')">Cline</button>
+            </div>
+
+            <div id="claude-config" class="client-content active">
+                <div class="code-block">
+<span class="comment">// ~/.claude/claude_desktop_config.json</span>
+{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"memori"</span>: {
+      <span class="key">"command"</span>: <span class="string">"memori-mcp"</span>,
+      <span class="key">"env"</span>: {
+        <span class="key">"MEMORI_MCP_DB"</span>: <span class="string">"sqlite:///~/.memori/claude.db"</span>,
+        <span class="key">"MEMORI_MCP_ENTITY_ID"</span>: <span class="string">"${USER}"</span>
+      }
+    }
+  }
+}
+                </div>
+            </div>
+
+            <div id="cursor-config" class="client-content">
+                <div class="code-block">
+<span class="comment">// ~/.cursor/mcp.json</span>
+{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"memori"</span>: {
+      <span class="key">"command"</span>: <span class="string">"memori-mcp"</span>,
+      <span class="key">"env"</span>: {
+        <span class="key">"MEMORI_MCP_DB"</span>: <span class="string">"sqlite:///~/.memori/cursor.db"</span>
+      }
+    }
+  }
+}
+                </div>
+            </div>
+
+            <div id="cline-config" class="client-content">
+                <div class="code-block">
+<span class="comment">// VS Code settings.json</span>
+{
+  <span class="key">"cline.mcpServers"</span>: {
+    <span class="key">"memori"</span>: {
+      <span class="key">"command"</span>: <span class="string">"memori-mcp"</span>,
+      <span class="key">"env"</span>: {
+        <span class="key">"MEMORI_MCP_DB"</span>: <span class="string">"sqlite:///~/.memori/cline.db"</span>
+      }
+    }
+  }
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Running the Server</h2>
+            <p>Start the server directly (uses stdio transport by default):</p>
+            <div class="code-header">Terminal</div>
+            <div class="code-block">
+<span class="cmd">memori-mcp</span>
+            </div>
+            <p>The server will start and listen for MCP messages on stdin/stdout. Your AI assistant client handles the connection automatically based on the configuration above.</p>
+        </div>
+
+        <div class="section-block">
+            <h2>Hardening Recommendations</h2>
+            <p>For production deployments, consider these additional security measures:</p>
+            <ul>
+                <li><strong>Use dedicated databases per user/repo</strong> to prevent cross-project memory leakage</li>
+                <li><strong>Run locally over stdio</strong> when possible (the default for Claude Code/Cursor/Cline)</li>
+                <li><strong>If exposing over network</strong>, put it behind authentication and IP allowlists</li>
+                <li><strong>Monitor logs</strong> for unusual tool usage patterns</li>
+                <li><strong>Keep dependencies updated</strong> for security patches</li>
+            </ul>
+        </div>
+
+        <div class="cta-box">
+            <h3>Ready to Get Started?</h3>
+            <p>Install the Memori MCP server and give your AI coding assistant persistent memory.</p>
+            <div class="buttons">
+                <a href="https://github.com/colygon/memori-mcp" class="btn btn-primary" target="_blank">View on GitHub</a>
+                <a href="ai-assistants.html" class="btn btn-secondary">Integration Guide</a>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Resources</h2>
+            <ul>
+                <li><strong>GitHub Repository:</strong> <a href="https://github.com/colygon/memori-mcp">github.com/colygon/memori-mcp</a></li>
+                <li><strong>MCP Specification:</strong> <a href="https://modelcontextprotocol.io/">modelcontextprotocol.io</a></li>
+                <li><strong>MCP Security Guide:</strong> <a href="https://modelcontextprotocol-security.io/">modelcontextprotocol-security.io</a></li>
+                <li><strong>Memori Documentation:</strong> <a href="https://memorilabs.ai/docs">memorilabs.ai/docs</a></li>
+                <li><strong>AI Assistants Guide:</strong> <a href="ai-assistants.html">Integration walkthrough</a></li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border-color); text-align: center;">
+            <p style="color: var(--text-gray); margin-bottom: 1rem;">
+                Found a security issue? Please report it to <a href="mailto:security@memorilabs.ai">security@memorilabs.ai</a>
+            </p>
+            <a href="index.html" class="btn btn-primary">Back to Home</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Memori. Built with care by the Memori Community</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function showClient(client) {
+            // Hide all content
+            document.querySelectorAll('.client-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.client-tab').forEach(el => el.classList.remove('active'));
+
+            // Show selected
+            document.getElementById(client + '-config').classList.add('active');
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

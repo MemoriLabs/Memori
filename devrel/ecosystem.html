@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori Ecosystem - Integrations & Tools</title>
+    <link rel="stylesheet" href="assets/css/portal.css">
+    <style>
+        .integration-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .integration-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .integration-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+
+        .integration-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .integration-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .integration-icon {
+            font-size: 3rem;
+            line-height: 1;
+        }
+
+        .integration-logo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+        }
+
+        .integration-title {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .integration-card h3 {
+            font-size: 1.5rem;
+            margin: 0;
+            color: var(--text-dark);
+        }
+
+        .integration-category {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .integration-description {
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+        }
+
+        .integration-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 1.5rem 0;
+        }
+
+        .integration-features li {
+            padding: 0.5rem 0;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .integration-features li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .integration-footer {
+            display: flex;
+            gap: 1rem;
+            margin-top: auto;
+        }
+
+        .integration-status {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-live {
+            background: rgba(0, 184, 148, 0.1);
+            color: var(--success);
+        }
+
+        .status-beta {
+            background: rgba(253, 203, 110, 0.1);
+            color: var(--warning);
+        }
+
+        .status-coming {
+            background: rgba(108, 92, 231, 0.1);
+            color: var(--primary-color);
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 3rem;
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 24px;
+            border: 2px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .stats-banner {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 16px;
+            text-align: center;
+            margin-top: 3rem;
+        }
+
+        .stats-banner h3 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .stat-label {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="portal-header">
+        <nav class="portal-nav">
+            <div class="logo">
+                <h1>⚡ Memori Ecosystem</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="portal.html">Portal Home</a></li>
+                <li><a href="#integrations">Integrations</a></li>
+                <li><a href="#api">API</a></li>
+                <li><a href="gleeees.html">Gleeees</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero-portal">
+        <div class="hero-content">
+            <h1>Memori Ecosystem</h1>
+            <p class="hero-subtitle">Integrations that power memory-first AI across databases, LLMs, and frameworks</p>
+        </div>
+    </section>
+
+    <section id="integrations" class="section section-light">
+        <div class="container">
+            <h2>Integrations</h2>
+            <p class="section-intro">Connect Memori memory with the tools you already use</p>
+            
+            <div class="category-filter">
+                <button class="filter-btn active" data-category="all">All</button>
+                <button class="filter-btn" data-category="ai">LLM Providers</button>
+                <button class="filter-btn" data-category="devtools">Databases</button>
+                <button class="filter-btn" data-category="cloud">Frameworks</button>
+                <button class="filter-btn" data-category="productivity">Memory Tooling</button>
+            </div>
+
+            <div class="integration-grid">
+                <!-- SQL Databases -->
+                <div class="integration-card" data-category="devtools">
+                    <div class="integration-header">
+                        <span class="integration-icon">🗄️</span>
+                        <div class="integration-title">
+                            <h3>PostgreSQL & MySQL</h3>
+                            <span class="integration-category">SQL-Native Memory</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Store structured memory directly in your SQL database with native schemas, governance, and performance tuning.
+                    </p>
+                    <ul class="integration-features">
+                        <li>SQL-native storage and queries</li>
+                        <li>Transaction-level consistency</li>
+                        <li>TTL and retention policies</li>
+                        <li>Enterprise auditability</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Documentation</a>
+                    </div>
+                </div>
+
+                <!-- MongoDB -->
+                <div class="integration-card" data-category="devtools">
+                    <div class="integration-header">
+                        <span class="integration-icon">📄</span>
+                        <div class="integration-title">
+                            <h3>MongoDB</h3>
+                            <span class="integration-category">Document Memory</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Use Memori with MongoDB for flexible memory schemas and fast iteration on memory models.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Document-based memory stores</li>
+                        <li>Schema evolution support</li>
+                        <li>Hybrid relational mapping</li>
+                        <li>Atlas-ready deployments</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/blog/memory-for-ai-agents-with-mongodb/" class="btn btn-outline">Learn More</a>
+                    </div>
+                </div>
+
+                <!-- SQLite -->
+                <div class="integration-card" data-category="devtools">
+                    <div class="integration-header">
+                        <span class="integration-icon">📦</span>
+                        <div class="integration-title">
+                            <h3>SQLite</h3>
+                            <span class="integration-category">Local Memory</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Lightweight, embedded memory for local agents and offline workflows.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Zero-config local storage</li>
+                        <li>Offline memory retention</li>
+                        <li>Fast prototyping</li>
+                        <li>Single-file persistence</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Documentation</a>
+                    </div>
+                </div>
+
+                <!-- Claude (Anthropic) -->
+                <div class="integration-card" data-category="ai">
+                    <div class="integration-header">
+                        <span class="integration-icon">🤖</span>
+                        <div class="integration-title">
+                            <h3>Claude (Anthropic)</h3>
+                            <span class="integration-category">LLM Provider</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Use Claude models with Memori memory for grounded, personalized responses and lower token usage.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Memory-aware prompting</li>
+                        <li>Streaming and async support</li>
+                        <li>Cross-session context</li>
+                        <li>Explainable recall</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Learn More</a>
+                    </div>
+                </div>
+
+                <!-- OpenAI -->
+                <div class="integration-card" data-category="ai">
+                    <div class="integration-header">
+                        <span class="integration-icon">✨</span>
+                        <div class="integration-title">
+                            <h3>OpenAI (GPT-4/5)</h3>
+                            <span class="integration-category">LLM Provider</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Use OpenAI models with structured memory for personalized experiences and cost-efficient context.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Memory-first prompt injection</li>
+                        <li>Selective recall</li>
+                        <li>Attribution tracking</li>
+                        <li>Async/sync support</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Learn More</a>
+                    </div>
+                </div>
+
+                <!-- Google Gemini -->
+                <div class="integration-card" data-category="ai">
+                    <div class="integration-header">
+                        <span class="integration-icon">💎</span>
+                        <div class="integration-title">
+                            <h3>Google Gemini</h3>
+                            <span class="integration-category">LLM Provider</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Integrate Gemini models with Memori memory for multimodal, context-rich workflows.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Memory-backed context</li>
+                        <li>Multimodal recall</li>
+                        <li>Context compression</li>
+                        <li>Fast inference</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Learn More</a>
+                    </div>
+                </div>
+
+                <!-- LangChain -->
+                <div class="integration-card" data-category="cloud">
+                    <div class="integration-header">
+                        <span class="integration-icon">🧩</span>
+                        <div class="integration-title">
+                            <h3>LangChain</h3>
+                            <span class="integration-category">Framework</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Native integration with LangChain to persist memory across chains and agents.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Drop-in memory adapters</li>
+                        <li>Tool and agent support</li>
+                        <li>Async/streaming compatibility</li>
+                        <li>Memory-first prompts</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Documentation</a>
+                    </div>
+                </div>
+
+                <!-- PydanticAI -->
+                <div class="integration-card" data-category="cloud">
+                    <div class="integration-header">
+                        <span class="integration-icon">✅</span>
+                        <div class="integration-title">
+                            <h3>PydanticAI</h3>
+                            <span class="integration-category">Framework</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Memory-first agents with type-safe workflows and structured recall.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Typed memory models</li>
+                        <li>Validation and guardrails</li>
+                        <li>Structured retrieval</li>
+                        <li>Production-ready patterns</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Documentation</a>
+                    </div>
+                </div>
+
+                <!-- Memory Intelligence -->
+                <div class="integration-card" data-category="productivity">
+                    <div class="integration-header">
+                        <span class="integration-icon">🧠</span>
+                        <div class="integration-title">
+                            <h3>Memori Intelligence</h3>
+                            <span class="integration-category">Memory Tooling</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Background augmentation that enriches memory with facts, preferences, and relationships.
+                    </p>
+                    <ul class="integration-features">
+                        <li>Zero-latency augmentation</li>
+                        <li>Explainable memory lineage</li>
+                        <li>Entity relationship graphs</li>
+                        <li>Usage analytics</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-beta">Beta</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Learn More</a>
+                    </div>
+                </div>
+
+                <!-- Memory Vault -->
+                <div class="integration-card" data-category="productivity">
+                    <div class="integration-header">
+                        <span class="integration-icon">🔐</span>
+                        <div class="integration-title">
+                            <h3>Memory Vault</h3>
+                            <span class="integration-category">Security</span>
+                        </div>
+                    </div>
+                    <p class="integration-description">
+                        Secure memory for sensitive data with PCI and SOC2-ready controls.
+                    </p>
+                    <ul class="integration-features">
+                        <li>PII redaction</li>
+                        <li>Role-based access control</li>
+                        <li>Audit trails</li>
+                        <li>Retention policies</li>
+                    </ul>
+                    <div class="integration-footer">
+                        <span class="integration-status status-live">Live</span>
+                        <a href="https://memorilabs.ai/docs" class="btn btn-outline">Documentation</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="stats-banner">
+                <h3>Growing Ecosystem</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number">15+</div>
+                        <div class="stat-label">Datastores Supported</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">5+</div>
+                        <div class="stat-label">LLM Providers</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">0-Config</div>
+                        <div class="stat-label">Drop-In SDK</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">60-80%</div>
+                        <div class="stat-label">Cost Savings</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="api" class="section section-light">
+        <div class="container">
+            <h2>Build Your Own Integration</h2>
+            <p class="section-intro">Extend Memori with memory APIs, SDKs, and framework adapters</p>
+            
+            <div class="learning-grid">
+                <div class="learning-card" style="background: white; color: var(--text-dark);">
+                    <h3>🔌 Memory APIs</h3>
+                    <p style="margin: 1rem 0;">Capture, recall, and attribute memory across agents and users.</p>
+                    <ul>
+                        <li>Attribution for entities + processes</li>
+                        <li>Recall and semantic search</li>
+                        <li>Memory policies & TTL</li>
+                        <li>Explainable lineage</li>
+                    </ul>
+                    <a href="https://memorilabs.ai/docs" class="btn btn-primary" style="margin-top: 1rem;">View API Docs</a>
+                </div>
+
+                <div class="learning-card" style="background: white; color: var(--text-dark);">
+                    <h3>📦 Memori SDK</h3>
+                    <p style="margin: 1rem 0;">Drop-in SDKs for Python and TypeScript with database-agnostic support.</p>
+                    <ul>
+                        <li>LangChain & PydanticAI adapters</li>
+                        <li>Streaming + async support</li>
+                        <li>Type-safe memory models</li>
+                        <li>Open-source tooling</li>
+                    </ul>
+                    <a href="https://github.com/MemoriLabs/Memori" class="btn btn-primary" style="margin-top: 1rem;">Get Started</a>
+                </div>
+
+                <div class="learning-card" style="background: white; color: var(--text-dark);">
+                    <h3>🧪 Memory Patterns</h3>
+                    <p style="margin: 1rem 0;">Adopt memory-first patterns for agents, personalization, and workflows.</p>
+                    <ul>
+                        <li>Conversation memory</li>
+                        <li>Agent state and planning</li>
+                        <li>Hybrid RAG + memory</li>
+                        <li>Cost optimization playbooks</li>
+                    </ul>
+                    <a href="https://memorilabs.ai/blog/rag-vs-memory-for-ai-agents/" class="btn btn-primary" style="margin-top: 1rem;">Memory Guides</a>
+                </div>
+
+                <div class="learning-card" style="background: white; color: var(--text-dark);">
+                    <h3>🤝 Enterprise Partnerships</h3>
+                    <p style="margin: 1rem 0;">Partner with Memori to ship memory-first AI at scale.</p>
+                    <ul>
+                        <li>Architecture reviews</li>
+                        <li>Security and compliance planning</li>
+                        <li>Co-marketing opportunities</li>
+                        <li>Dedicated enablement</li>
+                    </ul>
+                    <a href="https://memorilabs.ai" class="btn btn-primary" style="margin-top: 1rem;">Apply Now</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Ready to Integrate?</h2>
+            <p>Start building memory-first AI with Memori today</p>
+            <div class="cta-buttons">
+                <a href="https://memorilabs.ai/docs" class="btn btn-primary btn-large">View API Documentation</a>
+                <a href="https://github.com/MemoriLabs/Memori" class="btn btn-outline btn-large">View GitHub</a>
+                <a href="portal.html" class="btn btn-outline btn-large">Developer Portal</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="portal-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Ecosystem</h4>
+                    <ul>
+                        <li><a href="#integrations">All Integrations</a></li>
+                        <li><a href="#api">Memory APIs</a></li>
+                        <li><a href="https://memorilabs.ai/docs">Docs</a></li>
+                        <li><a href="https://github.com/MemoriLabs/Memori">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Developers</h4>
+                    <ul>
+                        <li><a href="portal.html">Developer Portal</a></li>
+                        <li><a href="learning-paths.html">Learning Paths</a></li>
+                        <li><a href="viewer.html?doc=workshops">Workshops</a></li>
+                        <li><a href="viewer.html?doc=bounty-system">Bounties</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="community.html">Dashboard</a></li>
+                        <li><a href="https://go.memorilabs.ai/join-preview">Slack</a></li>
+                        <li><a href="https://github.com/MemoriLabs/Memori">GitHub</a></li>
+                        <li><a href="https://twitter.com/MemoriLabs">Twitter</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="index.html">DevRel Home</a></li>
+                        <li><a href="https://memorilabs.ai/docs">Documentation</a></li>
+                        <li><a href="https://memorilabs.ai/blog">Blog</a></li>
+                        <li><a href="https://memorilabs.ai">MemoriLabs</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Memori. Built with ❤️ by the community.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simple filter functionality
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const integrationCards = document.querySelectorAll('.integration-card');
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all buttons
+                filterBtns.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                btn.classList.add('active');
+
+                const category = btn.dataset.category;
+
+                integrationCards.forEach(card => {
+                    if (category === 'all' || card.dataset.category === category) {
+                        card.style.display = 'flex';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

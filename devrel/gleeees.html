@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori Playground - Memory Integrations & Examples</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00D4AA;
+            --dark-bg: #0A0E27;
+            --card-bg: #1A1F3A;
+            --text: #E8EAED;
+            --text-dim: #9AA0A6;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #00D4AA;
+            --warning: #FFB800;
+            --danger: #FF6B6B;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #4ECDC4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            margin-bottom: 1rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .main-content.deploying {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .deploy-panel {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+        }
+
+        .deploy-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+        }
+
+        .prompt-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .prompt-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .template-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .template-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .template-card {
+            padding: 1rem;
+            background: rgba(0, 212, 170, 0.05);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .template-card:hover {
+            border-color: var(--primary);
+            background: rgba(0, 212, 170, 0.1);
+        }
+
+        .template-card.selected {
+            border-color: var(--primary);
+            background: rgba(0, 212, 170, 0.15);
+        }
+
+        .template-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+            color: var(--text);
+        }
+
+        .template-card p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .deploy-button {
+            width: 100%;
+            padding: 1.25rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 8px;
+            color: var(--dark-bg);
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .deploy-button:hover {
+            background: #00F5C4;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 212, 170, 0.3);
+        }
+
+        .deploy-button:disabled {
+            background: var(--text-dim);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-panel {
+            display: none;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            flex-direction: column;
+        }
+
+        .status-panel.visible {
+            display: block;
+        }
+
+        .status-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+
+        .status-empty {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .deployment-status {
+            flex: 1;
+        }
+
+        .status-step {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--text-dim);
+            border-radius: 4px;
+            opacity: 0.5;
+        }
+
+        .status-step.active {
+            border-left-color: var(--warning);
+            opacity: 1;
+            animation: pulse 2s infinite;
+        }
+
+        .status-step.complete {
+            border-left-color: var(--success);
+            opacity: 1;
+        }
+
+        .status-step.error {
+            border-left-color: var(--danger);
+            opacity: 1;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+
+        .deployment-status.fade-out {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+
+        .status-step h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-step p {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .connection-info {
+            background: rgba(0, 212, 170, 0.1);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+            margin-top: 1rem;
+        }
+
+        .connection-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .connection-command {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            word-break: break-all;
+            position: relative;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 4px;
+            color: var(--dark-bg);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .copy-button:hover {
+            background: #00F5C4;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .templates-section {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .templates-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+
+        .quick-templates {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .quick-template {
+            padding: 1.5rem;
+            background: rgba(0, 212, 170, 0.05);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-template:hover {
+            border-color: var(--primary);
+            background: rgba(0, 212, 170, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .quick-template h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .quick-template p {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+        }
+
+        .quick-template code {
+            display: block;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--primary);
+        }
+
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+
+        .section-lead {
+            color: var(--text-dim);
+            margin-bottom: 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .card h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            background: rgba(0, 212, 170, 0.15);
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .steps {
+            margin: 0.75rem 0 1rem;
+            padding-left: 1.25rem;
+            color: var(--text-dim);
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.35);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--text);
+            overflow-x: auto;
+        }
+
+        .pill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .pill {
+            padding: 0.4rem 0.75rem;
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            border-radius: 999px;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">← Back to Portal</a>
+        <h1>🚀 Gleeees</h1>
+        <p class="subtitle">Deploy instant, memory-ready cloud development environments with one command</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Deploy Panel -->
+            <div class="deploy-panel">
+                <h2>Deploy a Gleeee</h2>
+                
+                <form id="deployForm">
+                    <div class="form-group">
+                        <label for="prompt">Describe your environment</label>
+                        <textarea 
+                            id="prompt" 
+                            class="prompt-input" 
+                            placeholder="Example: Create a Python FastAPI environment with PostgreSQL and Redis for building a REST API..."
+                            required
+                        ></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Quick Templates (Optional)</label>
+                        <div class="template-grid">
+                            <div class="template-card" data-template="python-fastapi">
+                                <h3>🐍 Python + FastAPI</h3>
+                                <p>API development</p>
+                            </div>
+                            <div class="template-card" data-template="node-express">
+                                <h3>📦 Node.js + Express</h3>
+                                <p>Web backend</p>
+                            </div>
+                            <div class="template-card" data-template="react-vite">
+                                <h3>⚛️ React + Vite</h3>
+                                <p>Frontend app</p>
+                            </div>
+                            <div class="template-card" data-template="ml-jupyter">
+                                <h3>🤖 Python ML</h3>
+                                <p>Data science</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="deploy-button" id="deployBtn">
+                        🚀 Deploy Gleeee
+                    </button>
+                </form>
+            </div>
+
+            <!-- Status Panel -->
+            <div class="status-panel">
+                <h2>Deployment Status</h2>
+                <div id="statusContent" class="status-empty">
+                    <p>👆 Enter a prompt and click Deploy to create your Gleeee</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Templates Section -->
+        <div class="templates-section">
+            <h2>Popular Templates</h2>
+            <div class="quick-templates">
+                <div class="quick-template" data-prompt="Create a Python FastAPI environment with PostgreSQL, Redis, and async workers for building a production REST API with Memori memory integration">
+                    <h3>🚀 Production API</h3>
+                    <p>FastAPI + PostgreSQL + Redis + Workers</p>
+                    <code>$ memori deploy --template production-api</code>
+                </div>
+                <div class="quick-template" data-prompt="Set up a Next.js 14 app with TypeScript, Tailwind CSS, and Vercel deployment ready">
+                    <h3>⚡ Next.js Full Stack</h3>
+                    <p>Next.js 14 + TypeScript + Tailwind</p>
+                    <code>$ memori deploy --template nextjs-ts</code>
+                </div>
+                <div class="quick-template" data-prompt="Create a machine learning environment with Python, Jupyter, TensorFlow, PyTorch, and GPU support">
+                    <h3>🤖 ML/AI Workspace</h3>
+                    <p>Python + Jupyter + TF + PyTorch</p>
+                    <code>$ memori deploy --template ml-gpu</code>
+                </div>
+                <div class="quick-template" data-prompt="Deploy a Go microservice with gRPC, PostgreSQL, and Docker compose for local development">
+                    <h3>🐹 Go Microservice</h3>
+                    <p>Go + gRPC + PostgreSQL + Docker</p>
+                    <code>$ memori deploy --template go-grpc</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedTemplate = null;
+
+        // Template selection
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedTemplate = this.dataset.template;
+            });
+        });
+
+        // Quick template clicks
+        document.querySelectorAll('.quick-template').forEach(template => {
+            template.addEventListener('click', function() {
+                const prompt = this.dataset.prompt;
+                document.getElementById('prompt').value = prompt;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+
+        // Deploy form submission
+        document.getElementById('deployForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const prompt = document.getElementById('prompt').value;
+            const deployBtn = document.getElementById('deployBtn');
+            const statusContent = document.getElementById('statusContent');
+            const statusPanel = document.querySelector('.status-panel');
+            const mainContent = document.querySelector('.main-content');
+
+            // Show status panel and adjust layout
+            statusPanel.classList.add('visible');
+            mainContent.classList.add('deploying');
+
+            // Disable button
+            deployBtn.disabled = true;
+            deployBtn.textContent = '⏳ Deploying...';
+
+            // Show deployment steps
+            statusContent.innerHTML = `
+                <div class="deployment-status">
+                    <div class="status-step active" id="step1">
+                        <h3><span>⏳</span> Analyzing prompt...</h3>
+                        <p>Understanding your requirements</p>
+                    </div>
+                    <div class="status-step" id="step2">
+                        <h3><span>⏳</span> Provisioning server...</h3>
+                        <p>Setting up cloud resources</p>
+                    </div>
+                    <div class="status-step" id="step3">
+                        <h3><span>⏳</span> Installing dependencies...</h3>
+                        <p>Configuring environment</p>
+                    </div>
+                    <div class="status-step" id="step4">
+                        <h3><span>⏳</span> Starting Memori Agent...</h3>
+                        <p>Initializing remote SSH</p>
+                    </div>
+                </div>
+            `;
+
+            // Simulate deployment steps
+            await simulateDeployment(prompt);
+
+            // Re-enable button
+            deployBtn.disabled = false;
+            deployBtn.textContent = '🚀 Deploy Gleeee';
+        });
+
+        async function simulateDeployment(prompt) {
+            // Step 1: Analyzing
+            await delay(1500);
+            completeStep('step1', '✅', 'Analyzed');
+
+            // Step 2: Provisioning
+            document.getElementById('step2').classList.add('active');
+            await delay(2000);
+            completeStep('step2', '✅', 'Provisioned');
+
+            // Step 3: Installing
+            document.getElementById('step3').classList.add('active');
+            await delay(2500);
+            completeStep('step3', '✅', 'Installed');
+
+            // Step 4: Starting
+            document.getElementById('step4').classList.add('active');
+            await delay(1500);
+            completeStep('step4', '✅', 'Ready');
+
+            // Show connection info
+            showConnectionInfo();
+        }
+
+        function completeStep(stepId, icon, status) {
+            const step = document.getElementById(stepId);
+            step.classList.remove('active');
+            step.classList.add('complete');
+            const h3 = step.querySelector('h3 span');
+            h3.textContent = icon;
+            const p = step.querySelector('p');
+            p.textContent = status;
+        }
+
+        function showConnectionInfo() {
+            const gleeeeId = generateId();
+            const sshHost = `gleeee-${gleeeeId}.memorilabs.ai`;
+            const sshUser = 'dev';
+            const sshCommand = `memori ssh ${sshUser}@${sshHost}`;
+
+            // Fade out and hide the build steps
+            const deploymentStatus = document.querySelector('.deployment-status');
+            if (deploymentStatus) {
+                deploymentStatus.classList.add('fade-out');
+                
+                // After animation completes, remove the build steps and show success
+                setTimeout(() => {
+                    document.getElementById('statusContent').innerHTML = `
+                        <div class="connection-info">
+                    <h3>🎉 Gleeee Deployed Successfully!</h3>
+                    
+                    <div class="connection-command">
+                        <div style="margin-bottom: 0.5rem; color: var(--text-dim); font-size: 0.85rem;">Connect via Memori:</div>
+                        <div style="color: var(--primary);">${sshCommand}</div>
+                        <button class="copy-button" onclick="copyCommand('${sshCommand}')">Copy</button>
+                    </div>
+
+                    <div class="connection-command">
+                        <div style="margin-bottom: 0.5rem; color: var(--text-dim); font-size: 0.85rem;">Or use standard SSH:</div>
+                        <div style="color: var(--text);">ssh ${sshUser}@${sshHost}</div>
+                        <button class="copy-button" onclick="copyCommand('ssh ${sshUser}@${sshHost}')">Copy</button>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <div class="info-item">
+                            <span class="info-label">Gleeee ID</span>
+                            <span class="info-value">${gleeeeId}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status</span>
+                            <span class="info-value" style="color: var(--success);">● Running</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Region</span>
+                            <span class="info-value">us-west-2</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Auto-destroy</span>
+                            <span class="info-value">4 hours</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Cost</span>
+                            <span class="info-value">$0.08/hour</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem; padding: 1rem; background: rgba(255, 184, 0, 0.1); border-radius: 4px; font-size: 0.85rem;">
+                        <strong>💡 Next Steps:</strong><br>
+                        1. Copy the SSH command above<br>
+                        2. Open Memori terminal<br>
+                        3. Paste and run the command<br>
+                        4. Start coding with AI agents!
+                    </div>
+                </div>
+                    `;
+                }, 500); // Match animation duration
+            }
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substring(2, 8);
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function copyCommand(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Command copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+    </script>
+</body>
+</html>

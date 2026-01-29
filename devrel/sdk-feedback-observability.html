@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDK Feedback: Memory Observability Tools | Memori DevRel</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .feedback-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+        .feedback-header {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .feedback-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .feedback-meta {
+            display: flex;
+            gap: 2rem;
+            color: var(--text-gray);
+            font-size: 0.95rem;
+        }
+        .feedback-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-block {
+            margin-bottom: 3rem;
+        }
+        .section-block h2 {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+        .section-block h3 {
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .code-block {
+            background-color: var(--darker-bg);
+            color: #e5e7eb;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 1rem 0;
+        }
+        .code-block .comment { color: #6b7280; }
+        .code-block .keyword { color: #f472b6; }
+        .code-block .string { color: #34d399; }
+        .code-block .function { color: #60a5fa; }
+        .code-block .output { color: #fbbf24; }
+        .tradeoff-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .tradeoff-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .tradeoff-card.pro {
+            background-color: rgba(16, 185, 129, 0.1);
+            border-color: var(--success-color);
+        }
+        .tradeoff-card.con {
+            background-color: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger-color);
+        }
+        .tradeoff-card h4 {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .tradeoff-card ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        .tradeoff-card li {
+            margin-bottom: 0.5rem;
+        }
+        .callout {
+            background-color: rgba(0, 102, 255, 0.1);
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .callout strong {
+            color: var(--secondary-color);
+        }
+        .callout.warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            border-left-color: var(--warning-color);
+        }
+        .callout.warning strong {
+            color: var(--warning-color);
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-gray);
+        }
+        .back-link:hover {
+            color: var(--primary-color);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .feature-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            background-color: var(--light-bg);
+            border: 1px solid var(--border-color);
+        }
+        .feature-card h4 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .feature-card p {
+            margin: 0;
+            color: var(--text-gray);
+            font-size: 0.95rem;
+        }
+        .debug-output {
+            background-color: #1e1e2e;
+            border: 1px solid #3b3b4f;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+        }
+        .debug-output .header {
+            color: #60a5fa;
+            border-bottom: 1px solid #3b3b4f;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .debug-output .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            color: #e5e7eb;
+        }
+        .debug-output .label {
+            color: #9ca3af;
+        }
+        .debug-output .value {
+            color: #34d399;
+        }
+        .debug-output .score {
+            color: #fbbf24;
+        }
+        .debug-output .dim {
+            color: #6b7280;
+        }
+        @media (max-width: 768px) {
+            .tradeoff-grid, .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            .feedback-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <h1>Memori DevRel</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="portal.html">Portal</a></li>
+                <li><a href="ecosystem.html">Ecosystem</a></li>
+                <li><a href="presentation.html" class="cta-btn">View Presentation</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="feedback-page">
+        <a href="index.html" class="back-link">&larr; Back to Home</a>
+
+        <div class="feedback-header">
+            <h1>SDK Feedback: Memory Observability Tools</h1>
+            <div class="feedback-meta">
+                <span>Category: Developer Experience</span>
+                <span>Priority: High</span>
+                <span>Effort: Medium-High</span>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Summary</h2>
+            <p>
+                Add built-in <strong>observability and debugging tools</strong> to the Memori SDK that let developers understand <em>why</em> specific memories were recalled, inspect similarity scores, trace memory lineage, and diagnose recall failures. This transforms memory from a black box into a transparent, debuggable system.
+            </p>
+        </div>
+
+        <div class="section-block">
+            <h2>The Problem</h2>
+            <p>
+                Memory-powered AI applications are difficult to debug because the retrieval process is opaque. When an agent gives an unexpected response, developers face a frustrating investigation:
+            </p>
+            <ul>
+                <li><strong>No visibility into recall decisions.</strong> Developers can't see which memories were considered, their similarity scores, or why certain memories were ranked higher than others.</li>
+                <li><strong>Silent failures are common.</strong> If no memories match a query, the SDK returns an empty result with no explanation of what was searched or why nothing matched.</li>
+                <li><strong>Attribution tracing is manual.</strong> Understanding where a memory originated (which conversation, which user action) requires custom logging infrastructure.</li>
+                <li><strong>Performance bottlenecks are invisible.</strong> Slow recalls provide no breakdown of time spent on embedding generation vs. database queries vs. reranking.</li>
+                <li><strong>Memory drift is hard to detect.</strong> As memories accumulate, relevance can degrade, but there's no tooling to surface this pattern.</li>
+            </ul>
+
+            <div class="callout warning">
+                <strong>Real-world impact:</strong> A support agent that "forgets" a user's previous issue mid-conversation is a critical bug, but without observability tools, debugging it requires manually querying the database and reverse-engineering the recall logic.
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Proposed Solution</h2>
+            <p>
+                Introduce a <code>debug=True</code> mode and a companion <code>MemoryInspector</code> class that provides rich introspection into every memory operation. The debug mode should be zero-config to enable, with structured output that integrates with existing logging and observability tools.
+            </p>
+
+            <h3>Core Features</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Recall Explainer</h4>
+                    <p>See every memory considered during recall, with similarity scores, ranking factors, and the final selection reason.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Query Analysis</h4>
+                    <p>Inspect how queries are parsed, embedded, and matched against the memory index.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Lineage Tracing</h4>
+                    <p>Track memory provenance from creation through every access, with full attribution chain.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Performance Profiling</h4>
+                    <p>Timing breakdowns for embedding, search, reranking, and total latency per operation.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Memory Health Metrics</h4>
+                    <p>Aggregate stats on memory freshness, access patterns, and potential staleness.</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Export & Replay</h4>
+                    <p>Capture debug sessions for offline analysis or bug report attachments.</p>
+                </div>
+            </div>
+
+            <h3>Developer Experience</h3>
+            <div class="code-block">
+<span class="keyword">from</span> memori <span class="keyword">import</span> MemoriClient
+
+<span class="comment"># Enable debug mode</span>
+client = MemoriClient(api_key=<span class="string">"..."</span>, <span class="function">debug</span>=<span class="keyword">True</span>)
+
+<span class="comment"># Perform a recall - debug info is captured automatically</span>
+result = client.memory.recall(
+    <span class="function">query</span>=<span class="string">"What is the user's preferred language?"</span>,
+    <span class="function">attribution</span>=<span class="string">"user:456"</span>
+)
+
+<span class="comment"># Access the debug report</span>
+debug = result.debug
+
+<span class="comment"># See all memories that were considered</span>
+<span class="keyword">for</span> candidate <span class="keyword">in</span> debug.candidates:
+    <span class="keyword">print</span>(<span class="string">f"Memory: </span>{candidate.content[:50]}<span class="string">..."</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Score: </span>{candidate.similarity_score:.3f}<span class="string">"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Recency boost: </span>{candidate.recency_factor:.2f}<span class="string">"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Final rank: </span>{candidate.rank}<span class="string">"</span>)
+    <span class="keyword">print</span>(<span class="string">f"  Selected: </span>{candidate.selected}<span class="string">"</span>)
+
+<span class="comment"># Understand why certain memories weren't selected</span>
+<span class="keyword">print</span>(<span class="string">f"Rejection reasons: </span>{debug.rejection_summary}<span class="string">"</span>)
+
+<span class="comment"># Performance breakdown</span>
+<span class="keyword">print</span>(<span class="string">f"Embedding time: </span>{debug.timing.embedding_ms}<span class="string">ms"</span>)
+<span class="keyword">print</span>(<span class="string">f"Search time: </span>{debug.timing.search_ms}<span class="string">ms"</span>)
+<span class="keyword">print</span>(<span class="string">f"Total: </span>{debug.timing.total_ms}<span class="string">ms"</span>)
+            </div>
+
+            <h3>Example Debug Output</h3>
+            <div class="debug-output">
+                <div class="header">MEMORY RECALL DEBUG - query: "What is the user's preferred language?"</div>
+                <div class="row">
+                    <span class="label">Attribution:</span>
+                    <span class="value">user:456</span>
+                </div>
+                <div class="row">
+                    <span class="label">Candidates evaluated:</span>
+                    <span class="value">12</span>
+                </div>
+                <div class="row">
+                    <span class="label">Memories returned:</span>
+                    <span class="value">3</span>
+                </div>
+                <div style="margin-top: 0.75rem; border-top: 1px solid #3b3b4f; padding-top: 0.75rem;">
+                    <div class="dim" style="margin-bottom: 0.5rem;">TOP CANDIDATES:</div>
+                    <div class="row">
+                        <span>"User set language preference to Spanish"</span>
+                        <span class="score">0.923</span>
+                    </div>
+                    <div class="row">
+                        <span>"User asked about Spanish documentation"</span>
+                        <span class="score">0.847</span>
+                    </div>
+                    <div class="row">
+                        <span>"Conversation was in Spanish"</span>
+                        <span class="score">0.812</span>
+                    </div>
+                    <div class="row dim">
+                        <span>"User mentioned visiting Spain" (rejected: below threshold)</span>
+                        <span>0.534</span>
+                    </div>
+                </div>
+                <div style="margin-top: 0.75rem; border-top: 1px solid #3b3b4f; padding-top: 0.75rem;">
+                    <div class="dim">TIMING:</div>
+                    <div class="row">
+                        <span class="label">Embed query:</span>
+                        <span>12ms</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Vector search:</span>
+                        <span>8ms</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Rerank:</span>
+                        <span>23ms</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Total:</span>
+                        <span class="value">43ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Memory Inspector CLI</h3>
+            <p>For interactive debugging, provide a CLI tool that can inspect memory state:</p>
+            <div class="code-block">
+<span class="comment"># Inspect memories for a specific attribution</span>
+$ memori inspect --attribution user:456
+
+<span class="output">Found 47 memories for user:456
+
+Type breakdown:
+  preference: 12
+  fact: 23
+  summary: 8
+  rule: 4
+
+Oldest: 2024-01-15 (342 days ago)
+Newest: 2025-01-28 (1 day ago)
+Average access frequency: 2.3/week
+
+Potential issues:
+  - 3 memories have low access (>90 days since last recall)
+  - 2 memories have conflicting content (preference type)</span>
+
+<span class="comment"># Simulate a recall without executing</span>
+$ memori recall --dry-run --query "user's favorite color" --attribution user:456
+
+<span class="output">DRY RUN - No memories will be modified
+
+Would return 2 memories:
+  1. "User's favorite color is blue" (score: 0.94, stored: 2024-06-12)
+  2. "User mentioned liking blue themes" (score: 0.78, stored: 2024-08-03)</span>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Trade-offs Considered</h2>
+
+            <div class="tradeoff-grid">
+                <div class="tradeoff-card pro">
+                    <h4>Benefits</h4>
+                    <ul>
+                        <li>Dramatically faster debugging of memory-related issues</li>
+                        <li>Builds developer confidence in the memory system</li>
+                        <li>Enables data-driven tuning of recall thresholds</li>
+                        <li>Reduces support burden with self-service diagnostics</li>
+                        <li>Creates foundation for memory analytics features</li>
+                        <li>CLI tool enables ops teams to investigate production issues</li>
+                    </ul>
+                </div>
+                <div class="tradeoff-card con">
+                    <h4>Drawbacks</h4>
+                    <ul>
+                        <li>Debug mode adds latency (collecting and structuring metadata)</li>
+                        <li>Increased memory usage when debug info is retained</li>
+                        <li>Risk of exposing sensitive memory content in logs</li>
+                        <li>API surface area increases significantly</li>
+                        <li>Debug output format becomes a compatibility concern</li>
+                        <li>May encourage over-reliance on debugging vs. proper testing</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Mitigations</h3>
+            <ul>
+                <li><strong>Opt-in with zero overhead:</strong> Debug mode is disabled by default. When disabled, no debug data is collected, ensuring zero performance impact in production.</li>
+                <li><strong>Content redaction:</strong> Provide a <code>redact_content=True</code> option that shows memory metadata and scores without exposing actual content, safe for logging.</li>
+                <li><strong>Sampling mode:</strong> For production observability, support <code>debug_sample_rate=0.01</code> to collect debug info for 1% of requests.</li>
+                <li><strong>Structured output:</strong> Debug data is available as typed objects, JSON, or OpenTelemetry spans, integrating with existing observability stacks.</li>
+                <li><strong>Versioned schema:</strong> Debug output schema is versioned, with deprecation warnings for breaking changes.</li>
+            </ul>
+        </div>
+
+        <div class="section-block">
+            <h2>Integration with Observability Stacks</h2>
+            <p>The debug output should integrate seamlessly with common observability tools:</p>
+
+            <div class="code-block">
+<span class="comment"># OpenTelemetry integration</span>
+<span class="keyword">from</span> memori <span class="keyword">import</span> MemoriClient
+<span class="keyword">from</span> memori.telemetry <span class="keyword">import</span> OTelExporter
+
+client = MemoriClient(
+    api_key=<span class="string">"..."</span>,
+    <span class="function">telemetry_exporter</span>=OTelExporter()  <span class="comment"># Sends spans to configured collector</span>
+)
+
+<span class="comment"># Every memory operation creates a span with debug attributes</span>
+result = client.memory.recall(query=<span class="string">"..."</span>, attribution=<span class="string">"..."</span>)
+
+<span class="comment"># Spans include:</span>
+<span class="comment"># - memori.recall.candidates_evaluated: 12</span>
+<span class="comment"># - memori.recall.memories_returned: 3</span>
+<span class="comment"># - memori.recall.top_score: 0.923</span>
+<span class="comment"># - memori.recall.embedding_ms: 12</span>
+<span class="comment"># - memori.recall.search_ms: 8</span>
+            </div>
+
+            <div class="code-block">
+<span class="comment"># JSON logging for structured log aggregators</span>
+<span class="keyword">import</span> logging
+<span class="keyword">from</span> memori <span class="keyword">import</span> MemoriClient
+<span class="keyword">from</span> memori.logging <span class="keyword">import</span> JSONDebugHandler
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(<span class="string">"memori"</span>)
+logger.addHandler(JSONDebugHandler())
+
+client = MemoriClient(api_key=<span class="string">"..."</span>, <span class="function">debug</span>=<span class="keyword">True</span>)
+
+<span class="comment"># Debug output goes to structured logs automatically</span>
+<span class="comment"># {"event": "memory.recall", "candidates": 12, "returned": 3, ...}</span>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h2>Alternatives Considered</h2>
+
+            <h3>1. External APM Integration Only</h3>
+            <p>
+                Rely on Datadog, New Relic, etc. for all observability. <em>Rejected</em> because it requires additional infrastructure, doesn't provide memory-specific insights, and creates vendor lock-in.
+            </p>
+
+            <h3>2. Verbose Logging Mode</h3>
+            <p>
+                Add a <code>LOG_LEVEL=DEBUG</code> that prints detailed logs. <em>Partially adopted</em> as a fallback, but structured debug objects are more useful for programmatic analysis than log parsing.
+            </p>
+
+            <h3>3. Separate Debug SDK</h3>
+            <p>
+                Ship a <code>memori-debug</code> package with enhanced tooling. <em>Rejected</em> because it fragments the ecosystem and makes debugging feel like an afterthought rather than a first-class feature.
+            </p>
+        </div>
+
+        <div class="section-block">
+            <h2>Success Metrics</h2>
+            <ul>
+                <li><strong>Debug mode adoption:</strong> Track percentage of API calls with debug enabled (target: 15% in development environments)</li>
+                <li><strong>Mean time to resolution:</strong> Survey developers on debugging time before/after feature launch</li>
+                <li><strong>Support ticket reduction:</strong> Measure decrease in "memory not working" support requests</li>
+                <li><strong>CLI usage:</strong> Track <code>memori inspect</code> command invocations</li>
+                <li><strong>Documentation engagement:</strong> Monitor traffic to debugging guide pages</li>
+            </ul>
+        </div>
+
+        <div class="section-block">
+            <h2>Recommendation</h2>
+            <p>
+                Ship memory observability tools as a core SDK feature. The ability to understand <em>why</em> memory behaves the way it does is essential for building reliable AI applications. Without these tools, developers are forced to treat memory as a black box, leading to frustration and reduced trust in the platform.
+            </p>
+            <p>
+                <strong>Proposed rollout:</strong>
+            </p>
+            <ol>
+                <li><strong>Phase 1 (4 weeks):</strong> Basic debug mode with candidate list and timing in Python SDK</li>
+                <li><strong>Phase 2 (6 weeks):</strong> CLI inspector tool and JSON export</li>
+                <li><strong>Phase 3 (8 weeks):</strong> OpenTelemetry integration and TypeScript SDK parity</li>
+            </ol>
+        </div>
+
+        <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+            <h3 style="text-align: center; margin-bottom: 1rem;">Related Feedback</h3>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="sdk-feedback.html" class="btn btn-outline">Local Development Mode</a>
+            </div>
+        </div>
+
+        <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); text-align: center;">
+            <p style="color: var(--text-gray);">
+                Have feedback on this proposal? Open an issue on <a href="https://github.com/MemoriLabs/Memori/issues">GitHub Issues</a>,
+                explore the <a href="https://github.com/MemoriLabs/memori-cookbook">Memori Cookbook</a>,
+                or check the <a href="https://memorilabs.ai/docs/">official docs</a>.
+            </p>
+            <a href="index.html" class="btn btn-primary" style="margin-top: 1rem;">Back to Home</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Memori. Built with care by the Memori Community</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

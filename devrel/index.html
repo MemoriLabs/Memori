@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memori Developer Relations Strategy</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <h1>⚡ Memori DevRel</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#programs">Programs</a></li>
+                <li><a href="ecosystem.html">Ecosystem</a></li>
+                <li><a href="portal.html">Portal</a></li>
+                <li><a href="ai-assistants.html">AI Assistants</a></li>
+                <li><a href="memori-mcp.html">MCP Server</a></li>
+                <li><a href="#events">Events</a></li>
+                <li><a href="sdk-feedback.html">SDK Feedback</a></li>
+                <li><a href="sdk-feedback-observability.html">Observability</a></li>
+                <li><a href="presentation.html" class="cta-btn">View Presentation</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Build Memory-First AI Agents</h1>
+            <p>Join Memori's developer relations program for the memory fabric for enterprise AI—persistent, structured memory that keeps context alive while cutting LLM costs 60-80%.</p>
+            <div class="hero-buttons">
+                <a href="#programs" class="btn btn-primary">Memory Playbook</a>
+                <a href="https://memorilabs.ai/docs" class="btn btn-secondary">Memori Docs</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="overview" class="section">
+        <div class="container">
+            <h2>Our Mission</h2>
+            <p class="lead">Create a thriving ecosystem of developers building memory-first AI agents and applications with Memori — the SQL-native memory fabric for enterprise AI.</p>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>60-80%</h3>
+                    <p>LLM Cost Reduction</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Milliseconds</h3>
+                    <p>Recall Latency</p>
+                </div>
+                <div class="stat-card">
+                    <h3>15+</h3>
+                    <p>Databases Supported</p>
+                </div>
+                <div class="stat-card">
+                    <h3>0-Config</h3>
+                    <p>Drop-In SDK</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="strategy" class="section bg-light">
+        <div class="container">
+            <h2>Strategic Framework</h2>
+            <p class="lead">Three core pillars driving memory-first developer adoption</p>
+            
+            <div class="programs-grid">
+                <div class="program-card">
+                    <div class="program-icon">🔌</div>
+                    <h3>1. Memory-First Architecture</h3>
+                    <p>Persistent, structured memory that keeps AI agents consistent and personalized</p>
+                    <ul class="program-features">
+                        <li><strong>Auto Capture:</strong> Facts, preferences, summaries, rules</li>
+                        <li><strong>Targeted Recall:</strong> Only inject relevant context</li>
+                        <li><strong>Memory + RAG:</strong> Hybrid reasoning and grounding</li>
+                        <li><strong>Explainable Lineage:</strong> Trace memory sources</li>
+                    </ul>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">🌐</div>
+                    <h3>2. SQL-Native & Secure Controls</h3>
+                    <p>Keep memory in your database with enterprise-grade governance</p>
+                    <ul class="program-features">
+                        <li><strong>SQL-Native:</strong> PostgreSQL, MySQL, SQLite, MongoDB</li>
+                        <li><strong>Security:</strong> RBAC, retention, deletion policies</li>
+                        <li><strong>Compliance:</strong> Auditability and data ownership</li>
+                        <li><strong>Payments Vault:</strong> PCI/SOC2-ready memory</li>
+                    </ul>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">📚</div>
+                    <h3>3. Developer Experience Excellence</h3>
+                    <p>Delivering drop-in SDKs, integrations, and best-in-class guidance</p>
+                    <ul class="program-features">
+                        <li><strong>Drop-in SDK:</strong> Python/TypeScript with zero config</li>
+                        <li><strong>Frameworks:</strong> LangChain, PydanticAI support</li>
+                        <li><strong>Community:</strong> Memory workshops and office hours</li>
+                        <li><strong>Content:</strong> Memory patterns, benchmarks, guides</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="integration-patterns" class="section">
+        <div class="container">
+            <h2>Four Core Integration Patterns</h2>
+            <p class="lead">Proven architectures for building on Memori memory</p>
+            
+            <div class="programs-grid">
+                <div class="program-card">
+                    <div class="program-icon">💬</div>
+                    <h3>Persistent Conversational Memory</h3>
+                    <p>Give agents long-term context across sessions</p>
+                    <ul class="program-features">
+                        <li>Fact, preference, and summary capture</li>
+                        <li>Entity/process/session attribution</li>
+                        <li>Millisecond recall at inference time</li>
+                        <li>Data retention and deletion controls</li>
+                    </ul>
+                    <a href="demo/memori-chat-demo.tsx" class="btn btn-outline">View Memory Demo</a>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">🤖</div>
+                    <h3>Agent Workflow Memory</h3>
+                    <p>Store multi-agent state, handoffs, and plans</p>
+                    <ul class="program-features">
+                        <li>Task-specific working memory</li>
+                        <li>TTL-aware memory policies</li>
+                        <li>Explainable lineage and provenance</li>
+                        <li>Analytics and observability hooks</li>
+                    </ul>
+                    <a href="viewer.html?doc=agent-examples" class="btn btn-outline">Agent Examples</a>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">🔍</div>
+                    <h3>Memory + RAG Hybrid</h3>
+                    <p>Recall memory first, then augment with RAG</p>
+                    <ul class="program-features">
+                        <li>Reduce token spend with selective recall</li>
+                        <li>Semantic augmentation on demand</li>
+                        <li>Precision grounding with citations</li>
+                        <li>Personalized context injection</li>
+                    </ul>
+                    <a href="viewer.html?doc=search-examples" class="btn btn-outline">Search Examples</a>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">📥</div>
+                    <h3>Personalization at Scale</h3>
+                    <p>Build memory-driven personalization across products</p>
+                    <ul class="program-features">
+                        <li>User profiles and preference memory</li>
+                        <li>Cross-session continuity</li>
+                        <li>Multi-tenant memory isolation</li>
+                        <li>Analytics and ROI measurement</li>
+                    </ul>
+                    <a href="viewer.html?doc=indexing-examples" class="btn btn-outline">Personalization Guide</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="programs" class="section bg-dark">
+        <div class="container">
+            <h2>Developer Programs</h2>
+            <div class="programs-grid">
+                
+                <div class="program-card">
+                    <div class="program-icon">🚀</div>
+                    <h3>Memory Accelerator</h3>
+                    <p>Intensive program for teams shipping production-grade memory for AI agents with Memori.</p>
+                    <ul class="program-features">
+                        <li>Memory architecture guidance</li>
+                        <li>Cost optimization playbooks</li>
+                        <li>Benchmarking & evaluation support</li>
+                        <li>Featured in Memori Memory Gallery</li>
+                    </ul>
+                    <a href="viewer.html?doc=hacker-house-app" class="btn btn-outline">Apply Now</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">💼</div>
+                    <h3>Co-working & Office Hours</h3>
+                    <p>Weekly co-working sessions with open office hours. Get direct help from Memori engineers and collaborate with the community.</p>
+                    <ul class="program-features">
+                        <li>Every week (hybrid format)</li>
+                        <li>1-on-1 guidance</li>
+                        <li>Architecture reviews</li>
+                        <li>Live debugging sessions</li>
+                    </ul>
+                    <a href="viewer.html?doc=co-working" class="btn btn-outline">View Schedule</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">🎓</div>
+                    <h3>Weekly Workshops</h3>
+                    <p>Hands-on technical workshops covering memory-first agents, SQL memory, and recall patterns.</p>
+                    <ul class="program-features">
+                        <li>Live coding sessions</li>
+                        <li>Memory capture & recall</li>
+                        <li>RAG + memory design</li>
+                        <li>Framework integrations</li>
+                    </ul>
+                    <a href="viewer.html?doc=workshops" class="btn btn-outline">Browse Topics</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">🏆</div>
+                    <h3>Quarterly Hackathons</h3>
+                    <p>Larger community hackathons with bigger prizes and intensive mentorship. Build innovative AI agents and apps on Memori.</p>
+                    <ul class="program-features">
+                        <li>4 per year (quarterly)</li>
+                        <li>$50K+ prize pools</li>
+                        <li>48-hour sprints</li>
+                        <li>Showcase your work</li>
+                    </ul>
+                    <a href="viewer.html?doc=hackathons" class="btn btn-outline">Next Hackathon</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">🎉</div>
+                    <h3>Monthly Meetups</h3>
+                    <p>Connect with the community in hybrid meetups. Learn, share, and network with other Memori users.</p>
+                    <ul class="program-features">
+                        <li>Third Tuesday each month</li>
+                        <li>SF in-person + Virtual</li>
+                        <li>Free food & drinks</li>
+                        <li>Lightning talks & workshops</li>
+                    </ul>
+                    <a href="viewer.html?doc=meetups" class="btn btn-outline">Join Next Meetup</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">💰</div>
+                    <h3>Bounty System</h3>
+                    <p>Earn rewards for memory integrations, SDK extensions, recall tooling, and tutorials.</p>
+                    <ul class="program-features">
+                        <li>Monetary rewards</li>
+                        <li>Memory categories</li>
+                        <li>Community evaluation</li>
+                        <li>Monthly challenges</li>
+                    </ul>
+                    <a href="viewer.html?doc=bounty-system" class="btn btn-outline">View Bounties</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">💡</div>
+                    <h3>Grant Program</h3>
+                    <p>Apply for funding to ship memory research, tooling, and production integrations.</p>
+                    <ul class="program-features">
+                        <li>Rolling applications</li>
+                        <li>Quarterly reviews</li>
+                        <li>Technical support</li>
+                        <li>Public recognition</li>
+                    </ul>
+                    <a href="viewer.html?doc=grant-program" class="btn btn-outline">Apply for Grant</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">🛒</div>
+                    <h3>Memory Integration Marketplace</h3>
+                    <p>Discover and publish verified integrations that extend Memori memory across stacks.</p>
+                    <ul class="program-features">
+                        <li>Security audited</li>
+                        <li>Code reviewed</li>
+                        <li>Easy installation</li>
+                        <li>Community ratings</li>
+                    </ul>
+                    <a href="viewer.html?doc=mcp-marketplace" class="btn btn-outline">Browse Marketplace</a>
+                </div>
+
+                <div class="program-card">
+                    <div class="program-icon">🧠</div>
+                    <h3>Memori Memory Platform</h3>
+                    <p>Build memory-driven AI applications with attribution, recall, and augmentation APIs.</p>
+                    <ul class="program-features">
+                        <li>Attribution & recall APIs</li>
+                        <li>SQL-native memory storage</li>
+                        <li>Compliance-ready controls</li>
+                        <li>Open-source SDKs</li>
+                    </ul>
+                    <a href="https://memorilabs.ai/docs" class="btn btn-outline">View Documentation</a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="ecosystem" class="section">
+        <div class="container">
+            <h2>Memori Ecosystem</h2>
+            <p class="lead">Integrations that power memory-first AI systems</p>
+            <div class="programs-grid">
+                <div class="program-card">
+                    <div class="program-icon">🤖</div>
+                    <h3>LLM Providers</h3>
+                    <p>OpenAI, Anthropic, Gemini, Bedrock, and Grok integrations.</p>
+                    <a href="ecosystem.html" class="btn btn-outline">View All</a>
+                </div>
+                <div class="program-card">
+                    <div class="program-icon">🔧</div>
+                    <h3>Databases</h3>
+                    <p>PostgreSQL, MySQL, SQLite, MongoDB, and more.</p>
+                    <a href="ecosystem.html" class="btn btn-outline">Explore</a>
+                </div>
+                <div class="program-card">
+                    <div class="program-icon">📦</div>
+                    <h3>Frameworks</h3>
+                    <p>LangChain, PydanticAI, and custom stack support.</p>
+                    <a href="ecosystem.html" class="btn btn-outline">Browse</a>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 2rem;">
+                <a href="ecosystem.html" class="btn btn-primary">View Full Ecosystem</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="roadmap" class="section bg-dark">
+        <div class="container">
+            <h2>90-Day Execution Plan</h2>
+            <p class="lead">Strategic roadmap for scaling developer adoption</p>
+            
+            <div class="programs-grid">
+                <div class="program-card">
+                    <div class="program-icon">🎯</div>
+                    <h3>Days 1-30: Listen & Learn</h3>
+                    <p>Customer immersion and memory strategy planning</p>
+                    <ul class="program-features">
+                        <li>Shadow 5 customer onboarding calls</li>
+                        <li>Review memory adoption feedback</li>
+                        <li>Complete docs + SDK audit</li>
+                        <li>Competitive analysis (vector DBs, RAG)</li>
+                    </ul>
+                    <div class="deliverable"><strong>Deliverable:</strong> "State of Memori Memory" report</div>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">🛠️</div>
+                    <h3>Days 31-60: Build & Ship</h3>
+                    <p>Ship memory guides and integration tooling</p>
+                    <ul class="program-features">
+                        <li>Publish memory SDK improvements</li>
+                        <li>Ship 3 memory-first tutorials</li>
+                        <li>Create 5 integration templates</li>
+                        <li>Launch developer community</li>
+                    </ul>
+                    <div class="deliverable"><strong>Deliverable:</strong> Measurable onboarding improvement</div>
+                </div>
+                
+                <div class="program-card">
+                    <div class="program-icon">🚀</div>
+                    <h3>Days 61-90: Scale & Evangelize</h3>
+                    <p>Memory-first evangelism and growth</p>
+                    <ul class="program-features">
+                        <li>Launch "Build with Memori" hackathon ($50K)</li>
+                        <li>Submit memory-first conference talks</li>
+                        <li>Publish "Memory-First AI" playbook</li>
+                        <li>Host first memory office hours</li>
+                    </ul>
+                    <div class="deliverable"><strong>Deliverable:</strong> 100 new active developers</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="events" class="section">
+        <div class="container">
+            <h2>Upcoming Events</h2>
+            <div class="events-timeline">
+                <div class="event-item">
+                    <div class="event-date">Weekly</div>
+                    <div class="event-details">
+                        <h3>Workshops & Office Hours</h3>
+                        <p>Join us every week for hands-on workshops and open office hours with the Memori team.</p>
+                    </div>
+                </div>
+                <div class="event-item">
+                    <div class="event-date">Monthly</div>
+                    <div class="event-details">
+                        <h3>Community Meetups</h3>
+                        <p>Join us every third Tuesday for hybrid meetups with talks, workshops, and networking.</p>
+                    </div>
+                </div>
+                <div class="event-item">
+                    <div class="event-date">Quarterly</div>
+                    <div class="event-details">
+                        <h3>Hackathons & Grants</h3>
+                        <p>Quarterly hackathons with $50K+ prizes and grant review cycles for funded projects.</p>
+                    </div>
+                </div>
+                <div class="event-item">
+                    <div class="event-date">Ongoing</div>
+                    <div class="event-details">
+                        <h3>Residency Applications</h3>
+                        <p>Apply anytime for our SF residency program. Rolling admissions.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="tutorials" class="section bg-light">
+        <div class="container">
+            <h2>Learn & Build</h2>
+            <div class="tutorial-grid">
+                <div class="tutorial-card">
+                    <h3>📚 User Tutorials</h3>
+                    <p>Step-by-step guides to master Memori memory</p>
+                    <ul>
+                        <li><a href="viewer.html?doc=getting-started">Getting Started with Memory</a></li>
+                        <li><a href="viewer.html?doc=mcp-quickstart">Memory Quick Start</a></li>
+                        <li><a href="ai-assistants.html">Claude Code / Cursor / Cline</a></li>
+                        <li><a href="viewer.html?doc=advanced-workflows">SQL Memory Patterns</a></li>
+                    </ul>
+                </div>
+                <div class="tutorial-card">
+                    <h3>🔧 Workshop Materials</h3>
+                    <p>Deep dive into technical topics</p>
+                    <ul>
+                        <li><a href="workshops/memory-basics/">Building Your First Memory Integration</a></li>
+                        <li><a href="workshops/memory-ai-workflows/">Memory-First Workflows</a></li>
+                        <li><a href="workshops/extension-development/">Extension Development</a></li>
+                    </ul>
+                </div>
+                <div class="tutorial-card">
+                    <h3>📖 Documentation</h3>
+                    <p>Comprehensive program details</p>
+                    <ul>
+                        <li><a href="viewer.html?doc=hacker-house-details">Residency Details</a></li>
+                        <li><a href="viewer.html?doc=bounty-system">Bounty Guidelines</a></li>
+                        <li><a href="viewer.html?doc=mcp-marketplace">Marketplace Standards</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="get-involved" class="section cta-section">
+        <div class="container">
+            <h2>Ready to Get Involved?</h2>
+            <p class="lead">Choose your path and start building with the Memori community today.</p>
+            <div class="cta-grid">
+                <a href="viewer.html?doc=hacker-house-app" class="cta-card">
+                    <h3>🏠 Apply to Residency</h3>
+                    <p>Live and build in San Francisco</p>
+                </a>
+                <a href="viewer.html?doc=workshops" class="cta-card">
+                    <h3>🎓 Attend a Workshop</h3>
+                    <p>Learn from the experts</p>
+                </a>
+                <a href="viewer.html?doc=bounty-system" class="cta-card">
+                    <h3>💰 Claim a Bounty</h3>
+                    <p>Get rewarded for contributions</p>
+                </a>
+                <a href="viewer.html?doc=grant-application" class="cta-card">
+                    <h3>💡 Submit a Grant</h3>
+                    <p>Fund your innovative idea</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Programs</h4>
+                    <ul>
+                        <li><a href="viewer.html?doc=hacker-house-details">Residency</a></li>
+                        <li><a href="viewer.html?doc=workshops">Workshops</a></li>
+                        <li><a href="viewer.html?doc=hackathons">Hackathons</a></li>
+                        <li><a href="viewer.html?doc=bounty-system">Bounties</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="viewer.html?doc=getting-started">Tutorials</a></li>
+                        <li><a href="ai-assistants.html">AI Assistants Guide</a></li>
+                        <li><a href="viewer.html?doc=mcp-marketplace">Memory Marketplace</a></li>
+                        <li><a href="presentation.html">Presentation</a></li>
+                        <li><a href="portal.html">Documentation</a></li>
+                        <li><a href="sdk-feedback.html">SDK Feedback</a></li>
+                        <li><a href="sdk-feedback-observability.html">Observability Feedback</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="https://memorilabs.ai">MemoriLabs</a></li>
+                        <li><a href="https://memorilabs.ai/docs">Docs</a></li>
+                        <li><a href="https://github.com/MemoriLabs/Memori">GitHub</a></li>
+                        <li><a href="#">Discord</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li><a href="#">devrel@memorilabs.ai</a></li>
+                        <li><a href="#">Community Forum</a></li>
+                        <li><a href="#">Twitter</a></li>
+                        <li><a href="#">LinkedIn</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Memori. Built with ❤️ by the Memori Community</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

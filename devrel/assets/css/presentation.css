@@ -1,0 +1,583 @@
+/* Presentation Stylesheet */
+
+:root {
+    --primary-color: #00d4aa;
+    --secondary-color: #0066ff;
+    --dark-bg: #1a1a2e;
+    --darker-bg: #0f0f1e;
+    --text-light: #ffffff;
+    --text-dark: #1a1a2e;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--darker-bg);
+    color: var(--text-light);
+    overflow: hidden;
+}
+
+.home-button {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    padding: 0.75rem 1.5rem;
+    background-color: rgba(0, 212, 170, 0.1);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.home-button:hover {
+    background-color: var(--primary-color);
+    color: var(--darker-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+}
+
+.presentation {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+
+.slide {
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 4rem;
+    background: linear-gradient(135deg, var(--dark-bg) 0%, var(--darker-bg) 100%);
+}
+
+.slide.active {
+    display: flex;
+}
+
+.slide-content {
+    max-width: 1000px;
+    width: 100%;
+}
+
+.slide-content.centered {
+    text-align: center;
+}
+
+/* Typography */
+h1 {
+    font-size: 4rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+h2 {
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    color: var(--primary-color);
+}
+
+h3 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+    color: var(--text-light);
+}
+
+p {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.lead {
+    font-size: 1.5rem;
+    color: #d1d5db;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.subtitle {
+    font-size: 2rem;
+    color: #d1d5db;
+    margin-bottom: 1rem;
+}
+
+.meta {
+    font-size: 1.25rem;
+    color: #9ca3af;
+}
+
+/* Title Slide */
+.title-slide {
+    text-align: center;
+}
+
+.slide-footer {
+    margin-top: 3rem;
+    color: #9ca3af;
+    font-size: 1rem;
+}
+
+/* Highlight Box */
+.highlight-box {
+    background-color: rgba(0, 212, 170, 0.1);
+    border-left: 4px solid var(--primary-color);
+    padding: 2rem;
+    margin-top: 2rem;
+    border-radius: 8px;
+}
+
+.highlight-box h3 {
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.highlight-box ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.highlight-box li {
+    padding: 0.5rem 0;
+    padding-left: 2rem;
+    position: relative;
+}
+
+.highlight-box li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Programs Overview */
+.programs-overview {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.program-badge {
+    background-color: rgba(0, 212, 170, 0.1);
+    border: 2px solid var(--primary-color);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.program-badge:hover {
+    background-color: rgba(0, 212, 170, 0.2);
+    transform: scale(1.05);
+}
+
+/* Two Column Layout */
+.two-column {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+    margin-top: 2rem;
+}
+
+.column ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.column li {
+    padding: 0.75rem 0;
+}
+
+.cta-box {
+    background-color: rgba(0, 102, 255, 0.2);
+    border-left: 4px solid var(--secondary-color);
+    padding: 1.5rem;
+    margin-top: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+/* Schedule Grid */
+.schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.schedule-item {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.benefits-list {
+    margin-top: 2rem;
+    text-align: center;
+    padding: 1.5rem;
+    background-color: rgba(0, 212, 170, 0.1);
+    border-radius: 12px;
+}
+
+/* Stat Highlight */
+.stat-highlight {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.big-number {
+    font-size: 6rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* Workshop Tracks */
+.workshop-tracks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.track {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.track h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.format {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+/* Hackathon Details */
+.hackathon-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.detail-box {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.prize-pool {
+    border-color: var(--primary-color);
+}
+
+.impact-stat {
+    margin-top: 2rem;
+    text-align: center;
+    padding: 1.5rem;
+    background-color: rgba(0, 102, 255, 0.2);
+    border-radius: 12px;
+    font-size: 1.25rem;
+}
+
+/* Bounty Categories */
+.bounty-categories {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.category-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.amount {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.process-flow {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.process-flow span {
+    color: var(--primary-color);
+}
+
+/* Grant Program */
+.grant-range {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.funding-range {
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.grant-categories {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.grant-type {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.review-cycle {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+/* Marketplace Features */
+.marketplace-features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.feature {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.marketplace-stats {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+/* Timeline */
+.timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.timeline-item {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-item ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.timeline-item li {
+    padding: 0.5rem 0;
+}
+
+/* Success Metrics */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.metric {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.target {
+    color: var(--primary-color);
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+/* Budget Breakdown */
+.budget-breakdown {
+    margin-top: 2rem;
+}
+
+.budget-item {
+    margin-bottom: 1.5rem;
+}
+
+.budget-bar {
+    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.budget-note {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 1.25rem;
+}
+
+/* CTA Buttons */
+.cta-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.cta-button {
+    background-color: var(--primary-color);
+    color: var(--text-dark);
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.25rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.cta-button:hover {
+    background-color: #00b891;
+    transform: scale(1.05);
+}
+
+.contact-info {
+    margin-top: 2rem;
+    text-align: center;
+    color: #d1d5db;
+}
+
+/* Final Slide */
+.big-text {
+    font-size: 2rem;
+    color: #d1d5db;
+    margin-bottom: 2rem;
+}
+
+.tagline {
+    font-size: 1.5rem;
+    color: #9ca3af;
+    margin-bottom: 2rem;
+}
+
+.final-links {
+    margin-top: 3rem;
+}
+
+.final-links a {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+/* Presentation Controls */
+.presentation-controls {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    background-color: rgba(26, 26, 46, 0.9);
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.control-btn {
+    background-color: var(--primary-color);
+    color: var(--text-dark);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+    background-color: #00b891;
+    transform: scale(1.05);
+}
+
+.slide-counter {
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .slide-content {
+        padding: 2rem;
+    }
+    
+    h1 { font-size: 3rem; }
+    h2 { font-size: 2.5rem; }
+    h3 { font-size: 1.5rem; }
+    
+    .programs-overview,
+    .schedule-grid,
+    .workshop-tracks,
+    .hackathon-details,
+    .bounty-categories,
+    .grant-categories,
+    .marketplace-features,
+    .timeline,
+    .metrics-grid,
+    .cta-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .two-column {
+        grid-template-columns: 1fr;
+    }
+}

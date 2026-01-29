@@ -1,0 +1,21 @@
+{
+  "name": "glean-devrel-strategy",
+  "version": "1.0.0",
+  "description": "Glean Developer Relations Strategy website with Gleeee deployment system",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "glean",
+    "devrel",
+    "gleeees",
+    "deployment"
+  ],
+  "author": "Colin Lowenberg",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^20.0.2"
+  }
+}

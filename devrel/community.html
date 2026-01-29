@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Dashboard - Memori DevRel</title>
+    <link rel="stylesheet" href="assets/css/portal.css">
+</head>
+<body>
+    <header class="portal-header">
+        <nav class="portal-nav">
+            <div class="logo">
+                <h1>⚡ Memori Community</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="portal.html">Portal Home</a></li>
+                <li><a href="#metrics">Metrics</a></li>
+                <li><a href="#leaderboard">Leaderboard</a></li>
+                <li><a href="#events">Events</a></li>
+                <li><a href="#activity">Recent Activity</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero-portal">
+        <div class="hero-content">
+            <h1>Community Dashboard</h1>
+            <p class="hero-subtitle">Track progress, celebrate contributors, and stay connected</p>
+        </div>
+    </section>
+
+    <section id="metrics" class="section section-light">
+        <div class="container">
+            <h2>Community Metrics</h2>
+            <p class="section-intro">Real-time stats from our global community</p>
+            
+            <div class="programs-grid-portal">
+                <div class="portal-card">
+                    <div class="card-header">
+                        <span class="card-icon">👥</span>
+                    </div>
+                    <h3 style="font-size: 3rem; margin-bottom: 0.5rem;">1,247</h3>
+                    <p>Active Community Members</p>
+                    <p style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem;">↑ 18% this month</p>
+                </div>
+
+                <div class="portal-card">
+                    <div class="card-header">
+                        <span class="card-icon">💻</span>
+                    </div>
+                    <h3 style="font-size: 3rem; margin-bottom: 0.5rem;">356</h3>
+                    <p>Memory Integrations Published</p>
+                    <p style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem;">+42 this week</p>
+                </div>
+
+                <div class="portal-card">
+                    <div class="card-header">
+                        <span class="card-icon">🎓</span>
+                    </div>
+                    <h3 style="font-size: 3rem; margin-bottom: 0.5rem;">892</h3>
+                    <p>Certifications Earned</p>
+                    <p style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem;">+127 this month</p>
+                </div>
+
+                <div class="portal-card">
+                    <div class="card-header">
+                        <span class="card-icon">🏆</span>
+                    </div>
+                    <h3 style="font-size: 3rem; margin-bottom: 0.5rem;">$245K</h3>
+                    <p>Paid Out in Bounties</p>
+                    <p style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem;">Across 187 bounties</p>
+                </div>
+
+                <div class="portal-card">
+                    <div class="card-header">
+                        <span class="card-icon">📝</span>
+                    </div>
+                    <h3 style="font-size: 3rem; margin-bottom: 0.5rem;">2,450</h3>
+                    <p>Workflows Shared</p>
+                    <p style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem;">+89 this week</p>
+                </div>
+
+                <div class="portal-card">
+                    <div class="card-header">
+                        <span class="card-icon">🎨</span>
+                    </div>
+                    <h3 style="font-size: 3rem; margin-bottom: 0.5rem;">428</h3>
+                    <p>Custom Themes</p>
+                    <p style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem;">+15 this week</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="leaderboard" class="section">
+        <div class="container">
+            <h2>Leaderboards</h2>
+            <p class="section-intro">Top contributors this month</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem; margin-top: 3rem;">
+                <!-- Top Memory Builders -->
+                <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>💻</span> Top Memory Builders
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥇</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@sarahdev</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">8 integrations | 12K installs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-color);">1,240 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥈</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@alexcoder</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">5 integrations | 8K installs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-color);">980 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥉</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@michaeljs</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">6 integrations | 7K installs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-color);">875 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size: 1.5rem; width: 2rem;">4</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@priyatech</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">4 integrations | 6K installs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--text-light);">720 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size: 1.5rem; width: 2rem;">5</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@davidrs</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">3 integrations | 5K installs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--text-light);">650 pts</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Bounty Hunters -->
+                <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>💰</span> Top Bounty Hunters
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥇</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@bountymaster</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">23 bounties completed</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--success);">$18.5K</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥈</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@quickship</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">18 bounties completed</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--success);">$14.2K</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥉</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@codecrusher</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">15 bounties completed</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--success);">$12.8K</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size: 1.5rem; width: 2rem;">4</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@fastdev</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">14 bounties completed</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--text-light);">$11.5K</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size: 1.5rem; width: 2rem;">5</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@shipper</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">12 bounties completed</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--text-light);">$9.8K</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Content Creators -->
+                <div style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📝</span> Top Content Creators
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥇</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@tutorialqueen</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">18 tutorials | 45K views</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--accent-color);">890 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥈</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@devguides</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">14 tutorials | 38K views</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--accent-color);">750 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--light-bg); border-radius: 8px;">
+                            <span style="font-size: 2rem;">🥉</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@techwriter</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">12 tutorials | 32K views</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--accent-color);">680 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size: 1.5rem; width: 2rem;">4</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@codedocs</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">10 tutorials | 28K views</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--text-light);">590 pts</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size: 1.5rem; width: 2rem;">5</span>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: 600;">@learnmemori</div>
+                                <div style="font-size: 0.9rem; color: var(--text-light);">9 tutorials | 25K views</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--text-light);">520 pts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="events" class="section section-light">
+        <div class="container">
+            <h2>Upcoming Events</h2>
+            <p class="section-intro">Join us at workshops, hackathons, and office hours</p>
+            
+            <div class="learning-grid">
+                <div class="learning-card" style="background: white; color: var(--text-dark); border-left: 4px solid var(--primary-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h3>Weekly Workshop</h3>
+                        <span style="background: var(--primary-color); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">Tomorrow</span>
+                    </div>
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Building Your First Memory Integration</p>
+                    <p style="color: var(--text-light); margin-bottom: 1rem;">Learn memory fundamentals and ship your first integration</p>
+                    <p style="font-size: 0.9rem;"><strong>When:</strong> Wed, Jan 8, 4:00 PM PT</p>
+                    <p style="font-size: 0.9rem;"><strong>Where:</strong> Virtual + SF Office</p>
+                    <a href="viewer.html?doc=workshops" class="btn btn-primary" style="margin-top: 1rem;">Register</a>
+                </div>
+
+                <div class="learning-card" style="background: white; color: var(--text-dark); border-left: 4px solid var(--warning);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h3>Monthly Hackathon</h3>
+                        <span style="background: var(--warning); color: var(--text-dark); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">Jan 12-14</span>
+                    </div>
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Memory-First Agent Challenge</p>
+                    <p style="color: var(--text-light); margin-bottom: 1rem;">Build memory-driven agents and recall tooling</p>
+                    <p style="font-size: 0.9rem;"><strong>Prize Pool:</strong> $25,000</p>
+                    <p style="font-size: 0.9rem;"><strong>Duration:</strong> 48 hours</p>
+                    <a href="viewer.html?doc=hackathons" class="btn btn-primary" style="margin-top: 1rem;">Join Hackathon</a>
+                </div>
+
+                <div class="learning-card" style="background: white; color: var(--text-dark); border-left: 4px solid var(--secondary-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h3>Office Hours</h3>
+                        <span style="background: var(--secondary-color); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">Weekly</span>
+                    </div>
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Co-working with Memori Engineers</p>
+                    <p style="color: var(--text-light); margin-bottom: 1rem;">Get help, review code, and collaborate</p>
+                    <p style="font-size: 0.9rem;"><strong>Tuesday:</strong> 2-6 PM PT (In-person SF)</p>
+                    <p style="font-size: 0.9rem;"><strong>Thursday:</strong> 10 AM-2 PM PT (Virtual)</p>
+                    <a href="viewer.html?doc=co-working" class="btn btn-primary" style="margin-top: 1rem;">View Schedule</a>
+                </div>
+
+                <div class="learning-card" style="background: white; color: var(--text-dark); border-left: 4px solid var(--accent-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h3>Enterprise Webinar</h3>
+                        <span style="background: var(--accent-color); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">Jan 15</span>
+                    </div>
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Memory for Engineering Teams</p>
+                    <p style="color: var(--text-light); margin-bottom: 1rem;">Best practices for shipping SQL-native memory</p>
+                    <p style="font-size: 0.9rem;"><strong>When:</strong> Wed, Jan 15, 2:00 PM PT</p>
+                    <p style="font-size: 0.9rem;"><strong>Audience:</strong> Enterprise customers</p>
+                    <a href="learning-paths.html#live-webinars" class="btn btn-primary" style="margin-top: 1rem;">Register</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="activity" class="section">
+        <div class="container">
+            <h2>Recent Activity</h2>
+            <p class="section-intro">What's happening in the community</p>
+            
+            <div style="max-width: 800px; margin: 3rem auto; background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div style="padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; gap: 1rem; align-items: start;">
+                            <span style="font-size: 2rem;">🎉</span>
+                            <div style="flex-grow: 1;">
+                                <p><strong>@sarahdev</strong> just earned <span style="color: var(--primary-color); font-weight: 600;">Memori Certified Memory Developer</span>!</p>
+                                <p style="font-size: 0.85rem; color: var(--text-light);">2 minutes ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; gap: 1rem; align-items: start;">
+                            <span style="font-size: 2rem;">💻</span>
+                            <div style="flex-grow: 1;">
+                                <p><strong>@alexcoder</strong> published a new memory integration: <span style="font-weight: 600;">Stripe Memory Adapter</span></p>
+                                <p style="font-size: 0.85rem; color: var(--text-light);">15 minutes ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; gap: 1rem; align-items: start;">
+                            <span style="font-size: 2rem;">💰</span>
+                            <div style="flex-grow: 1;">
+                                <p><strong>@quickship</strong> completed bounty: <span style="font-weight: 600;">Memory Observability Toolkit</span> ($800)</p>
+                                <p style="font-size: 0.85rem; color: var(--text-light);">1 hour ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; gap: 1rem; align-items: start;">
+                            <span style="font-size: 2rem;">📝</span>
+                            <div style="flex-grow: 1;">
+                                <p><strong>@tutorialqueen</strong> published: <span style="font-weight: 600;">Advanced Memory Security Patterns</span></p>
+                                <p style="font-size: 0.85rem; color: var(--text-light);">3 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <div style="display: flex; gap: 1rem; align-items: start;">
+                            <span style="font-size: 2rem;">🎨</span>
+                            <div style="flex-grow: 1;">
+                                <p><strong>@designpro</strong> shared a new theme: <span style="font-weight: 600;">Dracula Pro</span></p>
+                                <p style="font-size: 0.85rem; color: var(--text-light);">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; gap: 1rem; align-items: start;">
+                            <span style="font-size: 2rem;">💡</span>
+                            <div style="flex-grow: 1;">
+                                <p><strong>@innovator</strong> received a <span style="font-weight: 600;">$25K grant</span> for building Memory-Aware Code Review Assistant</p>
+                                <p style="font-size: 0.85rem; color: var(--text-light);">8 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Join the Community</h2>
+            <p>Connect with developers, share your work, and grow together</p>
+            <div class="cta-buttons">
+                <a href="https://memorilabs.ai" class="btn btn-primary btn-large">Join Slack</a>
+                <a href="portal.html#programs" class="btn btn-outline btn-large">Explore Programs</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="portal-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="#metrics">Metrics</a></li>
+                        <li><a href="#leaderboard">Leaderboard</a></li>
+                        <li><a href="#events">Events</a></li>
+                        <li><a href="#activity">Recent Activity</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul>
+                        <li><a href="https://memorilabs.ai">Slack</a></li>
+                        <li><a href="https://github.com/MemoriLabs/Memori">GitHub</a></li>
+                        <li><a href="https://twitter.com/MemoriLabs">Twitter</a></li>
+                        <li><a href="https://youtube.com/@MemoriLabs">YouTube</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Portal</h4>
+                    <ul>
+                        <li><a href="portal.html">Portal Home</a></li>
+                        <li><a href="portal.html#programs">All Programs</a></li>
+                        <li><a href="learning-paths.html">Learning Paths</a></li>
+                        <li><a href="index.html">DevRel Home</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="viewer.html?doc=bounty-system">Bounties</a></li>
+                        <li><a href="viewer.html?doc=grant-details">Grants</a></li>
+                        <li><a href="viewer.html?doc=hackathons">Hackathons</a></li>
+                        <li><a href="viewer.html?doc=workshops">Workshops</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Memori. Built with ❤️ by the community.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
