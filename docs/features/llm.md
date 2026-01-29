@@ -167,3 +167,45 @@ response = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
+
+### NVIDIA NIM (OpenAI-compatible, no LiteLLM required)
+
+NVIDIA NIM exposes an OpenAI-compatible Chat Completions endpoint.
+
+- Base URL: `https://integrate.api.nvidia.com/v1/`
+- Docs: https://docs.api.nvidia.com/nim/reference/llm-apis
+
+You can use it directly with the OpenAI Python client by setting `base_url`.
+
+```python
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1/",
+    api_key=os.getenv("NVIDIA_API_KEY"),
+)
+
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.chat.completions.create(
+    model="nvidia-nemotron-4-340b-instruct",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+```
+
+#### Convenience helper
+
+```python
+from memori.integrations.nvidia_nim import openai_client_for_nim
+
+client = openai_client_for_nim()  # uses NVIDIA_API_KEY
+```
+
+> LiteLLM remains supported: if you already route through LiteLLM (or any OpenAI-compatible gateway), pass `OpenAI(base_url=..., api_key=...)` the same way.
