@@ -467,8 +467,26 @@ class OpenAi(BaseClient):
 )
 class PydanticAi(BaseClient):
     def register(self, client):
+        # PydanticAI objects can be passed as either:
+        # - the OpenAI-compatible client (has `.chat.completions.create`)
+        # - higher-level wrappers like `Agent`/`Model` (often exposing `.client` or `.model.client`)
         if not hasattr(client, "chat"):
-            raise RuntimeError("client provided was not instantiated using PydanticAi")
+            # Try common unwrapping patterns to reduce doc-mismatch pain.
+            if hasattr(client, "client") and hasattr(client.client, "chat"):
+                client = client.client
+            elif (
+                hasattr(client, "model")
+                and hasattr(client.model, "client")
+                and hasattr(client.model.client, "chat")
+            ):
+                client = client.model.client
+
+        if not hasattr(client, "chat"):
+            raise RuntimeError(
+                "PydanticAI integration expected an OpenAI-compatible client with "
+                "`.chat.completions.create`. If you're using PydanticAI, pass `model.client` "
+                "(or an object exposing `.client`) rather than the Agent itself."
+            )
 
         if not hasattr(client, "_memori_installed"):
             client.chat.completions.actual_chat_completions_create = (
