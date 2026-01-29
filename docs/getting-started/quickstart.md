@@ -14,7 +14,7 @@ Memori is LLM, database and framework agnostic and works with the tools you alre
 - Python 3.10 or higher
 - An OpenAI API key
 
-## Step 1: Install Libraries
+## Step 1: Install libraries
 
 Install Memori:
 
@@ -22,20 +22,78 @@ Install Memori:
 pip install memori
 ```
 
-For this example, you may also need to install:
+For this example, also install:
 
 ```bash
-pip install openai
+pip install openai sqlalchemy
+```
+
+### If install fails on macOS/Homebrew (PEP 668)
+
+If you see an error like `externally-managed-environment`, Homebrew is telling you not to install packages system-wide.
+
+Use a virtual environment instead:
+
+```bash
+mkdir memori-quickstart && cd memori-quickstart
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install -U pip
+python -m pip install memori openai sqlalchemy
+```
+
+Tip: use `python -m pip ...` to ensure you install into the same interpreter you’ll run.
+
+> `brew install memori` is not expected to work — Memori is installed from PyPI via `pip`.
+
+### Common first-run errors
+
+**`zsh: command not found: python`**
+
+Some macOS setups don’t provide a `python` shim. Use `python3`:
+
+```bash
+python3 quickstart.py
+```
+
+**`ModuleNotFoundError: No module named 'memori'` (or `openai` / `sqlalchemy`)**
+
+This almost always means you installed into a different Python environment than the one you’re running.
+
+Quick checks:
+
+```bash
+which python3
+python3 -m pip show memori
+python3 -m pip show openai
+python3 -m pip show sqlalchemy
+```
+
+If you’re using a virtualenv, also confirm it’s activated:
+
+```bash
+which python
+python -m pip --version
 ```
 
 ## Step 2: Set environment variables
 
-Set your OpenAI API key in an environment variable:
+### OpenAI API key (required for this example)
 
 ```bash
 export OPENAI_API_KEY="your-api-key-here"
 ```
 
+### Memori Labs API key (optional)
+
+`MEMORI_API_KEY` is used for **Advanced Augmentation** (background enrichment of memories). Memori can still store/recall without it, but you may be rate-limited without an account.
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key-here"
+```
+
+> If you prefer a `.env` file, you can use one, but Memori ultimately reads standard environment variables.
 ## Step 3: Run Your First Memori Application
 
 Create a new Python file `quickstart.py` and add the following code:
@@ -94,7 +152,7 @@ print(response.choices[0].message.content + "\n")
 Execute your Python file:
 
 ```bash
-python quickstart.py
+python3 quickstart.py
 ```
 
 You should see the AI respond to both questions, with the second response correctly recalling that your favorite color is blue!
