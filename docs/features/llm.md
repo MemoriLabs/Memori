@@ -143,6 +143,39 @@ mem.attribution(entity_id="user_123", process_id="pydantic_agent")
 result = agent.run_sync("Hello")
 ```
 
+### Anthropic
+
+```python
+import os
+
+from anthropic import Anthropic
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.messages.create(
+    model="claude-3-5-sonnet-latest",
+    max_tokens=256,
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+```
+
+#### Convenience helper
+
+```python
+from memori.integrations.anthropic_client import anthropic_client
+
+client = anthropic_client()  # uses ANTHROPIC_API_KEY
+```
+
 ### Nebius AI Studio
 
 ```python
