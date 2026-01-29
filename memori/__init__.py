@@ -108,6 +108,11 @@ class Memori:
             return lambda: psycopg.connect(connection_string)
 
         self.config.hosted = True
+        if (
+            os.environ.get("MEMORI_API_KEY", None) is None
+            or os.environ.get("MEMORI_API_KEY", None) == ""
+        ):
+            raise RuntimeError("A MEMORI_API_KEY is required to use the hosted API.")
         return None
 
     def attribution(self, entity_id=None, process_id=None):

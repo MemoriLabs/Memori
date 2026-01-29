@@ -16,8 +16,16 @@ def test_hosted_false_when_conn_provided(mocker):
 
 def test_hosted_true_when_no_conn(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    mem = Memori(conn=None)
+    monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
+    mem = Memori()
     assert mem.config.hosted is True
+
+
+def test_hosted_raises_error_when_no_api_key(monkeypatch):
+    monkeypatch.delenv("MEMORI_API_KEY", raising=False)
+    with pytest.raises(RuntimeError) as e:
+        Memori()
+    assert str(e.value) == "A MEMORI_API_KEY is required to use the hosted API."
 
 
 def test_hosted_false_when_connection_string_set(monkeypatch, mocker):
