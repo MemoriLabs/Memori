@@ -126,6 +126,12 @@ response = client.invoke("Hello")
 
 ### Pydantic AI
 
+Memori registers against an **OpenAI-compatible client** (it needs access to `chat.completions.create`).
+
+You can either:
+- pass the underlying client (recommended if you have it), typically `model.client`, or
+- pass the PydanticAI wrapper object (e.g. `Agent`) and Memori will attempt to unwrap it.
+
 ```python
 from memori import Memori
 from pydantic_ai import Agent
@@ -137,7 +143,12 @@ SessionLocal = sessionmaker(bind=engine)
 
 agent = Agent("openai:gpt-4o-mini")
 
+# Option A: pass Agent (Memori will unwrap when possible)
 mem = Memori(conn=SessionLocal).llm.register(agent)
+
+# Option B: if you have a model object, pass the underlying client explicitly
+# mem = Memori(conn=SessionLocal).llm.register(model.client)
+
 mem.attribution(entity_id="user_123", process_id="pydantic_agent")
 
 result = agent.run_sync("Hello")
