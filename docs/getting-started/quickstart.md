@@ -14,13 +14,25 @@ Memori is LLM, database and framework agnostic and works with the tools you alre
 - Python 3.10 or higher
 - An OpenAI API key
 
-## Step 1: Install (recommended: virtualenv)
+## Step 1: Install libraries
 
-On macOS (especially with Homebrew Python), installing packages system-wide can fail with:
-- `externally-managed-environment` (PEP 668)
-- or you may accidentally install into one Python but run another
+Install Memori:
 
-The most reliable first run is a virtual environment:
+```bash
+pip install memori
+```
+
+For this example, also install:
+
+```bash
+pip install openai sqlalchemy
+```
+
+### If install fails on macOS/Homebrew (PEP 668)
+
+If you see an error like `externally-managed-environment`, Homebrew is telling you not to install packages system-wide.
+
+Use a virtual environment instead:
 
 ```bash
 mkdir memori-quickstart && cd memori-quickstart
@@ -31,10 +43,9 @@ python -m pip install -U pip
 python -m pip install memori openai sqlalchemy
 ```
 
-Notes:
-- Use `python -m pip ...` to ensure you’re installing into the same interpreter you’re about to run.
-- `brew install memori` is not expected to work — Memori is installed from PyPI via `pip`.
-- Some Memori code paths import `sqlalchemy`, so we install it here to avoid a first-run import error.
+Tip: use `python -m pip ...` to ensure you install into the same interpreter you’ll run.
+
+> `brew install memori` is not expected to work — Memori is installed from PyPI via `pip`.
 
 ## Step 2: Set environment variables
 
@@ -44,7 +55,7 @@ Notes:
 export OPENAI_API_KEY="your-api-key-here"
 ```
 
-### Memori Labs API key (optional but recommended)
+### Memori Labs API key (optional)
 
 `MEMORI_API_KEY` is used for **Advanced Augmentation** (background enrichment of memories). Memori can still store/recall without it, but you may be rate-limited without an account.
 
@@ -53,7 +64,6 @@ export MEMORI_API_KEY="your-memori-api-key-here"
 ```
 
 > If you prefer a `.env` file, you can use one, but Memori ultimately reads standard environment variables.
-
 ## Step 3: Run Your First Memori Application
 
 Create a new Python file `quickstart.py` and add the following code:
