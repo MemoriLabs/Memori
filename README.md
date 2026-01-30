@@ -24,7 +24,7 @@
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
   </a>
   <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+">
+    <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   </a>
   <a href="https://discord.gg/abD4eGym6v">
     <img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord">
@@ -298,9 +298,3 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 ## License
 
 Apache 2.0 - see [LICENSE](https://github.com/MemoriLabs/Memori/blob/main/LICENSE)
-
----
-
-**Star us on GitHub** to support the project
-
-[![Star History](https://api.star-history.com/svg?repos=MemoriLabs/memori&type=date)](https://star-history.com/#MemoriLabs/memori)
