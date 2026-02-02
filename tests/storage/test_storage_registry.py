@@ -1,5 +1,6 @@
 import pytest
 
+from memori._exceptions import UnsupportedDatabaseError
 from memori.storage._registry import Registry
 from memori.storage.adapters.sqlalchemy._adapter import (
     Adapter as SqlAlchemyStorageAdapter,
@@ -58,12 +59,12 @@ def test_storage_driver_oceanbase(mocker):
 
 
 def test_storage_adapter_raises_for_unsupported_connection():
-    """Test that unsupported database connection raises RuntimeError."""
+    """Test that unsupported database connection raises UnsupportedDatabaseError."""
 
     class UnsupportedConnection:
         pass
 
-    with pytest.raises(RuntimeError, match="Unsupported database"):
+    with pytest.raises(UnsupportedDatabaseError, match=r"Unsupported database"):
         Registry().adapter(UnsupportedConnection())
 
 

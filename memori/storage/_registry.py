@@ -11,6 +11,7 @@ r"""
 from collections.abc import Callable
 from typing import Any
 
+from memori._exceptions import UnsupportedDatabaseError
 from memori.storage._base import BaseStorageAdapter
 
 
@@ -57,9 +58,7 @@ class Registry:
             if matcher(conn_for_match):
                 return adapter_class(lambda: conn_to_check)
 
-        raise RuntimeError(
-            f"Unsupported database: {type(conn_for_match).__module__}.{type(conn_for_match).__name__}"
-        )
+        raise UnsupportedDatabaseError()
 
     def driver(self, conn: BaseStorageAdapter):
         dialect = conn.get_dialect()
