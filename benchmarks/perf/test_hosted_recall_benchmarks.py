@@ -224,9 +224,15 @@ def _make_invoke_with_stubbed_history(
         history.append({"role": "user", "content": f"I like item_{i}."})
         history.append({"role": "assistant", "content": "Ok."})
 
-    invoke = BaseInvoke(cfg, lambda **_kwargs: None)
-    invoke._fetch_hosted_conversation_messages = lambda: history  # ty: ignore[method-assign]
-    return invoke
+    class _InvokeWithStubbedHistory(BaseInvoke):
+        def __init__(self, config: Config, method, history: list[dict[str, str]]):
+            super().__init__(config, method)
+            self._history = history
+
+        def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
+            return self._history
+
+    return _InvokeWithStubbedHistory(cfg, lambda **_kwargs: None, history)
 
 
 @pytest.mark.benchmark
