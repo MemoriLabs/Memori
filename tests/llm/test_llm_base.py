@@ -8,56 +8,6 @@ from memori.llm._constants import (
     LANGCHAIN_OPENAI_LLM_PROVIDER,
     OPENAI_LLM_PROVIDER,
 )
-from tests.llm.unit_test_objects import UnitTestX, UnitTestY
-
-
-def test_list_to_json_native_types():
-    assert BaseInvoke(Config(), "abc").list_to_json([1, 2, 3]) == [1, 2, 3]
-
-    assert BaseInvoke(Config(), "abc").list_to_json([{"a": "b"}, {"c": "d"}]) == [
-        {"a": "b"},
-        {"c": "d"},
-    ]
-
-    assert BaseInvoke(Config(), "abc").list_to_json([[1, 2], [3, 4], [{"a", "b"}]]) == [
-        [1, 2],
-        [3, 4],
-        [{"a", "b"}],
-    ]
-
-    assert BaseInvoke(Config(), "abc").list_to_json(
-        [[1, {"a": "b"}], [{"c": "d"}, 2]]
-    ) == [
-        [1, {"a": "b"}],
-        [{"c": "d"}, 2],
-    ]
-
-
-def test_list_to_json_object_simple():
-    assert BaseInvoke(Config(), "abc").list_to_json([1, UnitTestX()]) == [
-        1,
-        {"a": 1, "b": 2},
-    ]
-
-
-def test_list_to_json_object_complex():
-    assert BaseInvoke(Config(), "abc").list_to_json([1, UnitTestY()]) == [
-        1,
-        {"c": 3, "d": {"a": 1, "b": 2}},
-    ]
-
-
-def test_list_to_json_list_list_list():
-    assert BaseInvoke(Config(), "abc").list_to_json([1, [2, [3, [4]]]]) == [
-        1,
-        [2, [3, [4]]],
-    ]
-
-
-def test_list_to_dict_to_list():
-    assert BaseInvoke(Config(), "abc").list_to_json([{"a": 1, "b": [1, [2]]}]) == [
-        {"a": 1, "b": [1, [2]]}
-    ]
 
 
 def test_dict_to_json_dict():
@@ -206,10 +156,15 @@ def test_handle_post_response_without_augmentation():
         mock_manager_instance = Mock()
         mock_memory_manager.return_value = mock_manager_instance
 
-        invoke.handle_post_response(kwargs, start_time, raw_response)
+        with patch(
+            "memori.memory._conversation_messages.parse_payload_conversation_messages"
+        ) as mock_parse:
+            mock_parse.return_value = [{"role": "user", "type": None, "text": "Hello"}]
 
-        mock_memory_manager.assert_called_once_with(config)
-        mock_manager_instance.execute.assert_called_once()
+            invoke.handle_post_response(kwargs, start_time, raw_response)
+
+            mock_memory_manager.assert_called_once_with(config)
+            mock_manager_instance.execute.assert_called_once()
 
 
 def test_handle_post_response_with_augmentation_no_conversation():
@@ -227,12 +182,10 @@ def test_handle_post_response_with_augmentation_no_conversation():
         mock_manager_instance = Mock()
         mock_memory_manager.return_value = mock_manager_instance
 
-        with patch("memori.llm._registry.Registry") as mock_registry:
-            mock_adapter = Mock()
-            mock_adapter.get_formatted_query.return_value = [
-                {"role": "user", "content": "Hello"}
-            ]
-            mock_registry.return_value.adapter.return_value = mock_adapter
+        with patch(
+            "memori.memory._conversation_messages.parse_payload_conversation_messages"
+        ) as mock_parse:
+            mock_parse.return_value = [{"role": "user", "type": None, "text": "Hello"}]
 
             invoke.handle_post_response(kwargs, start_time, raw_response)
 
@@ -241,6 +194,9 @@ def test_handle_post_response_with_augmentation_no_conversation():
             config.augmentation.enqueue.assert_called_once()
             call_args = config.augmentation.enqueue.call_args[0][0]
             assert call_args.conversation_id is None
+            assert call_args.entity_id == "test-entity"
+            assert call_args.conversation_messages[0].role == "user"
+            assert call_args.conversation_messages[0].content == "Hello"
 
 
 def test_handle_post_response_with_augmentation_and_conversation():
@@ -259,12 +215,10 @@ def test_handle_post_response_with_augmentation_and_conversation():
         mock_manager_instance = Mock()
         mock_memory_manager.return_value = mock_manager_instance
 
-        with patch("memori.llm._registry.Registry") as mock_registry:
-            mock_adapter = Mock()
-            mock_adapter.get_formatted_query.return_value = [
-                {"role": "user", "content": "Hello"}
-            ]
-            mock_registry.return_value.adapter.return_value = mock_adapter
+        with patch(
+            "memori.memory._conversation_messages.parse_payload_conversation_messages"
+        ) as mock_parse:
+            mock_parse.return_value = [{"role": "user", "type": None, "text": "Hello"}]
 
             invoke.handle_post_response(kwargs, start_time, raw_response)
 
@@ -273,6 +227,9 @@ def test_handle_post_response_with_augmentation_and_conversation():
             config.augmentation.enqueue.assert_called_once()
             call_args = config.augmentation.enqueue.call_args[0][0]
             assert call_args.conversation_id == 123
+            assert call_args.entity_id == "test-entity"
+            assert call_args.conversation_messages[0].role == "user"
+            assert call_args.conversation_messages[0].content == "Hello"
 
 
 def test_extract_user_query_with_user_message():
@@ -411,20 +368,6 @@ def test_inject_recalled_facts_no_entity_id():
     config = Config()
     config.storage = Mock()
     config.entity_id = None
-    invoke = BaseInvoke(config, "test_method")
-
-    kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_recalled_facts(kwargs)
-
-    assert result == kwargs
-
-
-def test_inject_recalled_facts_entity_create_returns_none():
-    config = Config()
-    config.storage = Mock()
-    config.storage.driver = Mock()
-    config.storage.driver.entity.create.return_value = None
-    config.entity_id = "test-entity"
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
@@ -833,3 +776,37 @@ def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
         "Previous answer",
         "New question",
     ]
+
+
+def test_inject_conversation_messages_hosted_fetches_from_hosted(mocker):
+    config = Config()
+    config.hosted = True
+    config.session_id = "session-uuid"
+    config.llm.provider = OPENAI_LLM_PROVIDER
+
+    api_instance = mocker.MagicMock()
+    api_instance.get.return_value = {
+        "messages": [
+            {"role": "user", "text": "Hosted previous question", "type": "message"},
+            {"role": "assistant", "text": "Hosted previous answer", "type": "message"},
+        ]
+    }
+    mock_api_cls = mocker.patch("memori.llm._base.Api", autospec=True)
+    mock_api_cls.return_value = api_instance
+
+    invoke = BaseInvoke(config, "test_method")
+    kwargs = {"messages": [{"role": "user", "content": "New question"}]}
+
+    result = invoke.inject_conversation_messages(kwargs)
+
+    mock_api_cls.assert_called_once()
+    _, call_kwargs = mock_api_cls.call_args
+    assert call_kwargs["subdomain"].value == "hosted-api"
+    api_instance.get.assert_called_once_with("conversation/session-uuid/messages")
+
+    assert [m["content"] for m in result["messages"]] == [
+        "Hosted previous question",
+        "Hosted previous answer",
+        "New question",
+    ]
+    assert invoke._injected_message_count == 2

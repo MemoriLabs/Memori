@@ -50,6 +50,16 @@ class MemoriApiRequestRejectedError(MemoriApiClientError):
     pass
 
 
+class MissingMemoriApiKeyError(RuntimeError):
+    """Raised when hosted mode is used without a MEMORI_API_KEY."""
+
+    def __init__(self, env_var: str = "MEMORI_API_KEY"):
+        self.env_var = env_var
+        super().__init__(
+            f"A {env_var} is required to use the Memori hosted API. Sign up at https://app.memorilabs.ai/signup"
+        )
+
+
 class MemoriLegacyPackageWarning(UserWarning):
     """Warning emitted when the legacy `memorisdk` package is installed."""
 

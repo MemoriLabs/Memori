@@ -17,6 +17,7 @@ import psycopg
 
 from memori._config import Config
 from memori._exceptions import (
+    MissingMemoriApiKeyError,
     QuotaExceededError,
     warn_if_legacy_memorisdk_installed,
 )
@@ -79,13 +80,14 @@ class Memori:
 
         self.config = Config()
         self.config.api_key = os.environ.get("MEMORI_API_KEY", None)
-        self.config.enterprise = os.environ.get("MEMORI_ENTERPRISE", "0") == "1"
         self.config.session_id = uuid4()
         self.config.debug_truncate = debug_truncate
         set_truncate_enabled(debug_truncate)
 
         if conn is None:
             conn = self._get_default_connection()
+        else:
+            self.config.hosted = False
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
@@ -100,15 +102,17 @@ class Memori:
         self.pydantic_ai = LlmProviderPydanticAi(self)
         self.xai = LlmProviderXAi(self)
 
-    def _get_default_connection(self) -> Callable[[], Any]:
-        connection_string = os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING")
+    def _get_default_connection(self) -> Callable[[], Any] | None:
+        connection_string = os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING", None)
         if connection_string:
+            self.config.hosted = False
             return lambda: psycopg.connect(connection_string)
 
-        raise RuntimeError(
-            "No connection factory provided. Either pass 'conn' parameter or set "
-            "MEMORI_COCKROACHDB_CONNECTION_STRING environment variable."
-        )
+        self.config.hosted = True
+        api_key = os.environ.get("MEMORI_API_KEY", None)
+        if api_key is None or api_key == "":
+            raise MissingMemoriApiKeyError()
+        return None
 
     def attribution(self, entity_id=None, process_id=None):
         if entity_id is not None:

@@ -15,7 +15,7 @@ def measure_peak_rss_bytes(
     Returns (result, peak_rss_bytes). If psutil isn't available, peak is None.
     """
     try:
-        import psutil  # type: ignore[import-not-found]
+        import psutil
     except Exception:
         return fn(), None
 

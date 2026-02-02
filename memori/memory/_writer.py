@@ -8,14 +8,12 @@ r"""
                       memorilabs.ai
 """
 
-import json
 import logging
 import time
 
 from sqlalchemy.exc import OperationalError
 
 from memori._config import Config
-from memori.llm._registry import Registry as LlmRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +31,7 @@ class Writer:
             return self
 
         logger.debug("Writing response to memori DB")
+
         for attempt in range(max_retries):
             try:
                 self._execute_transaction(payload)
@@ -89,34 +88,13 @@ class Writer:
             self.config.session_timeout_minutes,
         )
 
-        llm = LlmRegistry().adapter(
-            payload["conversation"]["client"]["provider"],
-            payload["conversation"]["client"]["title"],
-        )
-
-        messages = llm.get_formatted_query(payload)
-        if messages:
-            for message in messages:
-                if message["role"] != "system":
-                    content = message["content"]
-                    if isinstance(content, dict | list):
-                        content = json.dumps(content)
-                    self.config.storage.driver.conversation.message.create(
-                        self.config.cache.conversation_id,
-                        message["role"],
-                        None,
-                        content,
-                    )
-
-        responses = llm.get_formatted_response(payload)
-        if responses:
-            for response in responses:
-                self.config.storage.driver.conversation.message.create(
-                    self.config.cache.conversation_id,
-                    response["role"],
-                    response["type"],
-                    response["text"],
-                )
+        for message in payload.get("messages", []):
+            self.config.storage.driver.conversation.message.create(
+                self.config.cache.conversation_id,
+                message["role"],
+                message["type"],
+                message["text"],
+            )
 
         if self.config.storage is not None and self.config.storage.adapter is not None:
             self.config.storage.adapter.flush()

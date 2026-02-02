@@ -13,17 +13,14 @@ import inspect
 import json
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from google.protobuf import json_format
 
 from memori._config import Config
 from memori._logging import truncate
+from memori._network import Api, ApiSubdomain
 from memori._utils import format_date_created, merge_chunk
-from memori.search._types import FactSearchResult
-
-if TYPE_CHECKING:
-    pass
 from memori.llm._utils import (
     agno_is_anthropic,
     agno_is_google,
@@ -36,6 +33,15 @@ from memori.llm._utils import (
     llm_is_xai,
     provider_is_langchain,
 )
+from memori.memory.augmentation.augmentations.memori.models import (
+    AttributionData,
+    AugmentationInputData,
+    ConversationMessage,
+    EntityData,
+    ProcessData,
+    SessionData,
+)
+from memori.search._types import FactSearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +135,40 @@ class BaseInvoke:
         self._method = method
         self._uses_protobuf = False
         self._injected_message_count = 0
+
+    def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
+        if self.config.session_id is None:
+            return []
+
+        session_uuid = str(self.config.session_id)
+        try:
+            api = Api(self.config, subdomain=ApiSubdomain.HOSTED)
+            data = api.get(f"conversation/{session_uuid}/messages")
+        except Exception:
+            logger.debug(
+                "Failed to fetch hosted conversation messages for session %s",
+                session_uuid,
+                exc_info=True,
+            )
+            return []
+
+        if not isinstance(data, dict):
+            return []
+        raw_messages = data.get("messages", [])
+        if not isinstance(raw_messages, list):
+            return []
+
+        messages: list[dict[str, str]] = []
+        for msg in raw_messages:
+            if not isinstance(msg, dict):
+                continue
+            role = msg.get("role")
+            text = msg.get("text")
+            if not isinstance(role, str) or not isinstance(text, str):
+                continue
+            messages.append({"role": role, "content": text})
+
+        return messages
 
     def _ensure_cached_conversation_id(self) -> bool:
         if self.config.storage is None or self.config.storage.driver is None:
@@ -264,7 +304,11 @@ class BaseInvoke:
         query,
         response,
     ):
-        response_json = self.response_to_json(response)
+        response_json = self._convert_to_json(response)
+
+        from memori.memory._conversation_messages import (  # noqa: I001
+            parse_payload_conversation_messages,
+        )
 
         payload = {
             "attribution": {
@@ -277,6 +321,7 @@ class BaseInvoke:
                     "title": client_title,
                     "version": client_version,
                 },
+                # Keep query/response for backwards compatibility with adapters/augmentation.
                 "query": query,
                 "response": response_json,
             },
@@ -292,7 +337,35 @@ class BaseInvoke:
             "time": {"end": end_time, "start": start_time},
         }
 
+        messages = list(parse_payload_conversation_messages(payload))
+        payload["messages"] = messages
+
+        if self.config.hosted is True:
+            return {
+                "attribution": {
+                    "entity": {"id": self.config.entity_id},
+                    "process": {"id": self.config.process_id},
+                },
+                "messages": messages,
+                "session": {"id": str(self.config.session_id)},
+            }
+
         return payload
+
+    def _format_augmentation_input(self, payload: dict) -> AugmentationInputData:
+        return AugmentationInputData(
+            attribution=AttributionData(
+                entity=EntityData(id=self.config.entity_id),
+                process=ProcessData(id=self.config.process_id),
+            ),
+            messages=[
+                ConversationMessage(
+                    role=message.get("role"), content=message.get("text")
+                )
+                for message in payload.get("messages", [])
+            ],
+            session=SessionData(id=str(self.config.session_id)),
+        )
 
     def _safe_copy(self, obj):
         """Safely copy an object, handling unpicklable types like _thread.RLock.
@@ -614,14 +687,7 @@ class BaseInvoke:
         return lines
 
     def inject_recalled_facts(self, kwargs: dict) -> dict:
-        if self.config.storage is None or self.config.storage.driver is None:
-            return kwargs
-
         if self.config.entity_id is None:
-            return kwargs
-
-        entity_id = self.config.storage.driver.entity.create(self.config.entity_id)
-        if entity_id is None:
             return kwargs
 
         user_query = self._extract_user_query(kwargs)
@@ -630,9 +696,19 @@ class BaseInvoke:
 
         logger.debug("User query: %s", truncate(user_query))
 
+        if self.config.hosted is False:
+            if self.config.storage is None or self.config.storage.driver is None:
+                return kwargs
+
+            entity_id = self.config.storage.driver.entity.create(self.config.entity_id)
+            if entity_id is None:
+                return kwargs
+
         from memori.memory.recall import Recall
 
-        facts = Recall(self.config).search_facts(user_query, entity_id=entity_id)
+        facts = Recall(self.config).search_facts(
+            user_query, entity_id=self.config.entity_id, hosted=bool(self.config.hosted)
+        )
 
         if not facts:
             logger.debug("No facts found to inject into prompt")
@@ -690,6 +766,117 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
+        if self.config.hosted is True:
+            messages = self._fetch_hosted_conversation_messages()
+            if not messages:
+                return kwargs
+
+            self._injected_message_count = len(messages)
+            logger.debug(
+                "Injecting %d hosted conversation messages from history",
+                len(messages),
+            )
+
+            if (
+                "input" in kwargs or "instructions" in kwargs
+            ) and "messages" not in kwargs:
+                history_items: list[dict[str, str]] = []
+                for msg in messages:
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    if role == "system":
+                        continue
+                    history_items.append({"role": role, "content": content})
+
+                existing_input = kwargs.get("input")
+                if existing_input is None:
+                    existing_input = []
+                elif isinstance(existing_input, str):
+                    existing_input = [{"role": "user", "content": existing_input}]
+
+                kwargs["input"] = history_items + existing_input
+                return kwargs
+
+            if (
+                llm_is_openai(self.config.framework.provider, self.config.llm.provider)
+                or agno_is_openai(
+                    self.config.framework.provider, self.config.llm.provider
+                )
+                or agno_is_xai(self.config.framework.provider, self.config.llm.provider)
+            ):
+                kwargs["messages"] = messages + kwargs["messages"]
+            elif (
+                llm_is_anthropic(
+                    self.config.framework.provider, self.config.llm.provider
+                )
+                or llm_is_bedrock(
+                    self.config.framework.provider, self.config.llm.provider
+                )
+                or agno_is_anthropic(
+                    self.config.framework.provider, self.config.llm.provider
+                )
+            ):
+                filtered_messages = [m for m in messages if m.get("role") != "system"]
+                kwargs["messages"] = filtered_messages + kwargs["messages"]
+            elif llm_is_xai(self.config.framework.provider, self.config.llm.provider):
+                from xai_sdk.chat import assistant, user
+
+                xai_messages = []
+                for message in messages:
+                    role = message.get("role", "")
+                    content = message.get("content", "")
+                    if role == "user":
+                        xai_messages.append(user(content))
+                    elif role == "assistant":
+                        xai_messages.append(assistant(content))
+
+                kwargs["messages"] = xai_messages + kwargs["messages"]
+            elif llm_is_google(
+                self.config.framework.provider, self.config.llm.provider
+            ) or agno_is_google(
+                self.config.framework.provider, self.config.llm.provider
+            ):
+                contents = []
+                for message in messages:
+                    role = message["role"]
+                    if role == "assistant":
+                        role = "model"
+                    contents.append(
+                        {"parts": [{"text": message["content"]}], "role": role}
+                    )
+
+                if "request" in kwargs:
+                    formatted_kwargs = json.loads(
+                        json_format.MessageToJson(kwargs["request"].__dict__["_pb"])
+                    )
+                    formatted_kwargs["contents"] = (
+                        contents + formatted_kwargs["contents"]
+                    )
+                    json_format.ParseDict(
+                        formatted_kwargs, kwargs["request"].__dict__["_pb"]
+                    )
+                else:
+                    existing_contents = kwargs.get("contents", [])
+                    if isinstance(existing_contents, str):
+                        existing_contents = [
+                            {"parts": [{"text": existing_contents}], "role": "user"}
+                        ]
+                    elif isinstance(existing_contents, list):
+                        normalized = []
+                        for item in existing_contents:
+                            if isinstance(item, str):
+                                normalized.append(
+                                    {"parts": [{"text": item}], "role": "user"}
+                                )
+                            else:
+                                normalized.append(item)
+                        existing_contents = normalized
+                    kwargs["contents"] = contents + existing_contents
+            else:
+                raise NotImplementedError
+
+            return kwargs
+
         if self.config.storage is None or self.config.storage.driver is None:
             return kwargs
 
@@ -792,12 +979,6 @@ class BaseInvoke:
 
         return kwargs
 
-    def list_to_json(self, list_: list) -> list:
-        return self._convert_to_json(list_)
-
-    def response_to_json(self, response) -> dict | list:
-        return self._convert_to_json(response)
-
     def set_client(self, framework_provider, llm_provider, provider_sdk_version):
         self.config.framework.provider = framework_provider
         self.config.llm.provider = llm_provider
@@ -807,51 +988,6 @@ class BaseInvoke:
     def uses_protobuf(self):
         self._uses_protobuf = True
         return self
-
-    def _extract_system_prompt(self, messages: list | None) -> str | None:
-        if not messages or not isinstance(messages, list):
-            return None
-
-        first_message = messages[0]
-        if not isinstance(first_message, dict) or first_message.get("role") != "system":
-            return None
-
-        content = first_message.get("content", "")
-        if not content:
-            return None
-
-        if "<memori_context>" in content:
-            parts = content.split("<memori_context>")
-            system_prompt = parts[0].strip()
-            return system_prompt if system_prompt else None
-
-        return content
-
-    def _strip_memori_context_from_messages(self, messages: list) -> list:
-        if not messages:
-            return messages
-
-        cleaned_messages = []
-        for msg in messages:
-            if not isinstance(msg, dict):
-                cleaned_messages.append(msg)
-                continue
-
-            if msg.get("role") == "system" and "<memori_context>" in msg.get(
-                "content", ""
-            ):
-                content = msg["content"]
-                parts = content.split("<memori_context>")
-                cleaned_content = parts[0].strip()
-
-                if cleaned_content:
-                    cleaned_msg = msg.copy()
-                    cleaned_msg["content"] = cleaned_content
-                    cleaned_messages.append(cleaned_msg)
-            else:
-                cleaned_messages.append(msg)
-
-        return cleaned_messages
 
     def handle_post_response(self, kwargs, start_time, raw_response):
         from memori.memory._manager import Manager as MemoryManager
@@ -870,63 +1006,20 @@ class BaseInvoke:
         )
 
         MemoryManager(self.config).execute(payload)
-
         if self.config.augmentation is not None:
-            from memori.llm._registry import Registry as LlmRegistry
-            from memori.memory.augmentation.input import AugmentationInput
+            from memori.memory.augmentation._handler import handle_augmentation
 
-            llm_adapter = LlmRegistry().adapter(
-                self.config.framework.provider,
-                self.config.llm.provider,
+            aug_input = self._format_augmentation_input(payload)
+
+            handle_augmentation(
+                config=self.config,
+                payload=aug_input,
+                kwargs=kwargs,
+                augmentation_manager=self.config.augmentation,
+                log_content=lambda c: logger.debug(
+                    "Response content: %s", truncate(str(c))
+                ),
             )
-            messages_for_aug = llm_adapter.get_formatted_query(payload)
-
-            if isinstance(raw_response, dict):
-                choices = raw_response.get("choices", [])
-                if choices:
-                    choice = choices[0]
-                    if isinstance(choice, dict):
-                        content = choice.get("message", {}).get("content", "")
-                    elif hasattr(choice, "message"):
-                        content = getattr(choice.message, "content", "")
-                    else:
-                        content = ""
-                else:
-                    content = ""
-            elif hasattr(raw_response, "choices"):
-                content = raw_response.choices[0].message.content
-            elif hasattr(raw_response, "text"):
-                content = raw_response.text
-            else:
-                content = ""
-
-            if content:
-                logger.debug("Response content: %s", truncate(str(content)))
-
-            messages_for_aug.append(
-                {
-                    "role": "assistant",
-                    "content": content,
-                }
-            )
-
-            system_prompt = self._extract_system_prompt(messages_for_aug)
-            messages_for_aug = self._strip_memori_context_from_messages(
-                messages_for_aug
-            )
-
-            if not self.config.entity_id and not self.config.process_id:
-                return
-
-            augmentation_input = AugmentationInput(
-                conversation_id=self.config.cache.conversation_id,
-                entity_id=self.config.entity_id,
-                process_id=self.config.process_id,
-                conversation_messages=messages_for_aug,
-                system_prompt=system_prompt,
-            )
-            logger.debug("Kicking off AA - enqueueing augmentation")
-            self.config.augmentation.enqueue(augmentation_input)
 
 
 class BaseIterator:

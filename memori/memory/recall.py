@@ -15,6 +15,7 @@ from sqlalchemy.exc import OperationalError
 
 from memori._config import Config
 from memori._logging import truncate
+from memori._network import Api, ApiSubdomain
 from memori.embeddings import embed_texts
 from memori.search import search_facts as search_facts_api
 from memori.search._types import FactSearchResult
@@ -84,8 +85,24 @@ class Recall:
 
         return facts
 
+    def _search_with_retries_hosted(self, query: str) -> list[FactSearchResult]:
+        api = Api(self.config, ApiSubdomain.HOSTED)
+        payload = {
+            "attribution": {
+                "entity": {"id": str(self.config.entity_id)},
+                "process": {"id": self.config.process_id},
+            },
+            "query": query,
+        }
+
+        return api.post("recall", payload)
+
     def search_facts(
-        self, query: str, limit: int | None = None, entity_id: int | None = None
+        self,
+        query: str,
+        limit: int | None = None,
+        entity_id: int | None = None,
+        hosted: bool = False,
     ) -> list[FactSearchResult]:
         logger.debug(
             "Recall started - query: %s (%d chars), limit: %s",
@@ -93,6 +110,15 @@ class Recall:
             len(query),
             limit,
         )
+
+        if self.config.hosted:
+            logger.debug(
+                "Recall started - query: %s (%d chars), limit: %s, hosted: true",
+                truncate(query, 50),
+                len(query),
+                limit,
+            )
+            return self._search_with_retries_hosted(query)
 
         if self.config.storage is None or self.config.storage.driver is None:
             logger.debug("Recall aborted - storage not configured")
