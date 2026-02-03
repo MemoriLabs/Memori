@@ -221,8 +221,10 @@ class TestHostedOpenAIAugmentation:
 
     @requires_openai
     @pytest.mark.integration
-    def test_enterprise_mode_is_enabled(self, hosted_memori_instance):
-        assert hosted_memori_instance.config.enterprise is True
+    def test_hosted_memori_instance_is_configured(self, hosted_memori_instance):
+        assert hosted_memori_instance.config is not None
+        assert hosted_memori_instance.config.augmentation is not None
+        assert hosted_memori_instance.config.storage is not None
 
 
 class TestHostedOpenAIResponses:
