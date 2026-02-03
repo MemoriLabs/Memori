@@ -696,18 +696,21 @@ class BaseInvoke:
 
         logger.debug("User query: %s", truncate(user_query))
 
+        resolved_entity_id = None
         if self.config.hosted is False:
             if self.config.storage is None or self.config.storage.driver is None:
                 return kwargs
 
-            entity_id = self.config.storage.driver.entity.create(self.config.entity_id)
-            if entity_id is None:
+            resolved_entity_id = self.config.storage.driver.entity.create(
+                self.config.entity_id
+            )
+            if resolved_entity_id is None:
                 return kwargs
 
         from memori.memory.recall import Recall
 
         facts = Recall(self.config).search_facts(
-            user_query, entity_id=self.config.entity_id, hosted=bool(self.config.hosted)
+            user_query, entity_id=resolved_entity_id, hosted=bool(self.config.hosted)
         )
 
         if not facts:
