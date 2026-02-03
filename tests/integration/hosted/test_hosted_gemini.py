@@ -56,10 +56,8 @@ class TestHostedGeminiSync:
         conversation_id = hosted_memori_instance.config.cache.conversation_id
         assert conversation_id is not None
 
-        conversation = (
-            hosted_memori_instance.config.storage.driver.conversation.read(
-                conversation_id
-            )
+        conversation = hosted_memori_instance.config.storage.driver.conversation.read(
+            conversation_id
         )
         assert conversation is not None
         assert conversation["id"] == conversation_id
@@ -138,10 +136,8 @@ class TestHostedGeminiAsync:
         conversation_id = hosted_memori_instance.config.cache.conversation_id
         assert conversation_id is not None
 
-        conversation = (
-            hosted_memori_instance.config.storage.driver.conversation.read(
-                conversation_id
-            )
+        conversation = hosted_memori_instance.config.storage.driver.conversation.read(
+            conversation_id
         )
         assert conversation is not None
 

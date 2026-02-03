@@ -51,10 +51,8 @@ class TestHostedBedrockSync:
         conversation_id = hosted_memori_instance.config.cache.conversation_id
         assert conversation_id is not None
 
-        conversation = (
-            hosted_memori_instance.config.storage.driver.conversation.read(
-                conversation_id
-            )
+        conversation = hosted_memori_instance.config.storage.driver.conversation.read(
+            conversation_id
         )
         assert conversation is not None
         assert conversation["id"] == conversation_id
@@ -124,10 +122,8 @@ class TestHostedBedrockAsync:
         conversation_id = hosted_memori_instance.config.cache.conversation_id
         assert conversation_id is not None
 
-        conversation = (
-            hosted_memori_instance.config.storage.driver.conversation.read(
-                conversation_id
-            )
+        conversation = hosted_memori_instance.config.storage.driver.conversation.read(
+            conversation_id
         )
         assert conversation is not None
 
@@ -201,9 +197,7 @@ class TestHostedBedrockSessionManagement:
         self, hosted_registered_bedrock_client, hosted_memori_instance
     ):
         for i in range(3):
-            response = hosted_registered_bedrock_client.invoke(
-                f"Say the number {i}"
-            )
+            response = hosted_registered_bedrock_client.invoke(f"Say the number {i}")
             assert response is not None
 
         hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
