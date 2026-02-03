@@ -46,7 +46,9 @@ from memori.search._types import FactSearchResult
 logger = logging.getLogger(__name__)
 
 
-def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object] | str) -> float:
+def _score_for_recall_threshold(
+    fact: FactSearchResult | Mapping[str, object] | str,
+) -> float:
     """
     Extract a numeric score for recall relevance thresholding.
 
