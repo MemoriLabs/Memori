@@ -1,6 +1,10 @@
 name: Integration Tests
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   workflow_call:
     secrets:
@@ -72,6 +76,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: us-east-1
+      MEMORI_API_KEY: ${{ secrets.MEMORI_API_KEY }}
       SQLITE_DATABASE_URL: sqlite:///test_memori.db
       POSTGRES_DATABASE_URL: postgresql://memori:memori@localhost:5432/memori_test
       MYSQL_DATABASE_URL: mysql+pymysql://memori:memori@localhost:3306/memori_test
