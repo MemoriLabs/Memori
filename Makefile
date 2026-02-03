@@ -64,9 +64,9 @@ run-integration-provider: ## Run specific provider tests (e.g., make run-integra
 	@echo "Running $(P) integration tests..."
 	MEMORI_TEST_MODE=1 uv run pytest tests/integration/providers/test_$(P).py -v -m integration --tb=short
 
-run-integration-hosted: ## Run hosted integration tests (production API, requires MEMORI_ENTERPRISE=1)
+run-integration-hosted: ## Run hosted integration tests (production API, requires MEMORI_API_KEY)
 	@echo "Running hosted integration tests..."
-	MEMORI_ENTERPRISE=1 uv run pytest tests/integration/hosted/ -v -m integration --tb=short
+	uv run pytest tests/integration/hosted/ -v -m integration --tb=short
 
 lint: ## Run linting (format check)
 	docker compose exec dev uv run ruff check .

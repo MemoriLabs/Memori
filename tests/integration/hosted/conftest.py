@@ -3,29 +3,45 @@ import time
 
 import pytest
 
+MEMORI_API_KEY = os.environ.get("MEMORI_API_KEY")
+
+requires_memori_api_key = pytest.mark.skipif(
+    not MEMORI_API_KEY,
+    reason="MEMORI_API_KEY environment variable not set (required for hosted tests)",
+)
+
 
 @pytest.fixture
-def hosted_memori_enterprise():
-    """Set MEMORI_ENTERPRISE=1 for hosted mode, restore on teardown."""
-    original = os.environ.get("MEMORI_ENTERPRISE")
-    os.environ["MEMORI_ENTERPRISE"] = "1"
+def hosted_test_mode():
+    """Set MEMORI_TEST_MODE=1 so hosted API calls hit staging.
+
+    Production hosted-api.memorilabs.ai does not exist yet.
+    Only staging-hosted-api.memorilabs.ai is live.
+    """
+    original = os.environ.get("MEMORI_TEST_MODE")
+    os.environ["MEMORI_TEST_MODE"] = "1"
     yield
     if original is None:
-        os.environ.pop("MEMORI_ENTERPRISE", None)
+        os.environ.pop("MEMORI_TEST_MODE", None)
     else:
-        os.environ["MEMORI_ENTERPRISE"] = original
+        os.environ["MEMORI_TEST_MODE"] = original
 
 
 @pytest.fixture
-def hosted_memori_instance(sqlite_session_factory, hosted_memori_enterprise):
-    """Create a Memori instance in hosted/enterprise mode.
+def hosted_memori_instance(sqlite_session_factory, hosted_test_mode):
+    """Create a Memori instance in hosted mode with local SQLite for verification.
 
-    Does NOT mock the augmentation API — hits real production API.
-    Does NOT set MEMORI_TEST_MODE — uses production endpoint.
+    Uses conn for local storage (conversation/message verification) but sets
+    config.hosted = True so augmentation and recall hit the staging hosted API.
+    Requires MEMORI_API_KEY and MEMORI_TEST_MODE=1 (set automatically).
     """
+    if not MEMORI_API_KEY:
+        pytest.skip("MEMORI_API_KEY not set (required for hosted tests)")
+
     from memori import Memori
 
     mem = Memori(conn=sqlite_session_factory)
+    mem.config.hosted = True
     mem.config.storage.build()
 
     yield mem

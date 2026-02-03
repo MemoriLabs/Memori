@@ -138,41 +138,31 @@ jobs:
           uv run pytest tests/integration/providers/test_bedrock.py -v -m integration --tb=short
 
       - name: Run Hosted OpenAI Integration Tests
-        if: env.OPENAI_API_KEY
-        env:
-          MEMORI_ENTERPRISE: "1"
+        if: env.OPENAI_API_KEY && env.MEMORI_API_KEY
         run: |
           echo "Running hosted OpenAI integration tests..."
           uv run pytest tests/integration/hosted/test_hosted_openai.py -v -m integration --tb=short
 
       - name: Run Hosted Anthropic Integration Tests
-        if: env.ANTHROPIC_API_KEY
-        env:
-          MEMORI_ENTERPRISE: "1"
+        if: env.ANTHROPIC_API_KEY && env.MEMORI_API_KEY
         run: |
           echo "Running hosted Anthropic integration tests..."
           uv run pytest tests/integration/hosted/test_hosted_anthropic.py -v -m integration --tb=short
 
       - name: Run Hosted Google Integration Tests
-        if: env.GOOGLE_API_KEY
-        env:
-          MEMORI_ENTERPRISE: "1"
+        if: env.GOOGLE_API_KEY && env.MEMORI_API_KEY
         run: |
           echo "Running hosted Google integration tests..."
           uv run pytest tests/integration/hosted/test_hosted_gemini.py -v -m integration --tb=short
 
       - name: Run Hosted xAI Integration Tests
-        if: env.XAI_API_KEY
-        env:
-          MEMORI_ENTERPRISE: "1"
+        if: env.XAI_API_KEY && env.MEMORI_API_KEY
         run: |
           echo "Running hosted xAI integration tests..."
           uv run pytest tests/integration/hosted/test_hosted_xai.py -v -m integration --tb=short
 
       - name: Run Hosted Bedrock Integration Tests
-        if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY
-        env:
-          MEMORI_ENTERPRISE: "1"
+        if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY && env.MEMORI_API_KEY
         run: |
           echo "Running hosted Bedrock integration tests..."
           uv run pytest tests/integration/hosted/test_hosted_bedrock.py -v -m integration --tb=short
@@ -209,10 +199,10 @@ jobs:
           if [ "$XAI_API_KEY" ]; then echo "  - xAI: Yes"; else echo "  - xAI: Skipped (no key)"; fi
           if [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
           echo ""
-          echo "Hosted (MEMORI_ENTERPRISE=1) tests:"
-          if [ "$OPENAI_API_KEY" ]; then echo "  - Hosted OpenAI: Yes"; else echo "  - Hosted OpenAI: Skipped (no key)"; fi
-          if [ "$ANTHROPIC_API_KEY" ]; then echo "  - Hosted Anthropic: Yes"; else echo "  - Hosted Anthropic: Skipped (no key)"; fi
-          if [ "$GOOGLE_API_KEY" ]; then echo "  - Hosted Google: Yes"; else echo "  - Hosted Google: Skipped (no key)"; fi
-          if [ "$XAI_API_KEY" ]; then echo "  - Hosted xAI: Yes"; else echo "  - Hosted xAI: Skipped (no key)"; fi
-          if [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Hosted Bedrock: Yes"; else echo "  - Hosted Bedrock: Skipped (no key)"; fi
+          echo "Hosted (requires MEMORI_API_KEY) tests:"
+          if [ "$MEMORI_API_KEY" ] && [ "$OPENAI_API_KEY" ]; then echo "  - Hosted OpenAI: Yes"; else echo "  - Hosted OpenAI: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$ANTHROPIC_API_KEY" ]; then echo "  - Hosted Anthropic: Yes"; else echo "  - Hosted Anthropic: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$GOOGLE_API_KEY" ]; then echo "  - Hosted Google: Yes"; else echo "  - Hosted Google: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$XAI_API_KEY" ]; then echo "  - Hosted xAI: Yes"; else echo "  - Hosted xAI: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Hosted Bedrock: Yes"; else echo "  - Hosted Bedrock: Skipped (no key)"; fi
           echo "=========================================="

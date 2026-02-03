@@ -46,12 +46,15 @@ from memori.search._types import FactSearchResult
 logger = logging.getLogger(__name__)
 
 
-def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object]) -> float:
+def _score_for_recall_threshold(fact: FactSearchResult | Mapping[str, object] | str) -> float:
     """
     Extract a numeric score for recall relevance thresholding.
 
     Prefer rank_score when present; fall back to similarity.
+    Plain strings (from hosted recall API) are treated as fully relevant.
     """
+    if isinstance(fact, str):
+        return 1.0
     if isinstance(fact, Mapping):
         fact_map = cast(Mapping[str, object], fact)
         raw = fact_map.get("rank_score")
@@ -665,10 +668,14 @@ class BaseInvoke:
                 self._append_to_google_system_instruction_obj(config, context)
 
     def _format_recalled_fact_lines(
-        self, facts: list[FactSearchResult | Mapping[str, object]]
+        self, facts: list[FactSearchResult | Mapping[str, object] | str]
     ) -> list[str]:
         lines: list[str] = []
         for fact in facts:
+            if isinstance(fact, str):
+                if fact:
+                    lines.append(f"- {fact}")
+                continue
             if isinstance(fact, Mapping):
                 fact_map = cast(Mapping[str, object], fact)
                 content = fact_map.get("content")
