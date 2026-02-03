@@ -20,6 +20,8 @@ on:
         required: false
       AWS_SECRET_ACCESS_KEY:
         required: false
+      MEMORI_API_KEY:
+        required: false
 
 permissions:
   contents: read

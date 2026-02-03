@@ -7,14 +7,12 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
-# Database URL environment variables
 SQLITE_DATABASE_URL = os.environ.get("SQLITE_DATABASE_URL")
 POSTGRES_DATABASE_URL = os.environ.get("POSTGRES_DATABASE_URL")
 MYSQL_DATABASE_URL = os.environ.get("MYSQL_DATABASE_URL")
 MONGODB_URL = os.environ.get("MONGODB_URL")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-# Skip markers for database availability
 requires_sqlite = pytest.mark.skipif(
     not SQLITE_DATABASE_URL,
     reason="SQLITE_DATABASE_URL environment variable not set",
