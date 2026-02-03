@@ -19,6 +19,7 @@ from memori._config import Config
 from memori._exceptions import (
     MissingMemoriApiKeyError,
     QuotaExceededError,
+    UnsupportedLLMProviderError,
     warn_if_legacy_memorisdk_installed,
 )
 from memori.embeddings import embed_texts
@@ -33,7 +34,7 @@ from memori.memory.augmentation import Manager as AugmentationManager
 from memori.memory.recall import Recall
 from memori.storage import Manager as StorageManager
 
-__all__ = ["Memori", "QuotaExceededError"]
+__all__ = ["Memori", "QuotaExceededError", "UnsupportedLLMProviderError"]
 
 warn_if_legacy_memorisdk_installed()
 

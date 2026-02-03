@@ -60,6 +60,29 @@ class MissingMemoriApiKeyError(RuntimeError):
         )
 
 
+class UnsupportedLLMProviderError(RuntimeError):
+    """Raised when an unsupported LLM provider is used."""
+
+    def __init__(self, provider: str):
+        super().__init__(
+            f"Unsupported LLM provider: {provider}. Please see the documentation for supported providers: https://memorilabs.ai/docs/features/llm"
+        )
+
+
+class UnsupportedDatabaseError(RuntimeError):
+    """Raised when an unsupported database is used."""
+
+    def __init__(self, database: str | None = None):
+        msg = (
+            "Unsupported database."
+            if database is None
+            else f"Unsupported database: {database}."
+        )
+        super().__init__(
+            f"{msg} Please see the documentation for supported databases: https://memorilabs.ai/docs/features/databases"
+        )
+
+
 class MemoriLegacyPackageWarning(UserWarning):
     """Warning emitted when the legacy `memorisdk` package is installed."""
 

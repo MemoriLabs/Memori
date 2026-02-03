@@ -1,5 +1,6 @@
 import pytest
 
+from memori._exceptions import UnsupportedLLMProviderError
 from memori.llm._constants import (
     ATHROPIC_LLM_PROVIDER,
     GOOGLE_LLM_PROVIDER,
@@ -38,17 +39,30 @@ def test_llm_openai():
 
 
 def test_llm_adapter_raises_for_none_provider():
-    """Test that providing None as both provider and title raises RuntimeError."""
+    """Test that providing None as both provider and title raises UnsupportedLLMProviderError."""
 
-    with pytest.raises(RuntimeError, match="Unsupported LLM provider"):
+    with pytest.raises(UnsupportedLLMProviderError, match="Unsupported LLM provider"):
         Registry().adapter(None, None)
 
 
 def test_llm_adapter_raises_for_unsupported_provider():
-    """Test that providing an unsupported provider raises RuntimeError."""
+    """Test that providing an unsupported provider raises UnsupportedLLMProviderError."""
 
-    with pytest.raises(RuntimeError, match="Unsupported LLM provider"):
+    with pytest.raises(UnsupportedLLMProviderError, match="Unsupported LLM provider"):
         Registry().adapter("mistral", "mistral")
+
+
+def test_llm_client_raises_for_unsupported_client_type():
+    """Test that registering an unsupported direct client raises UnsupportedLLMProviderError."""
+
+    class MockUnsupportedClient:
+        pass
+
+    MockUnsupportedClient.__module__ = "some_unknown.llm"
+    MockUnsupportedClient.__name__ = "UnsupportedClient"
+
+    with pytest.raises(UnsupportedLLMProviderError):
+        Registry().client(MockUnsupportedClient(), None)
 
 
 def test_llm_client_raises_helpful_error_for_langchain():
