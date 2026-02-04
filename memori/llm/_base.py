@@ -137,10 +137,6 @@ class BaseInvoke:
         self._injected_message_count = 0
 
     def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
-        cached = getattr(self.config.cache, "hosted_conversation_messages", None)
-        if isinstance(cached, list):
-            return cached
-
         if self.config.session_id is None:
             return []
 
@@ -710,9 +706,33 @@ class BaseInvoke:
 
         from memori.memory.recall import Recall
 
-        facts = Recall(self.config).search_facts(
-            user_query, entity_id=self.config.entity_id, hosted=bool(self.config.hosted)
-        )
+        if self.config.hosted is True:
+            data = Recall(self.config)._hosted_recall(user_query)
+            if not isinstance(data, Mapping):
+                return kwargs
+
+            conversation = data.get("conversation")
+            if isinstance(conversation, Mapping):
+                raw_messages = conversation.get("messages")
+                if isinstance(raw_messages, list):
+                    messages: list[dict[str, str]] = []
+                    for msg in raw_messages:
+                        if not isinstance(msg, Mapping):
+                            continue
+                        role = msg.get("role")
+                        text = msg.get("text")
+                        if isinstance(role, str) and isinstance(text, str):
+                            messages.append({"role": role, "content": text})
+                    kwargs["_memori_hosted_conversation_messages"] = messages
+
+            raw_facts = data.get("facts", [])
+            facts = raw_facts if isinstance(raw_facts, list) else []
+        else:
+            facts = Recall(self.config).search_facts(
+                user_query,
+                entity_id=self.config.entity_id,
+                hosted=bool(self.config.hosted),
+            )
 
         if not facts:
             logger.debug("No facts found to inject into prompt")
@@ -771,7 +791,7 @@ class BaseInvoke:
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
         if self.config.hosted is True:
-            messages = getattr(self.config.cache, "hosted_conversation_messages", None)
+            messages = kwargs.pop("_memori_hosted_conversation_messages", None)
             if not isinstance(messages, list):
                 return kwargs
             if not messages:

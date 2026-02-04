@@ -103,7 +103,7 @@ def test_benchmark_hosted_pre_llm_overhead(benchmark, n_history_pairs: int) -> N
     """
     if not os.environ.get("MEMORI_API_KEY"):
         pytest.skip("Set MEMORI_API_KEY to benchmark hosted pre-LLM overhead.")
-
+    os.environ["MEMORI_TEST_MODE"] = "1"
     entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
     process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
     cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
@@ -121,11 +121,21 @@ def test_benchmark_hosted_pre_llm_overhead(benchmark, n_history_pairs: int) -> N
     def _prepare():
         invoke = BaseInvoke(cfg, lambda **_kwargs: None)
         kwargs = {"messages": [{"role": "user", "content": query}]}
-        kwargs = invoke.inject_conversation_messages(kwargs)
         kwargs = invoke.inject_recalled_facts(kwargs)
+        kwargs = invoke.inject_conversation_messages(kwargs)
         return kwargs
 
-    result = benchmark(_prepare)
+    # This includes a hosted network call; keep benchmark strictly bounded.
+    # Opt-in debug via MEMORI_BENCH_DEBUG=1.
+    if os.environ.get("MEMORI_BENCH_DEBUG") == "1":
+        import time
+
+        t0 = time.perf_counter()
+        _prepare()
+        print(f"pre_llm_prepare_s={time.perf_counter() - t0:.3f}", flush=True)
+        pytest.skip("Debug run only (MEMORI_BENCH_DEBUG=1).")
+
+    result = benchmark.pedantic(_prepare, rounds=1, iterations=1, warmup_rounds=0)
     assert isinstance(result, dict)
 
 
@@ -243,25 +253,6 @@ def test_benchmark_hosted_network_only_history_plus_recall(
     assert isinstance(result, list)
 
 
-def _make_invoke_with_stubbed_history(
-    cfg: Config, *, n_history_pairs: int
-) -> BaseInvoke:
-    history: list[dict[str, str]] = []
-    for i in range(n_history_pairs):
-        history.append({"role": "user", "content": f"I like item_{i}."})
-        history.append({"role": "assistant", "content": "Ok."})
-
-    class _InvokeWithStubbedHistory(BaseInvoke):
-        def __init__(self, config: Config, method, history: list[dict[str, str]]):
-            super().__init__(config, method)
-            self._history = history
-
-        def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
-            return self._history
-
-    return _InvokeWithStubbedHistory(cfg, lambda **_kwargs: None, history)
-
-
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
 def test_benchmark_hosted_injection_only_history(
@@ -273,10 +264,17 @@ def test_benchmark_hosted_injection_only_history(
     cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
 
     query = "What do I like?"
-    invoke = _make_invoke_with_stubbed_history(cfg, n_history_pairs=n_history_pairs)
+    history: list[dict[str, str]] = []
+    for i in range(n_history_pairs):
+        history.append({"role": "user", "content": f"I like item_{i}."})
+        history.append({"role": "assistant", "content": "Ok."})
+    invoke = BaseInvoke(cfg, lambda **_kwargs: None)
 
     def _call():
-        kwargs = {"messages": [{"role": "user", "content": query}]}
+        kwargs = {
+            "messages": [{"role": "user", "content": query}],
+            "_memori_hosted_conversation_messages": history,
+        }
         return invoke.inject_conversation_messages(kwargs)
 
     result = benchmark(_call)

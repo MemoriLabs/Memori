@@ -778,19 +778,21 @@ def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
     ]
 
 
-def test_inject_conversation_messages_hosted_uses_cached_messages(mocker):
+def test_inject_conversation_messages_hosted_uses_messages_from_recall_response(mocker):
     config = Config()
     config.hosted = True
     config.session_id = "session-uuid"
     config.llm.provider = OPENAI_LLM_PROVIDER
-    config.cache.hosted_conversation_messages = [
-        {"role": "user", "content": "Hosted previous question"},
-        {"role": "assistant", "content": "Hosted previous answer"},
-    ]
     mock_api_cls = mocker.patch("memori.llm._base.Api", autospec=True)
 
     invoke = BaseInvoke(config, "test_method")
-    kwargs = {"messages": [{"role": "user", "content": "New question"}]}
+    kwargs = {
+        "messages": [{"role": "user", "content": "New question"}],
+        "_memori_hosted_conversation_messages": [
+            {"role": "user", "content": "Hosted previous question"},
+            {"role": "assistant", "content": "Hosted previous answer"},
+        ],
+    }
 
     result = invoke.inject_conversation_messages(kwargs)
 
@@ -802,3 +804,41 @@ def test_inject_conversation_messages_hosted_uses_cached_messages(mocker):
         "New question",
     ]
     assert invoke._injected_message_count == 2
+
+
+def test_hosted_recall_response_drives_conversation_injection(mocker):
+    config = Config()
+    config.hosted = True
+    config.entity_id = "entity-1"
+    config.process_id = "process-1"
+    config.session_id = "session-uuid"
+    config.llm.provider = OPENAI_LLM_PROVIDER
+
+    mocker.patch(
+        "memori.memory.recall.Recall._hosted_recall",
+        return_value={
+            "conversation": {
+                "messages": [
+                    {"role": "user", "text": "Hosted previous question", "type": "m"},
+                    {
+                        "role": "assistant",
+                        "text": "Hosted previous answer",
+                        "type": "m",
+                    },
+                ]
+            },
+            "facts": [],
+        },
+    )
+
+    invoke = BaseInvoke(config, "test_method")
+    kwargs = {"messages": [{"role": "user", "content": "New question"}]}
+
+    kwargs = invoke.inject_conversation_messages(invoke.inject_recalled_facts(kwargs))
+
+    assert "_memori_hosted_conversation_messages" not in kwargs
+    assert [m["content"] for m in kwargs["messages"]] == [
+        "Hosted previous question",
+        "Hosted previous answer",
+        "New question",
+    ]

@@ -42,7 +42,6 @@ class Cache:
     def __init__(self):
         self.conversation_id = None
         self.entity_id = None
-        self.hosted_conversation_messages = None
         self.process_id = None
         self.session_id = None
 

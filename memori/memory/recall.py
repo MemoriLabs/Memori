@@ -87,6 +87,14 @@ class Recall:
         return facts
 
     def _search_with_retries_hosted(self, query: str) -> list[FactSearchResult]:
+        data = self._hosted_recall(query)
+        if not isinstance(data, Mapping):
+            return []
+
+        raw_facts = data.get("facts", [])
+        return raw_facts if isinstance(raw_facts, list) else []
+
+    def _hosted_recall(self, query: str) -> Mapping[str, object] | None:
         api = Api(self.config, ApiSubdomain.HOSTED)
         payload = {
             "attribution": {
@@ -96,27 +104,8 @@ class Recall:
             "query": query,
             "session": {"id": str(self.config.session_id)},
         }
-
         data = api.post("recall", payload)
-        if not isinstance(data, Mapping):
-            return []
-
-        conversation = data.get("conversation")
-        if isinstance(conversation, Mapping):
-            raw_messages = conversation.get("messages")
-            if isinstance(raw_messages, list):
-                messages: list[dict[str, str]] = []
-                for msg in raw_messages:
-                    if not isinstance(msg, Mapping):
-                        continue
-                    role = msg.get("role")
-                    text = msg.get("text")
-                    if isinstance(role, str) and isinstance(text, str):
-                        messages.append({"role": role, "content": text})
-                self.config.cache.hosted_conversation_messages = messages
-
-        raw_facts = data.get("facts", [])
-        return raw_facts if isinstance(raw_facts, list) else []
+        return data if isinstance(data, Mapping) else None
 
     def search_facts(
         self,
