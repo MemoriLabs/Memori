@@ -185,6 +185,33 @@ def test_benchmark_hosted_network_recall_post(benchmark, n_history_pairs: int) -
     assert isinstance(result, list)
 
 
+def test_hosted_recall_post_print_and_exit() -> None:
+    """Make a single hosted /recall call, print response, then exit.
+
+    Opt-in via MEMORI_PRINT_HOSTED_RECALL=1 so CI/bench runs aren't affected.
+    """
+    if os.environ.get("MEMORI_PRINT_HOSTED_RECALL") != "1":
+        pytest.skip("Set MEMORI_PRINT_HOSTED_RECALL=1 to print hosted /recall output.")
+    if not os.environ.get("MEMORI_API_KEY"):
+        pytest.skip("Set MEMORI_API_KEY to call hosted /recall.")
+
+    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
+    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
+    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+
+    _seed_hosted_messages(
+        cfg,
+        n_messages=20,
+        entity_id=entity_id,
+        process_id=process_id,
+    )
+
+    recall = Recall(cfg)
+    result = recall.search_facts(query="What do I like?", limit=5)
+    print(result)
+    pytest.exit("Printed hosted /recall response.", returncode=0)
+
+
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
 def test_benchmark_hosted_network_only_history_plus_recall(

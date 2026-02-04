@@ -10,6 +10,7 @@ r"""
 
 import logging
 import time
+from collections.abc import Mapping
 
 from sqlalchemy.exc import OperationalError
 
@@ -90,12 +91,32 @@ class Recall:
         payload = {
             "attribution": {
                 "entity": {"id": str(self.config.entity_id)},
-                "process": {"id": self.config.process_id},
+                "process": {"id": str(self.config.process_id)},
             },
             "query": query,
+            "session": {"id": str(self.config.session_id)},
         }
 
-        return api.post("recall", payload)
+        data = api.post("recall", payload)
+        if not isinstance(data, Mapping):
+            return []
+
+        conversation = data.get("conversation")
+        if isinstance(conversation, Mapping):
+            raw_messages = conversation.get("messages")
+            if isinstance(raw_messages, list):
+                messages: list[dict[str, str]] = []
+                for msg in raw_messages:
+                    if not isinstance(msg, Mapping):
+                        continue
+                    role = msg.get("role")
+                    text = msg.get("text")
+                    if isinstance(role, str) and isinstance(text, str):
+                        messages.append({"role": role, "content": text})
+                self.config.cache.hosted_conversation_messages = messages
+
+        raw_facts = data.get("facts", [])
+        return raw_facts if isinstance(raw_facts, list) else []
 
     def search_facts(
         self,

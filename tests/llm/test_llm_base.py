@@ -778,31 +778,23 @@ def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
     ]
 
 
-def test_inject_conversation_messages_hosted_fetches_from_hosted(mocker):
+def test_inject_conversation_messages_hosted_uses_cached_messages(mocker):
     config = Config()
     config.hosted = True
     config.session_id = "session-uuid"
     config.llm.provider = OPENAI_LLM_PROVIDER
-
-    api_instance = mocker.MagicMock()
-    api_instance.get.return_value = {
-        "messages": [
-            {"role": "user", "text": "Hosted previous question", "type": "message"},
-            {"role": "assistant", "text": "Hosted previous answer", "type": "message"},
-        ]
-    }
+    config.cache.hosted_conversation_messages = [
+        {"role": "user", "content": "Hosted previous question"},
+        {"role": "assistant", "content": "Hosted previous answer"},
+    ]
     mock_api_cls = mocker.patch("memori.llm._base.Api", autospec=True)
-    mock_api_cls.return_value = api_instance
 
     invoke = BaseInvoke(config, "test_method")
     kwargs = {"messages": [{"role": "user", "content": "New question"}]}
 
     result = invoke.inject_conversation_messages(kwargs)
 
-    mock_api_cls.assert_called_once()
-    _, call_kwargs = mock_api_cls.call_args
-    assert call_kwargs["subdomain"].value == "hosted-api"
-    api_instance.get.assert_called_once_with("conversation/session-uuid/messages")
+    mock_api_cls.assert_not_called()
 
     assert [m["content"] for m in result["messages"]] == [
         "Hosted previous question",

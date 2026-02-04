@@ -137,6 +137,10 @@ class BaseInvoke:
         self._injected_message_count = 0
 
     def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
+        cached = getattr(self.config.cache, "hosted_conversation_messages", None)
+        if isinstance(cached, list):
+            return cached
+
         if self.config.session_id is None:
             return []
 
@@ -767,7 +771,9 @@ class BaseInvoke:
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
         if self.config.hosted is True:
-            messages = self._fetch_hosted_conversation_messages()
+            messages = getattr(self.config.cache, "hosted_conversation_messages", None)
+            if not isinstance(messages, list):
+                return kwargs
             if not messages:
                 return kwargs
 
