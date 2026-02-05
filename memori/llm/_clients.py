@@ -404,6 +404,9 @@ def _detect_platform(client):
         base_url = str(client.base_url).lower()
         if "nebius" in base_url:
             return "nebius"
+        # NVIDIA NIM exposes an OpenAI-compatible endpoint.
+        if "integrate.api.nvidia.com" in base_url:
+            return "nvidia_nim"
     return None
 
 
