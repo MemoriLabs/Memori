@@ -4,7 +4,7 @@
 
 Get started with Memori in under 3 minutes.
 
-Memori is LLM, database and framework agnostic and works with the tools you already use today. In this example, we'll show Memori working with OpenAI, SQLAlchemy and SQLite.
+Memori is LLM, database and framework agnostic and works with the tools you already use today. In this quickstart, we'll show Memori working with SQLite and **either OpenAI or Anthropic**.
 
 - [Supported LLM providers](https://github.com/MemoriLabs/Memori/blob/main/docs/features/llm.md)
 - [Supported databases](https://github.com/MemoriLabs/Memori/blob/main/docs/features/databases.md)
@@ -12,7 +12,7 @@ Memori is LLM, database and framework agnostic and works with the tools you alre
 ## Prerequisites
 
 - Python 3.10 or higher
-- An OpenAI API key
+- An API key for **OpenAI or Anthropic** (this quickstart includes both options)
 
 ## Step 1: Install Libraries
 
@@ -22,23 +22,47 @@ Install Memori:
 pip install memori
 ```
 
-For this example, you may also need to install:
+For this example, install **one** of the following (depending on your LLM provider):
 
 ```bash
 pip install openai
+# or
+pip install anthropic
 ```
+
+> If you use a virtualenv on macOS/Homebrew Python, install `sqlalchemy` as well to avoid a first-run import error:
+>
+> ```bash
+> pip install sqlalchemy
+> ```
 
 ## Step 2: Set environment variables
 
-Set your OpenAI API key in an environment variable:
+Choose one option:
+
+### Option A: OpenAI
 
 ```bash
 export OPENAI_API_KEY="your-api-key-here"
 ```
 
+### Option B: Anthropic
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key-here"
+```
+
+(Optional) Memori Labs API key for Advanced Augmentation:
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key-here"
+```
+
 ## Step 3: Run Your First Memori Application
 
-Create a new Python file `quickstart.py` and add the following code:
+Create a new Python file `quickstart.py`.
+
+### Option A: OpenAI quickstart
 
 ```python
 import os
@@ -58,35 +82,63 @@ memori = Memori(conn=get_sqlite_connection).llm.register(client)
 memori.attribution(entity_id="123456", process_id="test-ai-agent")
 memori.config.storage.build()
 
-response = client.chat.completions.create(
+client.chat.completions.create(
     model="gpt-4.1-mini",
-    messages=[
-        {"role": "user", "content": "My favorite color is blue."}
-    ]
+    messages=[{"role": "user", "content": "My favorite color is blue."}],
 )
-print(response.choices[0].message.content + "\n")
 
-# Advanced Augmentation runs asynchronously to efficiently
-# create memories. For this example, a short lived command
-# line program, we need to wait for it to finish.
-
+# Advanced Augmentation runs asynchronously; short-lived scripts should wait.
 memori.augmentation.wait()
 
-# Memori stored that your favorite color is blue in SQLite.
-# Now reset everything so there's no prior context.
-
+# Reset everything so there's no prior context.
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 memori = Memori(conn=get_sqlite_connection).llm.register(client)
 memori.attribution(entity_id="123456", process_id="test-ai-agent")
 
-response = client.chat.completions.create(
+client.chat.completions.create(
     model="gpt-4.1-mini",
-    messages=[
-        {"role": "user", "content": "What's my favorite color?"}
-    ]
+    messages=[{"role": "user", "content": "What's my favorite color?"}],
 )
-print(response.choices[0].message.content + "\n")
+```
+
+### Option B: Anthropic quickstart
+
+```python
+import os
+import sqlite3
+
+from anthropic import Anthropic
+from memori import Memori
+
+
+def get_sqlite_connection():
+    return sqlite3.connect("memori.db")
+
+
+client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+memori = Memori(conn=get_sqlite_connection).llm.register(client)
+memori.attribution(entity_id="123456", process_id="test-ai-agent")
+memori.config.storage.build()
+
+client.messages.create(
+    model="claude-3-5-sonnet-latest",
+    max_tokens=256,
+    messages=[{"role": "user", "content": "My favorite color is blue."}],
+)
+
+memori.augmentation.wait()
+
+# Reset everything so there's no prior context.
+client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+memori = Memori(conn=get_sqlite_connection).llm.register(client)
+memori.attribution(entity_id="123456", process_id="test-ai-agent")
+
+client.messages.create(
+    model="claude-3-5-sonnet-latest",
+    max_tokens=256,
+    messages=[{"role": "user", "content": "What's my favorite color?"}],
+)
 ```
 
 ## Step 4: Run the Application
@@ -110,7 +162,7 @@ You should see the AI respond to both questions, with the second response correc
 
 ## What Just Happened?
 
-1. **Setup**: You initialized Memori with a SQLite database and registered your OpenAI client
-2. **Attribution**: You identified the user (`user-123`) and application (`my-app`) for context tracking
+1. **Setup**: You initialized Memori with a SQLite database and registered your LLM client (OpenAI or Anthropic)
+2. **Attribution**: You identified the user (`entity_id`) and application (`process_id`) for context tracking
 3. **Storage**: The database schema was automatically created
-4. **Memory in Action**: Memori automatically captured the first conversation and recalled it in the second one
+4. **Memory in Action**: Memori captured the first interaction so it can be recalled later
