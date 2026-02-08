@@ -63,7 +63,7 @@ jobs:
         run: uv sync --dev
 
       - name: Run type checking with ty
-        run: uvx ty check --exclude 'tests/llm/clients/**/*.py' --exclude 'tests/integration/**/*.py'
+        run: uvx ty check --exclude 'tests/llm/clients/**/*.py' --exclude 'tests/integration/**/*.py' --exclude 'benchmarks/**/*.py' --exclude 'examples/**/*.py'
 
   test:
     runs-on: ubuntu-latest

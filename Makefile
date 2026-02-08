@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-unit run-integration run-integration-provider
+.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-unit run-integration run-integration-provider run-integration-hosted
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -63,6 +63,10 @@ run-integration: ## Run all integration tests (requires API keys)
 run-integration-provider: ## Run specific provider tests (e.g., make run-integration-provider P=openai)
 	@echo "Running $(P) integration tests..."
 	MEMORI_TEST_MODE=1 uv run pytest tests/integration/providers/test_$(P).py -v -m integration --tb=short
+
+run-integration-hosted: ## Run hosted integration tests (production API, requires MEMORI_API_KEY)
+	@echo "Running hosted integration tests..."
+	uv run pytest tests/integration/hosted/ -v -m integration --tb=short
 
 lint: ## Run linting (format check)
 	docker compose exec dev uv run ruff check .

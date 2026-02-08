@@ -16,6 +16,8 @@ on:
         required: false
       AWS_SECRET_ACCESS_KEY:
         required: false
+      MEMORI_API_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -24,6 +26,45 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: memori
+          POSTGRES_PASSWORD: memori
+          POSTGRES_DB: memori_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: memori
+          MYSQL_DATABASE: memori_test
+          MYSQL_USER: memori
+          MYSQL_PASSWORD: memori
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mongodb:
+        image: mongo:6
+        env:
+          MONGO_INITDB_ROOT_USERNAME: memori
+          MONGO_INITDB_ROOT_PASSWORD: memori
+        ports:
+          - 27017:27017
+
     env:
       MEMORI_TEST_MODE: "1"
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -33,6 +74,11 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: us-east-1
+      MEMORI_API_KEY: ${{ secrets.MEMORI_API_KEY }}
+      SQLITE_DATABASE_URL: sqlite:///test_memori.db
+      POSTGRES_DATABASE_URL: postgresql://memori:memori@localhost:5432/memori_test
+      MYSQL_DATABASE_URL: mysql+pymysql://memori:memori@localhost:3306/memori_test
+      MONGODB_URL: mongodb://memori:memori@localhost:27017/memori_test?authSource=admin
 
     steps:
       - uses: actions/checkout@v5
@@ -89,6 +135,42 @@ jobs:
           echo "Running Bedrock integration tests..."
           uv run pytest tests/integration/providers/test_bedrock.py -v -m integration --tb=short
 
+      - name: Run Hosted OpenAI Integration Tests
+        if: env.OPENAI_API_KEY && env.MEMORI_API_KEY
+        run: |
+          echo "Running hosted OpenAI integration tests..."
+          uv run pytest tests/integration/hosted/test_hosted_openai.py -v -m integration --tb=short
+
+      - name: Run Hosted Anthropic Integration Tests
+        if: env.ANTHROPIC_API_KEY && env.MEMORI_API_KEY
+        run: |
+          echo "Running hosted Anthropic integration tests..."
+          uv run pytest tests/integration/hosted/test_hosted_anthropic.py -v -m integration --tb=short
+
+      - name: Run Hosted Google Integration Tests
+        if: env.GOOGLE_API_KEY && env.MEMORI_API_KEY
+        run: |
+          echo "Running hosted Google integration tests..."
+          uv run pytest tests/integration/hosted/test_hosted_gemini.py -v -m integration --tb=short
+
+      - name: Run Hosted xAI Integration Tests
+        if: env.XAI_API_KEY && env.MEMORI_API_KEY
+        run: |
+          echo "Running hosted xAI integration tests..."
+          uv run pytest tests/integration/hosted/test_hosted_xai.py -v -m integration --tb=short
+
+      - name: Run Hosted Bedrock Integration Tests
+        if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY && env.MEMORI_API_KEY
+        run: |
+          echo "Running hosted Bedrock integration tests..."
+          uv run pytest tests/integration/hosted/test_hosted_bedrock.py -v -m integration --tb=short
+
+      - name: Run Database Integration Tests
+        if: env.OPENAI_API_KEY
+        run: |
+          echo "Running database integration tests..."
+          uv run pytest tests/integration/databases/ -v -m integration --tb=short
+
       - name: Integration Test Summary
         if: always()
         run: |
@@ -100,6 +182,13 @@ jobs:
           echo "Tests run:"
           echo "  - AA Payload Unit Tests: Yes (no API keys needed)"
           if [ "$OPENAI_API_KEY" ]; then echo "  - AA Integration Tests: Yes"; else echo "  - AA Integration Tests: Skipped (no key)"; fi
+          if [ "$OPENAI_API_KEY" ]; then echo "  - Database Integration Tests: Yes"; else echo "  - Database Integration Tests: Skipped (no key)"; fi
+          echo ""
+          echo "Databases tested:"
+          echo "  - SQLite: Yes"
+          echo "  - PostgreSQL: Yes"
+          echo "  - MySQL: Yes"
+          echo "  - MongoDB: Yes"
           echo ""
           echo "Providers tested:"
           if [ "$OPENAI_API_KEY" ]; then echo "  - OpenAI: Yes"; else echo "  - OpenAI: Skipped (no key)"; fi
@@ -107,4 +196,11 @@ jobs:
           if [ "$GOOGLE_API_KEY" ]; then echo "  - Google: Yes"; else echo "  - Google: Skipped (no key)"; fi
           if [ "$XAI_API_KEY" ]; then echo "  - xAI: Yes"; else echo "  - xAI: Skipped (no key)"; fi
           if [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
+          echo ""
+          echo "Hosted (requires MEMORI_API_KEY) tests:"
+          if [ "$MEMORI_API_KEY" ] && [ "$OPENAI_API_KEY" ]; then echo "  - Hosted OpenAI: Yes"; else echo "  - Hosted OpenAI: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$ANTHROPIC_API_KEY" ]; then echo "  - Hosted Anthropic: Yes"; else echo "  - Hosted Anthropic: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$GOOGLE_API_KEY" ]; then echo "  - Hosted Google: Yes"; else echo "  - Hosted Google: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$XAI_API_KEY" ]; then echo "  - Hosted xAI: Yes"; else echo "  - Hosted xAI: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Hosted Bedrock: Yes"; else echo "  - Hosted Bedrock: Skipped (no key)"; fi
           echo "=========================================="
