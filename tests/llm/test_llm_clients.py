@@ -313,14 +313,18 @@ def test_langchain_register_chatgooglegenai_new_sdk(langchain_client, mocker):
     assert hasattr(mock_chatgooglegenai.client.models, "_generate_content")
 
 
-def test_langchain_register_chatgooglegenai_new_sdk_with_async(langchain_client, mocker):
+def test_langchain_register_chatgooglegenai_new_sdk_with_async(
+    langchain_client, mocker
+):
     """Test LangChain adapter with new google.genai SDK including async client."""
     mock_chatgooglegenai = mocker.MagicMock()
     # New SDK structure
     mock_chatgooglegenai.client.models.generate_content = mocker.MagicMock()
     mock_chatgooglegenai.client.models.generate_content_stream = mocker.MagicMock()
     mock_chatgooglegenai.async_client.models.generate_content = mocker.MagicMock()
-    mock_chatgooglegenai.async_client.models.generate_content_stream = mocker.MagicMock()
+    mock_chatgooglegenai.async_client.models.generate_content_stream = (
+        mocker.MagicMock()
+    )
     del mock_chatgooglegenai.client._memori_installed
     # Remove generate_content from client level to simulate new SDK
     del mock_chatgooglegenai.client.generate_content
