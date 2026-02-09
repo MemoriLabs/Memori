@@ -16,6 +16,7 @@ from uuid import uuid4
 from memori._config import Config
 from memori._exceptions import (
     MissingMemoriApiKeyError,
+    MissingPsycopgError,
     QuotaExceededError,
     UnsupportedLLMProviderError,
     warn_if_legacy_memorisdk_installed,
@@ -107,10 +108,7 @@ class Memori:
             try:
                 import psycopg
             except ImportError as e:
-                raise ImportError(
-                    "psycopg is required for CockroachDB support. "
-                    "Install it with: pip install 'memori[cockroachdb]'"
-                ) from e
+                raise MissingPsycopgError("CockroachDB") from e
 
             self.config.hosted = False
             return lambda: psycopg.connect(connection_string)

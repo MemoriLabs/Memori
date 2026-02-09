@@ -17,6 +17,7 @@ import requests
 
 from memori._cli import Cli
 from memori._config import Config
+from memori._exceptions import MissingPsycopgError
 from memori._network import Api
 from memori.storage._builder import Builder
 from memori.storage._manager import Manager
@@ -138,10 +139,7 @@ class ClusterManager:
         try:
             import psycopg
         except ImportError as e:
-            raise ImportError(
-                "psycopg is required for CockroachDB support. "
-                "Install it with: pip install 'memori[cockroachdb]'"
-            ) from e
+            raise MissingPsycopgError("CockroachDB") from e
 
         self.config.storage = Manager(self.config).start(
             lambda: psycopg.connect(finalized["connection"]["string"])

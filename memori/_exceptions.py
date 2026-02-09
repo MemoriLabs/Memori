@@ -60,6 +60,16 @@ class MissingMemoriApiKeyError(RuntimeError):
         )
 
 
+class MissingPsycopgError(ImportError):
+    """Raised when psycopg is required but not installed."""
+
+    def __init__(self, database: str = "PostgreSQL/CockroachDB"):
+        super().__init__(
+            f"psycopg is required for {database} support. "
+            f"Install it with: pip install 'memori[postgres]' or 'memori[cockroachdb]'"
+        )
+
+
 class UnsupportedLLMProviderError(RuntimeError):
     """Raised when an unsupported LLM provider is used."""
 
