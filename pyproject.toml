@@ -38,6 +38,9 @@ dependencies = [
     "sentence-transformers>=3.0.0",
 ]
 
+[project.optional-dependencies]
+cockroachdb = ["psycopg[binary]>=3.1.0"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["memori*"]
