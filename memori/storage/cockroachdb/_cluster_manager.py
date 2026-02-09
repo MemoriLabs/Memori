@@ -13,7 +13,6 @@ import sys
 import time
 from typing import Any
 
-import psycopg
 import requests
 
 from memori._cli import Cli
@@ -135,6 +134,14 @@ class ClusterManager:
         cli.print("done")
 
         cli.notice("[Step 3] Creating the Memori schema:\n")
+
+        try:
+            import psycopg
+        except ImportError as e:
+            raise ImportError(
+                "psycopg is required for CockroachDB support. "
+                "Install it with: pip install 'memori[cockroachdb]'"
+            ) from e
 
         self.config.storage = Manager(self.config).start(
             lambda: psycopg.connect(finalized["connection"]["string"])

@@ -33,11 +33,14 @@ dependencies = [
     "grpcio>=1.60.0",
     "numpy>=1.24.0",
     "protobuf>=4.25.0,<6.0.0",
-    "psycopg[binary]>=3.1.0",
     "pyfiglet>=0.8.0",
     "requests>=2.32.5",
     "sentence-transformers>=3.0.0",
 ]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1.0"]
+cockroachdb = ["psycopg[binary]>=3.1.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]

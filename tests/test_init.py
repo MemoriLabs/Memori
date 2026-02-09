@@ -44,7 +44,7 @@ def test_hosted_false_when_connection_string_set(monkeypatch, mocker):
     mock_cursor = mocker.MagicMock()
     mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
 
-    mocker.patch("memori.psycopg.connect", return_value=mock_conn)
+    mocker.patch("psycopg.connect", return_value=mock_conn)
 
     mem = Memori(conn=None)
     assert mem.config.hosted is False
