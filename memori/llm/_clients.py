@@ -404,10 +404,12 @@ def _detect_platform(client):
         base_url = str(client.base_url).lower()
         if "nebius" in base_url:
             return "nebius"
-        if "deepseek" in base_url:
+        elif "deepseek" in base_url:
             return "deepseek"
-        if "nvidia" in base_url:
+        elif "nvidia" in base_url:
             return "nvidia_nim"
+        else:
+            return base_url
     return None
 
 
