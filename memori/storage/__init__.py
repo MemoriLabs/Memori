@@ -25,7 +25,7 @@ def _import_optional_module(module_path: str) -> None:
 for adapter in ("sqlalchemy", "django", "mongodb", "dbapi"):
     _import_optional_module(f"memori.storage.adapters.{adapter}")
 
-for driver in ("mongodb", "mysql", "oracle", "postgresql", "sqlite"):
+for driver in ("mongodb", "mysql", "oceanbase", "oracle", "postgresql", "sqlite"):
     _import_optional_module(f"memori.storage.drivers.{driver}")
 
 __all__ = ["Manager"]

@@ -3,6 +3,9 @@
 import pytest
 
 from memori import Memori
+from memori._exceptions import UnsupportedLLMProviderError
+from memori.llm._base import BaseClient
+from memori.llm._registry import Registry
 
 
 @pytest.fixture
@@ -14,6 +17,25 @@ def memori_instance(mocker):
         "memori.memory.augmentation.Manager.start", return_value=mocker.MagicMock()
     )
     return Memori(conn=mock_conn)
+
+
+def test_llm_register_raises_if_provider_cannot_be_determined(
+    memori_instance, monkeypatch
+):
+    class DummyClientHandler(BaseClient):
+        def register(self, client, _provider=None):
+            return self
+
+    def _matches_any(_client):
+        return True
+
+    monkeypatch.setattr(Registry, "_clients", {_matches_any: DummyClientHandler})
+
+    with pytest.raises(
+        UnsupportedLLMProviderError,
+        match=r"provider could not be determined during registration",
+    ):
+        memori_instance.llm.register(object())
 
 
 def test_llm_register_auto_detects_openai_client(memori_instance, mocker):
@@ -137,17 +159,6 @@ def test_llm_register_auto_detects_pydantic_ai_client(memori_instance, mocker):
     assert result is memori_instance
     assert hasattr(mock_client, "_memori_installed")
     assert mock_client._memori_installed is True
-
-
-def test_llm_register_raises_for_unsupported_client(memori_instance, mocker):
-    """Test that llm.register() raises RuntimeError for unsupported client types."""
-    mock_client = mocker.MagicMock()
-    type(mock_client).__module__ = "some.unknown.client"
-
-    with pytest.raises(
-        RuntimeError, match="Unsupported LLM client type: some.unknown.client"
-    ):
-        memori_instance.llm.register(mock_client)
 
 
 def test_llm_register_returns_memori_instance(memori_instance, mocker):

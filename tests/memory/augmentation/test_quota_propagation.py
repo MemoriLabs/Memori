@@ -6,6 +6,7 @@ import pytest
 from memori._config import Config
 from memori._exceptions import QuotaExceededError
 from memori.memory.augmentation._base import AugmentationContext
+from memori.memory.augmentation._message import ConversationMessage
 from memori.memory.augmentation.augmentations.memori._augmentation import (
     AdvancedAugmentation,
 )
@@ -24,8 +25,7 @@ async def test_quota_exceeded_error_propagates_for_anonymous_users():
         entity_id="user123",
         process_id="test-process",
         conversation_id="1",
-        conversation_messages=[{"role": "user", "content": "test"}],
-        system_prompt=None,
+        conversation_messages=[ConversationMessage(role="user", content="test")],
     )
     ctx = AugmentationContext(payload=payload)
 
@@ -56,8 +56,7 @@ async def test_other_exceptions_caught_gracefully():
         entity_id="user123",
         process_id="test-process",
         conversation_id="1",
-        conversation_messages=[{"role": "user", "content": "test"}],
-        system_prompt=None,
+        conversation_messages=[ConversationMessage(role="user", content="test")],
     )
     ctx = AugmentationContext(payload=payload)
 

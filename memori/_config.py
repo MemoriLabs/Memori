@@ -13,6 +13,31 @@ from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import version
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        return default
+
+
+def _env_str(name: str, default: str | None) -> str | None:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    raw = str(raw).strip()
+    return raw if raw else default
+
+
 class Cache:
     def __init__(self):
         self.conversation_id = None
@@ -26,19 +51,30 @@ class Storage:
         self.cockroachdb = False
 
 
+class Embeddings:
+    def __init__(self):
+        self.model = "all-MiniLM-L6-v2"
+
+
 class Config:
     def __init__(self):
         self.api_key = None
         self.augmentation = None
         self.cache = Cache()
-        self.enterprise = False
+        self.debug_truncate = True  # Truncate long content in debug logs
+        self.embeddings = Embeddings()
+        self.embeddings.model = (
+            _env_str("MEMORI_EMBEDDINGS_MODEL", self.embeddings.model)
+            or self.embeddings.model
+        )
+        self.hosted: bool | None = None
         self.llm = Llm()
         self.framework = Framework()
         self.platform = Platform()
         self.entity_id = None
         self.process_id = None
         self.raise_final_request_attempt = True
-        self.recall_embeddings_limit = 1000
+        self.recall_embeddings_limit = _env_int("MEMORI_RECALL_EMBEDDINGS_LIMIT", 1000)
         self.recall_facts_limit = 5
         self.recall_relevance_threshold = 0.1
         self.request_backoff_factor = 1

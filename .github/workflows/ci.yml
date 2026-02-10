@@ -63,7 +63,7 @@ jobs:
         run: uv sync --dev
 
       - name: Run type checking with ty
-        run: uvx ty check --exclude 'tests/llm/clients/**/*.py'
+        run: uvx ty check --exclude 'tests/llm/clients/**/*.py' --exclude 'tests/integration/**/*.py' --exclude 'benchmarks/**/*.py' --exclude 'examples/**/*.py'
 
   test:
     runs-on: ubuntu-latest
@@ -84,7 +84,7 @@ jobs:
         run: uv sync --dev
 
       - name: Run pytest with coverage
-        run: uv run pytest
+        run: uv run pytest --ignore=tests/benchmarks
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'

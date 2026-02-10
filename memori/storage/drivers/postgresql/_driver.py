@@ -130,6 +130,23 @@ class Conversation(BaseConversation):
 
         return dict(result)
 
+    def read_id_by_session_id(self, session_id) -> int | None:
+        result = (
+            self.conn.execute(
+                """
+                SELECT id
+                  FROM memori_conversation
+                 WHERE session_id = %s
+                """,
+                (session_id,),
+            )
+            .mappings()
+            .fetchone()
+        )
+        if result is None:
+            return None
+        return result.get("id", None)
+
 
 class ConversationMessage(BaseConversationMessage):
     def create(self, conversation_id: int, role: str, type: str, content: str):
@@ -220,7 +237,7 @@ class EntityFact(BaseEntityFact):
             return self
 
         from memori._utils import generate_uniq
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         dialect = self.conn.get_dialect()
 
@@ -275,6 +292,9 @@ class EntityFact(BaseEntityFact):
                        content_embedding
                   FROM memori_entity_fact
                  WHERE entity_id = %s
+                 ORDER BY date_last_time DESC,
+                          num_times DESC,
+                          id DESC
                  LIMIT %s
                 """,
                 (entity_id, limit),
@@ -288,7 +308,8 @@ class EntityFact(BaseEntityFact):
             self.conn.execute(
                 """
                 SELECT id,
-                       content
+                       content,
+                       date_created
                   FROM memori_entity_fact
                  WHERE id = ANY(%s)
                 """,
@@ -569,6 +590,23 @@ class Session(BaseSession):
             .fetchone()
             .get("id", None)
         )
+
+    def read(self, uuid: str) -> int | None:
+        result = (
+            self.conn.execute(
+                """
+                SELECT id
+                  FROM memori_session
+                 WHERE uuid = %s
+                """,
+                (str(uuid),),
+            )
+            .mappings()
+            .fetchone()
+        )
+        if result is None:
+            return None
+        return result.get("id", None)
 
 
 class Schema(BaseSchema):

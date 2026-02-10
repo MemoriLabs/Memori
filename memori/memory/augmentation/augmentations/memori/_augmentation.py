@@ -8,8 +8,11 @@ r"""
                        memorilabs.ai
 """
 
+import logging
+from dataclasses import asdict, is_dataclass
+
 from memori._network import Api
-from memori.llm._embeddings import embed_texts_async
+from memori.embeddings import embed_texts
 from memori.memory._struct import Memories
 from memori.memory.augmentation._base import AugmentationContext, BaseAugmentation
 from memori.memory.augmentation._models import (
@@ -30,6 +33,8 @@ from memori.memory.augmentation._models import (
 )
 from memori.memory.augmentation._registry import Registry
 
+logger = logging.getLogger(__name__)
+
 
 @Registry.register("advanced_augmentation")
 class AdvancedAugmentation(BaseAugmentation):
@@ -44,6 +49,39 @@ class AdvancedAugmentation(BaseAugmentation):
         except Exception:
             pass
         return ""
+
+    def _select_messages_for_summary(self, messages: list, summary: str) -> list:
+        if not summary:
+            return messages
+        if not messages or not isinstance(messages, list):
+            return []
+
+        def _role(msg) -> str | None:
+            if isinstance(msg, dict):
+                return msg.get("role")
+            return getattr(msg, "role", None)
+
+        assistant_idx = None
+        for i in range(len(messages) - 1, -1, -1):
+            msg = messages[i]
+            if _role(msg) == "assistant":
+                assistant_idx = i
+                break
+
+        if assistant_idx is None:
+            return messages
+
+        user_idx = None
+        for i in range(assistant_idx - 1, -1, -1):
+            msg = messages[i]
+            if _role(msg) == "user":
+                user_idx = i
+                break
+
+        if user_idx is None:
+            return [messages[assistant_idx]]
+
+        return [messages[user_idx], messages[assistant_idx]]
 
     def _build_api_payload(
         self,
@@ -96,8 +134,19 @@ class AdvancedAugmentation(BaseAugmentation):
         dialect = driver.conversation.conn.get_dialect()
         summary = self._get_conversation_summary(driver, ctx.payload.conversation_id)
 
+        messages = self._select_messages_for_summary(
+            ctx.payload.conversation_messages, summary
+        )
+
+        normalized_messages: list[dict] = []
+        for m in messages:
+            if is_dataclass(m):
+                normalized_messages.append(asdict(m))
+            elif isinstance(m, dict):
+                normalized_messages.append(m)
+
         payload = self._build_api_payload(
-            ctx.payload.conversation_messages,
+            normalized_messages,
             summary,
             ctx.payload.system_prompt,
             dialect,
@@ -105,6 +154,7 @@ class AdvancedAugmentation(BaseAugmentation):
             ctx.payload.process_id,
         )
 
+        logger.debug("AA submitting payload to API")
         try:
             api_response = await api.augmentation_async(payload)
         except Exception as e:
@@ -112,9 +162,11 @@ class AdvancedAugmentation(BaseAugmentation):
 
             if isinstance(e, QuotaExceededError):
                 raise
+            logger.debug("AA API call failed: %s", type(e).__name__)
             return ctx
 
         if not api_response:
+            logger.debug("AA API returned empty response")
             return ctx
 
         memories = await self._process_api_response(api_response)
@@ -140,7 +192,12 @@ class AdvancedAugmentation(BaseAugmentation):
             ]
 
         if facts:
-            fact_embeddings = await embed_texts_async(facts)
+            embeddings_config = self.config.embeddings
+            fact_embeddings = await embed_texts(
+                facts,
+                model=embeddings_config.model,
+                async_=True,
+            )
             api_response["entity"]["fact_embeddings"] = fact_embeddings
 
         return Memories().configure_from_advanced_augmentation(api_response)
@@ -167,7 +224,12 @@ class AdvancedAugmentation(BaseAugmentation):
             ]
 
             if facts_from_triples:
-                embeddings_from_triples = await embed_texts_async(facts_from_triples)
+                embeddings_config = self.config.embeddings
+                embeddings_from_triples = await embed_texts(
+                    facts_from_triples,
+                    model=embeddings_config.model,
+                    async_=True,
+                )
                 facts_to_write = (facts_to_write or []) + facts_from_triples
                 embeddings_to_write = (
                     embeddings_to_write or []

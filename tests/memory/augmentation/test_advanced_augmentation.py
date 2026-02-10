@@ -1,10 +1,11 @@
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from memori._config import Config
 from memori.memory._struct import Memories
 from memori.memory.augmentation._base import AugmentationContext
+from memori.memory.augmentation._message import ConversationMessage
 from memori.memory.augmentation.augmentations.memori._augmentation import (
     AdvancedAugmentation,
 )
@@ -43,11 +44,80 @@ def augmentation_input():
         entity_id="entity-456",
         process_id="process-789",
         conversation_messages=[
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there"},
+            ConversationMessage(role="user", content="Hello"),
+            ConversationMessage(role="assistant", content="Hi there"),
         ],
-        system_prompt="You are a helpful assistant.",
     )
+
+
+@pytest.mark.asyncio
+async def test_process_with_summary_sends_only_last_user_assistant_pair(
+    augmentation, driver, mocker
+):
+    driver.conversation.read.return_value = {"summary": "Previous conversation summary"}
+
+    input_payload = AugmentationInput(
+        conversation_id="conv-123",
+        entity_id="entity-456",
+        process_id="process-789",
+        conversation_messages=[
+            ConversationMessage(role="system", content="system"),
+            ConversationMessage(role="user", content="Hello"),
+            ConversationMessage(role="assistant", content="Hi there"),
+            ConversationMessage(role="user", content="Second question"),
+            ConversationMessage(role="assistant", content="Second answer"),
+        ],
+    )
+    ctx = AugmentationContext(payload=input_payload)
+
+    augmentation_async = mocker.patch(
+        "memori._network.Api.augmentation_async", return_value={}
+    )
+
+    result = await augmentation.process(ctx, driver)
+
+    assert result == ctx
+    augmentation_async.assert_called_once()
+    payload = augmentation_async.call_args[0][0]
+    assert payload["conversation"]["summary"] == "Previous conversation summary"
+    assert payload["conversation"]["messages"] == [
+        {"role": "user", "content": "Second question"},
+        {"role": "assistant", "content": "Second answer"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_process_without_summary_sends_full_message_history(
+    augmentation, driver, mocker
+):
+    driver.conversation.read.return_value = {}
+
+    messages = [
+        ConversationMessage(role="system", content="system"),
+        ConversationMessage(role="user", content="Hello"),
+        ConversationMessage(role="assistant", content="Hi there"),
+        ConversationMessage(role="user", content="Second question"),
+        ConversationMessage(role="assistant", content="Second answer"),
+    ]
+    input_payload = AugmentationInput(
+        conversation_id="conv-123",
+        entity_id="entity-456",
+        process_id="process-789",
+        conversation_messages=messages,
+    )
+    ctx = AugmentationContext(payload=input_payload)
+
+    augmentation_async = mocker.patch(
+        "memori._network.Api.augmentation_async", return_value={}
+    )
+
+    result = await augmentation.process(ctx, driver)
+
+    assert result == ctx
+    augmentation_async.assert_called_once()
+    payload = augmentation_async.call_args[0][0]
+    assert payload["conversation"]["summary"] is None
+    assert payload["conversation"]["messages"] == [m.to_dict() for m in messages]
 
 
 @pytest.mark.asyncio
@@ -57,7 +127,6 @@ async def test_process_no_entity_id(augmentation, driver):
         entity_id=None,
         process_id="process-789",
         conversation_messages=[],
-        system_prompt=None,
     )
     ctx = AugmentationContext(payload=input_payload)
 
@@ -74,7 +143,6 @@ async def test_process_no_conversation_id(augmentation, driver):
         entity_id="entity-456",
         process_id="process-789",
         conversation_messages=[],
-        system_prompt=None,
     )
     ctx = AugmentationContext(payload=input_payload)
 
@@ -191,7 +259,8 @@ async def test_process_api_response_dict_to_memories(augmentation):
     }
 
     with patch(
-        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts_async"
+        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts",
+        new_callable=AsyncMock,
     ) as mock_embed:
         mock_embed.return_value = [[0.1, 0.2], [0.3, 0.4]]
 
@@ -223,7 +292,8 @@ async def test_process_api_response_triples_to_facts(augmentation):
     }
 
     with patch(
-        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts_async"
+        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts",
+        new_callable=AsyncMock,
     ) as mock_embed:
         mock_embed.return_value = [[0.1, 0.2], [0.3, 0.4]]
 

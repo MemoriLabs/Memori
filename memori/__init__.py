@@ -13,13 +13,15 @@ from collections.abc import Callable
 from typing import Any
 from uuid import uuid4
 
-import psycopg
-
 from memori._config import Config
 from memori._exceptions import (
+    MissingMemoriApiKeyError,
+    MissingPsycopgError,
     QuotaExceededError,
+    UnsupportedLLMProviderError,
     warn_if_legacy_memorisdk_installed,
 )
+from memori.embeddings import embed_texts
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -31,7 +33,7 @@ from memori.memory.augmentation import Manager as AugmentationManager
 from memori.memory.recall import Recall
 from memori.storage import Manager as StorageManager
 
-__all__ = ["Memori", "QuotaExceededError"]
+__all__ = ["Memori", "QuotaExceededError", "UnsupportedLLMProviderError"]
 
 warn_if_legacy_memorisdk_installed()
 
@@ -69,14 +71,23 @@ class LlmRegistry:
 
 
 class Memori:
-    def __init__(self, conn: Callable[[], Any] | Any | None = None):
+    def __init__(
+        self,
+        conn: Callable[[], Any] | Any | None = None,
+        debug_truncate: bool = True,
+    ):
+        from memori._logging import set_truncate_enabled
+
         self.config = Config()
         self.config.api_key = os.environ.get("MEMORI_API_KEY", None)
-        self.config.enterprise = os.environ.get("MEMORI_ENTERPRISE", "0") == "1"
         self.config.session_id = uuid4()
+        self.config.debug_truncate = debug_truncate
+        set_truncate_enabled(debug_truncate)
 
         if conn is None:
             conn = self._get_default_connection()
+        else:
+            self.config.hosted = False
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
@@ -91,15 +102,22 @@ class Memori:
         self.pydantic_ai = LlmProviderPydanticAi(self)
         self.xai = LlmProviderXAi(self)
 
-    def _get_default_connection(self) -> Callable[[], Any]:
-        connection_string = os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING")
+    def _get_default_connection(self) -> Callable[[], Any] | None:
+        connection_string = os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING", None)
         if connection_string:
+            try:
+                import psycopg
+            except ImportError as e:
+                raise MissingPsycopgError("CockroachDB") from e
+
+            self.config.hosted = False
             return lambda: psycopg.connect(connection_string)
 
-        raise RuntimeError(
-            "No connection factory provided. Either pass 'conn' parameter or set "
-            "MEMORI_COCKROACHDB_CONNECTION_STRING environment variable."
-        )
+        self.config.hosted = True
+        api_key = os.environ.get("MEMORI_API_KEY", None)
+        if api_key is None or api_key == "":
+            raise MissingMemoriApiKeyError()
+        return None
 
     def attribution(self, entity_id=None, process_id=None):
         if entity_id is not None:
@@ -130,3 +148,32 @@ class Memori:
 
     def recall(self, query: str, limit: int = 5):
         return Recall(self.config).search_facts(query, limit)
+
+    def close(self) -> None:
+        """Close the underlying storage connection/session, if any.
+
+        This is especially important for long-running processes (e.g. web servers)
+        where you want to explicitly release database connections.
+        """
+        storage = getattr(self.config, "storage", None)
+        adapter = getattr(storage, "adapter", None) if storage is not None else None
+        if adapter is None:
+            return
+        try:
+            adapter.close()
+        except Exception:  # nosec B110
+            pass
+
+    def __enter__(self) -> "Memori":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    def embed_texts(self, texts: str | list[str], *, async_: bool = False) -> Any:
+        embeddings_cfg = self.config.embeddings
+        return embed_texts(
+            texts,
+            model=embeddings_cfg.model,
+            async_=async_,
+        )

@@ -86,6 +86,7 @@ make test
 # Initialize database schemas
 make init-postgres  # PostgreSQL
 make init-mysql     # MySQL
+make init-oceanbase # OceanBase
 make init-mongodb   # MongoDB
 make init-sqlite    # SQLite
 
@@ -134,7 +135,7 @@ Integration tests require:
 # GOOGLE_API_KEY=...
 
 # Initialize database schema
-make init-postgres  # or init-mysql, init-mongodb, init-sqlite
+make init-postgres  # or init-mysql, init-oceanbase, init-mongodb, init-sqlite
 
 # Run integration test scripts
 make run-integration FILE=tests/llm/clients/oss/openai/sync.py

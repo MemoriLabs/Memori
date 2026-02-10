@@ -15,6 +15,7 @@ from sqlalchemy.exc import OperationalError
 
 from memori._config import Config
 from memori.memory.recall import MAX_RETRIES, RETRY_BACKOFF_BASE, Recall
+from memori.search import FactSearchResult
 
 
 def test_recall_init():
@@ -80,8 +81,16 @@ def test_search_facts_uses_provided_entity_id():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
-            mock_search.return_value = [{"content": "fact 1", "similarity": 0.9}]
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
+            mock_search.return_value = [
+                FactSearchResult(
+                    id=1,
+                    content="fact 1",
+                    similarity=0.9,
+                    rank_score=0.9,
+                    date_created="2026-01-01 10:30:00",
+                )
+            ]
 
             result = recall.search_facts("test query", entity_id=42)
 
@@ -102,25 +111,41 @@ def test_search_facts_success():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.return_value = [
-                {"content": "User likes pizza", "similarity": 0.9},
-                {"content": "User lives in NYC", "similarity": 0.85},
+                FactSearchResult(
+                    id=1,
+                    content="User likes pizza",
+                    similarity=0.9,
+                    rank_score=0.9,
+                    date_created="2026-01-01 10:30:00",
+                ),
+                FactSearchResult(
+                    id=2,
+                    content="User lives in NYC",
+                    similarity=0.85,
+                    rank_score=0.85,
+                    date_created="2026-01-02 11:15:00",
+                ),
             ]
 
             result = recall.search_facts("What do I like?", limit=5, entity_id=1)
 
             assert len(result) == 2
-            assert result[0]["content"] == "User likes pizza"
-            assert result[1]["content"] == "User lives in NYC"
+            assert result[0].content == "User likes pizza"
+            assert result[1].content == "User lives in NYC"
 
-            mock_embed.assert_called_once_with("What do I like?")
+            mock_embed.assert_called_once_with(
+                "What do I like?",
+                model=config.embeddings.model,
+            )
             mock_search.assert_called_once_with(
                 config.storage.driver.entity_fact,
                 1,
                 [0.1, 0.2, 0.3],
                 5,
-                1000,
+                config.recall_embeddings_limit,
+                query_text="What do I like?",
             )
 
 
@@ -133,14 +158,14 @@ def test_search_facts_with_custom_limit():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.return_value = []
 
             recall.search_facts("test query", limit=10, entity_id=1)
 
             mock_search.assert_called_once()
             assert mock_search.call_args[0][3] == 10
-            assert mock_search.call_args[0][4] == 1000
+            assert mock_search.call_args[0][4] == config.recall_embeddings_limit
 
 
 def test_search_facts_retry_on_operational_error():
@@ -152,7 +177,7 @@ def test_search_facts_retry_on_operational_error():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.side_effect = [
                 OperationalError(
                     "statement", "params", Exception("restart transaction")
@@ -178,7 +203,7 @@ def test_search_facts_retry_multiple_times():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.side_effect = [
                 OperationalError(
                     "statement", "params", Exception("restart transaction")
@@ -208,7 +233,7 @@ def test_search_facts_raises_after_max_retries():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.side_effect = OperationalError(
                 "statement", "params", Exception("restart transaction")
             )
@@ -229,7 +254,7 @@ def test_search_facts_raises_on_non_restart_error():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.side_effect = OperationalError(
                 "statement", "params", Exception("some other error")
             )
@@ -249,7 +274,7 @@ def test_search_facts_returns_empty_on_no_results():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.return_value = []
 
             result = recall.search_facts("test query", entity_id=1)
@@ -266,12 +291,15 @@ def test_search_facts_embeds_query_correctly():
     with patch("memori.memory.recall.embed_texts") as mock_embed:
         mock_embed.return_value = [[0.1, 0.2, 0.3, 0.4, 0.5]]
 
-        with patch("memori.memory.recall.search_entity_facts") as mock_search:
+        with patch("memori.memory.recall.search_facts_api") as mock_search:
             mock_search.return_value = []
 
             recall.search_facts("My test query", entity_id=1)
 
-            mock_embed.assert_called_once_with("My test query")
+            mock_embed.assert_called_once_with(
+                "My test query",
+                model=config.embeddings.model,
+            )
             mock_search.assert_called_once()
             assert mock_search.call_args[0][2] == [0.1, 0.2, 0.3, 0.4, 0.5]
 

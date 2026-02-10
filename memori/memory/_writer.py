@@ -8,19 +8,17 @@ r"""
                       memorilabs.ai
 """
 
-import json
 import logging
 import time
 
 from sqlalchemy.exc import OperationalError
 
 from memori._config import Config
-from memori.llm._registry import Registry as LlmRegistry
+
+logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 0.1
-
-logger = logging.getLogger(__name__)
 
 
 class Writer:
@@ -29,7 +27,10 @@ class Writer:
 
     def execute(self, payload: dict, max_retries: int = MAX_RETRIES) -> "Writer":
         if self.config.storage is None or self.config.storage.driver is None:
+            logger.debug("Writer.execute skipped - storage not configured")
             return self
+
+        logger.debug("Writing response to memori DB")
 
         for attempt in range(max_retries):
             try:
@@ -37,6 +38,9 @@ class Writer:
                 return self
             except OperationalError as e:
                 if "restart transaction" in str(e) and attempt < max_retries - 1:
+                    logger.debug(
+                        "Writer retry attempt %d due to OperationalError", attempt + 1
+                    )
                     if self.config.storage.adapter:
                         self.config.storage.adapter.rollback()
                     time.sleep(RETRY_BACKOFF_BASE * (2**attempt))
@@ -88,50 +92,18 @@ class Writer:
             self.config.session_timeout_minutes,
         )
 
-        logger.debug(
-            f"Writing to conversation_id={self.config.cache.conversation_id}, "
-            f"session_id={self.config.cache.session_id}"
-        )
-
-        llm = LlmRegistry().adapter(
-            payload["conversation"]["client"]["provider"],
-            payload["conversation"]["client"]["title"],
-        )
-
-        messages = llm.get_formatted_query(payload)
-        if messages:
-            for message in messages:
-                if message["role"] != "system":
-                    content = message["content"]
-                    if isinstance(content, dict | list):
-                        content = json.dumps(content)
-                    conv_id = self.config.cache.conversation_id
-                    logger.debug(
-                        f"Writing {message['role']} message to "
-                        f"conversation_id={conv_id}"
-                    )
-                    self.config.storage.driver.conversation.message.create(
-                        self.config.cache.conversation_id,
-                        message["role"],
-                        None,
-                        content,
-                    )
-
-        responses = llm.get_formatted_response(payload)
-        if responses:
-            for response in responses:
-                conv_id = self.config.cache.conversation_id
-                logger.debug(
-                    f"Writing {response['role']} response to "
-                    f"conversation_id={conv_id}"
-                )
-                self.config.storage.driver.conversation.message.create(
-                    self.config.cache.conversation_id,
-                    response["role"],
-                    response["type"],
-                    response["text"],
-                )
+        for message in payload.get("messages", []):
+            self.config.storage.driver.conversation.message.create(
+                self.config.cache.conversation_id,
+                message["role"],
+                message["type"],
+                message["text"],
+            )
 
         if self.config.storage is not None and self.config.storage.adapter is not None:
             self.config.storage.adapter.flush()
             self.config.storage.adapter.commit()
+            logger.debug(
+                "Transaction committed - conversation_id: %s",
+                self.config.cache.conversation_id,
+            )

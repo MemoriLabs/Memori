@@ -37,6 +37,29 @@ response = client.chat.completions.create(
 )
 ```
 
+### OpenAI Responses Client
+
+```python
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="Hello!",
+    instructions="You are a helpful assistant."
+)
+```
+
 ### Anthropic
 
 ```python
@@ -95,7 +118,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 client = ChatOpenAI(model="gpt-4o-mini")
 
-mem = Memori(conn=SessionLocal).llm.register(client)
+mem = Memori(conn=SessionLocal).llm.register(chatopenai=client)
 mem.attribution(entity_id="user_123", process_id="langchain_agent")
 
 response = client.invoke("Hello")

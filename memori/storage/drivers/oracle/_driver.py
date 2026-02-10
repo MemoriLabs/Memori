@@ -132,6 +132,23 @@ class Conversation(BaseConversation):
 
         return dict(result)
 
+    def read_id_by_session_id(self, session_id) -> int | None:
+        result = (
+            self.conn.execute(
+                """
+                SELECT id
+                  FROM memori_conversation
+                 WHERE session_id = :1
+                """,
+                (session_id,),
+            )
+            .mappings()
+            .fetchone()
+        )
+        if result is None:
+            return None
+        return result.get("id", None)
+
 
 class ConversationMessage(BaseConversationMessage):
     def create(self, conversation_id: int, role: str, type: str, content: str):
@@ -221,7 +238,7 @@ class EntityFact(BaseEntityFact):
             return self
 
         from memori._utils import generate_uniq
-        from memori.llm._embeddings import format_embedding_for_db
+        from memori.embeddings import format_embedding_for_db
 
         dialect = self.conn.get_dialect()
 
@@ -267,9 +284,16 @@ class EntityFact(BaseEntityFact):
                 """
                 SELECT id,
                        content_embedding
-                  FROM memori_entity_fact
-                 WHERE entity_id = :1
-                   AND ROWNUM <= :2
+                  FROM (
+                    SELECT id,
+                           content_embedding
+                      FROM memori_entity_fact
+                     WHERE entity_id = :1
+                     ORDER BY date_last_time DESC,
+                              num_times DESC,
+                              id DESC
+                  )
+                 WHERE ROWNUM <= :2
                 """,
                 (entity_id, limit),
             )
@@ -285,7 +309,8 @@ class EntityFact(BaseEntityFact):
         placeholders = ",".join([f":{i + 1}" for i in range(len(fact_ids))])
         query = f"""
             SELECT id,
-                   content
+                   content,
+                   date_created
               FROM memori_entity_fact
              WHERE id IN ({placeholders})
         """
@@ -527,6 +552,23 @@ class Session(BaseSession):
             .fetchone()
             .get("id", None)
         )
+
+    def read(self, uuid: str) -> int | None:
+        result = (
+            self.conn.execute(
+                """
+                SELECT id
+                  FROM memori_session
+                 WHERE uuid = :1
+                """,
+                (str(uuid),),
+            )
+            .mappings()
+            .fetchone()
+        )
+        if result is None:
+            return None
+        return result.get("id", None)
 
 
 class Schema(BaseSchema):

@@ -1,27 +1,14 @@
-from memori.llm._constants import OPENAI_LLM_PROVIDER
 from memori.memory._writer import Writer
 
 
 def test_execute(config, mocker):
-    mock_messages = [
-        {"role": "user", "content": "abc"},
-        {"role": "assistant", "content": "def"},
-        {"role": "assistant", "content": "ghi"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = mock_messages
-
     Writer(config).execute(
         {
-            "conversation": {
-                "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-                "query": {"messages": [{"content": "abc", "role": "user"}]},
-                "response": {
-                    "choices": [
-                        {"message": {"content": "def", "role": "assistant"}},
-                        {"message": {"content": "ghi", "role": "assistant"}},
-                    ]
-                },
-            }
+            "messages": [
+                {"role": "user", "type": None, "text": "abc"},
+                {"role": "assistant", "type": "text", "text": "def"},
+                {"role": "assistant", "type": "text", "text": "ghi"},
+            ]
         }
     )
 
@@ -45,28 +32,13 @@ def test_execute_with_entity_and_process(config, mocker):
     config.entity_id = "123"
     config.process_id = "456"
 
-    mock_messages = [
-        {"role": "user", "content": "abc"},
-        {"role": "assistant", "content": "def"},
-        {"role": "assistant", "content": "ghi"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = mock_messages
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchone.return_value = {
-        "external_id": "123"
-    }
-
     Writer(config).execute(
         {
-            "conversation": {
-                "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-                "query": {"messages": [{"content": "abc", "role": "user"}]},
-                "response": {
-                    "choices": [
-                        {"message": {"content": "def", "role": "assistant"}},
-                        {"message": {"content": "ghi", "role": "assistant"}},
-                    ]
-                },
-            }
+            "messages": [
+                {"role": "user", "type": None, "text": "abc"},
+                {"role": "assistant", "type": "text", "text": "def"},
+                {"role": "assistant", "type": "text", "text": "ghi"},
+            ]
         }
     )
 
@@ -89,130 +61,82 @@ def test_execute_with_entity_and_process(config, mocker):
     assert config.storage.driver.conversation.message.create.call_count == 3
 
 
-def test_execute_skips_system_messages(config, mocker):
-    mock_messages = [
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi there!"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = mock_messages
-
+def test_execute_includes_system_messages(config, mocker):
     Writer(config).execute(
         {
-            "conversation": {
-                "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-                "query": {
-                    "messages": [
-                        {"content": "You are a helpful assistant", "role": "system"},
-                        {"content": "Hello", "role": "user"},
-                    ]
+            "messages": [
+                {
+                    "role": "system",
+                    "type": None,
+                    "text": "You are a helpful assistant",
                 },
-                "response": {
-                    "choices": [
-                        {"message": {"content": "Hi there!", "role": "assistant"}}
-                    ]
-                },
-            }
+                {"role": "user", "type": None, "text": "Hello"},
+                {"role": "assistant", "type": "text", "text": "Hi there!"},
+            ]
         }
     )
 
-    assert config.storage.driver.conversation.message.create.call_count == 2
+    assert config.storage.driver.conversation.message.create.call_count == 3
 
     calls = config.storage.driver.conversation.message.create.call_args_list
-    assert calls[0][0][1] == "user"
-    assert calls[0][0][3] == "Hello"
-    assert calls[1][0][1] == "assistant"
-    assert calls[1][0][3] == "Hi there!"
+    assert calls[0][0][1] == "system"
+    assert calls[0][0][3] == "You are a helpful assistant"
+    assert calls[1][0][1] == "user"
+    assert calls[1][0][3] == "Hello"
+    assert calls[2][0][1] == "assistant"
+    assert calls[2][0][3] == "Hi there!"
+
+
+def test_execute_writes_response_type(config, mocker):
+    Writer(config).execute(
+        {
+            "messages": [
+                {"role": "user", "type": None, "text": "hello"},
+                {"role": "assistant", "type": "text", "text": "ok"},
+            ]
+        }
+    )
+
+    calls = config.storage.driver.conversation.message.create.call_args_list
+    assert calls[0][0][2] is None
+    assert calls[1][0][2] == "text"
 
 
 def test_execute_multiple_turns_ingests_all_messages(config, mocker):
-    """Test that multiple conversation turns properly ingest all user and assistant messages."""
-    from unittest.mock import Mock
-
-    # Mock the conversation.create to return a consistent conversation_id
+    """Multiple conversation turns reuse the same conversation_id and write all messages."""
     conversation_id = 123
     config.storage.driver.conversation.create.return_value = conversation_id
-    config.cache.conversation_id = None  # Start with no conversation_id
+    config.cache.conversation_id = None
 
-    # First turn: user message + assistant response
-    mock_messages_turn1 = [
-        {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi there!"},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = (
-        mock_messages_turn1
+    # First turn
+    Writer(config).execute(
+        {
+            "messages": [
+                {"role": "user", "type": None, "text": "Hello"},
+                {"role": "assistant", "type": "text", "text": "Hi there!"},
+            ]
+        }
     )
 
-    payload_turn1 = {
-        "conversation": {
-            "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-            "query": {"messages": [{"content": "Hello", "role": "user"}]},
-            "response": {
-                "choices": [{"message": {"content": "Hi there!", "role": "assistant"}}]
-            },
-        }
-    }
-
-    Writer(config).execute(payload_turn1)
-
-    # Verify first turn was written
     assert config.cache.conversation_id == conversation_id
     assert config.storage.driver.conversation.message.create.call_count == 2
+    calls1 = config.storage.driver.conversation.message.create.call_args_list
+    assert calls1[0][0][3] == "Hello"
+    assert calls1[1][0][3] == "Hi there!"
 
-    calls_turn1 = config.storage.driver.conversation.message.create.call_args_list
-    assert calls_turn1[0][0][1] == "user"
-    assert calls_turn1[0][0][3] == "Hello"
-    assert calls_turn1[1][0][1] == "assistant"
-    assert calls_turn1[1][0][3] == "Hi there!"
-
-    # Reset mocks for second turn
+    # Second turn: same conversation_id, new messages
     config.storage.driver.conversation.message.create.reset_mock()
-
-    # Second turn: new user message + assistant response
-    # The conversation should have previous messages injected, but only new messages should be written
-    mock_messages_turn2 = [
-        {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi there!"},
-        {"role": "user", "content": "What's the weather?"},
-        {"role": "assistant", "content": "I don't have access to weather data."},
-    ]
-    config.storage.adapter.execute.return_value.mappings.return_value.fetchall.return_value = (
-        mock_messages_turn2
+    Writer(config).execute(
+        {
+            "messages": [
+                {"role": "user", "type": None, "text": "What's the weather?"},
+                {"role": "assistant", "type": "text", "text": "I don't have access."},
+            ]
+        }
     )
 
-    # Simulate that previous messages were injected (so they're excluded from writing)
-    payload_turn2 = {
-        "conversation": {
-            "client": {"provider": None, "title": OPENAI_LLM_PROVIDER},
-            "query": {
-                "messages": [
-                    {"content": "Hello", "role": "user"},
-                    {"content": "Hi there!", "role": "assistant"},
-                    {"content": "What's the weather?", "role": "user"},
-                ],
-                "_memori_injected_count": 2,  # First 2 messages were injected
-            },
-            "response": {
-                "choices": [
-                    {
-                        "message": {
-                            "content": "I don't have access to weather data.",
-                            "role": "assistant",
-                        }
-                    }
-                ]
-            },
-        }
-    }
-
-    Writer(config).execute(payload_turn2)
-
-    # Verify second turn was written (only new messages, not injected ones)
     assert config.cache.conversation_id == conversation_id
     assert config.storage.driver.conversation.message.create.call_count == 2
-
-    calls_turn2 = config.storage.driver.conversation.message.create.call_args_list
-    assert calls_turn2[0][0][1] == "user"
-    assert calls_turn2[0][0][3] == "What's the weather?"
-    assert calls_turn2[1][0][1] == "assistant"
-    assert calls_turn2[1][0][3] == "I don't have access to weather data."
+    calls2 = config.storage.driver.conversation.message.create.call_args_list
+    assert calls2[0][0][3] == "What's the weather?"
+    assert calls2[1][0][3] == "I don't have access."

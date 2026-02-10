@@ -14,6 +14,7 @@ This guide covers the most common issues developers face when using Memori and h
 6. [API and Network Issues](#api-and-network-issues)
 7. [LLM Integration Problems](#llm-integration-problems)
 8. [Performance Issues](#performance-issues)
+9. [Debug Logging](#debug-logging)
 
 ---
 
@@ -92,6 +93,11 @@ Use the correct format for your database:
 **MySQL:**
 ```python
 "mysql+pymysql://user:password@host:3306/database"
+```
+
+**OceanBase:**
+```python
+"mysql+oceanbase://user:password@host:2881/database?charset=utf8mb4"
 ```
 
 **SQLite:**
@@ -386,10 +392,10 @@ export MEMORI_API_KEY="your-api-key-here"
 MEMORI_API_KEY=your-api-key-here
 ```
 
-4. For enterprise users:
+4. For hosted users:
 ```bash
-export MEMORI_ENTERPRISE=1
-export MEMORI_API_KEY="your-enterprise-key"
+export MEMORI_HOSTED=1
+export MEMORI_API_KEY="your-hosted-key"
 ```
 
 ### Problem: Network timeout errors
@@ -485,7 +491,7 @@ def get_sqlite_connection():
     return sqlite3.connect("memori.db")
 
 chat = ChatOpenAI()
-mem = Memori(conn=get_sqlite_connection).llm.register(chat)
+mem = Memori(conn=get_sqlite_connection).llm.register(chatopenai=chat)
 mem.attribution(entity_id="user-123", process_id="my-app")
 ```
 
@@ -673,6 +679,73 @@ except RuntimeError as e:
     print(f"Configuration error: {e}")
 except Exception as e:
     print(f"Unexpected error: {e}")
+```
+
+---
+
+## Debug Logging
+
+Enable debug logging to see exactly what Memori is doing internally.
+
+### Enable Debug Logging
+
+```python
+import logging
+
+# Enable BEFORE importing Memori
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+)
+
+from memori import Memori
+```
+
+### What You'll See
+
+```
+DEBUG | memori.memory.recall - Recall started - query: "What's my favorite..." (25 chars)
+DEBUG | memori.embeddings._sentence_transformers - Generating embedding using model: all-mpnet-base-v2 for 1 text(s)
+DEBUG | memori.search._api - Retrieved 156 embeddings from database
+DEBUG | memori.search._faiss - FAISS similarity search complete - top 5 matches: [0.92, 0.87, 0.84]
+DEBUG | memori.llm._invoke - Sending request to LLM - provider: openai, model: gpt-4o-mini
+DEBUG | memori.llm._base - LLM response received - latency: 1.23s
+DEBUG | memori.memory._writer - Transaction committed - conversation_id: 42
+DEBUG | memori.memory.augmentation._manager - AA enqueued - scheduling augmentation
+```
+
+### Control Log Truncation
+
+By default, long content is truncated in logs for readability:
+
+```python
+# Default: truncate long content (recommended)
+memori = Memori(conn)
+
+# Show full content (for deep debugging)
+memori = Memori(conn, debug_truncate=False)
+```
+
+### Filter Logs by Module
+
+```python
+import logging
+
+# Only show specific module logs
+logging.getLogger("memori.memory.recall").setLevel(logging.DEBUG)
+logging.getLogger("memori.llm").setLevel(logging.DEBUG)
+
+# Silence other memori logs
+logging.getLogger("memori").setLevel(logging.WARNING)
+```
+
+### Production Logging
+
+```python
+import logging
+
+# Production: only show warnings and errors
+logging.getLogger("memori").setLevel(logging.WARNING)
 ```
 
 ---
