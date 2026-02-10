@@ -216,6 +216,40 @@ def test_openai_with_nebius_platform(openai_client, mocker):
     assert openai_client.config.llm.provider_sdk_version == "2.8.1"
 
 
+def test_nvidia_with_nim_platform(openai_client, mocker):
+    """Test that NVIDIA NIM platform is detected and SDK version is captured."""
+    mock_client = mocker.MagicMock()
+    mock_client._version = "2.8.1"
+    mock_client.base_url = "https://integrate.api.nvidia.com/v1/"
+    mock_client.chat.completions.create = mocker.MagicMock()
+    mock_client.beta.chat.completions.parse = mocker.MagicMock()
+    del mock_client._memori_installed
+
+    mocker.patch("asyncio.get_running_loop", side_effect=RuntimeError)
+
+    openai_client.register(mock_client)
+
+    assert openai_client.config.platform.provider == "nvidia_nim"
+    assert openai_client.config.llm.provider_sdk_version == "2.8.1"
+
+
+def test_deepseek_platform(openai_client, mocker):
+    """Test that DeepSeek platform is detected and SDK version is captured."""
+    mock_client = mocker.MagicMock()
+    mock_client._version = "2.8.1"
+    mock_client.base_url = "https://api.deepseek.com"
+    mock_client.chat.completions.create = mocker.MagicMock()
+    mock_client.beta.chat.completions.parse = mocker.MagicMock()
+    del mock_client._memori_installed
+
+    mocker.patch("asyncio.get_running_loop", side_effect=RuntimeError)
+
+    openai_client.register(mock_client)
+
+    assert openai_client.config.platform.provider == "deepseek"
+    assert openai_client.config.llm.provider_sdk_version == "2.8.1"
+
+
 def test_provider_sdk_version_separate_from_model_version(openai_client, mocker):
     """Test that provider_sdk_version is separate from model version (llm.version)."""
     mock_client = mocker.MagicMock()
