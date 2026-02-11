@@ -755,6 +755,18 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
+        """
+        Inject previous conversation messages into the current request.
+
+        This method ensures conversation_id is resolved early (before message injection)
+        to support multi-turn conversations. On subsequent API calls, it retrieves the
+        existing conversation_id from cache or creates it if needed, enabling proper
+        conversation continuity.
+
+        Note: This fix addresses issues where only the first conversation turn was
+        being recorded. By resolving conversation_id early, we ensure all turns
+        are properly ingested into the same conversation.
+        """
         if self.config.hosted is True:
             messages = self._hosted_conversation_messages
             if not messages:
@@ -870,8 +882,45 @@ class BaseInvoke:
             return kwargs
 
         if self.config.cache.conversation_id is None:
-            if not self._ensure_cached_conversation_id():
-                return kwargs
+            # Try read path first (existing session/conversation in DB).
+            if self._ensure_cached_conversation_id():
+                pass
+            else:
+                # Create path: ensure session_id and conversation_id for multi-turn.
+                # Fixes issue where conversation_id wasn't available early enough (e.g. GitHub #83).
+                if self.config.cache.session_id is None:
+                    if self.config.entity_id is not None:
+                        entity_id = self.config.storage.driver.entity.create(
+                            self.config.entity_id
+                        )
+                        if entity_id is not None:
+                            self.config.cache.entity_id = entity_id
+                    if self.config.process_id is not None:
+                        process_id = self.config.storage.driver.process.create(
+                            self.config.process_id
+                        )
+                        if process_id is not None:
+                            self.config.cache.process_id = process_id
+
+                    session_id = self.config.storage.driver.session.create(
+                        self.config.session_id,
+                        self.config.cache.entity_id,
+                        self.config.cache.process_id,
+                    )
+                    if session_id is not None:
+                        self.config.cache.session_id = session_id
+
+                if self.config.cache.session_id is not None:
+                    existing_conv = self.config.storage.driver.conversation.create(
+                        self.config.cache.session_id,
+                        self.config.session_timeout_minutes,
+                    )
+                    if existing_conv is not None:
+                        self.config.cache.conversation_id = existing_conv
+
+                if self.config.cache.conversation_id is None:
+                    if not self._ensure_cached_conversation_id():
+                        return kwargs
 
         messages = self.config.storage.driver.conversation.messages.read(
             self.config.cache.conversation_id
@@ -981,6 +1030,8 @@ class BaseInvoke:
     def handle_post_response(self, kwargs, start_time, raw_response):
         from memori.memory._manager import Manager as MemoryManager
 
+        logger = logging.getLogger(__name__)
+
         if "model" in kwargs:
             self.config.llm.version = kwargs["model"]
 
@@ -992,6 +1043,18 @@ class BaseInvoke:
             __import__("time").time(),
             self._format_kwargs(kwargs),
             self._format_response(self.get_response_content(raw_response)),
+        )
+
+        conv_id = self.config.cache.conversation_id
+        msg_count = len(
+            payload.get("conversation", {}).get("query", {}).get("messages", [])
+        )
+        resp_count = len(
+            payload.get("conversation", {}).get("response", {}).get("choices", [])
+        )
+        logger.debug(
+            f"Ingesting conversation turn: conversation_id={conv_id}, "
+            f"messages_count={msg_count}, responses_count={resp_count}"
         )
 
         MemoryManager(self.config).execute(payload)
