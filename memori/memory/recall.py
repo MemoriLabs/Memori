@@ -10,12 +10,14 @@ r"""
 
 import logging
 import time
+from collections.abc import Mapping
+from typing import TypeGuard, cast
 
 from sqlalchemy.exc import OperationalError
 
 from memori._config import Config
 from memori._logging import truncate
-from memori._network import Api, ApiSubdomain
+from memori._network import Api
 from memori.embeddings import embed_texts
 from memori.search import search_facts as search_facts_api
 from memori.search._types import FactSearchResult
@@ -24,6 +26,12 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 0.05
+
+
+def _is_str_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
+    if not isinstance(value, Mapping):
+        return False
+    return all(isinstance(k, str) for k in value.keys())
 
 
 class Recall:
@@ -85,17 +93,83 @@ class Recall:
 
         return facts
 
-    def _search_with_retries_hosted(self, query: str) -> list[FactSearchResult]:
-        api = Api(self.config, ApiSubdomain.HOSTED)
+    def _search_with_retries_hosted(
+        self, query: str
+    ) -> list[FactSearchResult | Mapping[str, object] | str]:
+        data = self._hosted_recall(query)
+        facts, _messages = self._parse_hosted_recall_response(data)
+        return facts
+
+    def _hosted_recall(self, query: str) -> object:
+        api = Api(self.config)
         payload = {
             "attribution": {
                 "entity": {"id": str(self.config.entity_id)},
                 "process": {"id": self.config.process_id},
             },
             "query": query,
+            "session": {"id": str(self.config.session_id)},
         }
+        return api.post("hosted/recall", payload)
 
-        return api.post("recall", payload)
+    @staticmethod
+    def _parse_hosted_recall_response(
+        data: object,
+    ) -> tuple[
+        list[FactSearchResult | Mapping[str, object] | str], list[dict[str, str]]
+    ]:
+        if isinstance(data, list):
+            facts_from_list: list[FactSearchResult | Mapping[str, object] | str] = []
+            for item in data:
+                if isinstance(item, str):
+                    facts_from_list.append(item)
+                elif _is_str_object_mapping(item):
+                    facts_from_list.append(item)
+            return facts_from_list, []
+
+        if not isinstance(data, dict):
+            return [], []
+
+        data_map = cast(Mapping[str, object], data)
+
+        def _extract_list(*keys: str) -> list[object] | None:
+            for k in keys:
+                v = data_map.get(k)
+                if isinstance(v, list):
+                    return cast(list[object], v)
+            return None
+
+        facts_raw = _extract_list("facts", "results", "memories", "data") or []
+        facts: list[FactSearchResult | Mapping[str, object] | str] = []
+        for item in facts_raw:
+            if isinstance(item, str):
+                facts.append(item)
+            elif _is_str_object_mapping(item):
+                facts.append(item)
+
+        messages_raw: list[object] = (
+            _extract_list("messages", "conversation_messages", "history") or []
+        )
+        if not messages_raw:
+            convo = data_map.get("conversation")
+            if _is_str_object_mapping(convo):
+                nested = convo.get("messages")
+                if isinstance(nested, list):
+                    messages_raw = cast(list[object], nested)
+
+        messages: list[dict[str, str]] = []
+        for msg in messages_raw:
+            if not _is_str_object_mapping(msg):
+                continue
+            role = msg.get("role")
+            content = msg.get("content")
+            if content is None:
+                content = msg.get("text")
+            if not isinstance(role, str) or not isinstance(content, str):
+                continue
+            messages.append({"role": role, "content": content})
+
+        return facts, messages
 
     def search_facts(
         self,
@@ -103,7 +177,7 @@ class Recall:
         limit: int | None = None,
         entity_id: int | None = None,
         hosted: bool = False,
-    ) -> list[FactSearchResult]:
+    ) -> list[FactSearchResult | Mapping[str, object] | str]:
         logger.debug(
             "Recall started - query: %s (%d chars), limit: %s",
             truncate(query, 50),
@@ -130,9 +204,12 @@ class Recall:
 
         limit = self._resolve_limit(limit)
         query_embedding = self._embed_query(query)
-        return self._search_with_retries(
-            entity_id=entity_id,
-            query=query,
-            query_embedding=query_embedding,
-            limit=limit,
+        return cast(
+            list[FactSearchResult | Mapping[str, object] | str],
+            self._search_with_retries(
+                entity_id=entity_id,
+                query=query,
+                query_embedding=query_embedding,
+                limit=limit,
+            ),
         )

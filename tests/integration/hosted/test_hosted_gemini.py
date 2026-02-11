@@ -35,6 +35,7 @@ class TestHostedGeminiSync:
 
         assert response is not None
         assert hasattr(response, "text")
+        assert response.text is not None
         assert len(response.text) > 0
 
         hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
@@ -112,6 +113,7 @@ class TestHostedGeminiAsync:
 
         assert response is not None
         assert hasattr(response, "text")
+        assert response.text is not None
         assert len(response.text) > 0
 
         await asyncio.sleep(0.5)

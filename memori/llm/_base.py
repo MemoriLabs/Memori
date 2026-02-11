@@ -19,7 +19,6 @@ from google.protobuf import json_format
 
 from memori._config import Config
 from memori._logging import truncate
-from memori._network import Api, ApiSubdomain
 from memori._utils import format_date_created, merge_chunk
 from memori.llm._utils import (
     agno_is_anthropic,
@@ -140,40 +139,7 @@ class BaseInvoke:
         self._method = method
         self._uses_protobuf = False
         self._injected_message_count = 0
-
-    def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
-        if self.config.session_id is None:
-            return []
-
-        session_uuid = str(self.config.session_id)
-        try:
-            api = Api(self.config, subdomain=ApiSubdomain.HOSTED)
-            data = api.get(f"conversation/{session_uuid}/messages")
-        except Exception:
-            logger.debug(
-                "Failed to fetch hosted conversation messages for session %s",
-                session_uuid,
-                exc_info=True,
-            )
-            return []
-
-        if not isinstance(data, dict):
-            return []
-        raw_messages = data.get("messages", [])
-        if not isinstance(raw_messages, list):
-            return []
-
-        messages: list[dict[str, str]] = []
-        for msg in raw_messages:
-            if not isinstance(msg, dict):
-                continue
-            role = msg.get("role")
-            text = msg.get("text")
-            if not isinstance(role, str) or not isinstance(text, str):
-                continue
-            messages.append({"role": role, "content": text})
-
-        return messages
+        self._hosted_conversation_messages: list[dict[str, str]] = []
 
     def _ensure_cached_conversation_id(self) -> bool:
         if self.config.storage is None or self.config.storage.driver is None:
@@ -696,6 +662,9 @@ class BaseInvoke:
         return lines
 
     def inject_recalled_facts(self, kwargs: dict) -> dict:
+        if self.config.hosted is True:
+            self._hosted_conversation_messages = []
+
         if self.config.entity_id is None:
             return kwargs
 
@@ -718,9 +687,17 @@ class BaseInvoke:
 
         from memori.memory.recall import Recall
 
-        facts = Recall(self.config).search_facts(
-            user_query, entity_id=resolved_entity_id, hosted=bool(self.config.hosted)
-        )
+        recall = Recall(self.config)
+        if self.config.hosted is True:
+            data = recall._hosted_recall(user_query)
+            facts, messages = recall._parse_hosted_recall_response(data)
+            self._hosted_conversation_messages = messages
+        else:
+            facts = recall.search_facts(
+                user_query,
+                entity_id=resolved_entity_id,
+                hosted=bool(self.config.hosted),
+            )
 
         if not facts:
             logger.debug("No facts found to inject into prompt")
@@ -779,7 +756,7 @@ class BaseInvoke:
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
         if self.config.hosted is True:
-            messages = self._fetch_hosted_conversation_messages()
+            messages = self._hosted_conversation_messages
             if not messages:
                 return kwargs
 

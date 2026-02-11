@@ -13,7 +13,7 @@ import time
 
 from memori._config import Config
 from memori._exceptions import MemoriApiError
-from memori._network import Api, ApiSubdomain
+from memori._network import Api
 from memori.memory._writer import Writer
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class Manager:
         return self
 
     def _handle_hosted(self, payload):
-        api = Api(self.config, ApiSubdomain.HOSTED)
+        api = Api(self.config)
         attempts = max(1, int(getattr(self.config, "request_num_backoff", 1) or 1))
         backoff_factor = float(getattr(self.config, "request_backoff_factor", 1) or 1)
 
@@ -52,7 +52,7 @@ class Manager:
         for attempt in range(attempts):
             try:
                 last_status = api.post(
-                    "conversation/messages",
+                    "hosted/conversation/messages",
                     payload,
                     status_code=True,
                 )
