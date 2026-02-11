@@ -1,6 +1,7 @@
 import asyncio
 import os
 import time
+from typing import cast
 
 import pytest
 
@@ -74,12 +75,17 @@ class TestSyncAAIntegration:
         mem.llm.register(client)
         mem.attribution(entity_id="multi-turn-user", process_id="multi-turn-proc")
 
-        messages = [
-            {"role": "system", "content": "You are helpful."},
-            {"role": "user", "content": "My name is Alice."},
-            {"role": "assistant", "content": "Nice to meet you, Alice!"},
-            {"role": "user", "content": "What is my name?"},
-        ]
+        from openai.types.chat import ChatCompletionMessageParam
+
+        messages = cast(
+            list[ChatCompletionMessageParam],
+            [
+                {"role": "system", "content": "You are helpful."},
+                {"role": "user", "content": "My name is Alice."},
+                {"role": "assistant", "content": "Nice to meet you, Alice!"},
+                {"role": "user", "content": "What is my name?"},
+            ],
+        )
 
         response = client.chat.completions.create(
             model=MODEL,

@@ -64,6 +64,7 @@ def test_benchmark_hosted_recall_latency(benchmark, n_messages: int) -> None:
 
     Includes: HTTP request + hosted service time. Excludes: local DB retrieval.
     """
+    os.environ["MEMORI_TEST_MODE"] = "1"
     api_key = os.environ.get("MEMORI_API_KEY")
     if not api_key:
         pytest.skip("Set MEMORI_API_KEY to benchmark hosted recall.")
@@ -132,7 +133,7 @@ def test_benchmark_hosted_pre_llm_overhead(benchmark, n_history_pairs: int) -> N
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
 def test_benchmark_hosted_network_history_get(benchmark, n_history_pairs: int) -> None:
-    """ONLY hosted history fetch (GET), no injection."""
+    """Hosted conversation history fetched via recall (POST), no injection."""
     if not os.environ.get("MEMORI_API_KEY"):
         pytest.skip("Set MEMORI_API_KEY to benchmark hosted history GET.")
 
@@ -148,8 +149,10 @@ def test_benchmark_hosted_network_history_get(benchmark, n_history_pairs: int) -
     )
 
     def _call():
-        invoke = BaseInvoke(cfg, lambda **_kwargs: None)
-        return invoke._fetch_hosted_conversation_messages()
+        recall = Recall(cfg)
+        data = recall._hosted_recall(query="History fetch benchmark")
+        _facts, messages = recall._parse_hosted_recall_response(data)
+        return messages
 
     result = benchmark(_call)
     assert isinstance(result, list)
@@ -190,7 +193,7 @@ def test_benchmark_hosted_network_recall_post(benchmark, n_history_pairs: int) -
 def test_benchmark_hosted_network_only_history_plus_recall(
     benchmark, n_history_pairs: int
 ) -> None:
-    """ONLY the hosted network calls (history GET + recall POST), no injection."""
+    """ONLY the hosted recall call (history + facts), no injection."""
     if not os.environ.get("MEMORI_API_KEY"):
         pytest.skip("Set MEMORI_API_KEY to benchmark hosted network-only overhead.")
 
@@ -205,12 +208,12 @@ def test_benchmark_hosted_network_only_history_plus_recall(
         process_id=process_id,
     )
 
-    invoke = BaseInvoke(cfg, lambda **_kwargs: None)
     recall = Recall(cfg)
 
     def _call():
-        _ = invoke._fetch_hosted_conversation_messages()
-        return recall.search_facts(query="What do I like?", limit=5)
+        data = recall._hosted_recall(query="What do I like?")
+        facts, _messages = recall._parse_hosted_recall_response(data)
+        return facts
 
     result = benchmark(_call)
     assert isinstance(result, list)
@@ -223,16 +226,9 @@ def _make_invoke_with_stubbed_history(
     for i in range(n_history_pairs):
         history.append({"role": "user", "content": f"I like item_{i}."})
         history.append({"role": "assistant", "content": "Ok."})
-
-    class _InvokeWithStubbedHistory(BaseInvoke):
-        def __init__(self, config: Config, method, history: list[dict[str, str]]):
-            super().__init__(config, method)
-            self._history = history
-
-        def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
-            return self._history
-
-    return _InvokeWithStubbedHistory(cfg, lambda **_kwargs: None, history)
+    invoke = BaseInvoke(cfg, lambda **_kwargs: None)
+    invoke._hosted_conversation_messages = history
+    return invoke
 
 
 @pytest.mark.benchmark

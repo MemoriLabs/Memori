@@ -20,7 +20,11 @@ client = OpenAI(
 
 registry.register("mysql.oceanbase", "pyobvector.schema.dialect", "OceanBaseDialect")
 
-engine = create_engine(os.getenv("DATABASE_CONNECTION_STRING"), pool_pre_ping=True)
+database_connection_string = os.getenv("DATABASE_CONNECTION_STRING")
+if not database_connection_string:
+    raise ValueError("DATABASE_CONNECTION_STRING must be set in the environment")
+
+engine = create_engine(database_connection_string, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 
 mem = Memori(conn=Session).llm.register(client)

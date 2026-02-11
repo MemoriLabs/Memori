@@ -62,8 +62,7 @@ def _build_meta(config) -> dict[str, object]:
 
 def _post_hosted_augmentation(config, payload: dict) -> None:
     api = Api(config, ApiSubdomain.COLLECTOR)
-    attempts = 1
-    # attempts = max(1, int(getattr(config, "request_num_backoff", 1) or 1))
+    attempts = max(1, int(getattr(config, "request_num_backoff", 1) or 1))
     backoff_factor = float(getattr(config, "request_backoff_factor", 1) or 1)
 
     last_error: Exception | None = None

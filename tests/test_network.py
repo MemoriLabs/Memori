@@ -90,9 +90,9 @@ class TestApiInitialization:
         os.environ["MEMORI_TEST_MODE"] = "1"
 
         try:
-            api = Api(Config(), subdomain=ApiSubdomain.HOSTED)
+            api = Api(Config(), subdomain=ApiSubdomain.DEFAULT)
             assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
-            assert api._Api__base == "https://staging-hosted-api.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://staging-api.memorilabs.ai"  # type: ignore[attr-defined]
         finally:
             del os.environ["MEMORI_TEST_MODE"]
 

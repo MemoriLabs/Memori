@@ -67,11 +67,13 @@ def sqlite_session_factory(tmp_path):
 @pytest.fixture
 def postgres_session_factory():
     """Create a PostgreSQL session factory for testing."""
-    if not POSTGRES_DATABASE_URL:
+    postgres_url = POSTGRES_DATABASE_URL
+    if postgres_url is None:
         pytest.skip("POSTGRES_DATABASE_URL not set")
+    assert postgres_url is not None
 
     engine = create_engine(
-        POSTGRES_DATABASE_URL,
+        postgres_url,
         pool_pre_ping=True,
         pool_recycle=300,
     )
@@ -86,11 +88,13 @@ def postgres_session_factory():
 @pytest.fixture
 def mysql_session_factory():
     """Create a MySQL session factory for testing."""
-    if not MYSQL_DATABASE_URL:
+    mysql_url = MYSQL_DATABASE_URL
+    if mysql_url is None:
         pytest.skip("MYSQL_DATABASE_URL not set")
+    assert mysql_url is not None
 
     engine = create_engine(
-        MYSQL_DATABASE_URL,
+        mysql_url,
         pool_pre_ping=True,
         pool_recycle=300,
     )
