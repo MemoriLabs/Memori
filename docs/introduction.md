@@ -37,6 +37,7 @@ facts = mem.recall("Mars color")
 
 - **LLM Provider Support**: OpenAI, Anthropic, Bedrock, Gemini, Grok (xAI) - all modes (streamed, unstreamed, sync, async)
 - **Framework Integration**: Native support for LangChain and Pydantic AI
+- **IDE / Agent Shells**: Dedicated guides for [Claude Code](./integrations/claude-code.md), [Cursor](./integrations/cursor.md), and [Cline](./integrations/cline.md)
 - **Platform Support**: Nebius AI Studio
 - **Universal Database Support**: DB API 2.0, SQLAlchemy, Django ORM
 - **Multiple Datastores**: PostgreSQL, MySQL/MariaDB, OceanBase, SQLite, MongoDB, CockroachDB, Neon, Supabase, Oracle, and more
