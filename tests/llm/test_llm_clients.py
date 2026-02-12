@@ -294,6 +294,50 @@ def test_langchain_register_chatgooglegenai_with_async_client(langchain_client, 
     assert mock_chatgooglegenai.client._memori_installed is True
 
 
+def test_langchain_register_chatgooglegenai_new_sdk(langchain_client, mocker):
+    """Test LangChain adapter with new google.genai SDK (client.models.generate_content)."""
+    mock_chatgooglegenai = mocker.MagicMock()
+    # New SDK: client.models.generate_content instead of client.generate_content
+    mock_chatgooglegenai.client.models.generate_content = mocker.MagicMock()
+    mock_chatgooglegenai.async_client = None
+    del mock_chatgooglegenai.client._memori_installed
+    # Remove generate_content from client level to simulate new SDK
+    del mock_chatgooglegenai.client.generate_content
+
+    result = langchain_client.register(chatgooglegenai=mock_chatgooglegenai)
+
+    assert result is langchain_client
+    assert hasattr(mock_chatgooglegenai.client, "_memori_installed")
+    assert mock_chatgooglegenai.client._memori_installed is True
+    # Verify the models namespace was wrapped
+    assert hasattr(mock_chatgooglegenai.client.models, "_generate_content")
+
+
+def test_langchain_register_chatgooglegenai_new_sdk_with_async(
+    langchain_client, mocker
+):
+    """Test LangChain adapter with new google.genai SDK including async client."""
+    mock_chatgooglegenai = mocker.MagicMock()
+    # New SDK structure
+    mock_chatgooglegenai.client.models.generate_content = mocker.MagicMock()
+    mock_chatgooglegenai.client.models.generate_content_stream = mocker.MagicMock()
+    mock_chatgooglegenai.async_client.models.generate_content = mocker.MagicMock()
+    mock_chatgooglegenai.async_client.models.generate_content_stream = (
+        mocker.MagicMock()
+    )
+    del mock_chatgooglegenai.client._memori_installed
+    # Remove generate_content from client level to simulate new SDK
+    del mock_chatgooglegenai.client.generate_content
+
+    result = langchain_client.register(chatgooglegenai=mock_chatgooglegenai)
+
+    assert result is langchain_client
+    assert mock_chatgooglegenai.client._memori_installed is True
+    # Verify both sync and async models were wrapped
+    assert hasattr(mock_chatgooglegenai.client.models, "_generate_content")
+    assert hasattr(mock_chatgooglegenai.async_client.models, "_generate_content")
+
+
 def test_langchain_register_chatopenai(langchain_client, mocker):
     mock_chatopenai = mocker.MagicMock()
     mock_chatopenai.http_client = None
