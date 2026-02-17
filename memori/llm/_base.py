@@ -52,7 +52,7 @@ def _score_for_recall_threshold(
     Extract a numeric score for recall relevance thresholding.
 
     Prefer rank_score when present; fall back to similarity.
-    Plain strings (from hosted recall API) are treated as fully relevant.
+    Plain strings (from cloud recall API) are treated as fully relevant.
     """
     if isinstance(fact, str):
         return 1.0
@@ -139,7 +139,7 @@ class BaseInvoke:
         self._method = method
         self._uses_protobuf = False
         self._injected_message_count = 0
-        self._hosted_conversation_messages: list[dict[str, str]] = []
+        self._cloud_conversation_messages: list[dict[str, str]] = []
 
     def _ensure_cached_conversation_id(self) -> bool:
         if self.config.storage is None or self.config.storage.driver is None:
@@ -311,7 +311,7 @@ class BaseInvoke:
         messages = list(parse_payload_conversation_messages(payload))
         payload["messages"] = messages
 
-        if self.config.hosted is True:
+        if self.config.cloud is True:
             return {
                 "attribution": {
                     "entity": {"id": self.config.entity_id},
@@ -662,8 +662,8 @@ class BaseInvoke:
         return lines
 
     def inject_recalled_facts(self, kwargs: dict) -> dict:
-        if self.config.hosted is True:
-            self._hosted_conversation_messages = []
+        if self.config.cloud is True:
+            self._cloud_conversation_messages = []
 
         if self.config.entity_id is None:
             return kwargs
@@ -675,7 +675,7 @@ class BaseInvoke:
         logger.debug("User query: %s", truncate(user_query))
 
         resolved_entity_id = None
-        if self.config.hosted is False:
+        if self.config.cloud is False:
             if self.config.storage is None or self.config.storage.driver is None:
                 return kwargs
 
@@ -688,15 +688,15 @@ class BaseInvoke:
         from memori.memory.recall import Recall
 
         recall = Recall(self.config)
-        if self.config.hosted is True:
-            data = recall._hosted_recall(user_query)
-            facts, messages = recall._parse_hosted_recall_response(data)
-            self._hosted_conversation_messages = messages
+        if self.config.cloud is True:
+            data = recall._cloud_recall(user_query)
+            facts, messages = recall._parse_cloud_recall_response(data)
+            self._cloud_conversation_messages = messages
         else:
             facts = recall.search_facts(
                 user_query,
                 entity_id=resolved_entity_id,
-                hosted=bool(self.config.hosted),
+                cloud=bool(self.config.cloud),
             )
 
         if not facts:
@@ -755,14 +755,14 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
-        if self.config.hosted is True:
-            messages = self._hosted_conversation_messages
+        if self.config.cloud is True:
+            messages = self._cloud_conversation_messages
             if not messages:
                 return kwargs
 
             self._injected_message_count = len(messages)
             logger.debug(
-                "Injecting %d hosted conversation messages from history",
+                "Injecting %d cloud conversation messages from history",
                 len(messages),
             )
 

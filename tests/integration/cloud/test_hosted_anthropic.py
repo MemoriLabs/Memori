@@ -11,16 +11,16 @@ TEST_PROMPT = "Say 'hello' in one word."
 AA_WAIT_TIMEOUT = 15.0
 
 
-class TestHostedAnthropicSync:
+class TestCloudAnthropicSync:
     @requires_anthropic
     @pytest.mark.integration
-    def test_sync_message_through_hosted_pipeline(
-        self, hosted_memori_instance, anthropic_api_key
+    def test_sync_message_through_cloud_pipeline(
+        self, cloud_memori_instance, anthropic_api_key
     ):
         client = Anthropic(api_key=anthropic_api_key)
-        hosted_memori_instance.llm.register(client)
-        hosted_memori_instance.attribution(
-            entity_id="hosted-test-user", process_id="hosted-test"
+        cloud_memori_instance.llm.register(client)
+        cloud_memori_instance.attribution(
+            entity_id="cloud-test-user", process_id="cloud-test"
         )
 
         response = client.messages.create(
@@ -33,25 +33,25 @@ class TestHostedAnthropicSync:
         assert len(response.content) > 0
         assert response.content[0].text is not None
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
     @requires_anthropic
     @pytest.mark.integration
     def test_sync_message_stores_conversation(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
-        hosted_registered_anthropic_client.messages.create(
+        cloud_registered_anthropic_client.messages.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
         )
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
-        conversation_id = hosted_memori_instance.config.cache.conversation_id
+        conversation_id = cloud_memori_instance.config.cache.conversation_id
         assert conversation_id is not None
 
-        conversation = hosted_memori_instance.config.storage.driver.conversation.read(
+        conversation = cloud_memori_instance.config.storage.driver.conversation.read(
             conversation_id
         )
         assert conversation is not None
@@ -60,21 +60,21 @@ class TestHostedAnthropicSync:
     @requires_anthropic
     @pytest.mark.integration
     def test_sync_message_stores_messages(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
         test_query = "What is 2 + 2?"
 
-        hosted_registered_anthropic_client.messages.create(
+        cloud_registered_anthropic_client.messages.create(
             model=MODEL,
             messages=[{"role": "user", "content": test_query}],
             max_tokens=MAX_TOKENS,
         )
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
-        conversation_id = hosted_memori_instance.config.cache.conversation_id
+        conversation_id = cloud_memori_instance.config.cache.conversation_id
         messages = (
-            hosted_memori_instance.config.storage.driver.conversation.messages.read(
+            cloud_memori_instance.config.storage.driver.conversation.messages.read(
                 conversation_id
             )
         )
@@ -90,17 +90,17 @@ class TestHostedAnthropicSync:
         assert len(assistant_messages[0]["content"]) > 0
 
 
-class TestHostedAnthropicAsync:
+class TestCloudAnthropicAsync:
     @requires_anthropic
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_async_message_through_hosted_pipeline(
-        self, hosted_memori_instance, anthropic_api_key
+    async def test_async_message_through_cloud_pipeline(
+        self, cloud_memori_instance, anthropic_api_key
     ):
         client = AsyncAnthropic(api_key=anthropic_api_key)
-        hosted_memori_instance.llm.register(client)
-        hosted_memori_instance.attribution(
-            entity_id="hosted-async-user", process_id="hosted-async-test"
+        cloud_memori_instance.llm.register(client)
+        cloud_memori_instance.attribution(
+            entity_id="cloud-async-user", process_id="cloud-async-test"
         )
 
         response = await client.messages.create(
@@ -114,39 +114,39 @@ class TestHostedAnthropicAsync:
         assert response.content[0].text is not None
 
         await asyncio.sleep(0.5)
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
     @requires_anthropic
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_async_message_stores_conversation(
-        self, hosted_registered_async_anthropic_client, hosted_memori_instance
+        self, cloud_registered_async_anthropic_client, cloud_memori_instance
     ):
-        await hosted_registered_async_anthropic_client.messages.create(
+        await cloud_registered_async_anthropic_client.messages.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
         )
 
         await asyncio.sleep(0.5)
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
-        conversation_id = hosted_memori_instance.config.cache.conversation_id
+        conversation_id = cloud_memori_instance.config.cache.conversation_id
         assert conversation_id is not None
 
-        conversation = hosted_memori_instance.config.storage.driver.conversation.read(
+        conversation = cloud_memori_instance.config.storage.driver.conversation.read(
             conversation_id
         )
         assert conversation is not None
 
 
-class TestHostedAnthropicStreaming:
+class TestCloudAnthropicStreaming:
     @requires_anthropic
     @pytest.mark.integration
-    def test_sync_streaming_through_hosted_pipeline(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+    def test_sync_streaming_through_cloud_pipeline(
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
-        with hosted_registered_anthropic_client.messages.stream(
+        with cloud_registered_anthropic_client.messages.stream(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -155,15 +155,15 @@ class TestHostedAnthropicStreaming:
 
         assert len(full_content) > 0
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
     @requires_anthropic
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_async_streaming_through_hosted_pipeline(
-        self, hosted_registered_async_anthropic_client, hosted_memori_instance
+    async def test_async_streaming_through_cloud_pipeline(
+        self, cloud_registered_async_anthropic_client, cloud_memori_instance
     ):
-        async with hosted_registered_async_anthropic_client.messages.stream(
+        async with cloud_registered_async_anthropic_client.messages.stream(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
@@ -176,29 +176,29 @@ class TestHostedAnthropicStreaming:
         assert len(full_content) > 0
 
         await asyncio.sleep(0.5)
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
 
-class TestHostedAnthropicAugmentation:
+class TestCloudAnthropicAugmentation:
     @requires_anthropic
     @pytest.mark.integration
     def test_augmentation_completes_without_error(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
-        hosted_registered_anthropic_client.messages.create(
+        cloud_registered_anthropic_client.messages.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
         )
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
     @requires_anthropic
     @pytest.mark.integration
     def test_multi_turn_triggers_augmentation(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
-        hosted_registered_anthropic_client.messages.create(
+        cloud_registered_anthropic_client.messages.create(
             model=MODEL,
             messages=[
                 {"role": "user", "content": "My name is Alice."},
@@ -208,51 +208,51 @@ class TestHostedAnthropicAugmentation:
             max_tokens=MAX_TOKENS,
         )
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
 
-class TestHostedAnthropicSessionManagement:
+class TestCloudAnthropicSessionManagement:
     @requires_anthropic
     @pytest.mark.integration
     def test_multiple_calls_same_session(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
         for i in range(3):
-            response = hosted_registered_anthropic_client.messages.create(
+            response = cloud_registered_anthropic_client.messages.create(
                 model=MODEL,
                 messages=[{"role": "user", "content": f"Say the number {i}"}],
                 max_tokens=MAX_TOKENS,
             )
             assert response is not None
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
     @requires_anthropic
     @pytest.mark.integration
     def test_new_session_resets_context(
-        self, hosted_registered_anthropic_client, hosted_memori_instance
+        self, cloud_registered_anthropic_client, cloud_memori_instance
     ):
-        hosted_registered_anthropic_client.messages.create(
+        cloud_registered_anthropic_client.messages.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
         )
 
-        first_conversation_id = hosted_memori_instance.config.cache.conversation_id
+        first_conversation_id = cloud_memori_instance.config.cache.conversation_id
         assert first_conversation_id is not None
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
 
-        hosted_memori_instance.new_session()
+        cloud_memori_instance.new_session()
 
-        hosted_registered_anthropic_client.messages.create(
+        cloud_registered_anthropic_client.messages.create(
             model=MODEL,
             messages=[{"role": "user", "content": TEST_PROMPT}],
             max_tokens=MAX_TOKENS,
         )
 
-        second_conversation_id = hosted_memori_instance.config.cache.conversation_id
+        second_conversation_id = cloud_memori_instance.config.cache.conversation_id
         assert second_conversation_id is not None
         assert first_conversation_id != second_conversation_id
 
-        hosted_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)
+        cloud_memori_instance.config.augmentation.wait(timeout=AA_WAIT_TIMEOUT)

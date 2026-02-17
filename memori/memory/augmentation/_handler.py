@@ -35,7 +35,7 @@ def _build_meta(config) -> dict[str, object]:
     provider = getattr(getattr(config, "platform", None), "provider", None)
     platform = {"provider": provider} if provider else None
 
-    if config.hosted is True:
+    if config.cloud is True:
         storage = None
     else:
         storage = {
@@ -60,7 +60,7 @@ def _build_meta(config) -> dict[str, object]:
     }
 
 
-def _post_hosted_augmentation(config, payload: dict) -> None:
+def _post_cloud_augmentation(config, payload: dict) -> None:
     api = Api(config, ApiSubdomain.COLLECTOR)
     attempts = max(1, int(getattr(config, "request_num_backoff", 1) or 1))
     backoff_factor = float(getattr(config, "request_backoff_factor", 1) or 1)
@@ -70,7 +70,7 @@ def _post_hosted_augmentation(config, payload: dict) -> None:
 
     for attempt in range(attempts):
         try:
-            last_status = api.post("hosted/augmentation", payload, status_code=True)
+            last_status = api.post("cloud/augmentation", payload, status_code=True)
             if 200 <= last_status <= 299:
                 return
             last_error = None
@@ -84,15 +84,15 @@ def _post_hosted_augmentation(config, payload: dict) -> None:
         raise last_error
 
     raise MemoriApiError(
-        f"Hosted augmentation request failed (status={last_status}) after {attempts} attempts"
+        f"cloud augmentation request failed (status={last_status}) after {attempts} attempts"
     )
 
 
-def _send_hosted_augmentation_background(config, payload: dict) -> None:
+def _send_cloud_augmentation_background(config, payload: dict) -> None:
     try:
-        _post_hosted_augmentation(config, payload)
+        _post_cloud_augmentation(config, payload)
     except Exception as e:  # noqa: BLE001
-        logger.error("Hosted augmentation background task failed: %s", e, exc_info=True)
+        logger.error("cloud augmentation background task failed: %s", e, exc_info=True)
 
 
 def handle_augmentation(
@@ -107,7 +107,7 @@ def handle_augmentation(
         return
 
     payload_dict = asdict(payload)
-    if config.hosted is True:
+    if config.cloud is True:
         aug_payload = {
             "conversation": {
                 "messages": payload_dict["messages"],
@@ -119,9 +119,9 @@ def handle_augmentation(
 
         executor = getattr(config, "thread_pool_executor", None)
         if executor is not None:
-            executor.submit(_send_hosted_augmentation_background, config, aug_payload)
+            executor.submit(_send_cloud_augmentation_background, config, aug_payload)
         else:
-            _send_hosted_augmentation_background(config, aug_payload)
+            _send_cloud_augmentation_background(config, aug_payload)
         return
 
     augmentation_input = AugmentationInput(

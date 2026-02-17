@@ -392,10 +392,10 @@ export MEMORI_API_KEY="your-api-key-here"
 MEMORI_API_KEY=your-api-key-here
 ```
 
-4. For hosted users:
+4. For cloud users:
 ```bash
-export MEMORI_HOSTED=1
-export MEMORI_API_KEY="your-hosted-key"
+export MEMORI_CLOUD=1
+export MEMORI_API_KEY="your-cloud-key"
 ```
 
 ### Problem: Network timeout errors

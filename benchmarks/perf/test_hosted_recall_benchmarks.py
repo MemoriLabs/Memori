@@ -1,6 +1,6 @@
-"""Hosted (Memori API) performance / latency benchmarks.
+"""Cloud (Memori API) performance / latency benchmarks.
 
-These benchmarks exercise the hosted recall path (network + API latency) rather than
+These benchmarks exercise the cloud recall path (network + API latency) rather than
 local DB-backed recall.
 """
 
@@ -18,9 +18,9 @@ from memori.memory._manager import Manager
 from memori.memory.recall import Recall
 
 
-def _make_hosted_cfg(*, entity_id: str, process_id: str) -> Config:
+def _make_cloud_cfg(*, entity_id: str, process_id: str) -> Config:
     cfg = Config()
-    cfg.hosted = True
+    cfg.cloud = True
     cfg.entity_id = entity_id
     cfg.process_id = process_id
     if cfg.session_id is None:
@@ -31,10 +31,10 @@ def _make_hosted_cfg(*, entity_id: str, process_id: str) -> Config:
     return cfg
 
 
-def _seed_hosted_messages(
+def _seed_cloud_messages(
     cfg: Config, *, n_messages: int, entity_id: str, process_id: str
 ) -> None:
-    cfg.hosted = True
+    cfg.cloud = True
     cfg.entity_id = entity_id
     cfg.process_id = process_id
     if cfg.session_id is None:
@@ -59,22 +59,22 @@ def _seed_hosted_messages(
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_messages", [20, 100], ids=["n20", "n100"])
-def test_benchmark_hosted_recall_latency(benchmark, n_messages: int) -> None:
-    """Benchmark end-to-end hosted recall latency.
+def test_benchmark_cloud_recall_latency(benchmark, n_messages: int) -> None:
+    """Benchmark end-to-end cloud recall latency.
 
-    Includes: HTTP request + hosted service time. Excludes: local DB retrieval.
+    Includes: HTTP request + cloud service time. Excludes: local DB retrieval.
     """
     os.environ["MEMORI_TEST_MODE"] = "1"
     api_key = os.environ.get("MEMORI_API_KEY")
     if not api_key:
-        pytest.skip("Set MEMORI_API_KEY to benchmark hosted recall.")
+        pytest.skip("Set MEMORI_API_KEY to benchmark cloud recall.")
 
     cfg = Config()
 
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
+    entity_id = os.environ.get("BENCHMARK_CLOUD_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_CLOUD_PROCESS_ID", "bench-cloud-process")
 
-    _seed_hosted_messages(
+    _seed_cloud_messages(
         cfg,
         n_messages=n_messages,
         entity_id=entity_id,
@@ -92,25 +92,25 @@ def test_benchmark_hosted_recall_latency(benchmark, n_messages: int) -> None:
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
-def test_benchmark_hosted_pre_llm_overhead(benchmark, n_history_pairs: int) -> None:
-    """Benchmark Memori overhead up to the LLM call (hosted mode).
+def test_benchmark_cloud_pre_llm_overhead(benchmark, n_history_pairs: int) -> None:
+    """Benchmark Memori overhead up to the LLM call (cloud mode).
 
     This measures the "added latency" before calling an LLM:
-    - (optional) fetch hosted conversation history
-    - hosted recall request (server-side embeddings + retrieval)
+    - (optional) fetch cloud conversation history
+    - cloud recall request (server-side embeddings + retrieval)
     - prompt/message injection logic
 
     It intentionally does NOT call an LLM provider.
     """
     if not os.environ.get("MEMORI_API_KEY"):
-        pytest.skip("Set MEMORI_API_KEY to benchmark hosted pre-LLM overhead.")
+        pytest.skip("Set MEMORI_API_KEY to benchmark cloud pre-LLM overhead.")
 
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
-    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+    entity_id = os.environ.get("BENCHMARK_CLOUD_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_CLOUD_PROCESS_ID", "bench-cloud-process")
+    cfg = _make_cloud_cfg(entity_id=entity_id, process_id=process_id)
 
-    # Seed a stable session for hosted history fetch.
-    _seed_hosted_messages(
+    # Seed a stable session for cloud history fetch.
+    _seed_cloud_messages(
         cfg,
         n_messages=n_history_pairs,
         entity_id=entity_id,
@@ -132,16 +132,16 @@ def test_benchmark_hosted_pre_llm_overhead(benchmark, n_history_pairs: int) -> N
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
-def test_benchmark_hosted_network_history_get(benchmark, n_history_pairs: int) -> None:
-    """Hosted conversation history fetched via recall (POST), no injection."""
+def test_benchmark_cloud_network_history_get(benchmark, n_history_pairs: int) -> None:
+    """cloud conversation history fetched via recall (POST), no injection."""
     if not os.environ.get("MEMORI_API_KEY"):
-        pytest.skip("Set MEMORI_API_KEY to benchmark hosted history GET.")
+        pytest.skip("Set MEMORI_API_KEY to benchmark cloud history GET.")
 
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
-    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+    entity_id = os.environ.get("BENCHMARK_CLOUD_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_CLOUD_PROCESS_ID", "bench-cloud-process")
+    cfg = _make_cloud_cfg(entity_id=entity_id, process_id=process_id)
 
-    _seed_hosted_messages(
+    _seed_cloud_messages(
         cfg,
         n_messages=n_history_pairs,
         entity_id=entity_id,
@@ -150,8 +150,8 @@ def test_benchmark_hosted_network_history_get(benchmark, n_history_pairs: int) -
 
     def _call():
         recall = Recall(cfg)
-        data = recall._hosted_recall(query="History fetch benchmark")
-        _facts, messages = recall._parse_hosted_recall_response(data)
+        data = recall._cloud_recall(query="History fetch benchmark")
+        _facts, messages = recall._parse_cloud_recall_response(data)
         return messages
 
     result = benchmark(_call)
@@ -160,19 +160,19 @@ def test_benchmark_hosted_network_history_get(benchmark, n_history_pairs: int) -
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
-def test_benchmark_hosted_network_recall_post(benchmark, n_history_pairs: int) -> None:
-    """ONLY hosted recall call (POST /recall), no injection.
+def test_benchmark_cloud_network_recall_post(benchmark, n_history_pairs: int) -> None:
+    """ONLY cloud recall call (POST /recall), no injection.
 
-    We seed N history pairs first so hosted has a consistent amount of data.
+    We seed N history pairs first so cloud has a consistent amount of data.
     """
     if not os.environ.get("MEMORI_API_KEY"):
-        pytest.skip("Set MEMORI_API_KEY to benchmark hosted recall POST.")
+        pytest.skip("Set MEMORI_API_KEY to benchmark cloud recall POST.")
 
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
-    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+    entity_id = os.environ.get("BENCHMARK_CLOUD_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_cloud_PROCESS_ID", "bench-cloud-process")
+    cfg = _make_cloud_cfg(entity_id=entity_id, process_id=process_id)
 
-    _seed_hosted_messages(
+    _seed_cloud_messages(
         cfg,
         n_messages=n_history_pairs,
         entity_id=entity_id,
@@ -190,18 +190,18 @@ def test_benchmark_hosted_network_recall_post(benchmark, n_history_pairs: int) -
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
-def test_benchmark_hosted_network_only_history_plus_recall(
+def test_benchmark_cloud_network_only_history_plus_recall(
     benchmark, n_history_pairs: int
 ) -> None:
-    """ONLY the hosted recall call (history + facts), no injection."""
+    """ONLY the cloud recall call (history + facts), no injection."""
     if not os.environ.get("MEMORI_API_KEY"):
-        pytest.skip("Set MEMORI_API_KEY to benchmark hosted network-only overhead.")
+        pytest.skip("Set MEMORI_API_KEY to benchmark cloud network-only overhead.")
 
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
-    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+    entity_id = os.environ.get("BENCHMARK_cloud_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_CLOUD_PROCESS_ID", "bench-cloud-process")
+    cfg = _make_cloud_cfg(entity_id=entity_id, process_id=process_id)
 
-    _seed_hosted_messages(
+    _seed_cloud_messages(
         cfg,
         n_messages=n_history_pairs,
         entity_id=entity_id,
@@ -211,8 +211,8 @@ def test_benchmark_hosted_network_only_history_plus_recall(
     recall = Recall(cfg)
 
     def _call():
-        data = recall._hosted_recall(query="What do I like?")
-        facts, _messages = recall._parse_hosted_recall_response(data)
+        data = recall._cloud_recall(query="What do I like?")
+        facts, _messages = recall._parse_cloud_recall_response(data)
         return facts
 
     result = benchmark(_call)
@@ -227,19 +227,19 @@ def _make_invoke_with_stubbed_history(
         history.append({"role": "user", "content": f"I like item_{i}."})
         history.append({"role": "assistant", "content": "Ok."})
     invoke = BaseInvoke(cfg, lambda **_kwargs: None)
-    invoke._hosted_conversation_messages = history
+    invoke._cloud_conversation_messages = history
     return invoke
 
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_history_pairs", [20, 100], ids=["n20", "n100"])
-def test_benchmark_hosted_injection_only_history(
+def test_benchmark_cloud_injection_only_history(
     benchmark, n_history_pairs: int
 ) -> None:
     """ONLY Python-side history injection (no network)."""
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
-    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+    entity_id = os.environ.get("BENCHMARK_CLOUD_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_CLOUD_PROCESS_ID", "bench-cloud-process")
+    cfg = _make_cloud_cfg(entity_id=entity_id, process_id=process_id)
 
     query = "What do I like?"
     invoke = _make_invoke_with_stubbed_history(cfg, n_history_pairs=n_history_pairs)
@@ -254,13 +254,13 @@ def test_benchmark_hosted_injection_only_history(
 
 @pytest.mark.benchmark
 @pytest.mark.parametrize("n_recalled_facts", [5, 20], ids=["n5", "n20"])
-def test_benchmark_hosted_injection_only_recalled_facts(
+def test_benchmark_cloud_injection_only_recalled_facts(
     benchmark, n_recalled_facts: int, mocker
 ) -> None:
     """ONLY Python-side recalled-facts injection (no network)."""
-    entity_id = os.environ.get("BENCHMARK_HOSTED_ENTITY_ID", "bench-hosted-entity")
-    process_id = os.environ.get("BENCHMARK_HOSTED_PROCESS_ID", "bench-hosted-process")
-    cfg = _make_hosted_cfg(entity_id=entity_id, process_id=process_id)
+    entity_id = os.environ.get("BENCHMARK_CLOUD_ENTITY_ID", "bench-cloud-entity")
+    process_id = os.environ.get("BENCHMARK_CLOUD_PROCESS_ID", "bench-cloud-process")
+    cfg = _make_cloud_cfg(entity_id=entity_id, process_id=process_id)
 
     fake_facts: list[dict[str, object]] = [
         {"content": f"User likes item_{i}", "rank_score": 1.0, "date_created": None}

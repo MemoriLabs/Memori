@@ -93,14 +93,14 @@ class Recall:
 
         return facts
 
-    def _search_with_retries_hosted(
+    def _search_with_retries_cloud(
         self, query: str
     ) -> list[FactSearchResult | Mapping[str, object] | str]:
-        data = self._hosted_recall(query)
-        facts, _messages = self._parse_hosted_recall_response(data)
+        data = self._cloud_recall(query)
+        facts, _messages = self._parse_cloud_recall_response(data)
         return facts
 
-    def _hosted_recall(self, query: str) -> object:
+    def _cloud_recall(self, query: str) -> object:
         api = Api(self.config)
         payload = {
             "attribution": {
@@ -110,10 +110,10 @@ class Recall:
             "query": query,
             "session": {"id": str(self.config.session_id)},
         }
-        return api.post("hosted/recall", payload)
+        return api.post("cloud/recall", payload)
 
     @staticmethod
-    def _parse_hosted_recall_response(
+    def _parse_cloud_recall_response(
         data: object,
     ) -> tuple[
         list[FactSearchResult | Mapping[str, object] | str], list[dict[str, str]]
@@ -176,7 +176,7 @@ class Recall:
         query: str,
         limit: int | None = None,
         entity_id: int | None = None,
-        hosted: bool = False,
+        cloud: bool = False,
     ) -> list[FactSearchResult | Mapping[str, object] | str]:
         logger.debug(
             "Recall started - query: %s (%d chars), limit: %s",
@@ -185,14 +185,14 @@ class Recall:
             limit,
         )
 
-        if self.config.hosted:
+        if self.config.cloud:
             logger.debug(
-                "Recall started - query: %s (%d chars), limit: %s, hosted: true",
+                "Recall started - query: %s (%d chars), limit: %s, cloud: true",
                 truncate(query, 50),
                 len(query),
                 limit,
             )
-            return self._search_with_retries_hosted(query)
+            return self._search_with_retries_cloud(query)
 
         if self.config.storage is None or self.config.storage.driver is None:
             logger.debug("Recall aborted - storage not configured")
