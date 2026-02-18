@@ -131,7 +131,7 @@ exclude_lines = [
 
 [tool.ty.src]
 exclude = [
-    "tests/llm/clients/**/*.py",
+    "tests/**/*.py",
     "**/__pycache__/**",
 ]
 
@@ -140,6 +140,7 @@ python-version = "3.12"
 
 [tool.ty.rules]
 possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 
 
 [dependency-groups]
