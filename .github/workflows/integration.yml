@@ -135,35 +135,35 @@ jobs:
           echo "Running Bedrock integration tests..."
           uv run pytest tests/integration/providers/test_bedrock.py -v -m integration --tb=short
 
-      - name: Run Hosted OpenAI Integration Tests
+      - name: Run cloud OpenAI Integration Tests
         if: env.OPENAI_API_KEY && env.MEMORI_API_KEY
         run: |
-          echo "Running hosted OpenAI integration tests..."
-          uv run pytest tests/integration/hosted/test_hosted_openai.py -v -m integration --tb=short
+          echo "Running cloud OpenAI integration tests..."
+          uv run pytest tests/integration/cloud/test_cloud_openai.py -v -m integration --tb=short
 
-      - name: Run Hosted Anthropic Integration Tests
+      - name: Run cloud Anthropic Integration Tests
         if: env.ANTHROPIC_API_KEY && env.MEMORI_API_KEY
         run: |
-          echo "Running hosted Anthropic integration tests..."
-          uv run pytest tests/integration/hosted/test_hosted_anthropic.py -v -m integration --tb=short
+          echo "Running cloud Anthropic integration tests..."
+          uv run pytest tests/integration/cloud/test_cloud_anthropic.py -v -m integration --tb=short
 
-      - name: Run Hosted Google Integration Tests
+      - name: Run cloud Google Integration Tests
         if: env.GOOGLE_API_KEY && env.MEMORI_API_KEY
         run: |
-          echo "Running hosted Google integration tests..."
-          uv run pytest tests/integration/hosted/test_hosted_gemini.py -v -m integration --tb=short
+          echo "Running cloud Google integration tests..."
+          uv run pytest tests/integration/cloud/test_cloud_gemini.py -v -m integration --tb=short
 
-      - name: Run Hosted xAI Integration Tests
+      - name: Run cloud xAI Integration Tests
         if: env.XAI_API_KEY && env.MEMORI_API_KEY
         run: |
-          echo "Running hosted xAI integration tests..."
-          uv run pytest tests/integration/hosted/test_hosted_xai.py -v -m integration --tb=short
+          echo "Running cloud xAI integration tests..."
+          uv run pytest tests/integration/cloud/test_cloud_xai.py -v -m integration --tb=short
 
-      - name: Run Hosted Bedrock Integration Tests
+      - name: Run cloud Bedrock Integration Tests
         if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY && env.MEMORI_API_KEY
         run: |
-          echo "Running hosted Bedrock integration tests..."
-          uv run pytest tests/integration/hosted/test_hosted_bedrock.py -v -m integration --tb=short
+          echo "Running cloud Bedrock integration tests..."
+          uv run pytest tests/integration/cloud/test_cloud_bedrock.py -v -m integration --tb=short
 
       - name: Run Database Integration Tests
         if: env.OPENAI_API_KEY
@@ -197,10 +197,10 @@ jobs:
           if [ "$XAI_API_KEY" ]; then echo "  - xAI: Yes"; else echo "  - xAI: Skipped (no key)"; fi
           if [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Bedrock: Yes"; else echo "  - Bedrock: Skipped (no key)"; fi
           echo ""
-          echo "Hosted (requires MEMORI_API_KEY) tests:"
-          if [ "$MEMORI_API_KEY" ] && [ "$OPENAI_API_KEY" ]; then echo "  - Hosted OpenAI: Yes"; else echo "  - Hosted OpenAI: Skipped (no key)"; fi
-          if [ "$MEMORI_API_KEY" ] && [ "$ANTHROPIC_API_KEY" ]; then echo "  - Hosted Anthropic: Yes"; else echo "  - Hosted Anthropic: Skipped (no key)"; fi
-          if [ "$MEMORI_API_KEY" ] && [ "$GOOGLE_API_KEY" ]; then echo "  - Hosted Google: Yes"; else echo "  - Hosted Google: Skipped (no key)"; fi
-          if [ "$MEMORI_API_KEY" ] && [ "$XAI_API_KEY" ]; then echo "  - Hosted xAI: Yes"; else echo "  - Hosted xAI: Skipped (no key)"; fi
-          if [ "$MEMORI_API_KEY" ] && [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Hosted Bedrock: Yes"; else echo "  - Hosted Bedrock: Skipped (no key)"; fi
+          echo "Cloud (requires MEMORI_API_KEY) tests:"
+          if [ "$MEMORI_API_KEY" ] && [ "$OPENAI_API_KEY" ]; then echo "  - Cloud OpenAI: Yes"; else echo "  - Cloud OpenAI: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$ANTHROPIC_API_KEY" ]; then echo "  - Cloud Anthropic: Yes"; else echo "  - Cloud Anthropic: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$GOOGLE_API_KEY" ]; then echo "  - Cloud Google: Yes"; else echo "  - Cloud Google: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$XAI_API_KEY" ]; then echo "  - Cloud xAI: Yes"; else echo "  - Cloud xAI: Skipped (no key)"; fi
+          if [ "$MEMORI_API_KEY" ] && [ "$AWS_ACCESS_KEY_ID" ]; then echo "  - Cloud Bedrock: Yes"; else echo "  - Cloud Bedrock: Skipped (no key)"; fi
           echo "=========================================="

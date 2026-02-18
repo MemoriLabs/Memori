@@ -10,9 +10,9 @@ from memori.memory.augmentation.augmentations.memori.models import (
 )
 
 
-def test_handle_augmentation_hosted_posts_hosted_payload(mocker):
+def test_handle_augmentation_cloud_posts_cloud_payload(mocker):
     cfg = Config()
-    cfg.hosted = True
+    cfg.cloud = True
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.framework.provider = "agno"
@@ -55,7 +55,7 @@ def test_handle_augmentation_hosted_posts_hosted_payload(mocker):
     assert sleep.call_count == 0
     assert api.post.call_count == 1
     route, sent = api.post.call_args.args
-    assert route == "hosted/augmentation"
+    assert route == "cloud/augmentation"
     assert "conversation" in sent and "messages" in sent["conversation"]
     assert [m["role"] for m in sent["conversation"]["messages"]] == [
         "user",
@@ -69,9 +69,9 @@ def test_handle_augmentation_hosted_posts_hosted_payload(mocker):
     assert sent["conversation"]["summary"] is None
 
 
-def test_handle_augmentation_non_hosted_enqueues(mocker):
+def test_handle_augmentation_non_cloud_enqueues(mocker):
     cfg = Config()
-    cfg.hosted = False
+    cfg.cloud = False
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.cache.conversation_id = 123
@@ -102,9 +102,9 @@ def test_handle_augmentation_non_hosted_enqueues(mocker):
     assert input_data.conversation_messages[0].content == "hi"
 
 
-def test_handle_augmentation_hosted_logs_error_on_failed_post(mocker):
+def test_handle_augmentation_cloud_logs_error_on_failed_post(mocker):
     cfg = Config()
-    cfg.hosted = True
+    cfg.cloud = True
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.thread_pool_executor = mocker.Mock()
@@ -139,7 +139,7 @@ def test_handle_augmentation_hosted_logs_error_on_failed_post(mocker):
 
 def test_handle_augmentation_no_attribution_noops(mocker):
     cfg = Config()
-    cfg.hosted = True
+    cfg.cloud = True
     cfg.entity_id = None
     cfg.process_id = None
     cfg.thread_pool_executor = mocker.Mock()
@@ -166,9 +166,9 @@ def test_handle_augmentation_no_attribution_noops(mocker):
     api.post.assert_not_called()
 
 
-def test_handle_augmentation_hosted_without_executor_posts_inline(mocker):
+def test_handle_augmentation_cloud_without_executor_posts_inline(mocker):
     cfg = Config()
-    cfg.hosted = True
+    cfg.cloud = True
     cfg.entity_id = "abc"
     cfg.process_id = "def"
     cfg.thread_pool_executor = None

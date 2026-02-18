@@ -778,9 +778,9 @@ def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
     ]
 
 
-def test_inject_conversation_messages_hosted_fetches_from_hosted(mocker):
+def test_inject_conversation_messages_cloud_fetches_from_cloud(mocker):
     config = Config()
-    config.hosted = True
+    config.cloud = True
     config.session_id = "session-uuid"
     config.entity_id = "entity-id"
     config.llm.provider = OPENAI_LLM_PROVIDER
@@ -789,13 +789,13 @@ def test_inject_conversation_messages_hosted_fetches_from_hosted(mocker):
     kwargs = {"messages": [{"role": "user", "content": "New question"}]}
 
     mocker.patch(
-        "memori.memory.recall.Recall._hosted_recall",
+        "memori.memory.recall.Recall._cloud_recall",
         autospec=True,
         return_value={
             "facts": [],
             "messages": [
-                {"role": "user", "content": "Hosted previous question"},
-                {"role": "assistant", "content": "Hosted previous answer"},
+                {"role": "user", "content": "cloud previous question"},
+                {"role": "assistant", "content": "cloud previous answer"},
             ],
         },
     )
@@ -804,8 +804,8 @@ def test_inject_conversation_messages_hosted_fetches_from_hosted(mocker):
     result = invoke.inject_conversation_messages(kwargs)
 
     assert [m["content"] for m in result["messages"]] == [
-        "Hosted previous question",
-        "Hosted previous answer",
+        "cloud previous question",
+        "cloud previous answer",
         "New question",
     ]
     assert invoke._injected_message_count == 2

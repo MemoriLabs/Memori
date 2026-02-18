@@ -87,7 +87,7 @@ class Memori:
         if conn is None:
             conn = self._get_default_connection()
         else:
-            self.config.hosted = False
+            self.config.cloud = False
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
@@ -110,10 +110,10 @@ class Memori:
             except ImportError as e:
                 raise MissingPsycopgError("CockroachDB") from e
 
-            self.config.hosted = False
+            self.config.cloud = False
             return lambda: psycopg.connect(connection_string)
 
-        self.config.hosted = True
+        self.config.cloud = True
         api_key = os.environ.get("MEMORI_API_KEY", None)
         if api_key is None or api_key == "":
             raise MissingMemoriApiKeyError()

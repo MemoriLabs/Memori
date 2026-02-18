@@ -208,7 +208,7 @@ def search_entity_facts_core(
             entity_fact_driver, candidate_ids=candidate_ids
         )
 
-    # Cast to FactId types - in hosted path these are int indices,
+    # Cast to FactId types - in cloud path these are int indices,
     # in DB path these are already FactId. Both are valid FactId values.
     base_order, rank_score_map, lex_scores = _rank_candidates(
         candidate_ids=cast(list[FactId], candidate_ids),
@@ -230,11 +230,11 @@ def search_entity_facts_core(
     )
 
     if fact_candidates is not None:
-        # Remap back to original hosted IDs.
+        # Remap back to original cloud IDs.
         remapped: list[FactSearchResult] = []
         for row in facts_with_similarity:
             rid = row.id
-            # In hosted path, rid is always int (internal index)
+            # In cloud path, rid is always int (internal index)
             if isinstance(rid, int) and rid in idx_to_original_id:
                 remapped.append(
                     FactSearchResult(
