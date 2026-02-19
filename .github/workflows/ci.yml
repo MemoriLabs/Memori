@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'memori/**' 
   pull_request:
     branches: [main]
+    paths:
+      - 'memori/**' 
 
 jobs:
   lint:

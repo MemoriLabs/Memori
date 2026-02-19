@@ -67,3 +67,6 @@ dist/
 *.tsbuildinfo
 coverage
 !package-lock.json
+!tsconfig.json
+!tsconfig.build.json
+!.prettierrc.json

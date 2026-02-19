@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    "declaration": true,
+    "sourceMap": true
+  },
+  "include": ["src"],
+  "exclude": [
+    "tests",
+    "examples",
+    "**/*.test.ts",
+    "dist",
+    "node_modules",
+    "vitest.config.ts",
+    "eslint.config.js"
+  ]
+}
