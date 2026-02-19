@@ -1,0 +1,40 @@
+name: CI Code Check (TS)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'memori-ts/**' 
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'memori-ts/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./memori-ts 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Verify Build
+        run: npm run build

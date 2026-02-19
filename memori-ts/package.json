@@ -1,0 +1,83 @@
+{
+  "name": "@memorilabs/memori",
+  "version": "0.1.0",
+  "description": "The official TypeScript SDK for Memori",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "build:dev": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run lint && npm run typecheck",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "example": "npm run build:dev && node dist/examples/memori.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "memori",
+    "memory",
+    "llm",
+    "ai",
+    "rag",
+    "agent"
+  ],
+  "author": "Memori Labs",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemoriLabs/Memori.git",
+    "directory": "memori-ts"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": "^0.74.0",
+    "openai": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "openai": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.74.0",
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/ui": "^2.1.9",
+    "dotenv": "^16.4.5",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "lint-staged": "^15.0.0",
+    "openai": "^4.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@memorilabs/axon": "^0.1.0"
+  }
+}

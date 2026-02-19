@@ -1,0 +1,38 @@
+name: Publish to npm (TS)
+
+on:
+  workflow_dispatch: 
+
+permissions:
+  contents: read
+  id-token: write   # REQUIRED for OIDC
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest  
+    
+    defaults:
+      run:
+        working-directory: ./memori-ts
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4 
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build --if-present
+        
+      - name: Run tests
+        run: npm test --if-present
+
+      - name: Publish Package
+        run: npm publish --access public

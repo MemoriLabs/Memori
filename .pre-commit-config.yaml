@@ -30,3 +30,31 @@ repos:
     language: system
     pass_filenames: false
     always_run: true
+
+  - id: ts-format
+    name: format (memori-ts)
+    entry: bash -c 'cd memori-ts && npm run format'
+    language: system
+    pass_filenames: false
+    files: ^memori-ts/
+
+  - id: ts-lint
+    name: lint (memori-ts)
+    entry: bash -c 'cd memori-ts && npm run lint:fix'
+    language: system
+    pass_filenames: false
+    files: ^memori-ts/
+
+  - id: ts-typecheck
+    name: typecheck (memori-ts)
+    entry: bash -c 'cd memori-ts && npm run typecheck'
+    language: system
+    pass_filenames: false
+    files: ^memori-ts/
+
+  - id: ts-test
+    name: test (memori-ts)
+    entry: bash -c 'cd memori-ts && npm run test'
+    language: system
+    pass_filenames: false
+    files: ^memori-ts/

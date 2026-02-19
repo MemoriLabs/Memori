@@ -60,3 +60,9 @@ results/
 !pyproject.toml
 !package.json
 !composer.json
+
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+coverage
