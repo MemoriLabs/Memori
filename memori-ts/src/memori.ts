@@ -50,7 +50,7 @@ export class Memori {
      *
      * @param client - An instantiated client from a supported provider (OpenAI, Anthropic, etc).
      */
-    register: (client: unknown): this => {
+    register: (client: unknown): Memori => {
       this.axon.llm.register(client);
       return this;
     },
