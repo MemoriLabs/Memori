@@ -194,9 +194,9 @@ class LangChain(BaseClient):
                     Invoke(
                         self.config,
                         chatbedrock.client._invoke_model_with_response_stream,
-                    )
-                    .set_client(
-                        LANGCHAIN_FRAMEWORK_PROVIDER,
+                                )
+                                .set_client(
+                                    LANGCHAIN_FRAMEWORK_PROVIDER,
                         LANGCHAIN_CHATBEDROCK_LLM_PROVIDER,
                         None,
                     )
