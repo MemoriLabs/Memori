@@ -265,11 +265,11 @@ class LangChain(BaseClient):
                             chatgooglegenai.async_client.models,
                             "generate_content_stream",
                         ):
-                            chatgooglegenai.async_client.models._stream_generate_content = (
-                                chatgooglegenai.async_client.models.generate_content_stream
-                            )
+                            chatgooglegenai.async_client.models._stream_generate_content = chatgooglegenai.async_client.models.generate_content_stream
                             chatgooglegenai.async_client.models.generate_content_stream = (
                                 InvokeAsyncIterator(
+                                    self.config,
+                                    chatgooglegenai.async_client.models._stream_generate_content,
                                 )
                                 .set_client(
                                     LANGCHAIN_FRAMEWORK_PROVIDER,
