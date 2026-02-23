@@ -19,7 +19,7 @@ export type RecallItem = string | RecallObject;
  * Raw response shape from the Memori Cloud API.
  * @internal
  */
-export interface HostedRecallResponse {
+export interface CloudRecallResponse {
   // The API might return the list of facts under any of these keys
   facts?: RecallItem[];
   results?: RecallItem[];

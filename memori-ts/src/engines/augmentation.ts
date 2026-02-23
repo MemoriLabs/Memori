@@ -1,7 +1,9 @@
-import { CallContext, LLMRequest, LLMResponse, Message } from '@memorilabs/axon';
+import { CallContext, LLMRequest, LLMResponse } from '@memorilabs/axon';
 import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
+import { extractLastUserMessage } from '../utils/utils.js';
+import { SDK_VERSION } from '../version.js';
 
 export class AugmentationEngine {
   constructor(
@@ -18,7 +20,7 @@ export class AugmentationEngine {
     const sessionId = this.session.id;
     if (!sessionId) return Promise.resolve(res);
 
-    const lastUserMessage = this.extractLastUserMessage(req.messages);
+    const lastUserMessage = extractLastUserMessage(req.messages);
     if (!lastUserMessage) return Promise.resolve(res);
 
     const messages = [
@@ -40,20 +42,13 @@ export class AugmentationEngine {
     return Promise.resolve(res);
   }
 
-  private extractLastUserMessage(messages: Message[]): string | undefined {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') return messages[i].content;
-    }
-    return undefined;
-  }
-
   private buildMeta(): Record<string, unknown> {
     return {
       attribution: {
         entity: { id: this.config.entityId },
         process: { id: this.config.processId },
       },
-      sdk: { lang: 'javascript', version: '0.0.1' },
+      sdk: { lang: 'javascript', version: SDK_VERSION },
       framework: null,
       llm: null,
       platform: null,

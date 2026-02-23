@@ -1,3 +1,5 @@
+export { UnsupportedLLMProviderError } from '@memorilabs/axon';
+
 export class MemoriError extends Error {
   constructor(message: string) {
     super(message);

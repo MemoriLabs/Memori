@@ -3,7 +3,8 @@ import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { extractFacts, extractHistory, stringifyContent } from '../utils/utils.js';
-import { HostedRecallResponse, ParsedFact } from '../types/api.js';
+import { CloudRecallResponse, ParsedFact } from '../types/api.js';
+import { extractLastUserMessage } from '../utils/utils.js';
 
 export class RecallEngine {
   constructor(
@@ -23,7 +24,7 @@ export class RecallEngine {
     };
 
     try {
-      const response = await this.api.post<HostedRecallResponse>('cloud/recall', payload);
+      const response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
       return extractFacts(response);
     } catch (e) {
       console.warn('Memori Manual Recall failed:', e);
@@ -35,7 +36,7 @@ export class RecallEngine {
     const sessionId = this.session.id;
     if (!sessionId) return req;
 
-    const userQuery = this.extractLastUserMessage(req.messages);
+    const userQuery = extractLastUserMessage(req.messages);
     if (!userQuery) return req;
 
     const payload = {
@@ -47,9 +48,9 @@ export class RecallEngine {
       session: { id: sessionId },
     };
 
-    let response: HostedRecallResponse;
+    let response: CloudRecallResponse;
     try {
-      response = await this.api.post<HostedRecallResponse>('cloud/recall', payload);
+      response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
     } catch (e) {
       console.warn('Memori Recall failed:', e);
       return req;
@@ -95,12 +96,5 @@ export class RecallEngine {
     }
 
     return { ...req, messages };
-  }
-
-  private extractLastUserMessage(messages: Message[]): string | undefined {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') return messages[i].content;
-    }
-    return undefined;
   }
 }

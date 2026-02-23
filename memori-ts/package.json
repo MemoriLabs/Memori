@@ -28,7 +28,7 @@
     "check": "npm run format:check && npm run lint && npm run typecheck",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "example": "npm run build:dev && node dist/examples/memori.js",
+    "example": "npm run build:dev && node dist/examples/cloud/simple.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

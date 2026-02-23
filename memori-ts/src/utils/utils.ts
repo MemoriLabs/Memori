@@ -1,4 +1,5 @@
-import { HostedRecallResponse, ParsedFact } from '../types/api.js';
+import { Message } from '@memorilabs/axon';
+import { CloudRecallResponse, ParsedFact } from '../types/api.js';
 
 export function formatDate(dateStr?: string): string | undefined {
   if (!dateStr) return undefined;
@@ -42,7 +43,7 @@ export function stringifyContent(content: unknown): string {
   return String(content as string | number | boolean);
 }
 
-export function extractFacts(response: HostedRecallResponse): ParsedFact[] {
+export function extractFacts(response: CloudRecallResponse): ParsedFact[] {
   const raw = response.facts || response.results || response.memories || response.data || [];
 
   if (!Array.isArray(raw)) return [];
@@ -67,7 +68,7 @@ export function extractFacts(response: HostedRecallResponse): ParsedFact[] {
   return facts;
 }
 
-export function extractHistory(response: HostedRecallResponse): unknown[] {
+export function extractHistory(response: CloudRecallResponse): unknown[] {
   const raw =
     response.messages ||
     response.conversation_messages ||
@@ -76,4 +77,8 @@ export function extractHistory(response: HostedRecallResponse): unknown[] {
     [];
 
   return Array.isArray(raw) ? raw : [];
+}
+
+export function extractLastUserMessage(messages: Message[]): string | undefined {
+  return messages.findLast((m) => m.role === 'user')?.content;
 }

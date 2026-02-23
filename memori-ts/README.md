@@ -104,7 +104,7 @@ To get the most out of Memori, you want to attribute your LLM interactions to an
 If you do not provide any attribution, Memori cannot make memories for you.
 
 ```typescript
-memori.attribution('user-12345', 'my-ai-bot');
+memori.attribution('user-123', 'my-app');
 ```
 
 ## Session Management

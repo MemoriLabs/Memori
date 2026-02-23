@@ -75,7 +75,7 @@ export class Config {
 
     // 3. Session and Defaults
     this.sessionId = randomUUID();
-    this.recallRelevanceThreshold = 0.1; // Default parity with Python
-    this.timeout = 5000; // 5 seconds
+    this.recallRelevanceThreshold = 0.1;
+    this.timeout = 5000;
   }
 }

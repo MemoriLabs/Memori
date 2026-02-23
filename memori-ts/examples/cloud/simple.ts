@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { OpenAI } from 'openai';
-import { Memori } from '../src/index.js';
+import { Memori } from '../../src/index.js';
 
 // Environment check
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -13,9 +13,7 @@ if (!OPENAI_API_KEY) {
 const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // 2. Initialize Memori and Register the Client
-const _memori = new Memori().llm
-  .register(client)
-  .attribution('typescript-sdk-test-user', 'test-process-1');
+const _memori = new Memori().llm.register(client).attribution('user-123', 'my-app');
 
 async function main() {
   console.log('--- Step 1: Teaching the AI ---');

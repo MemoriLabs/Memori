@@ -29,8 +29,6 @@ export class Api {
   constructor(config: Config, subdomain: ApiSubdomain = ApiSubdomain.DEFAULT) {
     this.config = config;
 
-    // Switch subdomains based on the target service (e.g. recall vs augmentation).
-    // This allows us to use a single base URL config while routing to specific microservices.
     if (subdomain === ApiSubdomain.COLLECTOR) {
       this.baseUrl = this.config.baseUrl
         .replace('://api.', '://collector.')
