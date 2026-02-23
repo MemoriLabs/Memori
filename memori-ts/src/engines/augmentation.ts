@@ -15,7 +15,7 @@ export class AugmentationEngine {
   public handleAugmentation(
     req: LLMRequest,
     res: LLMResponse,
-    _ctx: CallContext
+    ctx: CallContext
   ): Promise<LLMResponse> {
     const sessionId = this.session.id;
     if (!sessionId) return Promise.resolve(res);
@@ -30,7 +30,7 @@ export class AugmentationEngine {
 
     const payload = {
       conversation: { messages, summary: null },
-      meta: this.buildMeta(),
+      meta: this.buildMeta(req, ctx),
       session: { id: sessionId },
     };
 
@@ -42,7 +42,7 @@ export class AugmentationEngine {
     return Promise.resolve(res);
   }
 
-  private buildMeta(): Record<string, unknown> {
+  private buildMeta(req: LLMRequest, ctx: CallContext): Record<string, unknown> {
     return {
       attribution: {
         entity: { id: this.config.entityId },
@@ -50,7 +50,14 @@ export class AugmentationEngine {
       },
       sdk: { lang: 'javascript', version: SDK_VERSION },
       framework: null,
-      llm: null,
+      llm: {
+        model: {
+          provider: ctx.metadata.provider || null,
+          sdk: {
+            version: ctx.metadata.sdkVersion || null,
+          },
+        },
+      },
       platform: null,
       storage: null,
     };

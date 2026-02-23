@@ -78,6 +78,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@memorilabs/axon": "^0.1.1-beta"
+    "@memorilabs/axon": "^0.1.2-beta"
   }
 }

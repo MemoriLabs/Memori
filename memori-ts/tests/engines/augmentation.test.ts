@@ -27,7 +27,18 @@ describe('AugmentationEngine', () => {
     const req = { messages: [{ role: 'user', content: 'learn this' }] } as unknown as LLMRequest;
     const res = { content: 'ok' } as LLMResponse;
 
-    await engine.handleAugmentation(req, res, {} as any);
+    const mockCtx = {
+      traceId: '123',
+      startedAt: new Date(),
+      metadata: {
+        provider: 'openai',
+        sdkVersion: '4.28.0',
+        platform: null,
+        framework: null,
+      },
+    } as any;
+
+    await engine.handleAugmentation(req, res, mockCtx);
 
     expect(mockApi.post).toHaveBeenCalledWith(
       'cloud/augmentation',
@@ -49,7 +60,18 @@ describe('AugmentationEngine', () => {
     const req = { messages: [{ role: 'user', content: 'hi' }] } as unknown as LLMRequest;
     const res = { content: 'ho' } as LLMResponse;
 
-    await engine.handleAugmentation(req, res, {} as any);
+    const mockCtx = {
+      traceId: '123',
+      startedAt: new Date(),
+      metadata: {
+        provider: 'openai',
+        sdkVersion: '4.28.0',
+        platform: null,
+        framework: null,
+      },
+    } as any;
+
+    await engine.handleAugmentation(req, res, mockCtx);
 
     // Wait for the fire-and-forget promise
     await new Promise(process.nextTick);

@@ -4,17 +4,15 @@ import {
   formatDate,
   extractFacts,
   extractHistory,
+  extractLastUserMessage,
 } from '../../src/utils/utils.js';
+import { Message } from '@memorilabs/axon';
 
 describe('Utils', () => {
   describe('formatDate', () => {
     it('should format valid ISO strings', () => {
       const input = '2023-10-25T14:30:00.000Z';
-      // Expected output depends on local time if not handled strictly,
-      // but the utility replaces T with space and cuts off seconds.
-      // Based on the code: d.toISOString().replace('T', ' ').substring(0, 16);
       const output = formatDate(input);
-      // toISOString always returns UTC, so we expect '2023-10-25 14:30'
       expect(output).toBe('2023-10-25 14:30');
     });
 
@@ -60,13 +58,31 @@ describe('Utils', () => {
       expect(result[0].score).toBe(1.0);
     });
 
-    it('should extract structured objects', () => {
+    it('should extract structured objects using rank_score', () => {
       const response = {
         results: [{ content: 'fact1', rank_score: 0.8, date_created: '2023-01-01T12:00:00Z' }],
       };
       const result = extractFacts(response);
       expect(result[0].score).toBe(0.8);
       expect(result[0].dateCreated).toBeDefined();
+    });
+
+    it('should fallback to similarity if rank_score is missing', () => {
+      const response = {
+        results: [{ content: 'fact2', similarity: 0.65, date_created: '2023-01-01T12:00:00Z' }],
+      };
+      const result = extractFacts(response);
+      expect(result[0].score).toBe(0.65);
+    });
+
+    it('should ignore objects without a valid content string', () => {
+      const response = {
+        results: [{ missing_content: 'foo' }, { content: 'valid fact', rank_score: 0.9 }],
+      } as any;
+
+      const result = extractFacts(response);
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('valid fact');
     });
   });
 
@@ -76,8 +92,42 @@ describe('Utils', () => {
       expect(extractHistory(response)).toEqual(['msg1']);
     });
 
+    it('should extract from conversation.messages key', () => {
+      const response = { conversation: { messages: ['msg2'] } };
+      expect(extractHistory(response)).toEqual(['msg2']);
+    });
+
+    it('should extract from history key', () => {
+      const response = { history: ['msg3'] };
+      expect(extractHistory(response)).toEqual(['msg3']);
+    });
+
     it('should return empty array if no history found', () => {
       expect(extractHistory({})).toEqual([]);
+    });
+  });
+
+  describe('extractLastUserMessage', () => {
+    it('should extract the content of the last user message', () => {
+      const messages: Message[] = [
+        { role: 'user', content: 'first user message' },
+        { role: 'assistant', content: 'assistant reply' },
+        { role: 'user', content: 'second user message' },
+        { role: 'system', content: 'system message' },
+      ];
+      expect(extractLastUserMessage(messages)).toBe('second user message');
+    });
+
+    it('should return undefined if there are no user messages', () => {
+      const messages: Message[] = [
+        { role: 'assistant', content: 'assistant reply' },
+        { role: 'system', content: 'system message' },
+      ];
+      expect(extractLastUserMessage(messages)).toBeUndefined();
+    });
+
+    it('should return undefined for an empty messages array', () => {
+      expect(extractLastUserMessage([])).toBeUndefined();
     });
   });
 });
