@@ -29,6 +29,7 @@ def _build_meta(config) -> dict[str, object]:
                     getattr(config, "llm", None), "provider_sdk_version", None
                 ),
             },
+            "version": getattr(getattr(config, "llm", None), "version", None),
         },
     }
 
