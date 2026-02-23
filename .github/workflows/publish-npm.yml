@@ -35,4 +35,4 @@ jobs:
         run: npm test --if-present
 
       - name: Publish Package
-        run: npm publish --access public
+        run: npm publish --access public --tag beta

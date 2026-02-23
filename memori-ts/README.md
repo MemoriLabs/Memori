@@ -33,7 +33,7 @@ Install the Memori SDK and your preferred LLM client using your package manager 
 npm install @memorilabs/memori
 ```
 
-*(Note: Memori currently supports `openai` and `@anthropic-ai/sdk` as peer dependencies).*
+_(Note: Memori currently supports `openai` and `@anthropic-ai/sdk` as peer dependencies)._
 
 ## Quickstart Example
 
