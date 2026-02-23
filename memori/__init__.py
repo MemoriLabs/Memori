@@ -146,7 +146,7 @@ class Memori:
         self.config.session_id = id
         return self
 
-    def recall(self, query: str, limit: int = 5):
+    def recall(self, query: str, limit: int | None = None):
         return Recall(self.config).search_facts(query, limit)
 
     def close(self) -> None:

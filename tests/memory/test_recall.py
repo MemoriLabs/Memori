@@ -304,6 +304,50 @@ def test_search_facts_embeds_query_correctly():
             assert mock_search.call_args[0][2] == [0.1, 0.2, 0.3, 0.4, 0.5]
 
 
+def test_search_facts_cloud_includes_explicit_limit_in_payload(mocker):
+    config = Config()
+    config.cloud = True
+    config.entity_id = "entity-id"
+    config.process_id = "process-id"
+    config.session_id = "session-id"
+    recall = Recall(config)
+
+    post = mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={"facts": ["fact-a"], "messages": []},
+    )
+
+    result = recall.search_facts("test query", limit=10)
+
+    assert result == ["fact-a"]
+    assert post.call_args[0][1] == "cloud/recall"
+    payload = post.call_args[0][2]
+    assert payload["limit"] == 10
+
+
+def test_search_facts_cloud_defaults_to_config_recall_facts_limit(mocker):
+    config = Config()
+    config.cloud = True
+    config.entity_id = "entity-id"
+    config.process_id = "process-id"
+    config.session_id = "session-id"
+    config.recall_facts_limit = 7
+    recall = Recall(config)
+
+    post = mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={"facts": [], "messages": []},
+    )
+
+    recall.search_facts("test query")
+
+    assert post.call_args[0][1] == "cloud/recall"
+    payload = post.call_args[0][2]
+    assert payload["limit"] == 7
+
+
 def test_constants():
     assert MAX_RETRIES == 3
     assert RETRY_BACKOFF_BASE == 0.05

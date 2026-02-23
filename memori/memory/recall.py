@@ -94,14 +94,19 @@ class Recall:
         return facts
 
     def _search_with_retries_cloud(
-        self, query: str
+        self, *, query: str, limit: int
     ) -> list[FactSearchResult | Mapping[str, object] | str]:
-        data = self._cloud_recall(query)
+        data = self._cloud_recall(query, limit=limit)
         facts, _messages = self._parse_cloud_recall_response(data)
         return facts
 
-    def _cloud_recall(self, query: str) -> object:
+    def _cloud_recall(self, query: str, *, limit: int | None = None) -> object:
+        if self.config.entity_id is None:
+            logger.debug("Cloud recall aborted - no entity_id configured")
+            return []
+
         api = Api(self.config)
+        resolved_limit = self._resolve_limit(limit)
         payload = {
             "attribution": {
                 "entity": {"id": str(self.config.entity_id)},
@@ -109,6 +114,7 @@ class Recall:
             },
             "query": query,
             "session": {"id": str(self.config.session_id)},
+            "limit": resolved_limit,
         }
         return api.post("cloud/recall", payload)
 
@@ -186,13 +192,18 @@ class Recall:
         )
 
         if self.config.cloud:
+            if self.config.entity_id is None:
+                logger.debug("Recall aborted - no entity_id configured")
+                return []
+
             logger.debug(
                 "Recall started - query: %s (%d chars), limit: %s, cloud: true",
                 truncate(query, 50),
                 len(query),
                 limit,
             )
-            return self._search_with_retries_cloud(query)
+            resolved_limit = self._resolve_limit(limit)
+            return self._search_with_retries_cloud(query=query, limit=resolved_limit)
 
         if self.config.storage is None or self.config.storage.driver is None:
             logger.debug("Recall aborted - storage not configured")
