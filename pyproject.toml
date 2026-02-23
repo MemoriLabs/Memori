@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memori"
-version = "3.1.6"
+version = "3.2.0"
 description = "Memori Python SDK"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
 license = {text = "Apache-2.0"}
@@ -33,11 +33,13 @@ dependencies = [
     "grpcio>=1.60.0",
     "numpy>=1.24.0",
     "protobuf>=4.25.0,<6.0.0",
-    "psycopg[binary]>=3.1.0",
     "pyfiglet>=0.8.0",
     "requests>=2.32.5",
     "sentence-transformers>=3.0.0",
 ]
+
+[project.optional-dependencies]
+cockroachdb = ["psycopg[binary]>=3.1.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -129,7 +131,7 @@ exclude_lines = [
 
 [tool.ty.src]
 exclude = [
-    "tests/llm/clients/**/*.py",
+    "tests/**/*.py",
     "**/__pycache__/**",
 ]
 
@@ -138,6 +140,7 @@ python-version = "3.12"
 
 [tool.ty.rules]
 possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 
 
 [dependency-groups]

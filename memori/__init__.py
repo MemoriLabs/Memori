@@ -13,11 +13,10 @@ from collections.abc import Callable
 from typing import Any
 from uuid import uuid4
 
-import psycopg
-
 from memori._config import Config
 from memori._exceptions import (
     MissingMemoriApiKeyError,
+    MissingPsycopgError,
     QuotaExceededError,
     UnsupportedLLMProviderError,
     warn_if_legacy_memorisdk_installed,
@@ -88,7 +87,7 @@ class Memori:
         if conn is None:
             conn = self._get_default_connection()
         else:
-            self.config.hosted = False
+            self.config.cloud = False
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
@@ -106,10 +105,15 @@ class Memori:
     def _get_default_connection(self) -> Callable[[], Any] | None:
         connection_string = os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING", None)
         if connection_string:
-            self.config.hosted = False
+            try:
+                import psycopg
+            except ImportError as e:
+                raise MissingPsycopgError("CockroachDB") from e
+
+            self.config.cloud = False
             return lambda: psycopg.connect(connection_string)
 
-        self.config.hosted = True
+        self.config.cloud = True
         api_key = os.environ.get("MEMORI_API_KEY", None)
         if api_key is None or api_key == "":
             raise MissingMemoriApiKeyError()
@@ -142,7 +146,7 @@ class Memori:
         self.config.session_id = id
         return self
 
-    def recall(self, query: str, limit: int = 5):
+    def recall(self, query: str, limit: int | None = None):
         return Recall(self.config).search_facts(query, limit)
 
     def close(self) -> None:

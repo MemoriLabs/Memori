@@ -4,7 +4,7 @@ from memori import Memori
 from memori._exceptions import MissingMemoriApiKeyError
 
 
-def test_hosted_false_when_conn_provided(mocker):
+def test_cloud_false_when_conn_provided(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
     type(mock_conn).__module__ = "psycopg"
@@ -12,18 +12,18 @@ def test_hosted_false_when_conn_provided(mocker):
     mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
 
     mem = Memori(conn=lambda: mock_conn)
-    assert mem.config.hosted is False
+    assert mem.config.cloud is False
 
 
-def test_hosted_true_when_no_conn(monkeypatch):
+def test_cloud_true_when_no_conn(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
     monkeypatch.setenv("MEMORI_TEST_MODE", "1")
     mem = Memori()
-    assert mem.config.hosted is True
+    assert mem.config.cloud is True
 
 
-def test_hosted_raises_error_when_no_api_key(monkeypatch):
+def test_cloud_raises_error_when_no_api_key(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.delenv("MEMORI_API_KEY", raising=False)
     with pytest.raises(MissingMemoriApiKeyError) as e:
@@ -32,7 +32,7 @@ def test_hosted_raises_error_when_no_api_key(monkeypatch):
     assert "MEMORI_API_KEY" in str(e.value)
 
 
-def test_hosted_false_when_connection_string_set(monkeypatch, mocker):
+def test_cloud_false_when_connection_string_set(monkeypatch, mocker):
     monkeypatch.setenv(
         "MEMORI_COCKROACHDB_CONNECTION_STRING",
         "postgresql://user:pass@localhost:26257/defaultdb?sslmode=disable",
@@ -44,10 +44,10 @@ def test_hosted_false_when_connection_string_set(monkeypatch, mocker):
     mock_cursor = mocker.MagicMock()
     mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
 
-    mocker.patch("memori.psycopg.connect", return_value=mock_conn)
+    mocker.patch("psycopg.connect", return_value=mock_conn)
 
     mem = Memori(conn=None)
-    assert mem.config.hosted is False
+    assert mem.config.cloud is False
 
 
 def test_attribution_exceptions(mocker):
@@ -136,3 +136,28 @@ def test_embed_texts_uses_config_defaults(mocker):
         model="test-model",
         async_=False,
     )
+
+
+def test_recall_defaults_to_config_limit_in_cloud(monkeypatch, mocker):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+
+    mem = Memori().attribution(entity_id="entity-id", process_id="process-id")
+    mem.config.recall_facts_limit = 10
+
+    post = mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={"facts": [], "messages": []},
+    )
+
+    mem.recall("test query")
+
+    assert post.call_args[0][1] == "cloud/recall"
+    payload = post.call_args[0][2]
+    assert payload["limit"] == 10
+
+    mem.recall("test query", limit=3)
+    payload = post.call_args[0][2]
+    assert payload["limit"] == 3

@@ -33,13 +33,12 @@ logger = logging.getLogger(__name__)
 
 
 class ApiSubdomain(str, Enum):
-    OSS = "api"
-    HOSTED = "hosted-api"
+    DEFAULT = "api"
     COLLECTOR = "collector"
 
 
 class Api:
-    def __init__(self, config: Config, subdomain: ApiSubdomain = ApiSubdomain.OSS):
+    def __init__(self, config: Config, subdomain: ApiSubdomain = ApiSubdomain.DEFAULT):
         test_mode = os.environ.get("MEMORI_TEST_MODE") == "1"
 
         self.__base = os.environ.get("MEMORI_API_URL_BASE")

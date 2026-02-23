@@ -81,6 +81,10 @@ class Writer:
             self.config.cache.process_id,
         )
 
+        # Ensure conversation_id exists - may have been set earlier in
+        # inject_conversation_messages. If not, create/get it now.
+        # conversation.create is idempotent and returns existing conversation
+        # if within timeout, so it's safe to call multiple times.
         self._ensure_cached_id(
             "conversation_id",
             self.config.storage.driver.conversation.create,

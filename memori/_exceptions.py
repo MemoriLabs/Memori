@@ -51,12 +51,22 @@ class MemoriApiRequestRejectedError(MemoriApiClientError):
 
 
 class MissingMemoriApiKeyError(RuntimeError):
-    """Raised when hosted mode is used without a MEMORI_API_KEY."""
+    """Raised when cloud mode is used without a MEMORI_API_KEY."""
 
     def __init__(self, env_var: str = "MEMORI_API_KEY"):
         self.env_var = env_var
         super().__init__(
-            f"A {env_var} is required to use the Memori hosted API. Sign up at https://app.memorilabs.ai/signup"
+            f"A {env_var} is required to use the Memori cloud API. Sign up at https://app.memorilabs.ai/signup"
+        )
+
+
+class MissingPsycopgError(ImportError):
+    """Raised when psycopg is required but not installed."""
+
+    def __init__(self, database: str = "PostgreSQL/CockroachDB"):
+        super().__init__(
+            f"psycopg is required for {database} support. "
+            f"Install it with: pip install 'memori[postgres]' or 'memori[cockroachdb]'"
         )
 
 

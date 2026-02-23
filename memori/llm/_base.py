@@ -19,7 +19,6 @@ from google.protobuf import json_format
 
 from memori._config import Config
 from memori._logging import truncate
-from memori._network import Api, ApiSubdomain
 from memori._utils import format_date_created, merge_chunk
 from memori.llm._utils import (
     agno_is_anthropic,
@@ -53,7 +52,7 @@ def _score_for_recall_threshold(
     Extract a numeric score for recall relevance thresholding.
 
     Prefer rank_score when present; fall back to similarity.
-    Plain strings (from hosted recall API) are treated as fully relevant.
+    Plain strings (from cloud recall API) are treated as fully relevant.
     """
     if isinstance(fact, str):
         return 1.0
@@ -140,40 +139,7 @@ class BaseInvoke:
         self._method = method
         self._uses_protobuf = False
         self._injected_message_count = 0
-
-    def _fetch_hosted_conversation_messages(self) -> list[dict[str, str]]:
-        if self.config.session_id is None:
-            return []
-
-        session_uuid = str(self.config.session_id)
-        try:
-            api = Api(self.config, subdomain=ApiSubdomain.HOSTED)
-            data = api.get(f"conversation/{session_uuid}/messages")
-        except Exception:
-            logger.debug(
-                "Failed to fetch hosted conversation messages for session %s",
-                session_uuid,
-                exc_info=True,
-            )
-            return []
-
-        if not isinstance(data, dict):
-            return []
-        raw_messages = data.get("messages", [])
-        if not isinstance(raw_messages, list):
-            return []
-
-        messages: list[dict[str, str]] = []
-        for msg in raw_messages:
-            if not isinstance(msg, dict):
-                continue
-            role = msg.get("role")
-            text = msg.get("text")
-            if not isinstance(role, str) or not isinstance(text, str):
-                continue
-            messages.append({"role": role, "content": text})
-
-        return messages
+        self._cloud_conversation_messages: list[dict[str, str]] = []
 
     def _ensure_cached_conversation_id(self) -> bool:
         if self.config.storage is None or self.config.storage.driver is None:
@@ -345,7 +311,7 @@ class BaseInvoke:
         messages = list(parse_payload_conversation_messages(payload))
         payload["messages"] = messages
 
-        if self.config.hosted is True:
+        if self.config.cloud is True:
             return {
                 "attribution": {
                     "entity": {"id": self.config.entity_id},
@@ -696,6 +662,9 @@ class BaseInvoke:
         return lines
 
     def inject_recalled_facts(self, kwargs: dict) -> dict:
+        if self.config.cloud is True:
+            self._cloud_conversation_messages = []
+
         if self.config.entity_id is None:
             return kwargs
 
@@ -706,7 +675,7 @@ class BaseInvoke:
         logger.debug("User query: %s", truncate(user_query))
 
         resolved_entity_id = None
-        if self.config.hosted is False:
+        if self.config.cloud is False:
             if self.config.storage is None or self.config.storage.driver is None:
                 return kwargs
 
@@ -718,9 +687,17 @@ class BaseInvoke:
 
         from memori.memory.recall import Recall
 
-        facts = Recall(self.config).search_facts(
-            user_query, entity_id=resolved_entity_id, hosted=bool(self.config.hosted)
-        )
+        recall = Recall(self.config)
+        if self.config.cloud is True:
+            data = recall._cloud_recall(user_query)
+            facts, messages = recall._parse_cloud_recall_response(data)
+            self._cloud_conversation_messages = messages
+        else:
+            facts = recall.search_facts(
+                user_query,
+                entity_id=resolved_entity_id,
+                cloud=bool(self.config.cloud),
+            )
 
         if not facts:
             logger.debug("No facts found to inject into prompt")
@@ -778,14 +755,14 @@ class BaseInvoke:
         return kwargs
 
     def inject_conversation_messages(self, kwargs: dict) -> dict:
-        if self.config.hosted is True:
-            messages = self._fetch_hosted_conversation_messages()
+        if self.config.cloud is True:
+            messages = self._cloud_conversation_messages
             if not messages:
                 return kwargs
 
             self._injected_message_count = len(messages)
             logger.debug(
-                "Injecting %d hosted conversation messages from history",
+                "Injecting %d cloud conversation messages from history",
                 len(messages),
             )
 
@@ -893,8 +870,45 @@ class BaseInvoke:
             return kwargs
 
         if self.config.cache.conversation_id is None:
-            if not self._ensure_cached_conversation_id():
-                return kwargs
+            # Try read path first (existing session/conversation in DB).
+            if self._ensure_cached_conversation_id():
+                pass
+            else:
+                # Create path: ensure session_id and conversation_id for multi-turn.
+                # Fixes issue where conversation_id wasn't available early enough (e.g. GitHub #83).
+                if self.config.cache.session_id is None:
+                    if self.config.entity_id is not None:
+                        entity_id = self.config.storage.driver.entity.create(
+                            self.config.entity_id
+                        )
+                        if entity_id is not None:
+                            self.config.cache.entity_id = entity_id
+                    if self.config.process_id is not None:
+                        process_id = self.config.storage.driver.process.create(
+                            self.config.process_id
+                        )
+                        if process_id is not None:
+                            self.config.cache.process_id = process_id
+
+                    session_id = self.config.storage.driver.session.create(
+                        self.config.session_id,
+                        self.config.cache.entity_id,
+                        self.config.cache.process_id,
+                    )
+                    if session_id is not None:
+                        self.config.cache.session_id = session_id
+
+                if self.config.cache.session_id is not None:
+                    existing_conv = self.config.storage.driver.conversation.create(
+                        self.config.cache.session_id,
+                        self.config.session_timeout_minutes,
+                    )
+                    if existing_conv is not None:
+                        self.config.cache.conversation_id = existing_conv
+
+                if self.config.cache.conversation_id is None:
+                    if not self._ensure_cached_conversation_id():
+                        return kwargs
 
         messages = self.config.storage.driver.conversation.messages.read(
             self.config.cache.conversation_id
@@ -1004,6 +1018,8 @@ class BaseInvoke:
     def handle_post_response(self, kwargs, start_time, raw_response):
         from memori.memory._manager import Manager as MemoryManager
 
+        logger = logging.getLogger(__name__)
+
         if "model" in kwargs:
             self.config.llm.version = kwargs["model"]
 
@@ -1015,6 +1031,18 @@ class BaseInvoke:
             __import__("time").time(),
             self._format_kwargs(kwargs),
             self._format_response(self.get_response_content(raw_response)),
+        )
+
+        conv_id = self.config.cache.conversation_id
+        msg_count = len(
+            payload.get("conversation", {}).get("query", {}).get("messages", [])
+        )
+        resp_count = len(
+            payload.get("conversation", {}).get("response", {}).get("choices", [])
+        )
+        logger.debug(
+            f"Ingesting conversation turn: conversation_id={conv_id}, "
+            f"messages_count={msg_count}, responses_count={resp_count}"
         )
 
         MemoryManager(self.config).execute(payload)

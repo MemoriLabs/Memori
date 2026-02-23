@@ -5,9 +5,12 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, Any, cast
 
 from memori.search import find_similar_embeddings
+
+if TYPE_CHECKING:
+    from memori.search._types import FactId
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,7 +141,9 @@ def attribute_facts_to_turn_ids(
     if fact_texts is not None and len(fact_texts) != len(fact_ids):
         raise ValueError("fact_texts and fact_ids must be the same length")
 
-    embeddings = list(enumerate(turn_embeddings))
+    embeddings: list[tuple[FactId, Any]] = cast(
+        "list[tuple[FactId, Any]]", list(enumerate(turn_embeddings))
+    )
     out: dict[int, list[tuple[str, float]]] = {}
     for i, (fact_id, qemb) in enumerate(zip(fact_ids, fact_embeddings, strict=True)):
         # Use a larger semantic pool before reranking to improve coverage.

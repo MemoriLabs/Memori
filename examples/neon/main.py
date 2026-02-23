@@ -14,7 +14,11 @@ from memori import Memori
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-engine = create_engine(os.getenv("NEON_CONNECTION_STRING"))
+neon_connection_string = os.getenv("NEON_CONNECTION_STRING")
+if not neon_connection_string:
+    raise ValueError("NEON_CONNECTION_STRING must be set in the environment")
+
+engine = create_engine(neon_connection_string)
 Session = sessionmaker(bind=engine)
 
 mem = Memori(conn=Session).llm.register(client)

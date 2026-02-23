@@ -13,7 +13,7 @@ import time
 
 from memori._config import Config
 from memori._exceptions import MemoriApiError
-from memori._network import Api, ApiSubdomain
+from memori._network import Api
 from memori.memory._writer import Writer
 
 logger = logging.getLogger(__name__)
@@ -33,16 +33,16 @@ class Manager:
             if message.get("role") != "system"
         ]
 
-        if self.config.hosted is True:
-            self._handle_hosted(payload_stripped)
+        if self.config.cloud is True:
+            self._handle_cloud(payload_stripped)
         else:
             Writer(self.config).execute(payload_stripped)
         logger.debug("Memory manager execution completed")
 
         return self
 
-    def _handle_hosted(self, payload):
-        api = Api(self.config, ApiSubdomain.HOSTED)
+    def _handle_cloud(self, payload):
+        api = Api(self.config)
         attempts = max(1, int(getattr(self.config, "request_num_backoff", 1) or 1))
         backoff_factor = float(getattr(self.config, "request_backoff_factor", 1) or 1)
 
@@ -52,12 +52,12 @@ class Manager:
         for attempt in range(attempts):
             try:
                 last_status = api.post(
-                    "conversation/messages",
+                    "cloud/conversation/messages",
                     payload,
                     status_code=True,
                 )
                 if last_status == 201:
-                    self._persist_hosted_messages_locally(payload)
+                    self._persist_cloud_messages_locally(payload)
                     return
                 last_error = None
             except Exception as e:  # noqa: BLE001
@@ -70,7 +70,7 @@ class Manager:
             raise last_error
 
         raise MemoriApiError(
-            f"Expected 201 from hosted API but received {last_status} after {attempts} attempts"
+            f"Expected 201 from cloud API but received {last_status} after {attempts} attempts"
         )
 
     def _ensure_cached_id(self, cache_attr: str, create_func, *create_args) -> int:
@@ -82,7 +82,7 @@ class Manager:
             setattr(self.config.cache, cache_attr, cached_id)
         return cached_id
 
-    def _persist_hosted_messages_locally(self, payload: dict) -> None:
+    def _persist_cloud_messages_locally(self, payload: dict) -> None:
         storage = getattr(self.config, "storage", None)
         driver = getattr(storage, "driver", None) if storage is not None else None
         if driver is None:
