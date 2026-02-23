@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/memori",
-  "version": "0.1.0",
+  "version": "0.1.1b1",
   "description": "The official TypeScript SDK for Memori",
   "type": "module",
   "main": "./dist/index.js",

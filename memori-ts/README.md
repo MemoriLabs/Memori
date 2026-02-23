@@ -27,98 +27,120 @@
 
 ## Getting Started
 
-Install the Memori TypeScript SDK using your preferred package manager:
+Install the Memori SDK and your preferred LLM client using your package manager of choice:
 
 ```bash
 npm install @memorilabs/memori
-# or
-yarn add @memorilabs/memori
-# or
-pnpm add @memorilabs/memori
 ```
+
+*(Note: Memori currently supports `openai` and `@anthropic-ai/sdk` as peer dependencies).*
 
 ## Quickstart Example
 
-Memori works effortlessly with your existing LLM clients. Just register your client, and Memori handles the context injection, persistence, and augmentation automatically in the background.
-
 ```typescript
+import 'dotenv/config';
+import { OpenAI } from 'openai';
 import { Memori } from '@memorilabs/memori';
-import OpenAI from 'openai';
 
-// 1. Initialize your LLM client
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// 2. Initialize Memori and register the client
-const memori = new Memori();
-memori.llm.register(client);
-
-// 3. Set the attribution (who the user is, and what the process is)
-memori.attribution('user_123456', 'test-ai-agent');
-
-async function run() {
-  // Memori intercepts the call, persists the message, and extracts memories
-  const response1 = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: 'My favorite color is blue.' }],
-  });
-  console.log(response1.choices[0].message.content);
-
-  // In subsequent calls, Memori automatically recalls relevant context
-  // and injects it into the system prompt!
-  const response2 = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: "What's my favorite color?" }],
-  });
-  console.log(response2.choices[0].message.content);
+// Environment check
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+if (!OPENAI_API_KEY) {
+  console.error('Error: OPENAI_API_KEY must be set in .env');
+  process.exit(1);
 }
 
-run();
+// 1. Initialize the LLM Client
+const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+// 2. Initialize Memori and Register the Client
+const memori = new Memori().llm
+  .register(client)
+  .attribution('typescript-sdk-test-user', 'test-process-1');
+
+async function main() {
+  console.log('--- Step 1: Teaching the AI ---');
+  const factPrompt = 'My favorite color is blue and I live in Paris.';
+  console.log(`User: ${factPrompt}`);
+
+  // This call automatically triggers Persistence and Augmentation in the background.
+  const response1 = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: factPrompt }],
+  });
+
+  console.log(`AI:   ${response1.choices[0].message.content}`);
+
+  console.log('\n(Waiting 5 seconds for backend processing...)\n');
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  console.log('--- Step 2: Testing Recall ---');
+  const questionPrompt = 'What is my favorite color?';
+  console.log(`User: ${questionPrompt}`);
+
+  // This call automatically triggers Recall, injecting the Paris/Blue facts into the prompt.
+  const response2 = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: questionPrompt }],
+  });
+
+  console.log(`AI:   ${response2.choices[0].message.content}`);
+}
+
+main().catch(console.error);
 ```
+
+## Key Features
+
+- **Zero-Latency Memory:** Background processing ensures your LLM calls are never slowed down.
+- **Advanced Augmentation:** Automatically extracts and structures facts, preferences, and relationships.
+- **Cloud-Hosted:** Fully managed infrastructure via the Memori Cloud API.
+- **LLM Agnostic:** Native support for the official OpenAI and Anthropic SDKs via interceptors.
+- **Automatic Prompt Injection:** Seamlessly fetches relevant memories and injects them into the system context.
 
 ## Attribution
 
-To get the most out of Memori, you need to attribute your LLM interactions to an **entity** (think person, place, or thing; like a user) and a **process** (think your agent, LLM interaction, or program).
+To get the most out of Memori, you want to attribute your LLM interactions to an entity (think person, place or thing; like a user) and a process (think your agent, LLM interaction or program).
 
-If you do not provide any attribution, Memori cannot properly segregate or retrieve memories for you.
+If you do not provide any attribution, Memori cannot make memories for you.
 
 ```typescript
-memori.attribution('user_12345', 'my-ai-bot');
+memori.attribution('user-12345', 'my-ai-bot');
 ```
 
 ## Session Management
 
-Memori uses sessions to group your LLM interactions together. For example, if you have an agent that executes multiple steps, you want those to be recorded in a single session.
+Memori uses sessions to group your LLM interactions together. For example, if you have an agent that executes multiple steps you want those to be recorded in a single session.
 
-By default, Memori handles setting a session UUID for you, but you can easily reset it or override it (e.g., when resuming a chat from a database):
+By default, Memori handles setting the session for you but you can start a new session or override the session by executing the following:
 
 ```typescript
-// Start a brand new session with a fresh UUID
 memori.resetSession();
-
-// ... or resume an existing session
-memori.setSession('your-existing-uuid-here');
 ```
 
-## Manual Recall
-
-If you need to fetch memories explicitly without triggering a full LLM completion, you can use the manual recall method:
+or
 
 ```typescript
-const facts = await memori.recall("What is the user's favorite color?");
-console.log(facts);
-// Returns a list of ParsedFact objects with content, relevance scores, and timestamps
+const sessionId = memori.session.id;
+
+// ... Later ...
+
+memori.setSession(sessionId);
 ```
 
-## Supported Providers
+## Supported LLMs
 
-The TypeScript SDK currently supports the following LLM providers out-of-the-box via `@memorilabs/axon`:
+- Anthropic Claude (`@anthropic-ai/sdk`)
+- OpenAI (`openai`)
 
-- **OpenAI** (Chat Completions & Legacy Responses API)
-- **Anthropic** (Messages API)
+## Memori Advanced Augmentation
 
-## Memori Advanced Augmentation (Hosted Cloud)
+Memories are tracked at several different levels:
 
-The TypeScript SDK connects to the Memori Cloud to handle advanced memory augmentation. Memories are tracked and enhanced at several different levels (entities, processes, and sessions) to extract:
+- **entity**: think person, place, or thing; like a user
+- **process**: think your agent, LLM interaction or program
+- **session**: the current interactions between the entity, process and the LLM
+
+[Memori's Advanced Augmentation](https://github.com/MemoriLabs/Memori/blob/main/docs/advanced-augmentation.md) enhances memories at each of these levels with:
 
 - attributes
 - events
@@ -129,17 +151,23 @@ The TypeScript SDK connects to the Memori Cloud to handle advanced memory augmen
 - rules
 - skills
 
-Memori knows who your user is, what tasks your agent handles, and creates unparalleled context between the two. Augmentation occurs asynchronously in the background, incurring no added latency to your LLM calls.
+Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs asynchronously in the background incurring no latency.
 
-### API Keys and Quotas
+By default, Memori Advanced Augmentation is available without an account but is rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup).
 
-By default, Memori Advanced Augmentation is available without an account but is rate-limited. Memori Advanced Augmentation is **always free for developers!**
+Memori Advanced Augmentation is always free for developers!
 
-To increase your limits, [sign up for a Memori API Key](https://app.memorilabs.ai/signup) and set it in your environment:
+Once you've obtained an API key, simply set the following environment variable:
 
 ```bash
-export MEMORI_API_KEY=your_api_key_here
+export MEMORI_API_KEY=[api_key]
 ```
+
+## Managing Your Quota
+
+You can check your quota and manage your account by logging in at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
+
+If your API key exceeds its quota limits we will email you and let you know.
 
 ## Contributing
 
