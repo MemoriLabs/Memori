@@ -212,28 +212,19 @@ class LangChain(BaseClient):
                 )
 
             if not hasattr(chatgooglegenai.client, "_memori_installed"):
-                chatgooglegenai.client._generate_content = (
-                    chatgooglegenai.client.generate_content
-                )
-                chatgooglegenai.client.generate_content = (
-                    Invoke(self.config, chatgooglegenai.client._generate_content)
-                    .set_client(
-                        LANGCHAIN_FRAMEWORK_PROVIDER,
-                        LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
-                        None,
+                # Check if this is the new google.genai SDK (client.models.generate_content)
+                # or the old google.generativeai SDK (client.generate_content)
+                if hasattr(chatgooglegenai.client, "models") and hasattr(
+                    chatgooglegenai.client.models, "generate_content"
+                ):
+                    # New google.genai SDK - use client.models.generate_content
+                    chatgooglegenai.client.models._generate_content = (
+                        chatgooglegenai.client.models.generate_content
                     )
-                    .uses_protobuf()
-                    .invoke
-                )
-
-                if chatgooglegenai.async_client is not None:
-                    chatgooglegenai.async_client._stream_generate_content = (
-                        chatgooglegenai.async_client.stream_generate_content
-                    )
-                    chatgooglegenai.async_client.stream_generate_content = (
-                        InvokeAsyncIterator(
+                    chatgooglegenai.client.models.generate_content = (
+                        Invoke(
                             self.config,
-                            chatgooglegenai.async_client._stream_generate_content,
+                            chatgooglegenai.client.models._generate_content,
                         )
                         .set_client(
                             LANGCHAIN_FRAMEWORK_PROVIDER,
@@ -243,6 +234,105 @@ class LangChain(BaseClient):
                         .uses_protobuf()
                         .invoke
                     )
+
+                    # Handle async client for new SDK
+                    if (
+                        chatgooglegenai.async_client is not None
+                        and hasattr(chatgooglegenai.async_client, "models")
+                        and hasattr(
+                            chatgooglegenai.async_client.models, "generate_content"
+                        )
+                    ):
+                        chatgooglegenai.async_client.models._generate_content = (
+                            chatgooglegenai.async_client.models.generate_content
+                        )
+                        chatgooglegenai.async_client.models.generate_content = (
+                            InvokeAsync(
+                                self.config,
+                                chatgooglegenai.async_client.models._generate_content,
+                            )
+                            .set_client(
+                                LANGCHAIN_FRAMEWORK_PROVIDER,
+                                LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
+                                None,
+                            )
+                            .uses_protobuf()
+                            .invoke
+                        )
+
+                        # Handle streaming for new SDK async client
+                        if hasattr(
+                            chatgooglegenai.async_client.models,
+                            "generate_content_stream",
+                        ):
+                            chatgooglegenai.async_client.models._stream_generate_content = chatgooglegenai.async_client.models.generate_content_stream
+                            chatgooglegenai.async_client.models.generate_content_stream = (
+                                InvokeAsyncIterator(
+                                    self.config,
+                                    chatgooglegenai.async_client.models._stream_generate_content,
+                                )
+                                .set_client(
+                                    LANGCHAIN_FRAMEWORK_PROVIDER,
+                                    LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
+                                    None,
+                                )
+                                .uses_protobuf()
+                                .invoke
+                            )
+
+                    # Handle sync streaming for new SDK
+                    if hasattr(
+                        chatgooglegenai.client.models, "generate_content_stream"
+                    ):
+                        chatgooglegenai.client.models._stream_generate_content = (
+                            chatgooglegenai.client.models.generate_content_stream
+                        )
+                        chatgooglegenai.client.models.generate_content_stream = (
+                            Invoke(
+                                self.config,
+                                chatgooglegenai.client.models._stream_generate_content,
+                            )
+                            .set_client(
+                                LANGCHAIN_FRAMEWORK_PROVIDER,
+                                LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
+                                None,
+                            )
+                            .uses_protobuf()
+                            .invoke
+                        )
+                else:
+                    # Old google.generativeai SDK - use client.generate_content directly
+                    chatgooglegenai.client._generate_content = (
+                        chatgooglegenai.client.generate_content
+                    )
+                    chatgooglegenai.client.generate_content = (
+                        Invoke(self.config, chatgooglegenai.client._generate_content)
+                        .set_client(
+                            LANGCHAIN_FRAMEWORK_PROVIDER,
+                            LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
+                            None,
+                        )
+                        .uses_protobuf()
+                        .invoke
+                    )
+
+                    if chatgooglegenai.async_client is not None:
+                        chatgooglegenai.async_client._stream_generate_content = (
+                            chatgooglegenai.async_client.stream_generate_content
+                        )
+                        chatgooglegenai.async_client.stream_generate_content = (
+                            InvokeAsyncIterator(
+                                self.config,
+                                chatgooglegenai.async_client._stream_generate_content,
+                            )
+                            .set_client(
+                                LANGCHAIN_FRAMEWORK_PROVIDER,
+                                LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
+                                None,
+                            )
+                            .uses_protobuf()
+                            .invoke
+                        )
 
                 chatgooglegenai.client._memori_installed = True
 

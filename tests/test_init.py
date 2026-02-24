@@ -136,3 +136,28 @@ def test_embed_texts_uses_config_defaults(mocker):
         model="test-model",
         async_=False,
     )
+
+
+def test_recall_defaults_to_config_limit_in_cloud(monkeypatch, mocker):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+
+    mem = Memori().attribution(entity_id="entity-id", process_id="process-id")
+    mem.config.recall_facts_limit = 10
+
+    post = mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={"facts": [], "messages": []},
+    )
+
+    mem.recall("test query")
+
+    assert post.call_args[0][1] == "cloud/recall"
+    payload = post.call_args[0][2]
+    assert payload["limit"] == 10
+
+    mem.recall("test query", limit=3)
+    payload = post.call_args[0][2]
+    assert payload["limit"] == 3
