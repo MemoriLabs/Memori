@@ -7,6 +7,10 @@
 <p align="center">
   <i>Memori plugs into the software and infrastructure you already use. It is LLM, datastore and framework agnostic and seamlessly integrates into the architecture you've already designed.</i>
 </p>
+
+<p align="center">
+  <strong>→ <a href="https://memorilabs.ai/docs/memori-cloud/">Memori Cloud</a></strong> — Zero config. Get an API key and start building in minutes.
+</p>
 <p align="center">
   <a href="https://trendshift.io/repositories/15418">
     <img src="https://trendshift.io/_next/image?url=https%3A%2F%2Ftrendshift.io%2Fapi%2Fbadge%2Frepositories%2F15418&w=640&q=75" alt="Memori%2fLabs%2FMemori | Trendshif">
@@ -47,77 +51,40 @@ Install Memori:
 pip install memori
 ```
 
-## Quickstart Example
+### Quickstart
+
+Sign up at [app.memorilabs.ai](https://app.memorilabs.ai), get a Memori API key, and start building. Full docs: [memorilabs.ai/docs/memori-cloud/](https://memorilabs.ai/docs/memori-cloud/).
+
+Set `MEMORI_API_KEY` and your LLM API key (e.g. `OPENAI_API_KEY`), then:
 
 ```python
 import os
-import sqlite3
-
 from memori import Memori
 from openai import OpenAI
 
+# Requires MEMORI_API_KEY and OPENAI_API_KEY in your environment
+client = OpenAI()
+mem = Memori().llm.register(client)
 
-def get_sqlite_connection():
-    return sqlite3.connect("memori.db")
-
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-memori = Memori(conn=get_sqlite_connection).llm.register(client)
-memori.attribution(entity_id="123456", process_id="test-ai-agent")
-memori.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="support_agent")
 
 response = client.chat.completions.create(
-    model="gpt-4.1-mini",
-    messages=[
-        {"role": "user", "content": "My favorite color is blue."}
-    ]
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "My favorite color is blue."}]
 )
-print(response.choices[0].message.content + "\n")
-
-# Advanced Augmentation runs asynchronously to efficiently
-# create memories. For this example, a short lived command
-# line program, we need to wait for it to finish.
-
-memori.augmentation.wait()
-
-# Memori stored that your favorite color is blue in SQLite.
-# Now reset everything so there's no prior context.
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-memori = Memori(conn=get_sqlite_connection).llm.register(client)
-memori.attribution(entity_id="123456", process_id="test-ai-agent")
+# Conversations are persisted and recalled automatically.
 
 response = client.chat.completions.create(
-    model="gpt-4.1-mini",
-    messages=[
-        {"role": "user", "content": "What's my favorite color?"}
-    ]
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "What's my favorite color?"}]
 )
-print(response.choices[0].message.content + "\n")
+# Memori recalls that your favorite color is blue.
 ```
 
 ## Explore the Memories
 
-```bash
-/bin/echo "select * from memori_conversation_message" | /usr/bin/sqlite3 memori.db
-/bin/echo "select * from memori_entity_fact" | /usr/bin/sqlite3 memori.db
-/bin/echo "select * from memori_process_attribute" | /usr/bin/sqlite3 memori.db
-/bin/echo "select * from memori_knowledge_graph" | /usr/bin/sqlite3 memori.db
-```
+Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playground, and API Keys.
 
-## What's New In v3?
-
-- Significant performance improvements using Advanced Augmentation.
-- Threaded, zero latency replacement for the v2 extraction agent.
-- LLM agnostic with support for all of the major foundational models.
-- Datastore agnostic with support for all major databases and document stores.
-- Adapter/driver architecture to make contributions easier.
-- Vectorized memories and in-memory semantic search for more accurate context.
-- Third normal form schema including storage of semantic triples for a knowledge graph.
-- Reduced development overhead to a single line of code.
-- Automatic schema migrations.
 
 ## Attribution
 
@@ -149,35 +116,7 @@ session_id = mem.config.session_id
 mem.set_session(session_id)
 ```
 
-## Suggested Setup
-
-To make sure everything is installed in the most efficient manner, we suggest you execute the following once:
-
-```bash
-python -m memori setup
-```
-
-This step is not necessary but will prep your environment for faster execution. If you do not perform this step, it will be executed the first time Memori is run which will cause the first execution (and only the first one) to be a little slower.
-
-## Configure Your Database
-
-1. Run this command once, via CI/CD or anytime you update Memori.
-
-    ```python
-    Memori(conn=db_session_factory).config.storage.build()
-    ```
-
-2. Instantiate Memori with the connection factory.
-
-    ```python
-    from openai import OpenAI
-    from memori import Memori
-
-    client = OpenAI(...)
-    mem = Memori(conn=db_session_factory).llm.register(client)
-    ```
-
-## Supported LLM
+## Supported LLMs
 
 - Anthropic
 - Bedrock
@@ -195,25 +134,6 @@ _(unstreamed, streamed, synchronous and asynchronous)_
 ## Supported Platforms
 
 - Nebius AI Studio
-
-## Supported Database Integrations
-
-- **DB API 2.0** - Direct support for any Python database driver that implements the [PEP 249 Database API Specification v2.0](https://peps.python.org/pep-0249/). This includes drivers like `psycopg`, `pymysql`, `MySQLdb`, `cx_Oracle`, `oracledb`, and `sqlite3`.
-- **Django** - Native integration with Django's ORM and database layer
-- SQLAlchemy
-
-## Supported Datastores
-
-- [CockroachDB](https://github.com/MemoriLabs/Memori/tree/main/examples/cockroachdb) - Full example with setup instructions
-- MariaDB
-- [MongoDB](https://github.com/MemoriLabs/Memori/tree/main/examples/mongodb) - Full example with setup instructions
-- MySQL
-- [OceanBase](https://github.com/MemoriLabs/Memori/tree/main/examples/oceanbase) - Full example with setup instructions
-- [Neon](https://github.com/MemoriLabs/Memori/tree/main/examples/neon) - Full example with setup instructions
-- Oracle
-- [PostgreSQL](https://github.com/MemoriLabs/Memori/tree/main/examples/postgres) - Full example with setup instructions
-- [SQLite](https://github.com/MemoriLabs/Memori/tree/main/examples/sqlite) - Full example with setup instructions
-- Supabase
 
 ## Examples
 
@@ -262,7 +182,7 @@ At any time, you can check your quota by executing the following:
 python -m memori quota
 ```
 
-Or by checking your account at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
+Or by checking your account at [https://app.memorilabs.ai/](https://app.memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
 
 If your API key exceeds its quota limits we will email you and let you know.
 
@@ -289,7 +209,8 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 
 ## Support
 
-- **Documentation**: [https://memorilabs.ai/docs](https://memorilabs.ai/docs)
+- **Memori Cloud Documentation**: [memorilabs.ai/docs/memori-cloud/](https://memorilabs.ai/docs/memori-cloud/)
+- **Memori BYODB Documentation**: [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/)
 - **Discord**: [https://discord.gg/abD4eGym6v](https://discord.gg/abD4eGym6v)
 - **Issues**: [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
 
