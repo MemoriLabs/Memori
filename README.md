@@ -58,7 +58,6 @@ Sign up at [app.memorilabs.ai](https://app.memorilabs.ai), get a Memori API key,
 Set `MEMORI_API_KEY` and your LLM API key (e.g. `OPENAI_API_KEY`), then:
 
 ```python
-import os
 from memori import Memori
 from openai import OpenAI
 
@@ -84,6 +83,9 @@ response = client.chat.completions.create(
 ## Explore the Memories
 
 Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playground, and API Keys.
+
+> Want to use your own database? Check out docs for Memori BYODB here:
+> [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
 
 
 ## Attribution
