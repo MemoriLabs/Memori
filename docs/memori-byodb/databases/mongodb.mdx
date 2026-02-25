@@ -1,0 +1,94 @@
+---
+title: MongoDB
+description: Set up Memori with MongoDB — document-oriented AI memory using PyMongo.
+---
+
+# MongoDB
+
+MongoDB stores data as flexible JSON-like documents. Memori integrates through PyMongo, giving you a NoSQL option for AI agent memory.
+
+## Install
+
+```bash
+pip install memori pymongo
+```
+
+## Quick Start
+
+```python
+from memori import Memori
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017")
+
+def get_db():
+    return client["memori_db"]
+
+mem = Memori(conn=get_db)
+mem.config.storage.build()
+```
+
+## Connection Strings
+
+| Environment     | Connection String                                    |
+| --------------- | ---------------------------------------------------- |
+| **Local**       | `mongodb://localhost:27017`                          |
+| **With Auth**   | `mongodb://user:password@localhost:27017`            |
+| **Atlas (SRV)** | `mongodb+srv://user:password@cluster.mongodb.net`    |
+| **Replica Set** | `mongodb://host1:27017,host2:27017/?replicaSet=myRS` |
+
+## Complete Example
+
+```python
+import os
+from pymongo import MongoClient
+from memori import Memori
+from openai import OpenAI
+
+mongo_client = MongoClient("mongodb://localhost:27017")
+
+def get_db():
+    return mongo_client["memori_db"]
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=get_db).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+mem.config.storage.build()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "I love hiking in the Rockies."}]
+)
+print(response.choices[0].message.content)
+
+mem.augmentation.wait()
+facts = mem.recall("hobbies and outdoor activities")
+print(facts)
+```
+
+## MongoDB Atlas
+
+```python
+from pymongo import MongoClient
+
+mongo_client = MongoClient(
+    "mongodb+srv://user:password@cluster.mongodb.net"
+    "/?retryWrites=true&w=majority"
+)
+
+def get_db():
+    return mongo_client["memori_db"]
+```
+
+## Connection Pooling
+
+PyMongo manages its own connection pool:
+
+```python
+mongo_client = MongoClient(
+    "mongodb://localhost:27017",
+    maxPoolSize=50,
+    minPoolSize=5,
+    maxIdleTimeMS=30000
+)
+```

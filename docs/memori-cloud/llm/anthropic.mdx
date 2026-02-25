@@ -1,0 +1,102 @@
+---
+title: Anthropic
+description: Using Memori with Anthropic Claude models on Memori Cloud.
+---
+
+# Anthropic
+
+Memori Cloud supports all Anthropic Claude models. The `max_tokens` parameter is required for all Anthropic API calls.
+
+## Quick Start
+
+<CodeGroup title="Anthropic Integration">
+
+```python {{ title: 'Sync' }}
+from anthropic import Anthropic
+from memori import Memori
+
+client = Anthropic()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="claude_assistant")
+
+response = client.messages.create(
+    model="claude-sonnet-4-5-20250929",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.content[0].text)
+```
+
+```python {{ title: 'Async' }}
+import asyncio
+from anthropic import AsyncAnthropic
+from memori import Memori
+
+client = AsyncAnthropic()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="claude_assistant")
+
+async def main():
+    response = await client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.content[0].text)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+from anthropic import Anthropic
+from memori import Memori
+
+client = Anthropic()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="claude_assistant")
+
+with client.messages.stream(
+    model="claude-sonnet-4-5-20250929",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello!"}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="")
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                           |
+| ------------ | -------------------------------- |
+| **Sync**     | `client.messages.create()`       |
+| **Async**    | `await client.messages.create()` |
+| **Streamed** | `client.messages.stream()`       |
+
+## System Prompts
+
+Anthropic supports a top-level `system` parameter separate from the `messages` array. Memori captures both.
+
+```python
+from anthropic import Anthropic
+from memori import Memori
+
+client = Anthropic()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="claude_assistant")
+
+response = client.messages.create(
+    model="claude-sonnet-4-5-20250929",
+    max_tokens=1024,
+    system="You are a helpful coding assistant.",
+    messages=[
+        {"role": "user", "content": "Explain Python decorators."}
+    ]
+)
+print(response.content[0].text)
+```

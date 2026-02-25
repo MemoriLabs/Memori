@@ -1,0 +1,102 @@
+---
+title: LangChain
+description: Using Memori with LangChain chat models on Memori Cloud.
+---
+
+# LangChain
+
+Memori Cloud supports any LangChain chat model. Each class has its own registration keyword: `ChatOpenAI` for OpenAI, `ChatAnthropic` for Anthropic, `ChatBedrock` for BedRock, `ChatGoogleGenerativeAI` for Google Gen AI models.
+
+## Quick Start
+
+<CodeGroup title="LangChain Integration">
+
+```python {{ title: 'Sync' }}
+from langchain_openai import ChatOpenAI
+from memori import Memori
+
+client = ChatOpenAI(model="gpt-4o-mini")
+
+mem = Memori().llm.register(chatopenai=client)
+mem.attribution(entity_id="user_123", process_id="langchain_agent")
+
+response = client.invoke("Hello!")
+print(response.content)
+```
+
+```python {{ title: 'Async' }}
+import asyncio
+from langchain_openai import ChatOpenAI
+from memori import Memori
+
+client = ChatOpenAI(model="gpt-4o-mini")
+
+mem = Memori().llm.register(chatopenai=client)
+mem.attribution(entity_id="user_123", process_id="langchain_agent")
+
+async def main():
+    response = await client.ainvoke("Hello!")
+    print(response.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+from langchain_openai import ChatOpenAI
+from memori import Memori
+
+client = ChatOpenAI(model="gpt-4o-mini")
+
+mem = Memori().llm.register(chatopenai=client)
+mem.attribution(entity_id="user_123", process_id="langchain_agent")
+
+for chunk in client.stream("Hello!"):
+    print(chunk.content, end="")
+```
+
+</CodeGroup>
+
+## Different Providers
+
+| Package                  | Chat Model               | Registration Keyword     |
+| ------------------------ | ------------------------ | ------------------------ |
+| `langchain-openai`       | `ChatOpenAI`             | `chatopenai=client`      |
+| `langchain-anthropic`    | `ChatAnthropic`          | `chatanthropic=client`   |
+| `langchain-google-genai` | `ChatGoogleGenerativeAI` | `chatgooglegenai=client` |
+| `langchain-aws`          | `ChatBedrock`            | `chatbedrock=client`     |
+
+<CodeGroup title="LangChain Providers">
+
+```python {{ title: 'Anthropic' }}
+from langchain_anthropic import ChatAnthropic
+from memori import Memori
+
+client = ChatAnthropic(model="claude-sonnet-4-5-20250929")
+mem = Memori().llm.register(chatopenai=client)
+```
+
+```python {{ title: 'Google Gemini' }}
+from langchain_google_genai import ChatGoogleGenerativeAI
+from memori import Memori
+
+client = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
+mem = Memori().llm.register(chatgooglegenai=client)
+```
+
+```python {{ title: 'AWS Bedrock' }}
+from langchain_aws import ChatBedrock
+from memori import Memori
+
+client = ChatBedrock(model_id="anthropic.claude-sonnet-4-5-20250929", region_name="us-east-1")
+mem = Memori().llm.register(chatbedrock=client)
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                   |
+| ------------ | ------------------------ |
+| **Sync**     | `client.invoke()`        |
+| **Async**    | `await client.ainvoke()` |
+| **Streamed** | `client.stream()`        |

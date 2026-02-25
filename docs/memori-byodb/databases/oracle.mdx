@@ -1,0 +1,116 @@
+---
+title: Oracle
+description: Set up Memori with Oracle Database — enterprise-grade AI memory for Oracle infrastructure.
+---
+
+# Oracle
+
+Oracle Database integrates with Memori through SQLAlchemy, so you can add AI agent memory to existing Oracle infrastructure.
+
+## Install
+
+<CodeGroup title="Install Oracle Driver">
+
+```bash {{ title: 'oracledb (Recommended)' }}
+pip install memori oracledb
+```
+
+```bash {{ title: 'cx_Oracle (Legacy)' }}
+pip install memori cx_Oracle
+```
+
+</CodeGroup>
+
+## Quick Start
+
+<CodeGroup title="Oracle Connection">
+
+```python {{ title: 'oracledb (Modern)' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "oracle+oracledb://user:password@hostname:1521/service_name"
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'cx_Oracle (Legacy)' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "oracle+cx_oracle://user:password@hostname:1521/service_name"
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+</CodeGroup>
+
+## Connection Strings
+
+| Format           | Connection String                                                       |
+| ---------------- | ----------------------------------------------------------------------- |
+| **oracledb**     | `oracle+oracledb://user:pass@host:1521/service_name`                    |
+| **cx_Oracle**    | `oracle+cx_oracle://user:pass@host:1521/service_name`                   |
+| **TNS Name**     | `oracle+oracledb://user:pass@tns_alias`                                 |
+| **Oracle Cloud** | `oracle+oracledb://user:pass@host:1522/service?ssl_server_dn_match=yes` |
+
+## Complete Example
+
+```python
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine(
+    "oracle+oracledb://memori_user:password@oracle-host:1521/ORCL",
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=300
+)
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+mem.config.storage.build()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Our quarterly review is on March 15."}]
+)
+print(response.choices[0].message.content)
+
+mem.augmentation.wait()
+facts = mem.recall("quarterly review date")
+print(facts)
+```
+
+## Oracle Cloud
+
+For Oracle Autonomous Database, use the wallet-based connection:
+
+```python
+import oracledb
+
+oracledb.init_oracle_client(config_dir="/path/to/wallet")
+
+engine = create_engine(
+    "oracle+oracledb://ADMIN:password@db_alias"
+    "?config_dir=/path/to/wallet"
+    "&wallet_location=/path/to/wallet"
+    "&wallet_password=wallet_password"
+)
+```

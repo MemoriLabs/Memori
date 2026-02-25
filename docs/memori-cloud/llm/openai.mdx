@@ -1,0 +1,132 @@
+---
+title: OpenAI
+description: Using Memori with OpenAI models including GPT-4o, GPT-4.1, and the Responses API on Memori Cloud.
+---
+
+# OpenAI
+
+Memori supports all OpenAI Chat Completions and Responses APIs. Both sync and async clients are fully supported.
+
+## Quick Start
+
+<CodeGroup title="OpenAI Integration">
+
+```python {{ title: 'Sync' }}
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+```python {{ title: 'Async' }}
+import asyncio
+from memori import Memori
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+async def main():
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+stream = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+```python {{ title: 'Responses API' }}
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="Hello!",
+    instructions="You are a helpful assistant."
+)
+print(response.output_text)
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode              | Method                                   |
+| ----------------- | ---------------------------------------- |
+| **Sync**          | `client.chat.completions.create()`       |
+| **Async**         | `await client.chat.completions.create()` |
+| **Streamed**      | `stream=True` parameter                  |
+| **Responses API** | `client.responses.create()`              |
+
+## Multi-Turn Conversations
+
+Memori automatically captures each interaction and links them within the same session.
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+messages = [
+    {"role": "user", "content": "My name is Alice."}
+]
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages
+)
+messages.append({
+    "role": "assistant",
+    "content": response.choices[0].message.content
+})
+
+messages.append({
+    "role": "user",
+    "content": "What's my name?"
+})
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages
+)
+print(response.choices[0].message.content)
+```

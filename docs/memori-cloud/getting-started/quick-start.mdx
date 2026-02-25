@@ -1,0 +1,128 @@
+---
+title: Quick Start
+description: Get started with Memori Cloud in under 3 minutes.
+---
+
+# Quick Start
+
+Get started with Memori in under 3 minutes. No database setup required — just your Memori API key and your favorite LLM provider.
+
+<Note>
+  In this example, we'll use Memori with OpenAI. Check out our [Integration
+  guides](/docs/memori-cloud/llm/overview) for other LLM providers and
+  frameworks.
+</Note>
+
+## Prerequisites
+
+- Python 3.10 or higher
+- An OpenAI API key
+- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+
+## Step 1: Install Libraries
+
+Install Memori and the OpenAI SDK:
+
+<CodeGroup title="Install Memori">
+
+```bash {{ title: 'pip' }}
+pip install memori openai
+```
+
+```bash {{ title: 'poetry' }}
+poetry add memori openai
+```
+
+```bash {{ title: 'uv' }}
+uv add memori openai
+```
+
+</CodeGroup>
+
+## Step 2: Set Environment Variables
+
+Set your API keys as environment variables:
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+## Step 3: Run Your First Memori Application
+
+Create a new Python file `quickstart.py` and add the following code:
+
+### Setup & Configuration
+
+Import libraries and initialize Memori with your API key and OpenAI client.
+
+- Memori reads your `MEMORI_API_KEY` from the environment automatically
+- `llm.register()` wraps your LLM client for automatic memory capture
+- `attribution()` links memories to a specific user and process
+
+```python
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="test-ai-agent")
+```
+
+### First Conversation
+
+Tell the LLM a fact about yourself. Memori automatically captures the
+conversation and processes it through Advanced Augmentation.
+
+Since Advanced Augmentation runs asynchronously, call `augmentation.wait()` in
+short-lived scripts to ensure memories are fully processed before continuing.
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "My favorite color is blue."}
+    ]
+)
+print(response.choices[0].message.content + "\n")
+
+# Wait for Advanced Augmentation to finish
+mem.augmentation.wait()
+```
+
+### Memory Recall
+
+Create a completely new client and Memori instance — no prior context
+carried over. Memori automatically injects relevant facts via semantic
+search, so the second response should correctly recall your favorite
+color. This verifies recall from stored memories, not prior in-memory message history.
+
+```python
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="test-ai-agent")
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "What's my favorite color?"}
+    ]
+)
+print(response.choices[0].message.content + "\n")
+```
+
+## Step 4: Run the Application
+
+Execute your Python file:
+
+```bash
+python quickstart.py
+```
+
+You should see the AI respond to both questions, with the second response correctly recalling that your favorite color is blue!
+
+## Step 5: Check the Dashboard
+
+Visit [app.memorilabs.ai](https://app.memorilabs.ai) to see your memory usage and try the Graph Explorer to interact with your memories visually.

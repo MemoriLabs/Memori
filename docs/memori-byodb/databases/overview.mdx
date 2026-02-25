@@ -1,0 +1,162 @@
+---
+title: Databases Overview
+description: Memori supports SQLite, PostgreSQL, MySQL, MariaDB, Oracle, MongoDB, CockroachDB, and OceanBase, plus providers like Neon, Supabase, and AWS RDS/Aurora.
+---
+
+# Databases Overview
+
+Memori is database-agnostic. With the BYODB (Bring Your Own Database) approach, your data stays on your infrastructure — you choose the database, you own the data.
+
+<Note>
+  Want a zero-setup option? Try Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Supported Databases
+
+| Database                                                    | Best For                           | Driver                     | Connection String                                   |
+| ----------------------------------------------------------- | ---------------------------------- | -------------------------- | --------------------------------------------------- |
+| **[SQLite](/docs/memori-byodb/databases/sqlite)**           | Development, prototyping           | Built-in (`sqlite3`)       | `sqlite:///memori.db`                               |
+| **[PostgreSQL](/docs/memori-byodb/databases/postgres)**     | Production, high concurrency       | `psycopg2-binary`          | `postgresql://user:pass@host/db`                    |
+| **[MySQL](/docs/memori-byodb/databases/mysql)**             | Existing MySQL infrastructure      | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
+| **MariaDB**                                                 | MySQL-compatible alternative       | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
+| **[Oracle](/docs/memori-byodb/databases/oracle)**           | Enterprise environments            | `oracledb` or `cx_Oracle`  | `oracle+oracledb://user:pass@host/service`          |
+| **[MongoDB](/docs/memori-byodb/databases/mongodb)**         | Document-oriented, flexible schema | `pymongo`                  | `mongodb://host:27017`                              |
+| **[CockroachDB](/docs/memori-byodb/databases/cockroachdb)** | Distributed SQL, global scale      | `psycopg2-binary`          | `cockroachdb+psycopg2://user:pass@host/db`          |
+| **OceanBase**                                               | Distributed HTAP workloads         | `pyobvector`               | `mysql+pyobvector://user:pass@host:2881/db`         |
+| **Neon**                                                    | Serverless PostgreSQL              | `psycopg2-binary`          | `postgresql://user:pass@ep-xxx.neon.tech/db`        |
+| **Supabase**                                                | Hosted PostgreSQL with extras      | `psycopg2-binary`          | `postgresql://user:pass@db.xxx.supabase.co:5432/db` |
+
+MariaDB uses the same drivers and connection strings as MySQL. Neon and Supabase are PostgreSQL-compatible — see the [PostgreSQL](/docs/memori-byodb/databases/postgres) page for full setup details.
+
+## Managed Providers
+
+Memori also works with hosted services that expose standard PostgreSQL/MySQL endpoints:
+
+| Provider       | Engine Compatibility | Typical Host Pattern  |
+| -------------- | -------------------- | --------------------- |
+| **Neon**       | PostgreSQL           | `*.neon.tech`         |
+| **Supabase**   | PostgreSQL           | `*.supabase.co`       |
+| **AWS RDS**    | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
+| **AWS Aurora** | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
+
+## Quick Start Code
+
+<CodeGroup title="Database Setup">
+
+```python {{ title: 'SQLite (DB API 2.0)' }}
+import sqlite3
+from memori import Memori
+
+def get_connection():
+    return sqlite3.connect("memori.db")
+
+mem = Memori(conn=get_connection)
+mem.config.storage.build()
+```
+
+```python {{ title: 'PostgreSQL' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "postgresql+psycopg://user:password@localhost:5432/memori_db",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'MySQL' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "mysql+pymysql://user:password@localhost:3306/memori_db",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'Oracle' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "oracle+oracledb://user:password@localhost:1521/service_name"
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'MongoDB' }}
+from memori import Memori
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017")
+
+def get_db():
+    return client["memori_db"]
+
+mem = Memori(conn=get_db)
+mem.config.storage.build()
+```
+
+```python {{ title: 'CockroachDB' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "cockroachdb+psycopg2://user:password@localhost:26257/memori_db",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'OceanBase' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "mysql+pyobvector://user:password@localhost:2881/memori_db"
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+</CodeGroup>
+
+## Connection Methods
+
+Memori supports four connection methods depending on your stack:
+
+| Method         | Description                               | Use Case                                  |
+| -------------- | ----------------------------------------- | ----------------------------------------- |
+| **SQLAlchemy** | Industry-standard ORM with `sessionmaker` | Production applications, connection pools |
+| **DB API 2.0** | Direct Python database drivers (PEP 249)  | Lightweight, minimal dependencies         |
+| **Django ORM** | Native Django ORM integration             | Django applications                       |
+| **MongoDB**    | Function returning a database object      | Document databases via `pymongo`          |
+
+Memori accepts a `conn` parameter — a callable that returns a new connection each time it is called.
+
+- **SQLAlchemy databases** (SQLite, PostgreSQL, MySQL, MariaDB, Oracle, CockroachDB, OceanBase, plus providers like Neon/Supabase/RDS/Aurora): pass a `sessionmaker`
+- **DB API 2.0**: pass a function that returns a PEP 249 connection object
+- **Django ORM**: use Django's native ORM integration
+- **MongoDB**: pass a function returning a database instance

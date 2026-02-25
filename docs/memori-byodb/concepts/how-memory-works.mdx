@@ -1,0 +1,130 @@
+---
+title: How Memori Works
+description: Understand the core concepts behind Memori — entities, processes, sessions, memory types, attribution, and how recall brings it all together.
+---
+
+# How Memori Works
+
+Memori gives your AI application long-term memory. Instead of forgetting everything after each conversation, your AI can remember facts, preferences, and context across sessions and across different applications — all stored in your own database.
+
+## Attribution
+
+Every memory in Memori is tagged with three pieces of information: **who**, **what**, and **when**.
+
+- **Entity (`entity_id`)** — The person, place, or thing generating memories. Typically a user ID (e.g., `"user_alice"`, `"company_acme"`).
+- **Process (`process_id`)** — The agent, program, or workflow creating memories (e.g., `"support_bot"`, `"code_review_agent"`).
+- **Session (`session_id`)** — Groups related LLM interactions into a conversation thread. Auto-generated as a UUID by default.
+
+The combination of `entity_id` + `process_id` + `session_id` creates a unique memory scope — different users have isolated memories, the same user can have different context in different applications, and each conversation is tracked separately.
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+
+# Set attribution before any LLM calls
+mem.attribution(
+    entity_id="user_alice",
+    process_id="support_bot"
+)
+# session_id is auto-generated
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "I prefer dark mode."}
+    ]
+)
+```
+
+## Memory Types
+
+When you have a conversation through a Memori-wrapped LLM client, Advanced Augmentation extracts structured memories in the background:
+
+| Type            | What it captures           | Example                                         |
+| --------------- | -------------------------- | ----------------------------------------------- |
+| **Facts**       | Objective information      | "User uses PostgreSQL for production databases" |
+| **Preferences** | Choices, opinions, tastes  | "Prefers concise answers"                       |
+| **Skills**      | Abilities and expertise    | "Experienced with React (5 years)"              |
+| **Rules**       | Constraints and principles | "Follows test-driven development"               |
+| **Events**      | Milestones and occurrences | "Product launched recently"                     |
+
+## How Recall Works
+
+Recall brings stored memories back into your AI conversations. There are two modes.
+
+### Automatic Recall (Default)
+
+On every LLM call, Memori automatically:
+
+1. Intercepts the outbound request
+2. Uses semantic search to find relevant facts for the current entity
+3. Injects the most relevant memories into the system prompt
+4. Forwards the enriched request to the LLM
+
+No extra code required — it happens transparently.
+
+### Manual Recall
+
+Use `mem.recall()` when you want to retrieve memories explicitly — for custom prompts, displaying memories in a UI, or debugging.
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.attribution(entity_id="user_alice", process_id="support_bot")
+
+facts = mem.recall("coding preferences", limit=5)
+
+for fact in facts:
+    print(f"Fact: {fact.content}")
+    print(f"Score: {fact.similarity:.4f}")
+```
+
+Each returned fact includes `id`, `content`, `similarity` (0–1 relevance score), `rank_score`, and `date_created`.
+
+### Recall Configuration
+
+Memori uses the **all-mpnet-base-v2** sentence transformer with cosine similarity for semantic search. You can tune recall behavior with these configuration options:
+
+| Option                                  | Default | Description                                        |
+| --------------------------------------- | ------- | -------------------------------------------------- |
+| `mem.config.recall_relevance_threshold` | `0.1`   | Minimum similarity score for a fact to be included |
+| `mem.config.recall_embeddings_limit`    | `1000`  | Maximum number of embeddings to compare against    |
+
+```python
+# Example: tune recall for broader or narrower results
+mem.config.recall_relevance_threshold = 0.05  # Lower = more results
+mem.config.recall_embeddings_limit = 500      # Reduce for lower memory usage
+```
+
+## Memory Lifecycle
+
+<Mermaid>
+  {`graph LR
+    A[Conversation] --> B[Capture]
+    B --> C[Augmentation]
+    C --> D[Extraction]
+    D --> E[Storage in<br/>Your Database]
+    E --> F[Recall]
+    F --> G[Injected into<br/>next LLM call]`}
+</Mermaid>
+
+1. **Conversation** — Your user talks to your AI through the wrapped LLM client
+2. **Capture** — Memori intercepts and stores the raw conversation in your database
+3. **Augmentation** — Advanced Augmentation processes the conversation asynchronously
+4. **Extraction** — Facts, preferences, skills, rules, and events are identified
+5. **Storage** — Extracted memories are stored in your database with vector embeddings
+6. **Recall** — On the next LLM call, relevant memories are retrieved and injected into context

@@ -1,0 +1,92 @@
+---
+title: SQLite
+description: Set up Memori with SQLite — zero install, file-based storage perfect for development and prototyping.
+---
+
+# SQLite
+
+SQLite requires no server setup and stores data in a local file. It is built into Python, so it works out of the box.
+
+## Install
+
+No extra packages needed — SQLite is built into Python.
+
+```bash
+pip install memori openai
+```
+
+## Quick Start
+
+<CodeGroup title="SQLite Connection">
+
+```python {{ title: 'SQLAlchemy (Recommended)' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'DB API 2.0' }}
+import sqlite3
+from memori import Memori
+
+def get_connection():
+    return sqlite3.connect("memori.db")
+
+mem = Memori(conn=get_connection)
+mem.config.storage.build()
+```
+
+</CodeGroup>
+
+## Connection Strings
+
+| Path Type     | Connection String                     | Description                  |
+| ------------- | ------------------------------------- | ---------------------------- |
+| **Relative**  | `sqlite:///memori.db`                 | File in current directory    |
+| **Absolute**  | `sqlite:////home/user/data/memori.db` | Absolute path (four slashes) |
+| **In-Memory** | `sqlite:///:memory:`                  | Temporary, lost on exit      |
+
+## Complete Example
+
+```python
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+mem.config.storage.build()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "My favorite language is Python."}]
+)
+print(response.choices[0].message.content)
+
+mem.augmentation.wait()
+facts = mem.recall("favorite programming language")
+print(facts)
+```
+
+## Multi-Threading
+
+For web servers or multi-threaded apps, disable the same-thread check:
+
+```python
+engine = create_engine(
+    "sqlite:///memori.db",
+    connect_args={"check_same_thread": False}
+)
+```

@@ -1,0 +1,96 @@
+---
+title: CockroachDB
+description: Set up Memori with CockroachDB — distributed SQL database with PostgreSQL compatibility, automatic scaling, and strong consistency.
+---
+
+# CockroachDB
+
+CockroachDB is a distributed SQL database that uses the PostgreSQL wire protocol. It works with Memori through the same `psycopg` driver as PostgreSQL — no special adapter needed.
+
+## Install
+
+```bash
+pip install memori psycopg2-binary
+```
+
+## Quick Start
+
+<CodeGroup title="CockroachDB Connection">
+
+```python {{ title: 'Basic' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "cockroachdb+psycopg2://user:password@localhost:26257/memori_db",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'CockroachDB Cloud' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "cockroachdb+psycopg2://user:password@free-tier.gcp-us-central1.cockroachlabs.cloud:26257/memori_db"
+    "?sslmode=verify-full",
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+</CodeGroup>
+
+## Connection Strings
+
+| Environment           | Connection String                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| **Local**             | `cockroachdb+psycopg2://root@localhost:26257/memori_db`                                            |
+| **With Auth**         | `cockroachdb+psycopg2://user:pass@host:26257/memori_db`                                            |
+| **CockroachDB Cloud** | `cockroachdb+psycopg2://user:pass@cluster.cockroachlabs.cloud:26257/memori_db?sslmode=verify-full` |
+| **PostgreSQL scheme** | `postgresql+psycopg2://user:pass@host:26257/memori_db`                                             |
+
+## Complete Example
+
+```python
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine(
+    os.getenv("COCKROACHDB_URL"),
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=300
+)
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+mem.config.storage.build()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "I manage a distributed systems team."}]
+)
+print(response.choices[0].message.content)
+
+mem.augmentation.wait()
+facts = mem.recall("job role")
+print(facts)
+```

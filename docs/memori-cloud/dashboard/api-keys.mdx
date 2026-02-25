@@ -1,0 +1,54 @@
+---
+title: API Keys
+description: Create and manage Memori API keys from the dashboard.
+---
+
+# API Keys
+
+Use the **API keys** page in [app.memorilabs.ai](https://app.memorilabs.ai)
+to create and manage keys for your organization.
+
+## Overview
+
+The table includes:
+
+- **Name**
+- **Key** (masked)
+- **Created at**
+- **Last used**
+
+If no keys are connected yet, the table shows **No connected APIs.**
+
+## Create a New API Key
+
+1. Open **API keys** in the dashboard sidebar.
+2. Click **Create API key**.
+3. In **New API key**, enter a value in **Name**.
+4. Click **Create key**.
+
+![API keys page with empty table state and New API key modal](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/new-api-key-modal.webp)
+
+## Copy the Key (Shown Once)
+
+After creating a key, the **Your API key** modal appears with the full key
+value and a **Copy** button.
+
+<Admonition type="warning" title="Shown Once">
+  The full key value is shown only once. Copy it and store it securely before
+  clicking **Continue**.
+</Admonition>
+
+1. Click **Copy**.
+2. Click **Continue** to return to the API keys table.
+
+![API keys page with table row and Your API key modal for one-time copy](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/your-api-key-modal.webp)
+
+## Security Best Practices
+
+<Admonition type="danger" title="Never Commit API Keys">
+  Never commit API keys to version control. Treat API keys like passwords.
+</Admonition>
+
+- Store keys in environment variables or a secure secrets manager
+- Rotate keys immediately if you suspect exposure
+- Use separate keys for development, staging, and production

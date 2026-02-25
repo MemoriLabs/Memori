@@ -1,0 +1,88 @@
+---
+title: xAI Grok
+description: Using Memori with xAI Grok models via the OpenAI-compatible API on Memori Cloud.
+---
+
+# xAI Grok
+
+xAI provides an OpenAI-compatible API. Use the `openai` Python package with `base_url="https://api.x.ai/v1"` — no special adapter needed.
+
+## Quick Start
+
+<CodeGroup title="xAI Grok Integration">
+
+```python {{ title: 'Sync' }}
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key=os.getenv("XAI_API_KEY")
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="grok_assistant")
+
+response = client.chat.completions.create(
+    model="grok-2-latest",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+```python {{ title: 'Async' }}
+import os, asyncio
+from memori import Memori
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key=os.getenv("XAI_API_KEY")
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="grok_assistant")
+
+async def main():
+    response = await client.chat.completions.create(
+        model="grok-2-latest",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key=os.getenv("XAI_API_KEY")
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="grok_assistant")
+
+stream = client.chat.completions.create(
+    model="grok-2-latest",
+    messages=[{"role": "user", "content": "Hello!"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                                   |
+| ------------ | ---------------------------------------- |
+| **Sync**     | `client.chat.completions.create()`       |
+| **Async**    | `await client.chat.completions.create()` |
+| **Streamed** | `stream=True` parameter                  |

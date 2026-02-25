@@ -1,0 +1,112 @@
+---
+title: Installation
+description: Install Memori and set up your API key for the Memori Cloud.
+---
+
+# Installation
+
+Get Memori installed and connected to Memori Cloud in a few steps.
+
+## Install Memori
+
+<CodeGroup title="Install Memori">
+
+```bash {{ title: 'pip' }}
+pip install memori
+```
+
+```bash {{ title: 'poetry' }}
+poetry add memori
+```
+
+```bash {{ title: 'uv' }}
+uv add memori
+```
+
+</CodeGroup>
+
+## Install Your LLM Provider
+
+Install the SDK for your preferred LLM provider:
+
+<CodeGroup title="LLM Provider SDKs">
+
+```bash {{ title: 'OpenAI' }}
+pip install openai
+```
+
+```bash {{ title: 'Anthropic' }}
+pip install anthropic
+```
+
+```bash {{ title: 'Google Gemini' }}
+pip install google-genai
+```
+
+```bash {{ title: 'xAI Grok' }}
+pip install openai
+```
+
+```bash {{ title: 'Nebius AI Studio' }}
+pip install openai
+```
+
+```bash {{ title: 'AWS Bedrock' }}
+pip install langchain-aws
+```
+
+```bash {{ title: 'LangChain' }}
+pip install langchain-openai
+```
+
+```bash {{ title: 'Pydantic AI' }}
+pip install pydantic-ai
+```
+
+</CodeGroup>
+
+## Set Your API Key
+
+Sign up at [app.memorilabs.ai](https://app.memorilabs.ai) to get your Memori API key. The SDK reads it automatically from the environment:
+
+<Properties>
+  <Property name="MEMORI_API_KEY" type="string" required>
+    Your Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai).
+    Connects your application to Memori Cloud.
+  </Property>
+</Properties>
+
+Set this as an environment variable. The Memori SDK reads it automatically on initialization.
+
+<CodeGroup title="API Key Setup">
+
+```bash {{ title: 'Environment Variable' }}
+export MEMORI_API_KEY="your-memori-api-key"
+```
+
+```bash {{ title: '.env File' }}
+# Create a .env file in your project root
+MEMORI_API_KEY=your-memori-api-key
+OPENAI_API_KEY=your-openai-api-key
+```
+
+</CodeGroup>
+
+## Set Your LLM Provider Key
+
+You'll also need an API key for your LLM provider:
+
+```bash
+# OpenAI
+export OPENAI_API_KEY="your-openai-key"
+
+# Anthropic
+export ANTHROPIC_API_KEY="your-anthropic-key"
+
+# Google Gemini
+export GOOGLE_API_KEY="your-google-key"
+```
+
+## Verify Installation
+
+Run `pip show memori` in your terminal to confirm the package is installed.

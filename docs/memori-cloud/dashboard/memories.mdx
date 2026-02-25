@@ -1,0 +1,77 @@
+---
+title: Memories
+description: Explore memories and entities in table and graph views, then drill into details, associations, and retrieval behavior.
+---
+
+# Memories
+
+Use **Memories** in [app.memorilabs.ai](https://app.memorilabs.ai) to inspect all memories created by your configured applications and agents.
+
+The page supports two ways to explore data:
+
+- **Table** view for row-based inspection
+- **Knowledge graph** view for relationship-first exploration
+
+## Start in Table View
+
+The default table flow uses two tabs:
+
+- **Memories** for individual memory rows
+- **Subjects** for extracted entities/subjects and their counts
+
+Use **Semantic search** to find relevant rows quickly, then open the view menu to switch between **Table** and **Knowledge graph**.
+
+### Memories tab
+
+- **Summary**: The memory text captured from conversations
+- **Entity ID**: The associated entity for that memory
+- **Recalls**: Number of times this memory was retrieved
+- **# of mentions**: How often this memory was mentioned in context
+- **Last retrieved**: Most recent retrieval time
+- **Created at**: When the memory was first created
+
+![Memories table view with semantic search and table or knowledge graph switcher](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memories-overview-table.webp)
+
+### Subjects tab
+
+- **Subject**: Extracted subject/entity value
+- **Type**: Entity class (for example `GPE`, `PRODUCT`, `ORGANIZATION`, `MONEY`)
+- **Memory count**: Number of memories linked to that subject
+- **Created at**: Subject creation date
+
+The **All types** filter helps narrow the table by subject type.
+
+![Subjects table view with all types filter and subject memory counts](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memories-detail-drawer.webp)
+
+## Open Memory Details
+
+1. In **Memories**, click any row.
+2. Review the **Memory details** panel.
+3. Use the embedded **Subjects** graph and list to inspect associations.
+
+The **Details** section includes:
+
+- **Memory ID**
+- **Entity ID**
+- **Importance score**
+- **Created at**
+- **Last retrieved**
+- **Recalls**
+- **# of mentions**
+
+![Memory details drawer showing details fields and associated subjects graph](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memories-subjects-table.webp)
+
+## Switch to Knowledge Graph
+
+1. Open the view switcher and select **Knowledge graph**.
+2. Use the **Entities** tab to explore nodes and relationships.
+3. Filter with **Search memories** and time range (for example **All time**).
+
+![Entities knowledge graph view with search and time filter](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/entities-knowledge-graph.webp)
+
+## Recommended Exploration Workflow
+
+1. Start in **Memories** table to validate recency and retrieval metrics.
+2. Open **Memory details** to verify entity associations and subject links.
+3. Switch to **Knowledge graph** to follow cross-entity relationships.
+4. Open an entity and trace back through **Associated memories**.

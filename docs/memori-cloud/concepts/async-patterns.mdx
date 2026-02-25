@@ -1,0 +1,80 @@
+---
+title: Async Patterns
+description: Best practices for using Memori with async/await — AsyncOpenAI, AsyncAnthropic, and FastAPI.
+---
+
+# Async Patterns
+
+Memori works with Python's async/await out of the box. Use `AsyncOpenAI` or `AsyncAnthropic` instead of their sync counterparts — everything else stays the same.
+
+## When to Use Async
+
+| Scenario                 | Async? | Why                         |
+| ------------------------ | ------ | --------------------------- |
+| Web servers (FastAPI)    | Yes    | Concurrent request handling |
+| Chatbots with many users | Yes    | Non-blocking I/O            |
+| CLI scripts              | No     | Sync is simpler             |
+| Jupyter notebooks        | No     | Event loop already running  |
+
+## Basic Async Setup
+
+```python
+import os
+import asyncio
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import AsyncOpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+async def main():
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    mem = Memori(conn=SessionLocal).llm.register(client)
+    mem.attribution(entity_id="user_123", process_id="async_agent")
+    mem.config.storage.build()
+
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "I prefer async Python."}]
+    )
+    print(response.choices[0].message.content)
+    mem.augmentation.wait()
+
+asyncio.run(main())
+```
+
+Works identically with `AsyncAnthropic` — just swap the client.
+
+## FastAPI Example
+
+```python
+import os
+from fastapi import FastAPI
+from pydantic import BaseModel
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import AsyncOpenAI
+
+app = FastAPI()
+engine = create_engine("sqlite:///memori.db", connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+Memori(conn=SessionLocal).config.storage.build()
+
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/chat/{user_id}")
+async def chat(user_id: str, req: ChatRequest):
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    mem = Memori(conn=SessionLocal).llm.register(client)
+    mem.attribution(entity_id=user_id, process_id="fastapi_async")
+
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": req.message}]
+    )
+    return {"response": response.choices[0].message.content}
+```

@@ -1,0 +1,104 @@
+---
+title: LLM Providers Overview
+description: Memori is LLM-agnostic. Register any supported client with a local database connection and Memori handles memory capture, augmentation, and recall automatically.
+---
+
+# LLM Providers Overview
+
+Memori works with all major LLM providers and frameworks. Register any supported client and Memori handles memory capture, augmentation, and recall automatically.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Supported Providers
+
+| Provider                                              | Integration        | Install                               |
+| ----------------------------------------------------- | ------------------ | ------------------------------------- |
+| **[OpenAI](/docs/memori-byodb/llm/openai)**           | Direct SDK wrapper | `pip install memori openai`           |
+| **[Anthropic](/docs/memori-byodb/llm/anthropic)**     | Direct SDK wrapper | `pip install memori anthropic`        |
+| **[Google Gemini](/docs/memori-byodb/llm/gemini)**    | Direct SDK wrapper | `pip install memori google-genai`     |
+| **[xAI Grok](/docs/memori-byodb/llm/xai-grok)**       | OpenAI-compatible  | `pip install memori openai`           |
+| **[AWS Bedrock](/docs/memori-byodb/llm/aws-bedrock)** | LangChain adapter  | `pip install memori langchain-aws`    |
+| **[LangChain](/docs/memori-byodb/llm/langchain)**     | Framework support  | `pip install memori langchain-openai` |
+| **[Agno](/docs/memori-byodb/llm/agno)**               | Framework support  | `pip install memori agno`             |
+| **[Pydantic AI](/docs/memori-byodb/llm/pydantic-ai)** | Framework support  | `pip install memori pydantic-ai`      |
+| **[Nebius AI Studio](/docs/memori-byodb/llm/nebius)** | OpenAI-compatible  | `pip install memori openai`           |
+
+All providers support sync, async, streamed, and unstreamed modes.
+
+Any provider with an OpenAI-compatible API works by setting a custom `base_url` — including Nebius AI Studio, Deepseek, NVIDIA NIM, Azure OpenAI, and more. See [OpenAI-Compatible Providers](#openai-compatible-providers) below.
+
+## Pydantic AI
+
+Register the `Agent` instance directly — Memori wraps `run_sync` and `run` automatically.
+
+```python
+from memori import Memori
+from pydantic_ai import Agent
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+agent = Agent("openai:gpt-4o-mini")
+mem = Memori(conn=SessionLocal).llm.register(agent)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="pydantic_agent")
+
+result = agent.run_sync("Hello!")
+print(result.output)
+```
+
+## OpenAI-Compatible Providers
+
+Any provider with an OpenAI-compatible API works by setting a custom `base_url`. Examples: xAI, Nebius AI Studio, Azure OpenAI.
+
+```python
+import os
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(
+    base_url="https://api.studio.nebius.com/v1/",
+    api_key=os.getenv("NEBIUS_API_KEY"),
+)
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.chat.completions.create(
+    model="meta-llama/Llama-3.3-70B-Instruct",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+## OpenAI Responses API
+
+```python
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="Hello!",
+    instructions="You are a helpful assistant."
+)
+print(response.output_text)
+```

@@ -1,0 +1,83 @@
+---
+title: AWS Bedrock
+description: Using Memori with AWS Bedrock models via the LangChain ChatBedrock adapter on Memori Cloud.
+---
+
+# AWS Bedrock
+
+Memori supports AWS Bedrock through `langchain-aws`. Register using the `chatbedrock` keyword to access Claude, Llama, Mistral, and other Bedrock models.
+
+## Quick Start
+
+<CodeGroup title="Bedrock Integration">
+
+```python {{ title: 'Sync' }}
+from langchain_aws import ChatBedrock
+from memori import Memori
+
+client = ChatBedrock(
+    model_id="anthropic.claude-sonnet-4-5-20250929",
+    region_name="us-east-1"
+)
+
+mem = Memori().llm.register(chatbedrock=client)
+mem.attribution(entity_id="user_123", process_id="bedrock_agent")
+
+response = client.invoke("Hello!")
+print(response.content)
+```
+
+```python {{ title: 'Async' }}
+import asyncio
+from langchain_aws import ChatBedrock
+from memori import Memori
+
+client = ChatBedrock(
+    model_id="anthropic.claude-sonnet-4-5-20250929",
+    region_name="us-east-1"
+)
+
+mem = Memori().llm.register(chatbedrock=client)
+mem.attribution(entity_id="user_123", process_id="bedrock_agent")
+
+async def main():
+    response = await client.ainvoke("Hello!")
+    print(response.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+from langchain_aws import ChatBedrock
+from memori import Memori
+
+client = ChatBedrock(
+    model_id="anthropic.claude-sonnet-4-5-20250929",
+    region_name="us-east-1"
+)
+
+mem = Memori().llm.register(chatbedrock=client)
+mem.attribution(entity_id="user_123", process_id="bedrock_agent")
+
+for chunk in client.stream("Hello!"):
+    print(chunk.content, end="")
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                   |
+| ------------ | ------------------------ |
+| **Sync**     | `client.invoke()`        |
+| **Async**    | `await client.ainvoke()` |
+| **Streamed** | `client.stream()`        |
+
+## Available Models
+
+| Model                 | Model ID                                    |
+| --------------------- | ------------------------------------------- |
+| **Claude 3.5 Sonnet** | `anthropic.claude-3-5-sonnet-20241022-v2:0` |
+| **Claude 3 Haiku**    | `anthropic.claude-3-haiku-20240307-v1:0`    |
+| **Llama 3.1 70B**     | `meta.llama3-1-70b-instruct-v1:0`           |
+| **Mistral Large**     | `mistral.mistral-large-2407-v1:0`           |

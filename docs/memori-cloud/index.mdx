@@ -1,0 +1,84 @@
+---
+title: Introduction
+description: Memori gives your AI agents structured, persistent memory — no database setup required.
+---
+
+# What is Memori?
+
+_Memori_ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
+
+## Why Memori Cloud?
+
+With the Memori Cloud platform: [app.memorilabs.ai](https://app.memorilabs.ai), you skip all database configuration. Sign up, get a Memori API key, and start building AI agents with memory in minutes.
+
+### LLM Provider Support
+
+OpenAI, Anthropic, Gemini, and Grok (xAI) via direct SDK wrappers. Bedrock is
+supported through LangChain `ChatBedrock`. Supports sync, async, streamed, and
+unstreamed modes, plus LangChain, Agno, and Pydantic AI.
+
+### Zero Configuration
+
+No database setup needed. Connect your LLM client with an API key and start
+building memories immediately.
+
+### Framework Integration
+
+Native support for LangChain, Agno, and Pydantic AI with seamless integration
+into your existing workflows.
+
+### Advanced Augmentation
+
+Background AI processing extracts facts, preferences, and relationships from
+your conversations automatically.
+
+### Semantic Recall
+
+Semantic search surfaces the right memories at the right time. Memories are
+ranked by relevance and importance, with intelligent decay so older or less
+relevant facts recede — so your AI stays contextually aware without clutter.
+Use manual recall when you need to display memories in your UI, build custom
+prompts, or debug. See [How Memori
+Works](/docs/memori-cloud/concepts/how-memory-works#how-recall-works) for
+automatic vs manual recall and tuning.
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+# Requires MEMORI_API_KEY and OPENAI_API_KEY in your environment
+client = OpenAI()
+mem = Memori().llm.register(client)
+
+# Track conversations by user and process
+mem.attribution(entity_id="user_123", process_id="support_agent")
+
+# All conversations automatically persisted and recalled
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "My favorite color is blue."}]
+)
+
+```
+
+## Core Concepts
+
+| Concept          | Description                                           | Example                                  |
+| ---------------- | ----------------------------------------------------- | ---------------------------------------- |
+| **Entity**       | Person, place, or thing (like a user)                 | `entity_id="user_123"`                   |
+| **Process**      | Your agent, LLM interaction, or program               | `process_id="support_agent"`             |
+| **Session**      | Groups LLM interactions together                      | Auto-generated UUID, manually manageable |
+| **Augmentation** | Background AI enhancement of memories                 | Auto-runs after wrapped LLM calls        |
+| **Recall**       | Retrieve relevant memories from previous interactions | Auto-injects recalled memories           |
+
+## Architecture Overview
+
+The diagram has three lanes: your app, the Memori SDK, and Memori Cloud. Your app calls the LLM normally, Memori captures context on the response path, and memory processing continues in the background.
+
+Synchronous capture: conversation messages are sent to Memori Cloud while your normal LLM flow continues.
+
+Recall injection: relevant memories are fetched from managed storage and injected into later prompts.
+
+Async augmentation: Memori Cloud extracts facts, preferences, rules, events, and relationships from conversations without blocking your app.
+
+!["Memori Cloud architecture"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-cloud-architecture.webp)

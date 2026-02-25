@@ -1,0 +1,166 @@
+---
+title: Multi-User Support
+description: How Memori isolates memories across users, applications, and sessions so each user gets a personalized experience — all in your own database.
+---
+
+# Multi-User Support
+
+Memori provides built-in multi-user and multi-process isolation through its attribution system. Each combination of entity, process, and session creates an isolated memory space — User A never sees User B's memories, and your support bot has different context than your sales bot.
+
+## Isolation Model
+
+!["Memori - Multi User Support"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-multi-user-support.webp)
+
+## What's Shared vs Isolated
+
+| Data                | Scope                                    |
+| ------------------- | ---------------------------------------- |
+| **Facts**           | Per entity — shared across all processes |
+| **Preferences**     | Per entity                               |
+| **Skills**          | Per entity                               |
+| **Attributes**      | Per process                              |
+| **Conversations**   | Per entity + process + session           |
+| **Sessions**        | Per entity + process                     |
+| **Knowledge Graph** | Per entity                               |
+
+## Examples
+
+<CodeGroup title="Multi-User Patterns">
+
+```python {{ title: 'Per-User Isolation' }}
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+
+# User A's conversations
+mem.attribution(entity_id="user_alice", process_id="support_bot")
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "I prefer dark mode"}]
+)
+
+# User B's conversations — completely isolated
+mem.attribution(entity_id="user_bob", process_id="support_bot")
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "What are my preferences?"}]
+)
+# Bob will NOT see Alice's preferences
+```
+
+```python {{ title: 'Multi-Process' }}
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+
+# Same user, different processes
+mem.attribution(entity_id="user_alice", process_id="support_bot")
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "I use PostgreSQL for my databases"}
+    ]
+)
+
+# Switch to a different process for the same user
+mem.attribution(entity_id="user_alice", process_id="sales_bot")
+# The sales bot can recall Alice's facts (like "uses PostgreSQL")
+# because facts are shared across processes for the same entity.
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "What databases do I use?"}
+    ]
+)
+```
+
+```python {{ title: 'Session Management' }}
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_alice", process_id="support_bot")
+
+# Get the current session ID
+current_session = mem.config.session_id
+
+# Start a new conversation group
+mem.new_session()
+
+# Or restore a previous session
+mem.set_session(current_session)
+```
+
+</CodeGroup>
+
+## Common Patterns
+
+### Web Application
+
+Set the entity ID from the authenticated user's session. Works with Flask, FastAPI, Django, or any framework.
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+def handle_chat(user_id: str, message: str):
+    client = OpenAI()
+    mem = Memori(conn=SessionLocal).llm.register(client)
+    mem.attribution(entity_id=user_id, process_id="web_assistant")
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": message}]
+    )
+    return response.choices[0].message.content
+```
+
+### Multi-Agent System
+
+Give each agent a unique process ID. Facts are shared across agents for the same user, but each maintains its own conversation history.
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+def create_agent(user_id: str, agent_name: str):
+    client = OpenAI()
+    mem = Memori(conn=SessionLocal).llm.register(client)
+    mem.attribution(entity_id=user_id, process_id=agent_name)
+    return client
+
+# Three agents, one user, shared facts
+support = create_agent("user_alice", "support_agent")
+sales = create_agent("user_alice", "sales_agent")
+onboard = create_agent("user_alice", "onboarding_agent")
+```

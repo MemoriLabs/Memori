@@ -1,0 +1,68 @@
+---
+title: Knowledge Graph
+description: How Memori automatically builds a knowledge graph from your AI conversations using semantic triples, and how to query it through the Recall API.
+---
+
+# Knowledge Graph
+
+Memori automatically builds a knowledge graph from your AI conversations. Each time Advanced Augmentation processes a conversation, it extracts structured relationships — semantic triples — and connects them into a graph. This powers richer recall and gives your AI deeper understanding of each user.
+
+## How It Works
+
+1. **Conversation captured** — Your user talks to your AI through the Memori-wrapped LLM client
+2. **Augmentation processes** — Memori Cloud analyzes the conversation in the background
+3. **NER extraction** — Named-entity recognition identifies key entities and relationships
+4. **Triple creation** — Relationships are expressed as subject-predicate-object triples
+5. **Graph storage** — Triples are stored and deduplicated in the knowledge graph
+6. **Recall ready** — The graph is available for semantic search on subsequent LLM calls
+
+![Memori Cloud Graph](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/entities-knowledge-graph.webp)
+
+## Semantic Triples
+
+Every fact in the knowledge graph is a semantic triple — a three-part statement: **[Subject]** **[Predicate]** **[Object]**.
+
+- "Alice" "prefers" "dark mode"
+- "PostgreSQL" "is" "a relational database"
+- "The project" "uses" "FastAPI"
+
+### Example Extraction
+
+From _"My favorite database is PostgreSQL and I use it with FastAPI for our REST APIs. I've been using Python for about 8 years"_:
+
+| Subject | Predicate         | Object               |
+| ------- | ----------------- | -------------------- |
+| user    | favorite_database | PostgreSQL           |
+| user    | uses              | FastAPI              |
+| user    | uses_for          | REST APIs            |
+| user    | uses_with         | PostgreSQL + FastAPI |
+| user    | experience_years  | Python (8 years)     |
+
+Over time, as more conversations happen, the graph grows richer. Memori connects new facts to existing ones, building a comprehensive picture of each entity.
+
+## Visualizing the Graph
+
+The Memori Playground at [app.memorilabs.ai](https://app.memorilabs.ai) includes a **Memory Graph Viewer** that shows:
+
+| Element            | What it shows                                  |
+| ------------------ | ---------------------------------------------- |
+| **Nodes**          | Subjects and objects from semantic triples     |
+| **Edges**          | Predicates (relationships) between nodes       |
+| **Mention counts** | How often a fact was discussed across sessions |
+| **Timestamps**     | When facts were first and last seen            |
+
+## Scope
+
+The knowledge graph follows the same scoping rules as other memory types:
+
+| Aspect         | Scope                                                           |
+| -------------- | --------------------------------------------------------------- |
+| **Triples**    | Per entity — shared across all processes                        |
+| **Visibility** | All processes for an entity can see and use the graph           |
+| **Growth**     | Conversations from any process contribute to the entity's graph |
+
+If Alice tells your support bot about PostgreSQL, your code assistant also knows she uses PostgreSQL.
+
+## Querying the Graph
+
+The knowledge graph is automatically used during recall. When you call `mem.recall()` or make an LLM call through a wrapped client, Memori searches across both extracted facts and the knowledge graph to find the most relevant context.

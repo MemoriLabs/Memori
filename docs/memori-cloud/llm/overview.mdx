@@ -1,0 +1,83 @@
+---
+title: Integration Overview
+description: Memori is LLM-agnostic. Register any supported client and Memori handles memory capture, augmentation, and recall automatically.
+---
+
+# Integration Overview
+
+Memori Cloud works with all major LLM providers and frameworks. Register any supported client and Memori handles memory capture, augmentation, and recall automatically — with your Memori API key and provider credentials, no database setup required.
+
+## Supported Providers
+
+| Provider                                              | Integration        | Install                               |
+| ----------------------------------------------------- | ------------------ | ------------------------------------- |
+| **[OpenAI](/docs/memori-cloud/llm/openai)**           | Direct SDK wrapper | `pip install memori openai`           |
+| **[Anthropic](/docs/memori-cloud/llm/anthropic)**     | Direct SDK wrapper | `pip install memori anthropic`        |
+| **[Google Gemini](/docs/memori-cloud/llm/gemini)**    | Direct SDK wrapper | `pip install memori google-genai`     |
+| **[xAI Grok](/docs/memori-cloud/llm/xai-grok)**       | OpenAI-compatible  | `pip install memori openai`           |
+| **[Nebius AI Studio](/docs/memori-cloud/llm/nebius)** | OpenAI-compatible  | `pip install memori openai`           |
+| **[AWS Bedrock](/docs/memori-cloud/llm/aws-bedrock)** | LangChain adapter  | `pip install memori langchain-aws`    |
+| **[LangChain](/docs/memori-cloud/llm/langchain)**     | Framework support  | `pip install memori langchain-openai` |
+| **[Agno](/docs/memori-cloud/llm/agno)**               | Framework support  | `pip install memori agno`             |
+| **[Pydantic AI](/docs/memori-cloud/llm/pydantic-ai)** | Framework support  | `pip install memori pydantic-ai`      |
+
+All providers support sync, async, streamed, and unstreamed modes.
+
+## Pydantic AI
+
+Register the `Agent` instance directly — Memori wraps `run_sync` and `run` automatically.
+
+```python
+from memori import Memori
+from pydantic_ai import Agent
+
+agent = Agent("openai:gpt-4o-mini")
+
+mem = Memori().llm.register(agent)
+mem.attribution(entity_id="user_123", process_id="pydantic_agent")
+
+result = agent.run_sync("Hello!")
+print(result.output)
+```
+
+## OpenAI-Compatible Providers
+
+Any provider with an OpenAI-compatible API works by setting a custom `base_url`. Dedicated guides: [xAI Grok](/docs/memori-cloud/llm/xai-grok), [Nebius AI Studio](/docs/memori-cloud/llm/nebius). Same pattern works for Azure OpenAI, Deepseek, NVIDIA NIM, and others.
+
+```python
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.studio.nebius.com/v1/",
+    api_key=os.getenv("NEBIUS_API_KEY"),
+)
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.chat.completions.create(
+    model="meta-llama/Llama-3.3-70B-Instruct",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+## OpenAI Responses API
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input="Hello!",
+    instructions="You are a helpful assistant."
+)
+print(response.output_text)
+```

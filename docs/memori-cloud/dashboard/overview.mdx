@@ -1,0 +1,47 @@
+---
+title: Dashboard Overview
+description: An overview of the Memori Cloud dashboard at app.memorilabs.ai for managing API keys, testing memories, and monitoring usage.
+---
+
+# Dashboard Overview
+
+The Memori Cloud dashboard at [app.memorilabs.ai](https://app.memorilabs.ai) is where you manage API keys, test memory in real-time, and monitor usage.
+
+## Dashboard Sections
+
+### API Keys
+
+Create and manage your Memori API keys. The free plan unlocks 5,000 memories created and 15,000 recalled per
+month. [Manage API Keys](/docs/memori-cloud/dashboard/api-keys).
+
+### Playground
+
+Chat with an AI and watch memories get extracted in real-time. The fastest way
+to understand how Memori works.
+[Try the Playground](/docs/memori-cloud/dashboard/playground).
+
+## Memory Usage
+
+| Plan                    | Memories Created / month | Memories Recalled / month | Requirements                                               |
+| ----------------------- | ------------------------ | ------------------------- | ---------------------------------------------------------- |
+| **Free (with API key)** | 5,000                    | 15,000                    | [Sign up and create an API key](https://app.memorilabs.ai) |
+| **Starter**             | 25,000                   | 100,000                   | [Sign up and subscribe](/pricing)                          |
+| **Pro**                 | 150,000                  | 500,000                   | [Sign up and subscribe](/pricing)                          |
+| **Enterprise**          | Custom                   | Custom                    | [Contact us](/pricing)                                     |
+
+## Getting Started
+
+1. **Sign up** — Go to [app.memorilabs.ai](https://app.memorilabs.ai) and create an account
+2. **Create an API key** — Navigate to API Keys and generate your first key
+3. **Try the Playground** — Chat with an AI and see memories being extracted live
+4. **Integrate** — Copy your API key into your application code
+
+```python
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my-agent")
+```

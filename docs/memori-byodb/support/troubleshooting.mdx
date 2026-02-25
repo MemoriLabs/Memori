@@ -1,0 +1,107 @@
+---
+title: Troubleshooting
+description: Common issues and solutions when using Memori open source.
+---
+
+# Troubleshooting
+
+Quick fixes for the most common Memori issues.
+
+## Installation
+
+**`pip install memori` fails** — Requires Python 3.10+.
+Run `python --version` to check, then `pip install --upgrade pip && pip install memori`.
+
+**Missing binary deps** — Install prerequisites first: `pip install numpy>=1.24.0 sentence-transformers>=3.0.0 memori`.
+
+## Database Connection
+
+**`No connection factory provided`** — You must pass `conn` when initializing:
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+mem = Memori(conn=SessionLocal)
+```
+
+**`Table does not exist`** — Run `mem.config.storage.build()` once after initialization or after upgrading.
+
+**Connection pool errors** — Enable pre-ping and recycling:
+
+```python
+engine = create_engine("postgresql+psycopg2://user:pass@host/db", pool_pre_ping=True, pool_recycle=300)
+```
+
+**Connection string formats:**
+
+| Database   | Format                                         |
+| ---------- | ---------------------------------------------- |
+| SQLite     | `sqlite:///memori.db`                          |
+| PostgreSQL | `postgresql+psycopg2://user:pass@host:5432/db` |
+| MySQL      | `mysql+pymysql://user:pass@host:3306/db`       |
+
+## No Memories Being Created
+
+1. **Set attribution** before LLM calls — without it, no memories are stored:
+
+```python
+mem.attribution(entity_id="user_123", process_id="my_app")
+```
+
+2. **Wait for augmentation** in short-lived scripts:
+
+```python
+mem.augmentation.wait()
+```
+
+3. **Register your LLM client** — conversations aren't captured without registration:
+
+```python
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+```
+
+## Recall Returns Empty
+
+- Verify `entity_id` matches what was used when memories were created
+- Wait for augmentation: `mem.augmentation.wait()`
+- Increase limit: `mem.recall("query", limit=10)`
+- Lower threshold: `mem.config.recall_relevance_threshold = 0.05`
+
+## Quota Exceeded
+
+```
+QuotaExceededError: your IP address is over quota
+```
+
+Sign up for a free API key at [app.memorilabs.ai](https://app.memorilabs.ai) — gives 5,000/month (vs 100 without a key). Set it via `export MEMORI_API_KEY="your-key"`.
+
+## Performance
+
+**Slow first run** — Memori downloads the embedding model on first use. Pre-download with `python -m memori setup`.
+
+**High memory usage** — Reduce embeddings limit: `mem.config.recall_embeddings_limit = 500`. Use PostgreSQL for production.
+
+**Network timeouts** — Increase timeout: `mem.config.request_secs_timeout = 10` and retries: `mem.config.request_num_backoff = 10`.
+
+## Debug Logging
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+
+from memori import Memori
+mem = Memori(conn=SessionLocal, debug_truncate=False)
+```
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+- [Discord](https://discord.gg/abD4eGym6v)
+- [Examples](https://github.com/MemoriLabs/Memori/tree/main/examples)
+
+Include your Python version, Memori version (`pip show memori`), database type, and full error trace.

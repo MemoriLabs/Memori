@@ -1,0 +1,64 @@
+---
+title: Architecture
+description: Understand how Memori's Cloud platform is designed — from your app to Memori Cloud, with managed storage, augmentation, and recall.
+---
+
+# Architecture
+
+Memori Cloud is a managed memory platform for AI applications. Connect your LLM client, set attribution, and Memori handles the rest — storage, augmentation, knowledge graph construction, and recall.
+
+## System Overview
+
+!["Memori Cloud System Overview"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-cloud-architecture-detail.webp)
+
+## Core Components
+
+### Your Application
+
+Your code and existing LLM client. It sends requests through the Memori SDK and receives model responses as usual.
+
+### Memori SDK
+
+The integration layer between your app and Memori Cloud. It provides LLM wrappers, attribution, and the Recall API.
+
+### Memori Cloud
+
+The managed backend that processes captured conversations and powers storage, augmentation, and recall services.
+
+### Managed Storage
+
+Stores conversations, sessions, and facts for each attribution scope.
+
+### Advanced Augmentation
+
+Processes raw conversation data into structured memory through fact extraction, embeddings, and knowledge graph construction.
+
+### Recall Engine
+
+Surfaces the right memories at the right time — semantic search over stored memory, intelligent ranking and decay, and seamless injection of relevant context into every LLM call so your AI stays contextually aware.
+
+## Configuration
+
+Setting up Memori requires only your API key and attribution:
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+# Set MEMORI_API_KEY as an environment variable
+# export MEMORI_API_KEY="your-memori-api-key"
+
+client = OpenAI()
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+```
+
+## Data Flow
+
+1. **Conversation Capture** — Every LLM call through the wrapped client is captured and sent to Memori Cloud. Your app gets the response immediately.
+
+2. **Attribution Tracking** — Attribution links every conversation to a specific entity and process so memories are properly scoped and indexed.
+
+3. **Augmentation** — After a conversation completes, Memori Cloud processes it asynchronously — extracts facts, generates embeddings, and builds knowledge graph triples.
+
+4. **Recall** — On the next LLM call, Memori embeds the query, performs vector search across the entity's stored facts, and injects the most relevant memories into the context.

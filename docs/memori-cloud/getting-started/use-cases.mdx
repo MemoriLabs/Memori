@@ -1,0 +1,126 @@
+---
+title: Use Cases
+description: Common use cases and applications for Memori.
+---
+
+# Use Cases
+
+Memori is designed for any application where AI agents need to remember context across conversations. Here are the most common use cases.
+
+## Customer Support Chatbots
+
+Build support bots that remember customer history, preferences, and past issues. No more "Can you repeat your account number?" — Memori recalls context automatically.
+
+**Benefits:**
+
+- Remember customer preferences and history
+- Recall previous support tickets and resolutions
+- Personalize responses based on past interactions
+- Track issues across multiple sessions
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+mem = Memori().llm.register(client)
+
+# Each customer gets their own memory space
+mem.attribution(
+    entity_id="customer_456",
+    process_id="support_bot"
+)
+
+# Memori automatically recalls relevant context
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{
+        "role": "user",
+        "content": "I'm having that issue again"
+    }]
+)
+# Memori injects: "Customer previously reported
+# login timeout issues on 2024-01-15"
+```
+
+## Personalized AI Assistants
+
+Create AI assistants that learn and adapt to each user over time. Memori builds a profile of preferences, skills, and context that makes every interaction more relevant.
+
+**Benefits:**
+
+- Learn coding preferences and tech stack
+- Remember project context across sessions
+- Adapt communication style to user preferences
+- Build long-term user profiles automatically
+
+```python
+from memori import Memori
+from anthropic import Anthropic
+
+client = Anthropic()
+mem = Memori().llm.register(client)
+
+mem.attribution(
+    entity_id="developer_789",
+    process_id="code_assistant"
+)
+
+# Over time, Memori learns:
+# - "Uses Python 3.12 with FastAPI"
+# - "Prefers type hints and dataclasses"
+# - "Works on e-commerce platform"
+response = client.messages.create(
+    model="claude-sonnet-4-5-20250929",
+    max_tokens=1024,
+    messages=[{
+        "role": "user",
+        "content": "How should I structure this endpoint?"
+    }]
+)
+```
+
+## Multi-Agent Workflows
+
+Coordinate multiple AI agents that share context through Memori. Each agent contributes to a shared memory space while maintaining its own process identity and conversation history.
+
+**Benefits:**
+
+- Share context between specialized agents
+- Track which agent contributed what information
+- Maintain conversation continuity across handoffs
+- Build collective knowledge graphs
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+mem = Memori().llm.register(client)
+
+# Research agent gathers information
+mem.attribution(
+    entity_id="project_alpha",
+    process_id="research_agent"
+)
+client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{
+        "role": "user",
+        "content": "Research competitor pricing"
+    }]
+)
+
+# Analysis agent recalls research findings
+mem.attribution(
+    entity_id="project_alpha",
+    process_id="analysis_agent"
+)
+# Memori shares context across agents
+# for the same entity
+```
+
+<Note>
+  For runnable versions of these examples and more, see the [examples
+  folder](https://github.com/MemoriLabs/Memori/tree/main/examples) on GitHub.
+</Note>

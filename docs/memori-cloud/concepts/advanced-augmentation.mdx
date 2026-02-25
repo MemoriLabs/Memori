@@ -1,0 +1,92 @@
+---
+title: Advanced Augmentation
+description: How Memori's Advanced Augmentation engine extracts structured facts, preferences, and knowledge from your AI conversations — all managed in Memori Cloud.
+---
+
+# Advanced Augmentation
+
+Advanced Augmentation is the AI engine inside Memori Cloud that turns raw conversations into structured, searchable memories. It runs asynchronously in the background to minimize impact on your response path.
+
+## What It Does
+
+When your application has a conversation through a Memori-wrapped LLM client, the augmentation engine:
+
+1. Reads the full conversation (user messages and AI responses)
+2. Identifies facts, preferences, skills, and attributes
+3. Extracts semantic triples (subject-predicate-object relationships)
+4. Generates vector embeddings for semantic search
+5. Stores everything in your managed memory space
+
+No extra code required — just initialize Memori and set attribution.
+
+## How It Works
+
+The augmentation flow is fully asynchronous and designed to avoid blocking your main request path.
+
+1. Your app makes an LLM call through the wrapped client
+2. Memori returns the response immediately
+3. In the background, the conversation is queued for processing
+4. The augmentation engine extracts structured memories
+5. Memories are stored in Memori Cloud for future recall
+
+In short-lived scripts, call `mem.augmentation.wait()` to ensure processing completes before exit.
+
+```python
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI()
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+# This returns immediately — no augmentation delay
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "I love hiking in the mountains."}
+    ]
+)
+print(response.choices[0].message.content)
+
+# Only needed in short-lived scripts
+mem.augmentation.wait()
+```
+
+## Extraction Types
+
+| Type                   | What it captures                                        | Scope                                |
+| ---------------------- | ------------------------------------------------------- | ------------------------------------ |
+| **Facts**              | Objective information with vector embeddings            | Per entity — shared across processes |
+| **Preferences**        | User choices, opinions, and tastes                      | Per entity                           |
+| **Skills & Knowledge** | Abilities and expertise levels                          | Per entity                           |
+| **Attributes**         | Process-level information about what your agent handles | Per process                          |
+
+## Semantic Triples
+
+Advanced Augmentation uses named-entity recognition to extract semantic triples (subject, predicate, object). These form the building blocks of the [Knowledge Graph](/docs/memori-cloud/concepts/knowledge-graph).
+
+**Example** — from _"My favorite database is PostgreSQL and I use it with FastAPI"_:
+
+| Subject | Predicate         | Object               |
+| ------- | ----------------- | -------------------- |
+| user    | favorite_database | PostgreSQL           |
+| user    | uses              | FastAPI              |
+| user    | uses_with         | PostgreSQL + FastAPI |
+
+Memori automatically deduplicates triples — if the same fact is mentioned multiple times, it increments the mention count and updates the timestamp.
+
+## Context Recall
+
+When a query is sent to an LLM through a wrapped client, Memori automatically:
+
+1. Intercepts the outbound LLM call
+2. Uses semantic search to find entity facts matching the query
+3. Ranks facts by vector similarity
+4. Injects the most relevant facts into the system prompt
+5. Forwards the enriched request to the LLM provider
+
+<Admonition type="important" title="Attribution is Required">
+  For Memori to provide all Advanced Augmentation capabilities, attribution must
+  be set before making LLM calls. Without attribution, Memori cannot create or
+  recall memories.
+</Admonition>

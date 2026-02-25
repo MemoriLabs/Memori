@@ -1,0 +1,168 @@
+---
+title: Quick Start
+description: Get started with Memori BYODB in under 3 minutes using SQLite and OpenAI.
+---
+
+# Quick Start
+
+Get started with Memori in under 3 minutes. Since Memori BYODB is open source, you bring your own database — and for this quick start, we will use SQLite so there is nothing extra to install.
+
+<Note>
+  Want a zero-setup option? Try Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+In this example, we will use Memori with OpenAI and SQLite. Check out the [LLM providers](/docs/memori-byodb/llm/overview) and [database](/docs/memori-byodb/databases/overview) guides for other integrations.
+
+## Prerequisites
+
+- Python 3.10 or higher
+- An OpenAI API key
+
+## Step 1: Install Libraries
+
+Install Memori and the OpenAI SDK:
+
+<CodeGroup title="Install Memori">
+
+```bash {{ title: 'pip' }}
+pip install memori openai
+```
+
+```bash {{ title: 'poetry' }}
+poetry add memori openai
+```
+
+```bash {{ title: 'uv' }}
+uv add memori openai
+```
+
+</CodeGroup>
+
+## Step 2: Set Environment Variables
+
+Set your OpenAI API key as an environment variable:
+
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+## Step 3: Run Your First Memori Application
+
+Create a new Python file `quickstart.py` and add the following code:
+
+### Setup & Configuration
+
+Import libraries, set up a SQLite database with Python's built-in `sqlite3`, and initialize Memori with your OpenAI client.
+
+- `conn` accepts a connection factory (SQLAlchemy, DB-API 2.0, Django ORM, or MongoDB callable)
+- `llm.register()` wraps your LLM client for automatic memory capture
+- `attribution()` links memories to a specific user and process
+- `build()` creates the Memori schema tables in your database
+
+```python
+import os
+import sqlite3
+from memori import Memori
+from openai import OpenAI
+
+def get_sqlite_connection():
+    return sqlite3.connect("memori.db")
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=get_sqlite_connection).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="test-ai-agent")
+mem.config.storage.build()
+```
+
+If your app already uses SQLAlchemy, you can pass a `sessionmaker` instead:
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+```
+
+### First Conversation
+
+Tell the LLM a fact about yourself. Memori automatically captures the
+conversation and processes it through Advanced Augmentation.
+
+Since augmentation runs asynchronously, call `augmentation.wait()` in
+short-lived scripts to ensure memories are fully processed before continuing.
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "My favorite color is blue."}
+    ]
+)
+print(response.choices[0].message.content + "\n")
+
+# Wait for background augmentation to finish
+mem.augmentation.wait()
+```
+
+### Memory Recall
+
+Create a completely new client and Memori instance — no prior context
+carried over. When you ask the LLM what it remembers, Memori
+automatically injects the relevant facts via semantic search.
+
+The second response should correctly recall your favorite color, proving
+memory persistence works across sessions.
+
+```python
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+mem = Memori(conn=get_sqlite_connection).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="test-ai-agent")
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "What's my favorite color?"}
+    ]
+)
+print(response.choices[0].message.content + "\n")
+```
+
+## Step 4: Run the Application
+
+Execute your Python file:
+
+```bash
+python quickstart.py
+```
+
+You should see the AI respond to both questions, with the second response correctly recalling that your favorite color is blue!
+
+## Step 5: Inspect Your Memories
+
+Since you own the database, you can inspect what Memori stored directly:
+
+<CodeGroup title="Inspect Memories">
+
+```bash {{ title: 'Messages' }}
+sqlite3 memori.db "SELECT * FROM memori_conversation_message;"
+```
+
+```bash {{ title: 'Facts' }}
+sqlite3 memori.db "SELECT * FROM memori_entity_fact;"
+```
+
+```bash {{ title: 'Knowledge Graph' }}
+sqlite3 memori.db "SELECT * FROM memori_knowledge_graph;"
+```
+
+```bash {{ title: 'Sessions' }}
+sqlite3 memori.db "SELECT * FROM memori_session;"
+```
+
+</CodeGroup>

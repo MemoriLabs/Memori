@@ -1,0 +1,156 @@
+---
+title: Development Setup
+description: Set up your local development environment for contributing to the Memori open-source project.
+---
+
+# Development Setup
+
+This guide walks you through setting up a local development environment for working on the Memori codebase. Follow these steps to clone the repository, install dependencies, and run the test suite.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed on your system:
+
+- **Python 3.10 or higher** — Memori requires Python 3.10+. Check your version with `python --version`.
+- **git** — For cloning the repository and managing branches.
+- **pip** — Python's package manager (usually included with Python).
+
+## Clone the Repository
+
+Start by forking the repository on GitHub, then clone your fork locally:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/Memori.git
+cd Memori
+```
+
+If you plan to submit a pull request, make sure to keep your fork synced with the upstream repository:
+
+```bash
+git remote add upstream https://github.com/MemoriLabs/Memori.git
+git fetch upstream
+```
+
+## Install Dependencies
+
+It is recommended to use a virtual environment to avoid conflicts with other Python projects:
+
+<CodeGroup title="Virtual Environment Setup">
+
+```bash {{ title: 'venv (Built-in)' }}
+python -m venv .venv
+source .venv/bin/activate    # macOS/Linux
+# .venv\Scripts\activate     # Windows
+```
+
+```bash {{ title: 'conda' }}
+conda create -n memori python=3.12
+conda activate memori
+```
+
+</CodeGroup>
+
+Once your virtual environment is active, install Memori with development dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+This installs Memori in editable mode (`-e`) so that changes you make to the source code are immediately reflected without reinstalling. The `[dev]` extra includes testing and linting tools.
+
+If the project uses a `requirements-dev.txt` file instead, install with:
+
+```bash
+pip install -e .
+pip install -r requirements-dev.txt
+```
+
+## Running Tests
+
+Memori uses pytest for its test suite. Run all tests from the project root:
+
+```bash
+pytest
+```
+
+To run tests with verbose output:
+
+```bash
+pytest -v
+```
+
+To run a specific test file or test function:
+
+```bash
+# Run all tests in a specific file
+pytest tests/test_openai.py
+
+# Run a specific test function
+pytest tests/test_openai.py::test_sync_completion
+```
+
+To run tests with coverage reporting:
+
+```bash
+pytest --cov=memori --cov-report=term-missing
+```
+
+## Local Development Workflow
+
+Here is a typical workflow for making changes to Memori:
+
+1. **Create a branch** for your feature or fix:
+
+   ```bash
+   git checkout -b feat/my-new-feature
+   ```
+
+2. **Make your changes** — Edit the source code in the `memori/` directory.
+
+3. **Write tests** — Add or update tests in the `tests/` directory to cover your changes.
+
+4. **Run the tests** to make sure nothing is broken:
+
+   ```bash
+   pytest
+   ```
+
+5. **Check code style** — The project uses Ruff for linting and formatting:
+
+   ```bash
+   # Lint
+   ruff check .
+
+   # Format
+   ruff format --check .
+   ```
+
+6. **Commit your changes** with a descriptive message:
+
+   ```bash
+   git add .
+   git commit -m "feat: add support for Redis storage backend"
+   ```
+
+7. **Push to your fork** and open a pull request:
+   ```bash
+   git push origin feat/my-new-feature
+   ```
+
+## Project Structure
+
+Here is a high-level overview of the Memori repository structure:
+
+| Directory   | Purpose                         |
+| ----------- | ------------------------------- |
+| `memori/`   | Core library source code        |
+| `tests/`    | Test suite (pytest)             |
+| `docs/`     | Documentation source files      |
+| `examples/` | Example scripts and usage demos |
+
+The core integration logic for each LLM provider typically lives in separate modules within the `memori/` directory. When adding support for a new provider, look at existing integrations (such as OpenAI or Anthropic) as templates.

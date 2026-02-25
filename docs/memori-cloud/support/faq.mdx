@@ -1,0 +1,52 @@
+---
+title: FAQ
+description: Frequently asked questions about Memori Cloud.
+---
+
+# FAQ
+
+## What is Memori?
+
+_Memori_ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
+
+## Memori Cloud vs Memori BYODB?
+
+**Memori Cloud** — managed storage, dashboard UI, just add an API key. **Memori BYODB** — bring your own database & maintain full control. Both use the same SDK.
+
+## Which LLM providers are supported?
+
+OpenAI, Anthropic, Google Gemini, xAI Grok, Nebius AI Studio, AWS Bedrock, LangChain, Agno, and Pydantic AI. All support sync, async, and streaming. See the [Integration Overview](/docs/memori-cloud/llm/overview).
+
+## Do I need to set up a database?
+
+No. The Memori Cloud platform manages all storage. Just initialize with `mem = Memori()`.
+
+## Is there a free tier?
+
+Yes. 5000 memory read & writes per month. Sign up at [app.memorilabs.ai](https://app.memorilabs.ai).
+
+## What counts as a "memory"?
+
+Each fact, preference, or relationship extracted by Advanced Augmentation counts as one memory. A single conversation can generate multiple memories.
+
+## Does it support async?
+
+Yes. All providers support async mode out of the box. Just use your provider's async client.
+
+## How does augmentation work?
+
+It runs in the background after each conversation and extracts facts, preferences, and relationships while minimizing impact on your LLM response path. See [Advanced Augmentation](/docs/memori-cloud/concepts/advanced-augmentation).
+
+## Can I use multiple LLM providers?
+
+Yes. Register multiple clients on the same Memori instance. Memories are shared across providers since they're scoped to entities, not to providers.
+
+## Can I migrate between Memori Cloud and Memori BYODB?
+
+Yes. Both use the same SDK — just remove `conn=SessionLocal` for Memori Cloud or add it for Memori BYODB. Existing memories don't auto-transfer.
+
+## Still have questions?
+
+- [Troubleshooting guide](/docs/memori-cloud/support/troubleshooting)
+- [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+- [Discord](https://discord.gg/abD4eGym6v)

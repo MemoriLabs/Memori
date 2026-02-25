@@ -1,0 +1,90 @@
+---
+title: Pydantic AI
+description: Using Memori with Pydantic AI agents and Memori BYODB.
+---
+
+# Pydantic AI
+
+Memori integrates at the agent level — register the `Agent` instance and Memori wraps `run_sync` and `run` automatically. Works with any Pydantic AI-supported model.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+```python
+from memori import Memori
+from pydantic_ai import Agent
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+agent = Agent("openai:gpt-4o-mini")
+
+mem = Memori(conn=SessionLocal).llm.register(agent)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="pydantic_agent")
+
+result = agent.run_sync("Hello!")
+print(result.output)
+```
+
+## Async Usage
+
+```python
+import asyncio
+from memori import Memori
+from pydantic_ai import Agent
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+agent = Agent("openai:gpt-4o-mini")
+
+mem = Memori(conn=SessionLocal).llm.register(agent)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="pydantic_agent")
+
+async def main():
+    result = await agent.run("Hello!")
+    print(result.output)
+
+asyncio.run(main())
+```
+
+## Different Providers
+
+Pydantic AI supports multiple providers via model strings. Registration is identical regardless of provider.
+
+<CodeGroup title="Pydantic AI Providers">
+
+```python {{ title: 'OpenAI' }}
+agent = Agent("openai:gpt-4o-mini")
+mem = Memori(conn=SessionLocal).llm.register(agent)
+```
+
+```python {{ title: 'Anthropic' }}
+agent = Agent("anthropic:claude-3-5-sonnet-20241022")
+mem = Memori(conn=SessionLocal).llm.register(agent)
+```
+
+```python {{ title: 'Google Gemini' }}
+agent = Agent("google-gla:gemini-2.0-flash-exp")
+mem = Memori(conn=SessionLocal).llm.register(agent)
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                      |
+| ------------ | --------------------------- |
+| **Sync**     | `agent.run_sync()`          |
+| **Async**    | `await agent.run()`         |
+| **Streamed** | Via agent streaming support |

@@ -1,0 +1,68 @@
+---
+title: CLI Quickstart
+description: Get started with the Memori command line interface for setup, diagnostics, and management.
+---
+
+# CLI Quickstart
+
+The Memori CLI lets you manage your environment, check quotas, and perform setup tasks from the terminal. It is included with the `memori` package.
+
+## View Available Commands
+
+```bash
+python -m memori
+```
+
+## Essential Setup
+
+Pre-download the embedding model that Memori uses for semantic search. Without this, the model downloads automatically on first use (slower).
+
+```bash
+python -m memori setup
+```
+
+## Command Reference
+
+| Command                      | Parameters | Description                                    |
+| ---------------------------- | ---------- | ---------------------------------------------- |
+| `setup`                      | None       | Prepare environment (download embedding model) |
+| `quota`                      | None       | Display available augmentation quota           |
+| `sign-up`                    | `<email>`  | Sign up for an API key                         |
+| `cockroachdb cluster start`  | None       | Start a new CockroachDB cluster                |
+| `cockroachdb cluster claim`  | None       | Get cluster claim URL                          |
+| `cockroachdb cluster delete` | None       | Delete cluster (destructive)                   |
+
+<CodeGroup title="CLI Commands">
+
+```bash {{ title: 'Setup' }}
+# Cache the embedding model for faster runtime
+python -m memori setup
+```
+
+```bash {{ title: 'Check Quota' }}
+# View augmentation usage and limits
+python -m memori quota
+```
+
+```bash {{ title: 'Sign Up' }}
+# Get an API key for higher augmentation limits
+python -m memori sign-up your-email@example.com
+```
+
+```bash {{ title: 'CockroachDB' }}
+# Start a new serverless database cluster
+python -m memori cockroachdb cluster start
+
+# Get the cluster claim URL
+python -m memori cockroachdb cluster claim
+
+# Delete the cluster (destructive!)
+python -m memori cockroachdb cluster delete
+```
+
+</CodeGroup>
+
+<Admonition type="warning" title="Destructive Commands">
+  The `cockroachdb cluster delete` command permanently removes your cluster
+  including all data. This cannot be undone.
+</Admonition>
