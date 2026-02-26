@@ -22,9 +22,7 @@ export class QuotaExceededError extends MemoriError {
 
 /** Thrown when the Memori Cloud API returns a 4xx or 5xx status code. */
 export class MemoriApiClientError extends MemoriError {
-  /** The HTTP status code returned by the API. */
   public readonly statusCode: number;
-  /** Optional details provided by the API response. */
   public readonly details?: unknown;
 
   constructor(statusCode: number, message?: string, details?: unknown) {
