@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
+import tsdoc from 'eslint-plugin-tsdoc';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -13,6 +14,9 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: {
+      tsdoc: tsdoc,
+    },
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -21,6 +25,7 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-extraneous-class': 'off',
       '@typescript-eslint/restrict-template-expressions': 'off',
+      'tsdoc/syntax': 'warn',
     },
   },
   {

@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/memori",
-  "version": "0.1.2-beta",
+  "version": "0.1.3-beta",
   "description": "The official TypeScript SDK for Memori",
   "type": "module",
   "main": "./dist/index.js",
@@ -68,6 +68,7 @@
     "dotenv": "^16.4.5",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-tsdoc": "^0.5.1",
     "lint-staged": "^15.0.0",
     "openai": "*",
     "prettier": "^3.0.0",
@@ -79,6 +80,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@memorilabs/axon": "^0.1.3-beta"
+    "@memorilabs/axon": "^0.1.1"
   }
 }

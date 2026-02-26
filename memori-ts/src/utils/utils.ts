@@ -1,6 +1,7 @@
 import { Message } from '@memorilabs/axon';
 import { CloudRecallResponse, ParsedFact } from '../types/api.js';
 
+/** @internal */
 export function formatDate(dateStr?: string): string | undefined {
   if (!dateStr) return undefined;
   try {
@@ -15,6 +16,7 @@ export function formatDate(dateStr?: string): string | undefined {
 /**
  * Safely converts message content (string, array, or object) into a simple string.
  * Handles multi-modal arrays (e.g. OpenAI/Anthropic content blocks) by extracting text.
+ * @internal
  */
 export function stringifyContent(content: unknown): string {
   if (!content) return '';
@@ -43,6 +45,7 @@ export function stringifyContent(content: unknown): string {
   return String(content as string | number | boolean);
 }
 
+/** @internal */
 export function extractFacts(response: CloudRecallResponse): ParsedFact[] {
   const raw = response.facts || response.results || response.memories || response.data || [];
 
@@ -68,6 +71,7 @@ export function extractFacts(response: CloudRecallResponse): ParsedFact[] {
   return facts;
 }
 
+/** @internal */
 export function extractHistory(response: CloudRecallResponse): unknown[] {
   const raw =
     response.messages ||
@@ -79,6 +83,7 @@ export function extractHistory(response: CloudRecallResponse): unknown[] {
   return Array.isArray(raw) ? raw : [];
 }
 
+/** @internal */
 export function extractLastUserMessage(messages: Message[]): string | undefined {
   return messages.findLast((m) => m.role === 'user')?.content;
 }

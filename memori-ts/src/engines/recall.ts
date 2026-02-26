@@ -1,4 +1,4 @@
-import { CallContext, LLMRequest, Message } from '@memorilabs/axon';
+import { CallContext, LLMRequest, Message, Role } from '@memorilabs/axon';
 import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
@@ -59,11 +59,13 @@ export class RecallEngine {
     const facts = extractFacts(response);
     const historyRaw = extractHistory(response);
 
-    const historyMessages: Message[] = (historyRaw as Message[])
+    const historyMessages: Message[] = (
+      historyRaw as Array<{ role: Role; content?: unknown; text?: string }>
+    )
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: m.role,
-        content: stringifyContent(m.content),
+        content: stringifyContent(m.content ?? m.text),
       }));
 
     const relevantFacts = facts
