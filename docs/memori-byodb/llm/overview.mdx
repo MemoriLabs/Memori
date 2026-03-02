@@ -25,10 +25,11 @@ Memori works with all major LLM providers and frameworks. Register any supported
 | **[Agno](/docs/memori-byodb/llm/agno)**               | Framework support  | `pip install memori agno`             |
 | **[Pydantic AI](/docs/memori-byodb/llm/pydantic-ai)** | Framework support  | `pip install memori pydantic-ai`      |
 | **[Nebius AI Studio](/docs/memori-byodb/llm/nebius)** | OpenAI-compatible  | `pip install memori openai`           |
+| **[DeepSeek](/docs/memori-byodb/llm/deepseek)**       | OpenAI-compatible  | `pip install memori openai`           |
 
 All providers support sync, async, streamed, and unstreamed modes.
 
-Any provider with an OpenAI-compatible API works by setting a custom `base_url` — including Nebius AI Studio, Deepseek, NVIDIA NIM, Azure OpenAI, and more. See [OpenAI-Compatible Providers](#openai-compatible-providers) below.
+Any provider with an OpenAI-compatible API works by setting a custom `base_url` — including Nebius AI Studio, DeepSeek, NVIDIA NIM, Azure OpenAI, and more. See [OpenAI-Compatible Providers](#openai-compatible-providers) below.
 
 ## Pydantic AI
 
@@ -54,7 +55,7 @@ print(result.output)
 
 ## OpenAI-Compatible Providers
 
-Any provider with an OpenAI-compatible API works by setting a custom `base_url`. Examples: xAI, Nebius AI Studio, Azure OpenAI.
+Any provider with an OpenAI-compatible API works by setting a custom `base_url`. Examples: xAI, Nebius AI Studio, DeepSeek, Azure OpenAI.
 
 ```python
 import os

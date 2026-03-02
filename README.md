@@ -122,6 +122,7 @@ mem.set_session(session_id)
 
 - Anthropic
 - Bedrock
+- DeepSeek
 - Gemini
 - Grok (xAI)
 - OpenAI (Chat Completions & Responses API)
@@ -132,9 +133,11 @@ _(unstreamed, streamed, synchronous and asynchronous)_
 
 - Agno
 - LangChain
+- Pydantic AI
 
 ## Supported Platforms
 
+- DeepSeek
 - Nebius AI Studio
 
 ## Examples
