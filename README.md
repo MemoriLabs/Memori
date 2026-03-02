@@ -137,6 +137,7 @@ _(unstreamed, streamed, synchronous and asynchronous)_
 
 - Nebius AI Studio
 
+* [AnchorBrowser](https://anchorbrowser.io) - Cloud browser platform providing managed Chromium instances for AI agents — supports Puppeteer, Playwright, and Claude/GPT computer use APIs with enterprise-grade stealth.
 ## Examples
 
 For more examples and demos, check out the [Memori Cookbook](https://github.com/MemoriLabs/memori-cookbook).
