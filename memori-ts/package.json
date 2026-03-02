@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/memori",
-  "version": "0.1.3-beta",
+  "version": "0.1.4-beta",
   "description": "The official TypeScript SDK for Memori",
   "type": "module",
   "main": "./dist/index.js",
@@ -34,11 +34,14 @@
   },
   "keywords": [
     "memori",
-    "memory",
     "llm",
+    "memory",
     "ai",
-    "rag",
-    "agent"
+    "openai",
+    "anthropic",
+    "gemini",
+    "sdk",
+    "typescript"
   ],
   "author": "Memori Labs",
   "license": "Apache-2.0",
@@ -47,6 +50,10 @@
     "url": "https://github.com/MemoriLabs/Memori.git",
     "directory": "memori-ts"
   },
+  "bugs": {
+    "url": "https://github.com/MemoriLabs/Memori/issues"
+  },
+  "homepage": "https://github.com/MemoriLabs/Memori",
   "peerDependencies": {
     "@anthropic-ai/sdk": "*",
     "openai": "*"
@@ -80,6 +87,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@memorilabs/axon": "^0.1.1"
+    "@memorilabs/axon": "^0.1.2"
   }
 }

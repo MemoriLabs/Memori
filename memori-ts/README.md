@@ -131,6 +131,7 @@ memori.setSession(sessionId);
 
 - Anthropic Claude (`@anthropic-ai/sdk`)
 - OpenAI (`openai`)
+- Gemini (`@google/genai`)
 
 ## Memori Advanced Augmentation
 

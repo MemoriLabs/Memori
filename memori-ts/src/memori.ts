@@ -72,11 +72,9 @@ export class Memori {
     this.augmentationEngine = new AugmentationEngine(this.collectorApi, this.config, this.session);
 
     // 4. Register Hooks
-    this.axon.before.register(this.recallEngine.handleRecall.bind(this.recallEngine));
-    this.axon.after.register(this.persistenceEngine.handlePersistence.bind(this.persistenceEngine));
-    this.axon.after.register(
-      this.augmentationEngine.handleAugmentation.bind(this.augmentationEngine)
-    );
+    this.axon.hook.before(this.recallEngine.handleRecall.bind(this.recallEngine));
+    this.axon.hook.after(this.persistenceEngine.handlePersistence.bind(this.persistenceEngine));
+    this.axon.hook.after(this.augmentationEngine.handleAugmentation.bind(this.augmentationEngine));
   }
 
   /**
