@@ -6,6 +6,7 @@ import { RecallEngine } from './engines/recall.js';
 import { PersistenceEngine } from './engines/persistence.js';
 import { AugmentationEngine } from './engines/augmentation.js';
 import { ParsedFact } from './types/api.js';
+import { IntegrationConstructor, SupportedIntegration } from './types/integrations.js';
 
 /**
  * The main entry point for the Memori SDK.
@@ -119,5 +120,22 @@ export class Memori {
   public setSession(id: string): this {
     this.session.set(id);
     return this;
+  }
+
+  /**
+   * Securely attaches a supported framework integration to this Memori instance.
+   *
+   * @typeParam T - The type of integration being created
+   * @param IntegrationClass - The integration class constructor to instantiate
+   * @returns A new instance of the specified integration with access to Memori's core engines
+   */
+  public integrate<T extends SupportedIntegration>(IntegrationClass: IntegrationConstructor<T>): T {
+    return new IntegrationClass({
+      recall: this.recallEngine,
+      persistence: this.persistenceEngine,
+      augmentation: this.augmentationEngine,
+      config: this.config,
+      session: this.session,
+    });
   }
 }
