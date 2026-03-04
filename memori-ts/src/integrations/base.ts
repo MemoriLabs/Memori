@@ -1,5 +1,5 @@
 import { LLMRequest, LLMResponse, CallContext } from '@memorilabs/axon';
-import { MemoriCore } from '../types/integrations.js';
+import { MemoriCore, IntegrationRequest } from '../types/integrations.js';
 
 /**
  * Abstract base class for Memori framework integrations.
@@ -19,24 +19,24 @@ export abstract class BaseIntegration {
    * Internal helper: Captures a conversation turn by translating it into Axon format
    * and feeding it to both the Persistence and Augmentation engines.
    *
-   * @param userMessage - Raw user message text
-   * @param agentResponse - Raw agent response text
+   * @param req - The unified integration message containing user text, agent text, and metadata
    * @internal
    */
-  protected async executeCapture(userMessage: string, agentResponse: string): Promise<void> {
+  protected async executeAugmentation(req: IntegrationRequest): Promise<void> {
     if (!this.core.session.id) return;
 
     const syntheticReq: LLMRequest = {
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content: req.userMessage }],
+      model: req.metadata?.model || '',
     };
     const syntheticRes: LLMResponse = {
-      content: agentResponse,
+      content: req.agentResponse,
     };
 
     const syntheticCtx: CallContext = {
       traceId: `integration-trace-${Date.now()}`,
       startedAt: new Date(),
-      metadata: {},
+      metadata: req.metadata as unknown as Record<string, unknown>,
     };
 
     try {

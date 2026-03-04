@@ -48,7 +48,7 @@ export class AugmentationEngine {
         entity: { id: this.config.entityId },
         process: { id: this.config.processId },
       },
-      sdk: { lang: 'javascript', version: SDK_VERSION },
+      sdk: { lang: 'javascript', version: ctx.metadata.integrationSdkVersion || SDK_VERSION },
       framework: null,
       llm: {
         model: {
@@ -59,7 +59,7 @@ export class AugmentationEngine {
           version: req.model || null,
         },
       },
-      platform: null,
+      platform: ctx.metadata.platform || null,
       storage: null,
     };
   }

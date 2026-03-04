@@ -1,3 +1,4 @@
+import { IntegrationRequest } from 'src/types/integrations.js';
 import { BaseIntegration } from './base.js';
 
 /**
@@ -32,14 +33,13 @@ export class OpenClawIntegration extends BaseIntegration {
   /**
    * Captures a conversation turn and sends it to Memori for processing.
    *
-   * @param userMessage - The user's input message
-   * @param agentResponse - The agent's complete response
+   * @param req - The unified integration message containing user text, agent text, and metadata
    * @returns Promise that resolves when capture is complete
    *
    * @throws Does not throw - errors are logged but swallowed to prevent disrupting the agent
    */
-  public async capture(userMessage: string, agentResponse: string): Promise<void> {
-    await this.executeCapture(userMessage, agentResponse);
+  public async augmentation(req: IntegrationRequest): Promise<void> {
+    await this.executeAugmentation(req);
   }
 
   /**

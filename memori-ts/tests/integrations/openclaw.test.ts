@@ -48,15 +48,17 @@ describe('OpenClawIntegration', () => {
   });
 
   describe('capture()', () => {
-    it('should delegate to the inherited executeCapture method', async () => {
+    it('should delegate to the inherited augmentation method', async () => {
       // Spy on the protected method inherited from BaseIntegration
-      const executeCaptureSpy = vi
-        .spyOn(openclaw as any, 'executeCapture')
+      const augmentationSpy = vi
+        .spyOn(openclaw as any, 'augmentation')
         .mockResolvedValue(undefined);
 
-      await openclaw.capture('user says hi', 'bot says hello');
+      const req = { userMessage: 'user says hi', agentResponse: 'bot says hello' };
 
-      expect(executeCaptureSpy).toHaveBeenCalledWith('user says hi', 'bot says hello');
+      await openclaw.augmentation(req);
+
+      expect(augmentationSpy).toHaveBeenCalledWith(req);
     });
   });
 

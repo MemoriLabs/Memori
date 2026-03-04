@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BaseIntegration } from '../../src/integrations/base.js';
-import { MemoriCore } from '../../src/types/integrations.js';
+import { IntegrationRequest, MemoriCore } from '../../src/types/integrations.js';
 import { LLMRequest } from '@memorilabs/axon';
 
 // Create a concrete implementation to test the protected methods of the abstract class
 class TestIntegration extends BaseIntegration {
-  public testCapture(userMessage: string, agentResponse: string) {
-    return this.executeCapture(userMessage, agentResponse);
+  public testCapture(req: IntegrationRequest) {
+    return this.executeAugmentation(req);
   }
   public testRecall(userMessage: string) {
     return this.executeRecall(userMessage);
@@ -39,24 +39,39 @@ describe('BaseIntegration', () => {
     it('should silently abort if no session ID is present', async () => {
       (mockCore.session as any).id = undefined;
 
-      await integration.testCapture('user msg', 'ai msg');
+      const req = { userMessage: 'user msg', agentResponse: 'ai msg' };
+
+      await integration.testCapture(req);
 
       expect(mockCore.persistence.handlePersistence).not.toHaveBeenCalled();
       expect(mockCore.augmentation.handleAugmentation).not.toHaveBeenCalled();
     });
 
-    it('should format requests and invoke persistence and augmentation engines', async () => {
-      await integration.testCapture('hello bot', 'hello human');
+    it('should format requests and invoke engines, properly passing metadata', async () => {
+      const req: IntegrationRequest = {
+        userMessage: 'hello bot',
+        agentResponse: 'hello human',
+        metadata: {
+          provider: 'openclaw',
+          model: 'gpt-4o',
+          platform: 'openclaw',
+          sdkVersion: null,
+          integrationSdkVersion: '1.0.0',
+        },
+      };
+
+      await integration.testCapture(req);
 
       const expectedReq = expect.objectContaining({
         messages: [{ role: 'user', content: 'hello bot' }],
+        model: 'gpt-4o',
       });
       const expectedRes = expect.objectContaining({
         content: 'hello human',
       });
       const expectedCtx = expect.objectContaining({
         traceId: expect.stringContaining('integration-trace-'),
-        metadata: {},
+        metadata: req.metadata,
       });
 
       expect(mockCore.persistence.handlePersistence).toHaveBeenCalledWith(
@@ -76,8 +91,10 @@ describe('BaseIntegration', () => {
         new Error('Persistence failed')
       );
 
+      const req = { userMessage: 'msg', agentResponse: 'resp' };
+
       // Should not throw
-      await expect(integration.testCapture('msg', 'resp')).resolves.toBeUndefined();
+      await expect(integration.testCapture(req)).resolves.toBeUndefined();
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Memori Integration Capture failed:',
