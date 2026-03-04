@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/memori",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "The official TypeScript SDK for Memori",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./integrations": {
+      "import": "./dist/integrations/index.js",
+      "types": "./dist/integrations/index.d.ts"
     }
   },
   "files": [
