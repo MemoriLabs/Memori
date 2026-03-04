@@ -17,7 +17,9 @@ Every memory in Memori is tagged with three dimensions: **who** (entity), **what
 
 The combination of `entity_id` + `process_id` + `session_id` creates a unique memory scope — different users have isolated memories, the same user can have different context in different applications, and each conversation is tracked separately.
 
-```python
+<CodeGroup title="Attribution">
+
+```python {{ title: 'Python' }}
 from memori import Memori
 from openai import OpenAI
 
@@ -38,6 +40,27 @@ response = client.chat.completions.create(
     ]
 )
 ```
+
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+
+// Set attribution before any LLM calls
+mem.attribution('user_alice', 'support_bot');
+// session ID is auto-generated
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'user', content: 'I prefer dark mode.' },
+  ],
+});
+```
+
+</CodeGroup>
 
 ## Memory Types
 
@@ -69,7 +92,9 @@ No extra code required — it happens transparently.
 
 Use mem.recall() to retrieve memories explicitly — useful for building custom prompts, displaying memories in a UI, or debugging.
 
-```python
+<CodeGroup title="Manual Recall">
+
+```python {{ title: 'Python' }}
 from memori import Memori
 
 mem = Memori()
@@ -82,6 +107,22 @@ for fact in facts:
     print(f"Score: {fact.similarity:.4f}")
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import { Memori } from '@memorilabs/memori';
+
+const mem = new Memori();
+mem.attribution('user_alice', 'support_bot');
+
+const facts = await mem.recall('coding preferences');
+
+for (const fact of facts) {
+  console.log(`Fact: ${fact.content}`);
+  console.log(`Score: ${fact.score.toFixed(4)}`);
+}
+```
+
+</CodeGroup>
+
 Each returned fact includes `id`, `content`, `similarity` (0–1 relevance score), `rank_score`, and `date_created`.
 
 ### Recall Configuration
@@ -93,23 +134,24 @@ Memori uses semantic search (vector similarity) to find relevant facts. You can 
 | `mem.config.recall_relevance_threshold` | `0.1`   | Minimum similarity score for a fact to be included |
 | `mem.config.recall_embeddings_limit`    | `1000`  | Maximum number of embeddings to compare against    |
 
-```python
+<CodeGroup title="Recall Configuration">
+
+```python {{ title: 'Python' }}
 # Example: tune recall for broader or narrower results
 mem.config.recall_relevance_threshold = 0.05  # Lower = more results
 mem.config.recall_embeddings_limit = 500      # Reduce for lower memory usage
 ```
 
+```typescript {{ title: 'TypeScript' }}
+// Example: tune recall for broader or narrower results
+mem.config.recallRelevanceThreshold = 0.05; // Lower = more results
+```
+
+</CodeGroup>
+
 ## Memory Lifecycle
 
-<Mermaid>
-  {`graph LR
-    A[Conversation] --> B[Capture]
-    B --> C[Augmentation]
-    C --> D[Extraction]
-    D --> E[Storage in<br/>Memori Cloud]
-    E --> F[Recall]
-    F --> G[Injected into<br/>next LLM call]`}
-</Mermaid>
+!["Memori Lifecycle"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-lifecycle.webp)
 
 1. **Conversation** — Your user talks to your AI through the wrapped LLM client
 2. **Capture** — Memori intercepts and stores the raw conversation

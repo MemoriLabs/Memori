@@ -41,7 +41,9 @@ Surfaces the right memories at the right time — semantic search over stored me
 
 Setting up Memori requires only your API key and attribution:
 
-```python
+<CodeGroup title="Configuration">
+
+```python {{ title: 'Python' }}
 from memori import Memori
 from openai import OpenAI
 
@@ -52,6 +54,20 @@ client = OpenAI()
 mem = Memori().llm.register(client)
 mem.attribution(entity_id="user_123", process_id="my_agent")
 ```
+
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// Set MEMORI_API_KEY as an environment variable
+// export MEMORI_API_KEY="your-memori-api-key"
+
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'my_agent');
+```
+
+</CodeGroup>
 
 ## Data Flow
 

@@ -112,15 +112,7 @@ mem.config.recall_embeddings_limit = 500      # Reduce for lower memory usage
 
 ## Memory Lifecycle
 
-<Mermaid>
-  {`graph LR
-    A[Conversation] --> B[Capture]
-    B --> C[Augmentation]
-    C --> D[Extraction]
-    D --> E[Storage in<br/>Your Database]
-    E --> F[Recall]
-    F --> G[Injected into<br/>next LLM call]`}
-</Mermaid>
+!["Memori Lifecycle"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-lifecycle.webp)
 
 1. **Conversation** — Your user talks to your AI through the wrapped LLM client
 2. **Capture** — Memori intercepts and stores the raw conversation in your database

@@ -25,9 +25,9 @@ Memori provides built-in multi-user and multi-process isolation through its attr
 
 ## Examples
 
-<CodeGroup title="Multi-User Patterns">
+<CodeGroup title="Per-User Isolation">
 
-```python {{ title: 'Per-User Isolation' }}
+```python
 from memori import Memori
 from openai import OpenAI
 
@@ -49,8 +49,32 @@ response = client.chat.completions.create(
 )
 # Bob will NOT see Alice's preferences
 ```
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
 
-```python {{ title: 'Multi-Process' }}
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+
+// User A's conversations
+mem.attribution('user_alice', 'support_bot');
+await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'I prefer dark mode' }],
+});
+
+// User B's conversations — completely isolated
+mem.attribution('user_bob', 'support_bot');
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'What are my preferences?' }],
+});
+// Bob will NOT see Alice's preferences
+```
+</CodeGroup>
+
+<CodeGroup title="Multi-Process">
+```python
 from memori import Memori
 from openai import OpenAI
 
@@ -78,7 +102,37 @@ response = client.chat.completions.create(
 )
 ```
 
-```python {{ title: 'Session Management' }}
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+
+// Same user, different processes
+mem.attribution('user_alice', 'support_bot');
+await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'user', content: 'I use PostgreSQL for my databases' },
+  ],
+});
+
+// Switch to a different process for the same user
+mem.attribution('user_alice', 'sales_bot');
+// The sales bot can recall Alice's facts (like "uses PostgreSQL")
+// because facts are shared across processes for the same entity.
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'user', content: 'What databases do I use?' },
+  ],
+});
+```
+</CodeGroup>
+
+<CodeGroup title="Session Management">
+```python
 from memori import Memori
 from openai import OpenAI
 
@@ -96,6 +150,23 @@ mem.new_session()
 mem.set_session(current_session)
 ```
 
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+mem.attribution('user_alice', 'support_bot');
+
+// Get the current session ID
+const currentSession = mem.session.id;
+
+// Start a new conversation group
+mem.resetSession();
+
+// Or restore a previous session
+mem.setSession(currentSession);
+```
 </CodeGroup>
 
 ## Common Patterns
@@ -104,6 +175,7 @@ mem.set_session(current_session)
 
 Set the entity ID from the authenticated user. Works with Flask, FastAPI, Django, or any web framework.
 
+<CodeGroup title="Common Patterns">
 ```python
 from memori import Memori
 from openai import OpenAI
@@ -120,10 +192,33 @@ def handle_chat(user_id: str, message: str):
     return response.choices[0].message.content
 ```
 
+```typescript
+import express from 'express';
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const app = express();
+app.use(express.json());
+
+app.post('/chat/:userId', async (req, res) => {
+  const client = new OpenAI();
+  const mem = new Memori().llm.register(client);
+  mem.attribution(req.params.userId, 'web_assistant');
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: req.body.message }],
+  });
+  res.json({ response: response.choices[0].message.content });
+});
+```
+</CodeGroup>
+
 ### Multi-Agent System
 
 Give each agent a unique process ID. Facts are shared across agents for the same entity, but each agent maintains its own conversation history.
 
+<CodeGroup title="Multi-Agent System">
 ```python
 from memori import Memori
 from openai import OpenAI
@@ -139,3 +234,21 @@ support = create_agent("user_alice", "support_agent")
 sales = create_agent("user_alice", "sales_agent")
 onboard = create_agent("user_alice", "onboarding_agent")
 ```
+
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+function createAgent(userId: string, agentName: string) {
+  const client = new OpenAI();
+  const mem = new Memori().llm.register(client);
+  mem.attribution(userId, agentName);
+  return client;
+}
+
+// Three agents, one user, shared facts
+const support = createAgent('user_alice', 'support_agent');
+const sales = createAgent('user_alice', 'sales_agent');
+const onboard = createAgent('user_alice', 'onboarding_agent');
+```
+</CodeGroup>

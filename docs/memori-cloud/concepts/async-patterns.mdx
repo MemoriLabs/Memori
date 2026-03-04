@@ -1,40 +1,40 @@
 ---
 title: Async Patterns
-description: Best practices for using Memori with async/await — AsyncOpenAI, AsyncAnthropic, and FastAPI.
+description: Best practices for using Memori with async/await in Python and TypeScript.
 ---
 
 # Async Patterns
 
-Memori works with Python's async/await out of the box. Use `AsyncOpenAI` or `AsyncAnthropic` instead of their sync counterparts — everything else stays the same.
+Memori works with async/await out of the box in both Python and TypeScript. In Python, use `AsyncOpenAI` or `AsyncAnthropic` instead of their sync counterparts — everything else stays the same. TypeScript is natively async.
 
 ## When to Use Async
 
-| Scenario                 | Async? | Why                         |
-| ------------------------ | ------ | --------------------------- |
-| Web servers (FastAPI)    | Yes    | Concurrent request handling |
-| Chatbots with many users | Yes    | Non-blocking I/O            |
-| CLI scripts              | No     | Sync is simpler             |
-| Jupyter notebooks        | No     | Event loop already running  |
+| Scenario                 | Python | TypeScript | Why                         |
+| ------------------------ | ------ | ---------- | --------------------------- |
+| Web servers              | Yes    | Default    | Concurrent request handling |
+| Chatbots with many users | Yes    | Default    | Non-blocking I/O            |
+| CLI scripts              | No     | Default    | Sync is simpler in Python   |
+| Jupyter notebooks        | No     | —          | Event loop already running  |
+
+<Note>
+  TypeScript is natively async — all Memori SDK calls return Promises. No special async client or `asyncio` setup is needed.
+</Note>
 
 ## Basic Async Setup
 
-```python
-import os
+<CodeGroup title="Async Setup">
+
+```python {{ title: 'Python' }}
 import asyncio
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from memori import Memori
 from openai import AsyncOpenAI
 
-engine = create_engine("sqlite:///memori.db")
-SessionLocal = sessionmaker(bind=engine)
+client = AsyncOpenAI()
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="async_agent")
 
 async def main():
-    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    mem = Memori(conn=SessionLocal).llm.register(client)
-    mem.attribution(entity_id="user_123", process_id="async_agent")
-    mem.config.storage.build()
-
     response = await client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": "I prefer async Python."}]
@@ -45,23 +45,38 @@ async def main():
 asyncio.run(main())
 ```
 
-Works identically with `AsyncAnthropic` — just swap the client.
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
 
-## FastAPI Example
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'async_agent');
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'I prefer TypeScript.' }],
+});
+console.log(response.choices[0].message.content);
+
+// Wait for augmentation in short-lived scripts
+await new Promise((resolve) => setTimeout(resolve, 2000));
+```
+
+</CodeGroup>
+
+## Web Server Example
+
+<CodeGroup title="Web Server">
 
 ```python
 import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from memori import Memori
 from openai import AsyncOpenAI
 
 app = FastAPI()
-engine = create_engine("sqlite:///memori.db", connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(bind=engine)
-Memori(conn=SessionLocal).config.storage.build()
 
 class ChatRequest(BaseModel):
     message: str
@@ -69,7 +84,7 @@ class ChatRequest(BaseModel):
 @app.post("/chat/{user_id}")
 async def chat(user_id: str, req: ChatRequest):
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    mem = Memori(conn=SessionLocal).llm.register(client)
+    mem = Memori().llm.register(client)
     mem.attribution(entity_id=user_id, process_id="fastapi_async")
 
     response = await client.chat.completions.create(
@@ -78,3 +93,28 @@ async def chat(user_id: str, req: ChatRequest):
     )
     return {"response": response.choices[0].message.content}
 ```
+
+```typescript
+import express from 'express';
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const app = express();
+app.use(express.json());
+
+app.post('/chat/:userId', async (req, res) => {
+  const client = new OpenAI();
+  const mem = new Memori().llm.register(client);
+  mem.attribution(req.params.userId, 'express_async');
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: req.body.message }],
+  });
+  res.json({ response: response.choices[0].message.content });
+});
+
+app.listen(3000);
+```
+
+</CodeGroup>

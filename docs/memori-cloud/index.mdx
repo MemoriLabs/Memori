@@ -42,7 +42,9 @@ prompts, or debug. See [How Memori
 Works](/docs/memori-cloud/concepts/how-memory-works#how-recall-works) for
 automatic vs manual recall and tuning.
 
-```python
+<CodeGroup title="Quick Start">
+
+```python {{ title: 'Python' }}
 from memori import Memori
 from openai import OpenAI
 
@@ -58,8 +60,27 @@ response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "My favorite color is blue."}]
 )
-
 ```
+
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// Requires MEMORI_API_KEY and OPENAI_API_KEY in your environment
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+
+// Track conversations by user and process
+mem.attribution('user_123', 'support_agent');
+
+// All conversations automatically persisted and recalled
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+```
+
+</CodeGroup>
 
 ## Core Concepts
 

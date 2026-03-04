@@ -21,14 +21,14 @@
   <a href="https://badge.fury.io/py/memori">
     <img src="https://badge.fury.io/py/memori.svg" alt="PyPI version">
   </a>
+  <a href="https://www.npmjs.com/package/@memorilabs/memori">
+    <img src="https://img.shields.io/npm/v/@memorilabs/memori.svg" alt="NPM version">
+  </a>
   <a href="https://pepy.tech/projects/memori">
     <img src="https://static.pepy.tech/badge/memori" alt="Downloads">
   </a>
   <a href="https://opensource.org/license/apache-2-0">
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
-  </a>
-  <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+">
   </a>
   <a href="https://discord.gg/abD4eGym6v">
     <img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord">
@@ -45,17 +45,61 @@
 
 ## Getting Started
 
-Install Memori:
+### Installation
+
+<details open>
+<summary><b>TypeScript SDK</b></summary>
+
+```bash
+npm install @memorilabs/memori
+```
+</details>
+
+<details>
+<summary><b>Python SDK</b></summary>
 
 ```bash
 pip install memori
 ```
+</details>
 
 ### Quickstart
 
 Sign up at [app.memorilabs.ai](https://app.memorilabs.ai), get a Memori API key, and start building. Full docs: [memorilabs.ai/docs/memori-cloud/](https://memorilabs.ai/docs/memori-cloud/).
 
 Set `MEMORI_API_KEY` and your LLM API key (e.g. `OPENAI_API_KEY`), then:
+
+<details open>
+<summary><b>TypeScript SDK</b></summary>
+
+```typescript
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// Requires MEMORI_API_KEY and OPENAI_API_KEY in your environment
+const client = new OpenAI();
+const mem = new Memori().llm
+  .register(client)
+  .attribution('user_123', 'support_agent');
+
+async function main() {
+  await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+  });
+  // Conversations are persisted and recalled automatically in the background.
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: "What's my favorite color?" }],
+  });
+  // Memori recalls that your favorite color is blue.
+}
+```
+</details>
+
+<details>
+<summary><b>Python SDK</b></summary>
 
 ```python
 from memori import Memori
@@ -79,11 +123,13 @@ response = client.chat.completions.create(
 )
 # Memori recalls that your favorite color is blue.
 ```
+</details>
 
 ## Explore the Memories
 
 Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playground, and API Keys.
 
+> [!TIP]
 > Want to use your own database? Check out docs for Memori BYODB here:
 > [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
 
@@ -94,9 +140,21 @@ To get the most out of Memori, you want to attribute your LLM interactions to an
 
 If you do not provide any attribution, Memori cannot make memories for you.
 
+<details open>
+<summary><b>TypeScript SDK</b></summary>
+
+```typescript
+mem.attribution("12345", "my-ai-bot");
+```
+</details>
+
+<details>
+<summary><b>Python SDK</b></summary>
+
 ```python
 mem.attribution(entity_id="12345", process_id="my-ai-bot")
 ```
+</details>
 
 ## Session Management
 
@@ -104,19 +162,25 @@ Memori uses sessions to group your LLM interactions together. For example, if yo
 
 By default, Memori handles setting the session for you but you can start a new session or override the session by executing the following:
 
+<details open>
+<summary><b>TypeScript SDK</b></summary>
+
+```typescript
+mem.resetSession();
+# or
+mem.setSession(sessionId);
+```
+</details>
+
+<details>
+<summary><b>Python SDK</b></summary>
+
 ```python
 mem.new_session()
-```
-
-or
-
-```python
-session_id = mem.config.session_id
-
-# ...
-
+# or
 mem.set_session(session_id)
 ```
+</details>
 
 ## Supported LLMs
 
@@ -148,9 +212,9 @@ For more examples and demos, check out the [Memori Cookbook](https://github.com/
 
 Memories are tracked at several different levels:
 
-- entity: think person, place, or thing; like a user
-- process: think your agent, LLM interaction or program
-- session: the current interactions between the entity, process and the LLM
+- **entity**: think person, place, or thing; like a user
+- **process**: think your agent, LLM interaction or program
+- **session**: the current interactions between the entity, process and the LLM
 
 [Memori's Advanced Augmentation](https://github.com/MemoriLabs/Memori/blob/main/docs/advanced-augmentation.md) enhances memories at each of these levels with:
 
@@ -165,15 +229,16 @@ Memories are tracked at several different levels:
 
 Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs in the background incurring no latency.
 
-By default, Memori Advanced Augmentation is available without an account but rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or execute the following:
+By default, Memori Advanced Augmentation is available without an account but rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or use the Memori CLI:
 
 ```bash
+# Install the CLI via pip to manage your account
 python -m memori sign-up <email_address>
 ```
 
 Memori Advanced Augmentation is always free for developers!
 
-Once you've obtained an API key, simply set the following environment variable:
+Once you've obtained an API key, set the following environment variable (used by both Python and TypeScript SDKs):
 
 ```bash
 export MEMORI_API_KEY=[api_key]
@@ -181,7 +246,7 @@ export MEMORI_API_KEY=[api_key]
 
 ## Managing Your Quota
 
-At any time, you can check your quota by executing the following:
+At any time, you can check your quota using the Memori CLI (works for both SDKs):
 
 ```bash
 python -m memori quota
@@ -193,9 +258,10 @@ If your API key exceeds its quota limits we will email you and let you know.
 
 ## Command Line Interface (CLI)
 
-To use the Memori CLI, execute the following from the command line:
+The Memori CLI is the unified tool for managing your account, keys, and quotas across all SDKs. To use it, execute the following from the command line:
 
 ```bash
+# Requires Python installed
 python -m memori
 ```
 

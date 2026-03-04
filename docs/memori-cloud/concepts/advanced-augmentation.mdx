@@ -31,7 +31,9 @@ The augmentation flow is fully asynchronous and designed to avoid blocking your 
 
 In short-lived scripts, call `mem.augmentation.wait()` to ensure processing completes before exit.
 
-```python
+<CodeGroup title="Advanced Augmentation">
+
+```python {{ title: 'Python' }}
 from memori import Memori
 from openai import OpenAI
 
@@ -51,6 +53,29 @@ print(response.choices[0].message.content)
 # Only needed in short-lived scripts
 mem.augmentation.wait()
 ```
+
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'my_agent');
+
+// This returns immediately — no augmentation delay
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'user', content: 'I love hiking in the mountains.' },
+  ],
+});
+console.log(response.choices[0].message.content);
+
+// Only needed in short-lived scripts
+await new Promise((resolve) => setTimeout(resolve, 2000));
+```
+
+</CodeGroup>
 
 ## Extraction Types
 

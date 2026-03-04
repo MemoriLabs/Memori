@@ -11,7 +11,7 @@ Memori supports all OpenAI Chat Completions and Responses APIs. Both sync and as
 
 <CodeGroup title="OpenAI Integration">
 
-```python {{ title: 'Sync' }}
+```python {{ title: 'Python' }}
 from memori import Memori
 from openai import OpenAI
 
@@ -27,7 +27,38 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-```python {{ title: 'Async' }}
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'my_agent');
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(response.choices[0].message.content);
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode              | Python                                   | TypeScript                               |
+| ----------------- | ---------------------------------------- | ---------------------------------------- |
+| **Sync**          | `client.chat.completions.create()`       | —                                        |
+| **Async**         | `await client.chat.completions.create()` | `await client.chat.completions.create()` |
+| **Streamed**      | `stream=True` parameter                  | `stream: true` parameter                 |
+| **Responses API** | `client.responses.create()`              | —                                        |
+
+## Additional Modes
+
+### Async (Python)
+
+```python
 import asyncio
 from memori import Memori
 from openai import AsyncOpenAI
@@ -47,7 +78,11 @@ async def main():
 asyncio.run(main())
 ```
 
-```python {{ title: 'Streaming' }}
+### Streaming
+
+<CodeGroup title="Streaming">
+
+```python {{ title: 'Python' }}
 from memori import Memori
 from openai import OpenAI
 
@@ -66,7 +101,32 @@ for chunk in stream:
         print(chunk.choices[0].delta.content, end="")
 ```
 
-```python {{ title: 'Responses API' }}
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'my_agent');
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
+});
+for await (const chunk of stream) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content);
+  }
+}
+```
+
+</CodeGroup>
+
+### Responses API (Python)
+
+```python
 from memori import Memori
 from openai import OpenAI
 
@@ -83,20 +143,43 @@ response = client.responses.create(
 print(response.output_text)
 ```
 
-</CodeGroup>
-
-## Supported Modes
-
-| Mode              | Method                                   |
-| ----------------- | ---------------------------------------- |
-| **Sync**          | `client.chat.completions.create()`       |
-| **Async**         | `await client.chat.completions.create()` |
-| **Streamed**      | `stream=True` parameter                  |
-| **Responses API** | `client.responses.create()`              |
-
 ## Multi-Turn Conversations
 
 Memori automatically captures each interaction and links them within the same session.
+
+<CodeGroup title="Multi-Turn Conversations">
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'my_agent');
+
+const messages: OpenAI.ChatCompletionMessageParam[] = [
+  { role: 'user', content: 'My name is Alice.' },
+];
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages,
+});
+messages.push({
+  role: 'assistant',
+  content: response.choices[0].message.content!,
+});
+
+messages.push({
+  role: 'user',
+  content: "What's my name?",
+});
+const response2 = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages,
+});
+console.log(response2.choices[0].message.content);
+```
 
 ```python
 from memori import Memori
@@ -130,3 +213,4 @@ response = client.chat.completions.create(
 )
 print(response.choices[0].message.content)
 ```
+</CodeGroup>

@@ -11,7 +11,7 @@ Memori Cloud supports all Anthropic Claude models. The `max_tokens` parameter is
 
 <CodeGroup title="Anthropic Integration">
 
-```python {{ title: 'Sync' }}
+```python {{ title: 'Python' }}
 from anthropic import Anthropic
 from memori import Memori
 
@@ -28,7 +28,38 @@ response = client.messages.create(
 print(response.content[0].text)
 ```
 
-```python {{ title: 'Async' }}
+```typescript {{ title: 'TypeScript' }}
+import Anthropic from '@anthropic-ai/sdk';
+import { Memori } from '@memorilabs/memori';
+
+const client = new Anthropic();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'claude_assistant');
+
+const response = await client.messages.create({
+  model: 'claude-sonnet-4-5-20250929',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(response.content[0].text);
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Python                           | TypeScript                             |
+| ------------ | -------------------------------- | -------------------------------------- |
+| **Sync**     | `client.messages.create()`       | —                                      |
+| **Async**    | `await client.messages.create()` | `await client.messages.create()`       |
+| **Streamed** | `client.messages.stream()`       | `stream: true` parameter               |
+
+## Additional Modes
+
+### Async (Python)
+
+```python
 import asyncio
 from anthropic import AsyncAnthropic
 from memori import Memori
@@ -49,7 +80,11 @@ async def main():
 asyncio.run(main())
 ```
 
-```python {{ title: 'Streaming' }}
+### Streaming
+
+<CodeGroup title="Streaming">
+
+```python {{ title: 'Python' }}
 from anthropic import Anthropic
 from memori import Memori
 
@@ -67,15 +102,29 @@ with client.messages.stream(
         print(text, end="")
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import Anthropic from '@anthropic-ai/sdk';
+import { Memori } from '@memorilabs/memori';
+
+const client = new Anthropic();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'claude_assistant');
+
+const stream = await client.messages.create({
+  model: 'claude-sonnet-4-5-20250929',
+  max_tokens: 1024,
+  stream: true,
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+for await (const event of stream) {
+  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+    process.stdout.write(event.delta.text);
+  }
+}
+```
+
 </CodeGroup>
-
-## Supported Modes
-
-| Mode         | Method                           |
-| ------------ | -------------------------------- |
-| **Sync**     | `client.messages.create()`       |
-| **Async**    | `await client.messages.create()` |
-| **Streamed** | `client.messages.stream()`       |
 
 ## System Prompts
 
@@ -99,4 +148,26 @@ response = client.messages.create(
     ]
 )
 print(response.content[0].text)
+```
+
+### TypeScript
+
+```typescript
+import Anthropic from '@anthropic-ai/sdk';
+import { Memori } from '@memorilabs/memori';
+
+const client = new Anthropic();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'claude_assistant');
+
+const response = await client.messages.create({
+  model: 'claude-sonnet-4-5-20250929',
+  max_tokens: 1024,
+  system: 'You are a helpful coding assistant.',
+  messages: [
+    { role: 'user', content: 'Explain TypeScript generics.' },
+  ],
+});
+console.log(response.content[0].text);
 ```
