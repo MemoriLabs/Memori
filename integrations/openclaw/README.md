@@ -1,42 +1,76 @@
-# Memori OpenClaw Plugin
+[![Memori Labs](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/banner.png)](https://memorilabs.ai/)
 
-Official [Memori](https://memori.ai) long-term memory plugin for OpenClaw. Provides persistent, context-aware memory that survives across sessions and context compaction.
+<p align="center">
+  <strong>The memory fabric for enterprise AI</strong>
+</p>
 
-## Features
+<p align="center">
+  <i>By default, OpenClaw agents forget everything between sessions. This plugin fixes that. It watches conversations, extracts what matters, and brings it back when relevant—automatically.</i>
+</p>
 
-- 🧠 **Auto-Recall**: Automatically injects relevant memories before each agent response
-- 💾 **Auto-Capture**: Automatically stores conversation facts after each interaction
-- 🔄 **Session Management**: Efficient caching with automatic garbage collection
-- 🎯 **Context-Aware**: Only surfaces memories relevant to the current query
-- ⚡ **Performance**: Smart caching prevents duplicate API calls
+<p align="center">
+  <a href="https://www.npmjs.com/package/@memorilabs/openclaw-memori">
+    <img src="https://img.shields.io/npm/v/@memorilabs/openclaw-memori.svg" alt="NPM version">
+  </a>
+  <a href="https://www.npmjs.com/package/@memorilabs/openclaw-memori">
+    <img src="https://img.shields.io/npm/dm/@memorilabs/openclaw-memori.svg" alt="NPM Downloads">
+  </a>
+  <a href="https://opensource.org/license/apache-2-0">
+    <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
+  </a>
+  <a href="https://discord.gg/abD4eGym6v">
+    <img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord">
+  </a>
+</p>
 
-## Installation
+---
+
+## Key Features
+
+- **Auto-Recall:** Before the agent responds, the plugin searches Memori for memories that match the current context and injects them directly into the prompt.
+- **Auto-Capture:** After the agent responds, the plugin securely sends the exchange to Memori to extract new facts, update stale ones, and merge duplicates.
+- **Bulletproof Sanitization:** Automatically strips OpenClaw system metadata, internal timestamps, and thinking blocks to prevent context pollution and feedback loops.
+- **Stateless & Thread-Safe:** A completely stateless architecture ensures zero memory leaks and 100% thread safety for multi-agent OpenClaw gateways.
+
+## Getting Started
+
+Run the following commands in your terminal to install and enable the plugin:
 
 ```bash
-cd ~/.openclaw/extensions
-git clone <your-repo-url> openclaw-memori
-cd openclaw-memori
-npm install
-npm run build
+# 1. Install the plugin from npm
+openclaw plugins install @memorilabs/openclaw-memori
+
+# 2. Enable it in your workspace
+openclaw plugins enable openclaw-memori
+
+# 3. Restart the OpenClaw gateway
+openclaw gateway restart
 ```
 
 ## Configuration
 
-Add to your `~/.openclaw/openclaw.json`:
+The plugin needs your Memori API key and an Entity ID to function. You can configure this via the OpenClaw CLI, your `openclaw.json` file, or environment variables.
+
+### Option A: Via OpenClaw CLI (Recommended)
+
+```bash
+openclaw config set plugins.entries.openclaw-memori.config.apiKey "YOUR_MEMORI_API_KEY"
+openclaw config set plugins.entries.openclaw-memori.config.entityId "your-app-user-id"
+```
+
+### Option B: Via `openclaw.json`
+
+Add the following to your `~/.openclaw/openclaw.json` file:
 
 ```json
 {
   "plugins": {
-    "allow": ["openclaw-memori"],
-    "slots": {
-      "memory": "openclaw-memori"
-    },
     "entries": {
       "openclaw-memori": {
         "enabled": true,
         "config": {
           "apiKey": "your-memori-api-key",
-          "entityId": "optional-hardcoded-user-id"
+          "entityId": "your-app-user-id"
         }
       }
     }
@@ -44,108 +78,49 @@ Add to your `~/.openclaw/openclaw.json`:
 }
 ```
 
-### Environment Variables
-
-Alternatively, set environment variables:
-
-```bash
-export MEMORI_API_KEY="your-memori-api-key"
-export MEMORI_USER_ID="optional-user-id"  # Optional
-```
-
 ### Configuration Options
 
-| Option     | Type   | Required | Description                                                                       |
-| ---------- | ------ | -------- | --------------------------------------------------------------------------------- |
-| `apiKey`   | string | Yes      | Memori API key (falls back to `MEMORI_API_KEY` env var)                           |
-| `entityId` | string | No       | Hardcoded entity ID for all memories (defaults to dynamic based on OpenClaw user) |
+| Option     | Type     | Required | Description                                                                                         |
+| ---------- | -------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `apiKey`   | `string` | **Yes**  | Your Memori API key.                                                                                |
+| `entityId` | `string` | **Yes**  | The unique identifier for the entity (e.g., user, agent, or tenant) to attribute these memories to. |
 
-## How It Works
+## How It Works (The Hook Lifecycle)
 
-### Memory Recall (`before_prompt_build` hook)
+This plugin integrates deeply with OpenClaw's event lifecycle to provide seamless memory without interfering with your agent's core logic:
 
-1. User sends a message
-2. Plugin queries Memori API for relevant memories
-3. Memories are injected into conversation context
-4. AI sees the memories and responds with full context
+1. **`before_prompt_build` (Recall):** When a user sends a message, the plugin intercepts the event, queries the Memori API, and safely prepends relevant memories to the agent's system context.
+2. **`agent_end` (Capture):** Once the agent finishes generating its response, the plugin captures the final `user` and `assistant` messages, sanitizes them, and sends them to the Memori integration endpoint for long-term storage and entity mapping.
 
-### Memory Capture (`agent_end` hook)
+## Contributing
 
-1. Agent completes response
-2. Plugin sends the conversation turn to Memori
-3. Memori extracts and stores important facts
-4. Facts are deduplicated and merged with existing memories
+We welcome contributions from the community! Please see our [Contributing Guidelines](https://github.com/MemoriLabs/Memori/blob/main/CONTRIBUTING.md) for details on code style, standards, and submitting pull requests.
 
-## Architecture
-
-```
-User Message
-    ↓
-[Recall Hook] → Memori API → Relevant Memories
-    ↓
-[Inject into Context]
-    ↓
-AI Response
-    ↓
-[Capture Hook] → Memori API → Extract & Store Facts
-```
-
-## Development
+To build from source:
 
 ```bash
-# Install dependencies
-npm install
+# Clone the repository
+git clone https://github.com/memorilabs/openclaw-memori.git
+cd openclaw-memori
 
-# Build
+# Install dependencies and build
+npm install
 npm run build
 
-# Watch mode
-npm run build:dev
-
-# Lint
-npm run lint
-
-# Type check
-npm run typecheck
-
-# Run all checks
+# Run formatting, linting, and type checking
 npm run check
 ```
 
-## Performance
-
-- **Session Caching**: 24-hour TTL with automatic garbage collection
-- **API Call Deduplication**: Caches recall results to prevent duplicate API calls during double hook invocations
-- **Minimal Latency**: ~2-5ms overhead beyond Memori API call time
-
-## Troubleshooting
-
-### Plugin not loading
-
-Check OpenClaw logs for initialization messages:
-
-```bash
-tail -f ~/.openclaw/logs/gateway.log | grep Memori
-```
-
-### API key missing
-
-Error: `[Memori] MEMORI_API_KEY is missing. Plugin disabled.`
-
-Solution: Add `apiKey` to plugin config or set `MEMORI_API_KEY` environment variable.
-
-### Memories not appearing
-
-1. Check logs for "Successfully injected memory context"
-2. Verify memories exist in your Memori account
-3. Ensure queries are relevant to stored memories
-
-## License
-
-Apache-2.0
+---
 
 ## Support
 
-- **Memori Documentation**: https://docs.memori.ai
-- **OpenClaw Documentation**: https://docs.openclaw.ai
-- **Issues**: <your-repo-issues-url>
+- **Documentation**: [https://memorilabs.ai/docs](https://memorilabs.ai/docs)
+- **Discord**: [https://discord.gg/abD4eGym6v](https://discord.gg/abD4eGym6v)
+- **Issues**: [GitHub Issues](https://github.com/memorilabs/openclaw-memori/issues)
+
+---
+
+## License
+
+Apache 2.0 - see [LICENSE](https://github.com/MemoriLabs/Memori/blob/main/LICENSE)

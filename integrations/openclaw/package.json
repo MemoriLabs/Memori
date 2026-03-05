@@ -30,6 +30,13 @@
   },
   "author": "Memori Labs",
   "license": "Apache-2.0",
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "memory",
+    "memori",
+    "long-term-memory"
+  ],
   "openclaw": {
     "extensions": [
       "./dist/index.js"

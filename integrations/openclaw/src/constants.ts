@@ -13,20 +13,6 @@ export const PLUGIN_CONFIG = {
 } as const;
 
 /**
- * Session management constants
- */
-export const SESSION_CONFIG = {
-  /** Session cache TTL in milliseconds (24 hours) */
-  TTL_MS: 1000 * 60 * 60 * 24,
-
-  /** Garbage collection interval in milliseconds (10 minutes) */
-  GC_INTERVAL_MS: 1000 * 60 * 10,
-
-  /** Minimum interval between API calls (1 second) */
-  MIN_API_INTERVAL_MS: 1000,
-} as const;
-
-/**
  * Recall configuration
  */
 export const RECALL_CONFIG = {

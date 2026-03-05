@@ -1,34 +1,17 @@
-import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
-import { getOrCreateSession } from '../manager.js';
 import { cleanText, isSystemMessage } from '../sanitizer.js';
-import { OpenClawEvent, OpenClawContext } from '../types.js';
+import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from '../types.js';
 import { RECALL_CONFIG } from '../constants.js';
-import { extractContext } from '../utils/context.js';
-import { MemoriLogger } from '../utils/logger.js';
-import { initializeMemoriClient } from '../utils/memori-client.js';
+import { extractContext, MemoriLogger, initializeMemoriClient } from '../utils/index.js';
 
-/**
- * Handles memory recall before prompt building.
- * Fetches relevant memories from Memori and injects them into the conversation context.
- *
- * @param event - OpenClaw event containing the user's prompt
- * @param ctx - OpenClaw context with session information
- * @param api - Plugin API for logging and hooks
- * @param apiKey - Memori API key
- * @param configuredEntityId - Optional hardcoded entity ID
- * @returns Hook result with prependContext containing memories, or undefined
- */
 export async function handleRecall(
   event: OpenClawEvent,
   ctx: OpenClawContext,
-  api: OpenClawPluginApi,
-  apiKey: string,
-  configuredEntityId: string | undefined
-) {
-  const logger = new MemoriLogger(api);
+  config: MemoriPluginConfig,
+  logger: MemoriLogger
+): Promise<{ prependContext: string } | undefined> {
   logger.section('RECALL HOOK START');
 
-  const context = extractContext(event, ctx, configuredEntityId);
+  const context = extractContext(event, ctx, config.entityId);
   logger.info(
     `EntityID: ${context.entityId} | SessionID: ${context.sessionId} | Provider: ${context.provider}`
   );
@@ -41,18 +24,10 @@ export async function handleRecall(
     isSystemMessage(promptText)
   ) {
     logger.info('Prompt too short or is a system message. Aborting recall.');
-    return;
+    return undefined;
   }
 
-  const session = getOrCreateSession(context.entityId, apiKey);
-
-  // Check cache
-  if (session.lastPrompt === promptText) {
-    logger.info('Cache hit! Returning previous recall block.');
-    return session.lastRecallBlock;
-  }
-
-  const memoriClient = initializeMemoriClient(session, context);
+  const memoriClient = initializeMemoriClient(config.apiKey, context);
 
   try {
     logger.info('Executing SDK Recall...');
@@ -66,19 +41,10 @@ export async function handleRecall(
       logger.info('No relevant memories found.');
     }
 
-    // Update cache
-    session.lastPrompt = promptText;
-    session.lastRecallBlock = hookReturn;
-
     logger.endSection('RECALL HOOK END');
     return hookReturn;
   } catch (err) {
     logger.error(`Recall failed: ${err instanceof Error ? err.message : String(err)}`);
-
-    // Clear cache on error to allow retry
-    session.lastPrompt = undefined;
-    session.lastRecallBlock = undefined;
-
     return undefined;
   }
 }

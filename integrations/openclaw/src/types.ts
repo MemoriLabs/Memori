@@ -1,4 +1,13 @@
-import type { Memori } from '@memorilabs/memori';
+/**
+ * Configuration options passed to the OpenClaw Memori plugin
+ */
+export interface MemoriPluginConfig {
+  /** Memori API Key */
+  apiKey: string;
+
+  /** EntityID used for Recall and Augemtation*/
+  entityId: string;
+}
 
 /**
  * Represents a single block in OpenClaw's multi-modal message format.
@@ -88,22 +97,4 @@ export interface OpenClawContext {
 
   /** Messaging provider (e.g., 'discord', 'telegram', 'webchat') */
   messageProvider?: string;
-}
-
-/**
- * Session data cached for each entity.
- * Includes Memori instance and caching metadata.
- */
-export interface SessionData {
-  /** Configured Memori SDK instance */
-  memori: Memori;
-
-  /** Unix timestamp of last access (for garbage collection) */
-  lastAccessed: number;
-
-  /** Last processed prompt (for caching) */
-  lastPrompt?: string;
-
-  /** Cached recall result (for double hook invocation optimization) */
-  lastRecallBlock?: { prependContext: string } | undefined;
 }
