@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -11,8 +11,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.39",
     "@ai-sdk/react": "^3.0.109",
-    "@memorilabs/axon": "^0.1.2",
-    "@memorilabs/memori": "file:../../memori-ts",
+    "@memorilabs/memori": "^3.2.1",
     "ai": "^6.0.107",
     "next": "16.1.6",
     "openai": "^6.25.0",

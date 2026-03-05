@@ -5,7 +5,6 @@ Next.js chatbot using Vercel AI SDK and Memori for memory. The assistant recalls
 ## Prerequisites
 
 - Node 18+
-- Built `memori-ts`: from repo root run `cd memori-ts && npm run build`
 
 ## Setup
 
