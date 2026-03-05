@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### TypeScript SDK
+
+#### Added
+
+- `recordTurn(userMessage, assistantContent, options?)` on `Memori` for persisting and augmenting a single turn when the LLM is used outside Axon (e.g. Vercel AI SDK). Enables recall + stream + recordTurn flows without registering the LLM client.
+
 ### Fixed
 
 - Fixed multi-turn conversation ingestion for AzureOpenAI and OpenAI clients. Previously, only the first conversation turn was being recorded. Now `conversation_id` is resolved early in the request lifecycle, ensuring all conversation turns are properly ingested into the same conversation. (Fixes #83)
