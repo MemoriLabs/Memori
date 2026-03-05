@@ -46,7 +46,7 @@ cockroachdb = ["psycopg[binary]>=3.1.0"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["memori*"]
-exclude = ["tests*", "docs*", "*.egg-info"]
+exclude = ["tests*", "docs*", "*.egg-info", "memori-ts*", "integrations*"]
 
 [tool.setuptools.package-data]
 memori = ["py.typed", "models/**/*"]

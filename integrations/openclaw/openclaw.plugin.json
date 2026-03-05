@@ -1,0 +1,22 @@
+{
+  "id": "openclaw-memori",
+  "name": "Memori System",
+  "version": "0.0.1-beta",
+  "description": "Hosted memory backend",
+  "main": "dist/index.js",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiKey": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Memori API Key (defaults to MEMORI_API_KEY environment variable)"
+      },
+      "entityId": {
+        "type": "string",
+        "title": "Entity ID Override",
+        "description": "Hardcode a specific Entity ID for memories (leave blank to dynamically use the active OpenClaw Entity)"
+      }
+    }
+  }
+}
