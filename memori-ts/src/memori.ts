@@ -1,4 +1,4 @@
-import { Axon } from '@memorilabs/axon';
+import { Axon, CallContext, LLMRequest, LLMResponse } from '@memorilabs/axon';
 import { Config } from './core/config.js';
 import { SessionManager } from './core/session.js';
 import { Api, ApiSubdomain } from './core/network.js';
@@ -120,6 +120,33 @@ export class Memori {
   public setSession(id: string): this {
     this.session.set(id);
     return this;
+  }
+
+  /**
+   * Records a single conversation turn for persistence and augmentation.
+   * Use this when the LLM response is produced outside Axon (e.g. Vercel AI SDK onFinish).
+   *
+   * @param userMessage - The user's message text.
+   * @param assistantContent - The assistant's response text.
+   * @param options - Optional model and metadata for augmentation.
+   */
+  public async recordTurn(
+    userMessage: string,
+    assistantContent: string,
+    options?: { model?: string }
+  ): Promise<void> {
+    const req: LLMRequest = {
+      messages: [{ role: 'user', content: userMessage }],
+      model: options?.model ?? '',
+    };
+    const res: LLMResponse = { content: assistantContent };
+    const ctx: CallContext = {
+      traceId: `recordTurn-${Date.now()}`,
+      startedAt: new Date(),
+      metadata: { provider: 'openai', sdkVersion: null },
+    };
+    await this.persistenceEngine.handlePersistence(req, res, ctx);
+    void this.augmentationEngine.handleAugmentation(req, res, ctx);
   }
 
   /**
