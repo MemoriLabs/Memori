@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Memori } from '../src/memori.js';
 import { SessionManager } from '../src/core/session.js';
 import { Config } from '../src/core/config.js';
+
+const fetchMock = vi.fn();
 
 describe('Memori SDK', () => {
   it('should instantiate with default components', () => {
@@ -51,5 +53,41 @@ describe('Memori SDK', () => {
 
     expect(registerSpy).toHaveBeenCalledWith(mockClient);
     expect(result).toBe(memori); // Check chaining
+  });
+
+  describe('recordTurn', () => {
+    const successResponse = { ok: true, status: 204, json: async () => ({}) };
+
+    beforeEach(() => {
+      fetchMock.mockReset();
+      fetchMock.mockResolvedValue(successResponse);
+      global.fetch = fetchMock;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should resolve when attribution and session are set', async () => {
+      const memori = new Memori();
+      memori.attribution('e1', 'p1');
+      memori.setSession('sess-1');
+
+      await expect(memori.recordTurn('user msg', 'assistant msg')).resolves.toBeUndefined();
+    });
+
+    it('should call persistence and augmentation endpoints', async () => {
+      const memori = new Memori();
+      memori.attribution('e1', 'p1');
+      memori.setSession('sess-1');
+
+      await memori.recordTurn('hi', 'hello', { model: 'gpt-4o' });
+
+      const calls = fetchMock.mock.calls;
+      const urls = calls.map((c: unknown[]) => (c as [string])[0]);
+      expect(urls).toContainEqual(expect.stringContaining('cloud/conversation/messages'));
+      expect(urls).toContainEqual(expect.stringContaining('cloud/augmentation'));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 });
