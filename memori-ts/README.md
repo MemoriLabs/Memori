@@ -127,6 +127,18 @@ const sessionId = memori.session.id;
 memori.setSession(sessionId);
 ```
 
+## Recording turns without Axon
+
+When the LLM is not called through Memori’s registered client (e.g. [Vercel AI SDK](https://sdk.vercel.ai/) `streamText`), use `recall()` for context and **`recordTurn(userMessage, assistantContent, { model?: string })`** after each turn so persistence and augmentation still run. See the [Quickstart Example](#quickstart-example) for the default flow with a registered client.
+
+```typescript
+const mem = new Memori().attribution('user-1', 'my-chatbot');
+mem.setSession(sessionId);
+
+// In your stream's onFinish (or equivalent):
+await mem.recordTurn(lastUserMessage, assistantText, { model: 'gpt-4o' });
+```
+
 ## Supported LLMs
 
 - Anthropic Claude (`@anthropic-ai/sdk`)
