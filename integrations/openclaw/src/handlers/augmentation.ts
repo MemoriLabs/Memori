@@ -93,6 +93,10 @@ export async function handleAugmentation(
       metadata: extractLLMMetadata(event),
     };
 
+    logger.info(`Sending User: ${payload.userMessage}`);
+    logger.info(`Sending Agent: ${payload.agentResponse}`);
+    logger.info(`Sending Meta: ${payload.metadata}`);
+
     await memoriClient.augmentation(payload);
     logger.info('Augmentation successful!');
   } catch (err) {

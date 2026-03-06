@@ -41,6 +41,8 @@ export async function handleRecall(
       logger.info('No relevant memories found.');
     }
 
+    logger.info(`Recall Prompt: ${hookReturn?.prependContext}`);
+
     return hookReturn;
   } catch (err) {
     logger.error(`Recall failed: ${err instanceof Error ? err.message : String(err)}`);
