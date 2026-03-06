@@ -1,5 +1,4 @@
 import { OpenClawEvent, OpenClawContext } from '../types.js';
-import { DEFAULTS } from '../constants.js';
 
 /**
  * Extracted context information from OpenClaw events
@@ -12,21 +11,39 @@ export interface ExtractedContext {
 
 /**
  * Extracts and normalizes context information from OpenClaw event and context objects.
- * Provides sensible defaults for missing values.
+ * Throws an error if required context fields cannot be resolved.
  *
  * @param event - OpenClaw event object
  * @param ctx - OpenClaw context object
- * @param configuredEntityId - Optional hardcoded entity ID from plugin config
+ * @param configuredEntityId - Hardcoded entity ID from plugin config
  * @returns Normalized context with entityId, sessionId, and provider
+ * @throws Error If entityId, sessionId, or provider cannot be determined
  */
 export function extractContext(
   event: OpenClawEvent,
   ctx: OpenClawContext,
-  configuredEntityId?: string
+  configuredEntityId: string
 ): ExtractedContext {
+  const entityId = configuredEntityId || event.userId;
+  const sessionId = ctx.sessionKey || event.sessionId;
+  const provider = ctx.messageProvider || event.messageProvider;
+
+  if (!entityId)
+    throw new Error(
+      'Failed to extract context: Missing entityId (ensure plugin config or event.userId is set).'
+    );
+
+  if (!sessionId)
+    throw new Error('Failed to extract context: Missing sessionId in OpenClaw context and event.');
+
+  if (!provider)
+    throw new Error(
+      'Failed to extract context: Missing message provider in OpenClaw context and event.'
+    );
+
   return {
-    entityId: configuredEntityId || event.userId || DEFAULTS.USER_ID,
-    sessionId: ctx.sessionKey || event.sessionId || DEFAULTS.SESSION_ID,
-    provider: ctx.messageProvider || event.messageProvider || DEFAULTS.PROVIDER,
+    entityId,
+    sessionId,
+    provider,
   };
 }

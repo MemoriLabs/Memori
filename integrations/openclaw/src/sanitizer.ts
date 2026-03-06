@@ -11,50 +11,60 @@ const SYSTEM_MESSAGE_PATTERNS = [
 ] as const;
 
 /**
- * Regular expressions for cleaning text content
- */
-const CLEANUP_PATTERNS = {
-  /** OpenClaw's conversation metadata block */
-  METADATA: /Conversation info \(untrusted metadata\):\s*```json[\s\S]*?```\s*/g,
-
-  /** Our own memory context tags */
-  MEMORI_CONTEXT: /<memori_context>[\s\S]*?<\/memori_context>\s*/g,
-
-  /** OpenClaw's timestamp prefixes */
-  TIMESTAMP:
-    /^\[[A-Z][a-z]{2} \d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?(?:[+-]\d{2}:\d{2}| [A-Z]{3,4})?\]\s*/gm,
-
-  /** Generic bracketed metadata */
-  BRACKETS: /\[\[.*?\]\]\s*/g,
-} as const;
-
-/**
  * Type guard to check if value is an array of message blocks
  */
 function isMessageBlockArray(value: unknown): value is OpenClawMessageBlock[] {
-  return Array.isArray(value);
+  return Array.isArray(value) && value.every((item) => item !== null && typeof item === 'object');
 }
 
 /**
  * Determines if a message is an OpenClaw internal system/startup prompt.
- * System messages should typically be ignored for memory operations.
- *
- * @param text - Message text to check
- * @returns true if the message is a system message
  */
 export function isSystemMessage(text: string): boolean {
   if (!text) return true;
-
   const lowerText = text.toLowerCase();
   return SYSTEM_MESSAGE_PATTERNS.some((pattern) => lowerText.includes(pattern));
 }
 
 /**
- * Safely extracts text string from OpenClaw's multi-modal message arrays.
- * Handles string content, array content with text blocks, and ignores thinking blocks.
+ * Extracts the actual user message from OpenClaw's formatted content.
  *
- * @param content - Raw message content (can be string, array, or unknown)
- * @returns Extracted text string, or empty string if no text found
+ * OpenClaw wraps metadata in markdown code fences (triple tick).
+ * The actual message is always after the LAST closing fence.
+ * The message might aslo contain a timestamp prefix like: [Day YYYY-MM-DD HH:MM TZ], that will need to be removed
+ */
+function extractRawUserMessage(content: string): string {
+  if (!content.includes('```')) {
+    return content;
+  }
+
+  const lastFenceIndex = content.lastIndexOf('```');
+
+  if (lastFenceIndex === -1) {
+    return content;
+  }
+
+  // Extract everything after the last fence
+  let message = content.substring(lastFenceIndex + 3).trim();
+
+  if (!message) {
+    return content;
+  }
+
+  // Strip timestamp prefix if present
+  const timestampMatch = message.match(
+    /^\[[A-Z][a-z]{2}\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+[A-Z]{2,4}\]\s*/
+  );
+
+  if (timestampMatch) {
+    message = message.substring(timestampMatch[0].length);
+  }
+
+  return message || content;
+}
+
+/**
+ * Safely extracts text string from OpenClaw's multi-modal message arrays.
  */
 function extractMessageText(content: unknown): string {
   if (!content) return '';
@@ -74,20 +84,19 @@ function extractMessageText(content: unknown): string {
 }
 
 /**
- * Cleans and normalizes text content from OpenClaw messages.
- *
- * @param rawContent - Raw message content to clean
- * @returns Cleaned and trimmed text string
+ * Cleans and normalizes text content.
+ * Extracts raw user message from OpenClaw's formatted content.
  */
 export function cleanText(rawContent: unknown): string {
   let text = extractMessageText(rawContent);
 
   if (!text) return '';
 
-  text = text.replace(CLEANUP_PATTERNS.METADATA, '');
-  text = text.replace(CLEANUP_PATTERNS.MEMORI_CONTEXT, '');
-  text = text.replace(CLEANUP_PATTERNS.TIMESTAMP, '');
-  text = text.replace(CLEANUP_PATTERNS.BRACKETS, '');
+  // Extract the raw message (everything after last ```)
+  text = extractRawUserMessage(text);
+
+  // Remove our own injected memory tags
+  text = text.replace(/<memori_context>[\s\S]*?<\/memori_context>\s*/g, '');
 
   return text.trim();
 }

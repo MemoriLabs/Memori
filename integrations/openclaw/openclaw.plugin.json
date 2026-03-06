@@ -32,9 +32,6 @@
         "description": "Required. Hardcode a specific Entity ID for memories."
       }
     },
-    "required": [
-      "apiKey",
-      "entityId"
-    ]
+    "required": ["apiKey", "entityId"]
   }
 }

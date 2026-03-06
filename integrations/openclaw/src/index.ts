@@ -28,7 +28,7 @@ const memoriPlugin = {
     const logger = new MemoriLogger(api);
 
     logger.info(`\n=== ${PLUGIN_CONFIG.LOG_PREFIX} INITIALIZING PLUGIN ===`);
-    logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}'}`);
+    logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}`);
 
     // Register recall hook (before_prompt_build)
     api.on('before_prompt_build', (event: unknown, ctx: unknown) =>

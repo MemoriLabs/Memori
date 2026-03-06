@@ -19,12 +19,3 @@ export const RECALL_CONFIG = {
   /** Minimum prompt length to trigger recall */
   MIN_PROMPT_LENGTH: 2,
 } as const;
-
-/**
- * Default fallback values
- */
-export const DEFAULTS = {
-  USER_ID: 'default-user',
-  SESSION_ID: 'default-session',
-  PROVIDER: 'openclaw',
-} as const;
