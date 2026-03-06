@@ -9,13 +9,21 @@ description: Frequently asked questions about Memori Cloud.
 
 __Memori__ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
 
+## Which languages are supported?
+
+Memori Cloud supports both **Python** and **TypeScript** SDKs. The Python SDK (`memori`) works with both Memori Cloud and BYODB. The TypeScript SDK (`@memorilabs/memori`) is currently Cloud-only. Both SDKs support OpenAI, Anthropic, and Gemini, with additional provider support in Python.
+
 ## Memori Cloud vs Memori BYODB?
 
-**Memori Cloud** — managed storage, dashboard UI, just add an API key. **Memori BYODB** — bring your own database & maintain full control. Both use the same SDK.
+**Memori Cloud** — managed storage, dashboard UI, just add an API key. Available for Python and TypeScript. **Memori BYODB** — bring your own database & maintain full control. Python only.
 
 ## Which LLM providers are supported?
 
-OpenAI, Anthropic, Google Gemini, xAI Grok, Deepseek, Nebius AI Studio, AWS Bedrock, LangChain, Agno, and Pydantic AI. All support sync, async, and streaming. See the [Integration Overview](/docs/memori-cloud/llm/overview).
+**Python:** OpenAI, Anthropic, Google Gemini, xAI Grok, Deepseek, Nebius AI Studio, AWS Bedrock, LangChain, Agno, and Pydantic AI. All support sync, async, and streaming.
+
+**TypeScript:** OpenAI, Anthropic, and Google Gemini. More providers coming soon.
+
+See the [Integration Overview](/docs/memori-cloud/llm/overview).
 
 ## Do I need to set up a database?
 
@@ -31,7 +39,7 @@ Each fact, preference, or relationship extracted by Advanced Augmentation counts
 
 ## Does it support async?
 
-Yes. All providers support async mode out of the box. Just use your provider's async client.
+Yes. In Python, use your provider's async client (e.g. `AsyncOpenAI`). TypeScript is natively async — all SDK calls return Promises.
 
 ## How does augmentation work?
 
@@ -43,7 +51,7 @@ Yes. Register multiple clients on the same Memori instance. Memories are shared 
 
 ## Can I migrate between Memori Cloud and Memori BYODB?
 
-Yes. Both use the same SDK — just remove `conn=SessionLocal` for Memori Cloud or add it for Memori BYODB. Existing memories don't auto-transfer.
+Yes. In Python, both use the same SDK — just remove `conn=SessionLocal` for Memori Cloud or add it for Memori BYODB. Existing memories don't auto-transfer. The TypeScript SDK is Cloud-only.
 
 ## Still have questions?
 

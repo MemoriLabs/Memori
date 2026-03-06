@@ -9,8 +9,17 @@ Quick fixes for the most common Memori issues.
 
 ## Installation
 
+### Python
+
 **If `pip install memori` fails** — Requires Python 3.10+.
 Run `python --version` to check, then `pip install --upgrade pip && pip install memori`.
+
+### TypeScript
+
+**If `npm install @memorilabs/memori` fails** — Requires Node.js 18+.
+Run `node --version` to check, then update Node.js and retry.
+
+**Module resolution errors** — Ensure your `tsconfig.json` uses `"moduleResolution": "node"` or `"bundler"`. The SDK ships ESM with TypeScript declarations.
 
 ## API Key Issues
 
@@ -26,22 +35,47 @@ export MEMORI_API_KEY="your-memori-api-key"
 
 1. **Register your LLM client** — conversations aren't captured without registration:
 
-```python
+<CodeGroup title="Register Client">
+
+```python {{ title: 'Python' }}
 client = OpenAI()
 mem = Memori().llm.register(client)
 ```
 
+```typescript {{ title: 'TypeScript' }}
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+```
+
+</CodeGroup>
+
 2. **Set attribution** before LLM calls — without it, no memories are stored:
 
-```python
+<CodeGroup title="Set Attribution">
+
+```python {{ title: 'Python' }}
 mem.attribution(entity_id="user_123", process_id="my_app")
 ```
 
+```typescript {{ title: 'TypeScript' }}
+mem.attribution('user_123', 'my_app');
+```
+
+</CodeGroup>
+
 3. **Wait for augmentation** in short-lived scripts:
 
-```python
+<CodeGroup title="Wait for Augmentation">
+
+```python {{ title: 'Python' }}
 mem.augmentation.wait()
 ```
+
+```typescript {{ title: 'TypeScript' }}
+await new Promise((resolve) => setTimeout(resolve, 2000));
+```
+
+</CodeGroup>
 
 ## Recall Returns Empty
 
@@ -56,7 +90,9 @@ mem.augmentation.wait()
 
 ## Debug Logging
 
-```python
+<CodeGroup title="Debug Logging">
+
+```python {{ title: 'Python' }}
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
 
@@ -64,10 +100,18 @@ from memori import Memori
 mem = Memori()
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import { Memori } from '@memorilabs/memori';
+
+const mem = new Memori({ debug: true });
+```
+
+</CodeGroup>
+
 ## Getting Help
 
 - [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
 - [Discord](https://discord.gg/abD4eGym6v)
 - [Examples](https://github.com/MemoriLabs/Memori/tree/main/examples)
 
-Include your Python version, Memori version (`pip show memori`), and full error trace.
+Include your language, runtime version (Python/Node.js), Memori version (`pip show memori` or check `package.json`), and full error trace.
