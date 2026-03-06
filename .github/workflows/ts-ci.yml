@@ -1,0 +1,49 @@
+name: CI Code Check (TS)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'memori-ts/**' 
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'memori-ts/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22, 24]
+    
+    defaults:
+      run:
+        working-directory: ./memori-ts 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate version.ts
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Verify Build
+        run: npm run build

@@ -1,0 +1,122 @@
+---
+title: Knowledge Graph
+description: How Memori automatically builds a knowledge graph from your AI conversations using semantic triples, stored in your own database where you can query it directly.
+---
+
+# Knowledge Graph
+
+Memori automatically builds a knowledge graph from your AI conversations. Every time Advanced Augmentation processes a conversation, it extracts structured relationships — semantic triples — and connects them into a graph. Because you own the database, you can query the knowledge graph directly using SQL.
+
+## How It Works
+
+1. **Conversation captured** — Your user talks to your AI through the Memori-wrapped LLM client
+2. **Augmentation processes** — Memori analyzes the conversation in the background
+3. **NER extraction** — Named-entity recognition identifies key entities and relationships
+4. **Triple creation** — Relationships are expressed as subject-predicate-object triples
+5. **Graph storage** — Triples are stored and deduplicated in your database
+6. **Recall ready** — The graph is available for semantic search on the next LLM call
+
+## Semantic Triples
+
+Every fact in the knowledge graph is a semantic triple — a three-part statement: **[Subject]** **[Predicate]** **[Object]**.
+
+- "Alice" "prefers" "dark mode"
+- "PostgreSQL" "is" "a relational database"
+- "The project" "uses" "FastAPI"
+
+### Example Extraction
+
+From _"My favorite database is PostgreSQL and I use it with FastAPI for our REST APIs. I've been using Python for about 8 years"_:
+
+| Subject | Predicate         | Object               |
+| ------- | ----------------- | -------------------- |
+| user    | favorite_database | PostgreSQL           |
+| user    | uses              | FastAPI              |
+| user    | uses_for          | REST APIs            |
+| user    | uses_with         | PostgreSQL + FastAPI |
+| user    | experience_years  | Python (8 years)     |
+
+Memori automatically deduplicates triples — frequently mentioned facts get a higher mention count and updated timestamp.
+
+## Database Tables
+
+| Table                    | Purpose                                              |
+| ------------------------ | ---------------------------------------------------- |
+| `memori_subject`         | Stores unique subjects                               |
+| `memori_predicate`       | Stores unique predicates                             |
+| `memori_object`          | Stores unique objects                                |
+| `memori_knowledge_graph` | Links subjects, predicates, and objects into triples |
+| `memori_entity_fact`     | Stores facts with vector embeddings for recall       |
+
+## Querying
+
+### Via Recall API
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.attribution(entity_id="user_alice", process_id="my_agent")
+
+facts = mem.recall("database preferences", limit=5)
+
+for fact in facts:
+    print(f"Fact: {fact.content}")
+    print(f"Similarity: {fact.similarity:.4f}")
+```
+
+### Via Direct SQL
+
+Since the knowledge graph lives in your database, you can query it directly for debugging, dashboards, or exploration.
+
+<CodeGroup title="Direct Database Queries">
+
+```sql {{ title: 'View All Triples' }}
+SELECT
+    s.name AS subject,
+    p.name AS predicate,
+    o.name AS object
+FROM memori_knowledge_graph kg
+JOIN memori_subject s ON kg.subject_id = s.id
+JOIN memori_predicate p ON kg.predicate_id = p.id
+JOIN memori_object o ON kg.object_id = o.id;
+```
+
+```sql {{ title: 'Triples for an Entity' }}
+SELECT
+    s.name AS subject,
+    p.name AS predicate,
+    o.name AS object,
+    kg.mention_count,
+    kg.last_mentioned_at
+FROM memori_knowledge_graph kg
+JOIN memori_subject s ON kg.subject_id = s.id
+JOIN memori_predicate p ON kg.predicate_id = p.id
+JOIN memori_object o ON kg.object_id = o.id
+WHERE kg.entity_id = 'user_alice'
+ORDER BY kg.mention_count DESC;
+```
+
+```sql {{ title: 'View Facts' }}
+SELECT content, created_at
+FROM memori_entity_fact
+WHERE entity_id = 'user_alice'
+ORDER BY created_at DESC;
+```
+
+</CodeGroup>
+
+## Scope
+
+| Aspect         | Scope                                                           |
+| -------------- | --------------------------------------------------------------- |
+| **Triples**    | Per entity — shared across all processes                        |
+| **Visibility** | All processes for an entity can see and use the graph           |
+| **Growth**     | Conversations from any process contribute to the entity's graph |
+
+If Alice tells your support bot about PostgreSQL, your code assistant also knows she uses PostgreSQL.

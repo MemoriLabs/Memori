@@ -1,0 +1,17 @@
+# Exclude development configurations
+tsconfig.json
+tsconfig.build.json
+vitest.config.ts
+eslint.config.js
+.editorconfig
+.prettierrc
+
+# Exclude source code and tests (users only need the compiled dist)
+src/
+tests/
+examples/
+
+# Exclude environment and logs
+.env
+*.log
+.DS_Store

@@ -1,0 +1,107 @@
+---
+title: Google Gemini
+description: Using Memori with Google Gemini models and Memori BYODB.
+---
+
+# Google Gemini
+
+Memori integrates with Google Gemini via the `google-genai` SDK. Register the `GenerativeModel` instance and all `generate_content()` calls are automatically captured.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+<CodeGroup title="Gemini Integration">
+
+```python {{ title: 'Sync' }}
+import os
+from memori import Memori
+import google.generativeai as genai
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="gemini_assistant")
+
+response = client.generate_content("Hello!")
+print(response.text)
+```
+
+```python {{ title: 'Async' }}
+import os, asyncio
+from memori import Memori
+import google.generativeai as genai
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="gemini_assistant")
+
+async def main():
+    response = await client.generate_content_async("Hello!")
+    print(response.text)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+import os
+from memori import Memori
+import google.generativeai as genai
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="gemini_assistant")
+
+response = client.generate_content("Hello!", stream=True)
+for chunk in response:
+    print(chunk.text, end="")
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                                  |
+| ------------ | --------------------------------------- |
+| **Sync**     | `client.generate_content()`             |
+| **Async**    | `await client.generate_content_async()` |
+| **Streamed** | `stream=True` parameter                 |
+
+## Multi-Turn Conversations
+
+Use `start_chat()` for multi-turn interactions. Memori tracks the full conversation automatically.
+
+```python
+chat = client.start_chat()
+response = chat.send_message("My name is Alice.")
+print(response.text)
+
+response = chat.send_message("What's my name?")
+print(response.text)
+```

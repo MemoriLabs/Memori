@@ -1,0 +1,73 @@
+---
+title: Troubleshooting
+description: Common issues and solutions when using Memori Cloud.
+---
+
+# Troubleshooting
+
+Quick fixes for the most common Memori issues.
+
+## Installation
+
+**`pip install memori` fails** — Requires Python 3.10+.
+Run `python --version` to check, then `pip install --upgrade pip && pip install memori`.
+
+## API Key Issues
+
+**Invalid or missing API key** — Set the `MEMORI_API_KEY` environment variable:
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key"
+```
+
+**Quota exceeded** — Upgrade your account at [app.memorilabs.ai/settings/billing](https://app.memorilabs.ai/settings/billing).
+
+## No Memories Being Created
+
+1. **Register your LLM client** — conversations aren't captured without registration:
+
+```python
+client = OpenAI()
+mem = Memori().llm.register(client)
+```
+
+2. **Set attribution** before LLM calls — without it, no memories are stored:
+
+```python
+mem.attribution(entity_id="user_123", process_id="my_app")
+```
+
+3. **Wait for augmentation** in short-lived scripts:
+
+```python
+mem.augmentation.wait()
+```
+
+## Recall Returns Empty
+
+- Verify `entity_id` matches what was used when memories were created
+- Wait for augmentation: `mem.augmentation.wait()`
+- Increase limit: `mem.recall("query", limit=10)`
+- Lower threshold: `mem.config.recall_relevance_threshold = 0.05`
+
+## Performance
+
+**Network timeouts** — Increase timeout: `mem.config.request_secs_timeout = 10` and retries: `mem.config.request_num_backoff = 10`.
+
+## Debug Logging
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+
+from memori import Memori
+mem = Memori()
+```
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+- [Discord](https://discord.gg/abD4eGym6v)
+- [Examples](https://github.com/MemoriLabs/Memori/tree/main/examples)
+
+Include your Python version, Memori version (`pip show memori`), and full error trace.

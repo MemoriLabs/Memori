@@ -1,0 +1,119 @@
+---
+title: LangChain
+description: Using Memori with LangChain chat models and Memori BYODB.
+---
+
+# LangChain
+
+Memori supports any LangChain chat model. Each class has its own registration keyword: `chatopenai` for ChatOpenAI/ChatAnthropic, `chatbedrock` for ChatBedrock, `chatgooglegenai` for ChatGoogleGenerativeAI.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+<CodeGroup title="LangChain Integration">
+
+```python {{ title: 'Sync' }}
+from langchain_openai import ChatOpenAI
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = ChatOpenAI(model="gpt-4o-mini")
+mem = Memori(conn=SessionLocal).llm.register(chatopenai=client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="langchain_agent")
+
+response = client.invoke("Hello!")
+print(response.content)
+```
+
+```python {{ title: 'Async' }}
+import asyncio
+from langchain_openai import ChatOpenAI
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = ChatOpenAI(model="gpt-4o-mini")
+mem = Memori(conn=SessionLocal).llm.register(chatopenai=client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="langchain_agent")
+
+async def main():
+    response = await client.ainvoke("Hello!")
+    print(response.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+from langchain_openai import ChatOpenAI
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = ChatOpenAI(model="gpt-4o-mini")
+mem = Memori(conn=SessionLocal).llm.register(chatopenai=client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="langchain_agent")
+
+for chunk in client.stream("Hello!"):
+    print(chunk.content, end="")
+```
+
+</CodeGroup>
+
+## Different Providers
+
+| Package                  | Chat Model               | Registration Keyword     |
+| ------------------------ | ------------------------ | ------------------------ |
+| `langchain-openai`       | `ChatOpenAI`             | `chatopenai=client`      |
+| `langchain-anthropic`    | `ChatAnthropic`          | `chatopenai=client`      |
+| `langchain-google-genai` | `ChatGoogleGenerativeAI` | `chatgooglegenai=client` |
+| `langchain-aws`          | `ChatBedrock`            | `chatbedrock=client`     |
+
+<CodeGroup title="LangChain Providers">
+
+```python {{ title: 'Anthropic' }}
+from langchain_anthropic import ChatAnthropic
+
+client = ChatAnthropic(model="claude-3-5-sonnet-20241022")
+mem = Memori(conn=SessionLocal).llm.register(chatopenai=client)
+```
+
+```python {{ title: 'Google Gemini' }}
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+client = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
+mem = Memori(conn=SessionLocal).llm.register(chatgooglegenai=client)
+```
+
+```python {{ title: 'AWS Bedrock' }}
+from langchain_aws import ChatBedrock
+
+client = ChatBedrock(model_id="anthropic.claude-3-5-sonnet-20241022-v2:0", region_name="us-east-1")
+mem = Memori(conn=SessionLocal).llm.register(chatbedrock=client)
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                   |
+| ------------ | ------------------------ |
+| **Sync**     | `client.invoke()`        |
+| **Async**    | `await client.ainvoke()` |
+| **Streamed** | `client.stream()`        |

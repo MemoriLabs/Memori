@@ -1,0 +1,164 @@
+---
+title: Google Gemini
+description: Using Memori with Google Gemini models on Memori Cloud.
+---
+
+# Google Gemini
+
+Memori integrates with Google Gemini via the `google-genai` SDK. Register the `GenerativeModel` instance and all `generate_content()` calls are automatically captured.
+
+## Quick Start
+
+<CodeGroup title="Gemini Integration">
+
+```python {{ title: 'Python' }}
+import os
+from memori import Memori
+import google.generativeai as genai
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.GenerativeModel("gemini-2.0-flash-exp")  # Use any Gemini model
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="gemini_assistant")
+
+response = client.generate_content("Hello!")
+print(response.text)
+```
+
+```typescript {{ title: 'TypeScript' }}
+import { GoogleGenAI } from '@google/genai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'gemini_assistant');
+
+const response = await client.models.generateContent({
+  model: 'gemini-2.0-flash',
+  contents: 'Hello!',
+});
+console.log(response.text);
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Python                                  | TypeScript                                      |
+| ------------ | --------------------------------------- | ----------------------------------------------- |
+| **Sync**     | `client.generate_content()`             | —                                               |
+| **Async**    | `await client.generate_content_async()` | `await client.models.generateContent()`         |
+| **Streamed** | `stream=True` parameter                 | `client.models.generateContentStream()`         |
+
+## Additional Modes
+
+### Async (Python)
+
+```python
+import os, asyncio
+from memori import Memori
+import google.generativeai as genai
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.GenerativeModel("gemini-2.0-flash-exp")  # Use any Gemini model
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="gemini_assistant")
+
+async def main():
+    response = await client.generate_content_async("Hello!")
+    print(response.text)
+
+asyncio.run(main())
+```
+
+### Streaming
+
+<CodeGroup title="Streaming">
+
+```python {{ title: 'Python' }}
+import os
+from memori import Memori
+import google.generativeai as genai
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.GenerativeModel("gemini-2.0-flash-exp")  # Use any Gemini model
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="gemini_assistant")
+
+response = client.generate_content("Hello!", stream=True)
+for chunk in response:
+    print(chunk.text, end="")
+```
+
+```typescript {{ title: 'TypeScript' }}
+import { GoogleGenAI } from '@google/genai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'gemini_assistant');
+
+const stream = await client.models.generateContentStream({
+  model: 'gemini-2.0-flash',
+  contents: 'Hello!',
+});
+for await (const chunk of stream) {
+  process.stdout.write(chunk.text ?? '');
+}
+```
+
+</CodeGroup>
+
+## Multi-Turn Conversations
+
+Use `start_chat()` for multi-turn interactions. Memori tracks the full conversation automatically.
+
+```python
+chat = client.start_chat()
+response = chat.send_message("My name is Alice.")
+print(response.text)
+
+response = chat.send_message("What's my name?")
+print(response.text)
+```
+
+### TypeScript
+
+Multi-turn conversations in TypeScript use the standard messages array pattern:
+
+```typescript
+import { GoogleGenAI } from '@google/genai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'gemini_assistant');
+
+const response = await client.models.generateContent({
+  model: 'gemini-2.0-flash',
+  contents: [
+    { role: 'user', parts: [{ text: 'My name is Alice.' }] },
+  ],
+});
+console.log(response.text);
+
+const response2 = await client.models.generateContent({
+  model: 'gemini-2.0-flash',
+  contents: [
+    { role: 'user', parts: [{ text: 'My name is Alice.' }] },
+    { role: 'model', parts: [{ text: response.text ?? '' }] },
+    { role: 'user', parts: [{ text: "What's my name?" }] },
+  ],
+});
+console.log(response2.text);
+```
+
+<Note>
+  Gemini support in the TypeScript SDK is experimental. Please report any issues on [GitHub](https://github.com/MemoriLabs/Memori/issues).
+</Note>

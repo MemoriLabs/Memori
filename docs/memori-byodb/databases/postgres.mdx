@@ -1,0 +1,116 @@
+---
+title: PostgreSQL
+description: Set up Memori with PostgreSQL — recommended for production with connection pooling and high concurrency.
+---
+
+# PostgreSQL
+
+PostgreSQL is the recommended database for production Memori deployments. Full concurrent write support, connection pooling, and cloud-ready.
+
+## Install
+
+```bash
+pip install memori psycopg2-binary
+```
+
+## Quick Start
+
+<CodeGroup title="PostgreSQL Connection">
+
+```python {{ title: 'Basic' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "postgresql+psycopg://user:password@localhost:5432/memori_db",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'With Connection Pool' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "postgresql+psycopg://user:password@localhost:5432/memori_db",
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=300
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+</CodeGroup>
+
+## Complete Example
+
+```python
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine(
+    os.getenv("DATABASE_URL"),
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=300
+)
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+mem.config.storage.build()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "I'm a senior engineer at Google."}]
+)
+print(response.choices[0].message.content)
+
+mem.augmentation.wait()
+facts = mem.recall("job title and company")
+print(facts)
+```
+
+## Cloud Providers
+
+| Provider             | Connection Format                                            |
+| -------------------- | ------------------------------------------------------------ |
+| **Neon**             | `postgresql+psycopg://...@*.neon.tech/...`                   |
+| **Supabase**         | `postgresql+psycopg://...@*.supabase.co/...`                 |
+| **AWS RDS**          | `postgresql+psycopg://...@*.rds.amazonaws.com/...`           |
+| **AWS Aurora**       | `postgresql+psycopg://...@*.rds.amazonaws.com/...`           |
+| **Google Cloud SQL** | `postgresql+psycopg://...@*.cloudsql/...`                    |
+| **Azure Database**   | `postgresql+psycopg://...@*.postgres.database.azure.com/...` |
+
+## SSL Connections
+
+For cloud-hosted PostgreSQL, use SSL:
+
+```python
+engine = create_engine(
+    "postgresql+psycopg://user:password@host:5432/memori_db"
+    "?sslmode=require",
+    pool_pre_ping=True
+)
+```
+
+| Mode          | Description                               |
+| ------------- | ----------------------------------------- |
+| `require`     | SSL required, no certificate verification |
+| `verify-ca`   | SSL + verify server certificate           |
+| `verify-full` | SSL + verify certificate + hostname       |

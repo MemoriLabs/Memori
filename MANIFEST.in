@@ -28,6 +28,7 @@ prune htmlcov
 
 # Exclude TypeScript SDK (not shipped to PyPI)
 prune memori-ts
+prune integrations
 
 # Exclude benchmarks (not shipped with the SDK)
 prune benchmarks

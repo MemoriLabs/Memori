@@ -1,0 +1,126 @@
+---
+title: Typescript SDK Quickstart
+description: Get started with Memori Cloud and the TypeScript SDK in under 3 minutes.
+---
+
+# Typescript SDK Quickstart
+
+Get started with Memori in under 3 minutes using TypeScript. No database setup required — just your Memori API key and your favorite LLM provider.
+
+<Note>
+  In this example, we'll use Memori with OpenAI. Check out our [Integration
+  guides](/docs/memori-cloud/llm/overview) for other LLM providers.
+</Note>
+
+## Prerequisites
+
+- Node.js 18 or higher
+- An OpenAI API key
+- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+
+## Step 1: Install Libraries
+
+Install Memori and the OpenAI SDK:
+
+<CodeGroup title="Install Memori">
+
+```bash {{ title: 'npm' }}
+npm install @memorilabs/memori openai
+```
+
+```bash {{ title: 'yarn' }}
+yarn add @memorilabs/memori openai
+```
+
+```bash {{ title: 'pnpm' }}
+pnpm add @memorilabs/memori openai
+```
+
+</CodeGroup>
+
+## Step 2: Set Environment Variables
+
+Set your API keys as environment variables:
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+## Step 3: Run Your First Memori Application
+
+Create a new file `quickstart.ts` and add the following code:
+
+### Setup & Configuration
+
+Import libraries and initialize Memori with your API key and OpenAI client.
+
+- Memori reads your `MEMORI_API_KEY` from the environment automatically
+- `llm.register()` wraps your LLM client for automatic memory capture
+- `attribution()` links memories to a specific user and process
+
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'test-ai-agent');
+```
+
+### First Conversation
+
+Tell the LLM a fact about yourself. Memori automatically captures the
+conversation and processes it through Advanced Augmentation.
+
+Since Advanced Augmentation runs asynchronously, add a brief delay in
+short-lived scripts to ensure memories are fully processed before continuing.
+
+```typescript
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'user', content: 'My favorite color is blue.' }
+  ],
+});
+console.log(response.choices[0].message.content + '\n');
+
+// Wait for Advanced Augmentation to finish
+await new Promise((resolve) => setTimeout(resolve, 2000));
+```
+
+### Memory Recall
+
+Create a completely new client and Memori instance — no prior context
+carried over. Memori automatically injects relevant facts via semantic
+search, so the second response should correctly recall your favorite
+color. This verifies recall from stored memories, not prior in-memory message history.
+
+```typescript
+const client2 = new OpenAI();
+
+const mem2 = new Memori().llm.register(client2);
+mem2.attribution('user_123', 'test-ai-agent');
+
+const response2 = await client2.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'user', content: "What's my favorite color?" }
+  ],
+});
+console.log(response2.choices[0].message.content + '\n');
+```
+
+## Step 4: Run the Application
+
+Execute your TypeScript file:
+
+```bash
+npx tsx quickstart.ts
+```
+
+You should see the AI respond to both questions, with the second response correctly recalling that your favorite color is blue!
+
+## Step 5: Check the Dashboard
+
+Visit [app.memorilabs.ai](https://app.memorilabs.ai) to see your memory usage and try the Graph Explorer to interact with your memories visually.

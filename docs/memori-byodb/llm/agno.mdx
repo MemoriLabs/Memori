@@ -1,0 +1,154 @@
+---
+title: Agno
+description: Using Memori with Agno agents and Memori BYODB.
+---
+
+# Agno
+
+Memori integrates with Agno at the model layer. Register your Agno model with `llm.register(...)` and Memori captures `run()`, `arun()`, and streamed responses automatically.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+<CodeGroup title="Agno Integration">
+
+```python {{ title: 'Sync' }}
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+model = OpenAIChat(id="gpt-4o-mini")
+
+mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="agno_agent")
+
+agent = Agent(
+    model=model,
+    instructions=["Be helpful and concise"],
+    markdown=True,
+)
+
+response = agent.run("Hello!", session_id="support-session")
+print(response.content)
+```
+
+```python {{ title: 'Async' }}
+import asyncio
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+model = OpenAIChat(id="gpt-4o-mini")
+
+mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="agno_agent")
+
+agent = Agent(
+    model=model,
+    instructions=["Be helpful and concise"],
+    markdown=True,
+)
+
+async def main():
+    response = await agent.arun("Hello!", session_id="support-session")
+    print(response.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+model = OpenAIChat(id="gpt-4o-mini")
+
+mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="agno_agent")
+
+agent = Agent(
+    model=model,
+    instructions=["Be helpful and concise"],
+    markdown=True,
+)
+
+stream = agent.run("Hello!", session_id="support-session", stream=True)
+for chunk in stream:
+    if hasattr(chunk, "content") and chunk.content:
+        print(chunk.content, end="")
+```
+
+</CodeGroup>
+
+## Different Providers
+
+Agno supports multiple model families. Use the matching registration keyword in Memori.
+
+| Package                 | Model Class  | Registration Keyword |
+| ----------------------- | ------------ | -------------------- |
+| `agno.models.openai`    | `OpenAIChat` | `openai_chat=model`  |
+| `agno.models.anthropic` | `Claude`     | `claude=model`       |
+| `agno.models.google`    | `Gemini`     | `gemini=model`       |
+| `agno.models.xai`       | `xAI`        | `xai=model`          |
+
+<CodeGroup title="Agno Providers">
+
+```python {{ title: 'OpenAI' }}
+from agno.models.openai import OpenAIChat
+
+model = OpenAIChat(id="gpt-4o-mini")
+mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
+```
+
+```python {{ title: 'Anthropic' }}
+from agno.models.anthropic import Claude
+
+model = Claude(id="claude-sonnet-4-20250514")
+mem = Memori(conn=SessionLocal).llm.register(claude=model)
+```
+
+```python {{ title: 'Google Gemini' }}
+from agno.models.google import Gemini
+
+model = Gemini(id="gemini-2.0-flash-exp")
+mem = Memori(conn=SessionLocal).llm.register(gemini=model)
+```
+
+```python {{ title: 'xAI' }}
+from agno.models.xai import xAI
+
+model = xAI(id="grok-3")
+mem = Memori(conn=SessionLocal).llm.register(xai=model)
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Method                   |
+| ------------ | ------------------------ |
+| **Sync**     | `agent.run()`            |
+| **Async**    | `await agent.arun()`     |
+| **Streamed** | `agent.run(stream=True)` |
