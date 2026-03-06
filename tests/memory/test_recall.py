@@ -348,6 +348,27 @@ def test_search_facts_cloud_defaults_to_config_recall_facts_limit(mocker):
     assert payload["limit"] == 7
 
 
+def test_search_facts_cloud_uses_none_for_missing_process_id(mocker):
+    config = Config()
+    config.cloud = True
+    config.entity_id = "entity-id"
+    config.process_id = None
+    config.session_id = "session-id"
+    recall = Recall(config)
+
+    post = mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={"facts": [], "messages": []},
+    )
+
+    recall.search_facts("test query")
+
+    assert post.call_args[0][1] == "cloud/recall"
+    payload = post.call_args[0][2]
+    assert payload["attribution"]["process"] is None
+
+
 def test_constants():
     assert MAX_RETRIES == 3
     assert RETRY_BACKOFF_BASE == 0.05

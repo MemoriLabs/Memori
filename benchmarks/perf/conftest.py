@@ -126,7 +126,7 @@ def memori_instance(db_connection, request):
         except Exception:
             db_type_param = "unknown"
 
-    mem._benchmark_db_type = db_type_param  # ty: ignore[unresolved-attribute]
+    mem._benchmark_db_type = db_type_param
     return mem
 
 
