@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Added
 
 - `recordTurn(userMessage, assistantContent, options?)` on `Memori` for persisting and augmenting a single turn when the LLM is used outside Axon (e.g. Vercel AI SDK). Enables recall + stream + recordTurn flows without registering the LLM client.
-- Next.js chatbot example in `examples/chatbot-example/` demonstrating `recordTurn()` usage with Vercel AI SDK streaming.
 
 ### Fixed
 
