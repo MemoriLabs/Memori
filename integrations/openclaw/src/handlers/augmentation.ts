@@ -2,7 +2,6 @@ import { IntegrationRequest, IntegrationMetadata } from '@memorilabs/memori/inte
 import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from '../types.js';
 import { extractContext, MemoriLogger, initializeMemoriClient } from '../utils/index.js';
 import { cleanText, isSystemMessage } from '../sanitizer.js';
-import { SDK_VERSION } from '../version.js';
 import { AUGMENTATION_CONFIG } from '../constants.js';
 
 function extractLLMMetadata(event: OpenClawEvent): IntegrationMetadata {
@@ -13,7 +12,8 @@ function extractLLMMetadata(event: OpenClawEvent): IntegrationMetadata {
     provider: (lastAssistant?.provider as string) || null,
     model: (lastAssistant?.model as string) || null,
     sdkVersion: null,
-    integrationSdkVersion: SDK_VERSION,
+    // integrationSdkVersion: SDK_VERSION,
+    integrationSdkVersion: '0.0.1', // TODO: move me back with first releases
     platform: 'openclaw',
   };
 }
