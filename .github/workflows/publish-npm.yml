@@ -1,8 +1,6 @@
 name: Publish to npm (TS)
 
 on:
-  release:
-    types: [published]
   workflow_dispatch: 
 
 permissions:
