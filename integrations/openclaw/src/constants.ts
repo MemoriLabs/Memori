@@ -1,6 +1,3 @@
-/**
- * Plugin configuration constants
- */
 export const PLUGIN_CONFIG = {
   /** Plugin identifier */
   ID: 'openclaw-memori',
@@ -12,10 +9,11 @@ export const PLUGIN_CONFIG = {
   LOG_PREFIX: '[Memori]',
 } as const;
 
-/**
- * Recall configuration
- */
 export const RECALL_CONFIG = {
   /** Minimum prompt length to trigger recall */
   MIN_PROMPT_LENGTH: 2,
+} as const;
+
+export const AUGMENTATION_CONFIG = {
+  MAX_CONTEXT_MESSAGES: 10,
 } as const;

@@ -24,25 +24,21 @@ export function extractContext(
   ctx: OpenClawContext,
   configuredEntityId: string
 ): ExtractedContext {
-  const entityId = configuredEntityId || event.userId;
   const sessionId = ctx.sessionKey || event.sessionId;
   const provider = ctx.messageProvider || event.messageProvider;
 
-  if (!entityId)
-    throw new Error(
-      'Failed to extract context: Missing entityId (ensure plugin config or event.userId is set).'
-    );
-
-  if (!sessionId)
+  if (!sessionId) {
     throw new Error('Failed to extract context: Missing sessionId in OpenClaw context and event.');
+  }
 
-  if (!provider)
+  if (!provider) {
     throw new Error(
       'Failed to extract context: Missing message provider in OpenClaw context and event.'
     );
+  }
 
   return {
-    entityId,
+    entityId: configuredEntityId,
     sessionId,
     provider,
   };

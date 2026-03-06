@@ -5,6 +5,10 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "openclaw.plugin.json"
+  ],
   "scripts": {
     "build": "tsc",
     "build:dev": "tsc --watch",

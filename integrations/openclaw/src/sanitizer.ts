@@ -10,6 +10,9 @@ const SYSTEM_MESSAGE_PATTERNS = [
   'use persona',
 ] as const;
 
+const TIMESTAMP_PREFIX_REGEX =
+  /^\[[A-Z][a-z]{2}\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+[A-Z]{2,4}\]\s*/;
+
 /**
  * Type guard to check if value is an array of message blocks
  */
@@ -52,9 +55,7 @@ function extractRawUserMessage(content: string): string {
   }
 
   // Strip timestamp prefix if present
-  const timestampMatch = message.match(
-    /^\[[A-Z][a-z]{2}\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+[A-Z]{2,4}\]\s*/
-  );
+  const timestampMatch = message.match(TIMESTAMP_PREFIX_REGEX);
 
   if (timestampMatch) {
     message = message.substring(timestampMatch[0].length);

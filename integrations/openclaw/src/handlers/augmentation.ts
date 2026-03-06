@@ -3,10 +3,11 @@ import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from '../types.js'
 import { extractContext, MemoriLogger, initializeMemoriClient } from '../utils/index.js';
 import { cleanText, isSystemMessage } from '../sanitizer.js';
 import { SDK_VERSION } from '../version.js';
+import { AUGMENTATION_CONFIG } from '../constants.js';
 
 function extractLLMMetadata(event: OpenClawEvent): IntegrationMetadata {
   const messages = event.messages || [];
-  const lastAssistant = messages.filter((m) => m.role === 'assistant').at(-1);
+  const lastAssistant = messages.findLast((m) => m.role === 'assistant');
 
   return {
     provider: (lastAssistant?.provider as string) || null,
@@ -31,25 +32,20 @@ export async function handleAugmentation(
     return;
   }
 
-  const recentMessages = event.messages.slice(-10);
+  const recentMessages = event.messages.slice(-AUGMENTATION_CONFIG.MAX_CONTEXT_MESSAGES);
   const formattedMessages: Array<{ role: string; content: string }> = [];
 
   for (const msg of recentMessages) {
     const role = msg.role;
     if (role !== 'user' && role !== 'assistant') continue;
 
-    // Extract and clean content using cleanText
     const cleanedContent = cleanText(msg.content);
 
     if (!cleanedContent) continue;
 
-    // For assistant messages, clean routing tags
     let finalContent = cleanedContent;
-    if (role === 'assistant' && finalContent.startsWith('[[')) {
-      const closingIndex = finalContent.indexOf(']]');
-      if (closingIndex !== -1) {
-        finalContent = finalContent.substring(closingIndex + 2).trim();
-      }
+    if (role === 'assistant') {
+      finalContent = finalContent.replace(/^\[\[.*?\]\]\s*/, '');
     }
 
     formattedMessages.push({
@@ -58,8 +54,8 @@ export async function handleAugmentation(
     });
   }
 
-  const lastUserMsg = [...formattedMessages].reverse().find((m) => m.role === 'user');
-  let lastAiMsg = [...formattedMessages].reverse().find((m) => m.role === 'assistant');
+  const lastUserMsg = formattedMessages.findLast((m) => m.role === 'user');
+  let lastAiMsg = formattedMessages.findLast((m) => m.role === 'assistant');
 
   if (!lastUserMsg || !lastAiMsg) {
     logger.info('Missing user or assistant message. Skipping.');
