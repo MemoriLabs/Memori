@@ -1,7 +1,7 @@
 {
   "name": "@memorilabs/openclaw-memori",
   "version": "0.0.2-beta",
-  "description": "Official Memori.ai long-term memory plugin for OpenClaw",
+  "description": "Official MemoriLabs.ai long-term memory plugin for OpenClaw",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -32,8 +32,6 @@
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0"
   },
-  "author": "Memori Labs",
-  "license": "Apache-2.0",
   "keywords": [
     "openclaw",
     "plugin",
@@ -41,6 +39,17 @@
     "memori",
     "long-term-memory"
   ],
+  "author": "Memori Labs",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemoriLabs/Memori.git",
+    "directory": "integrations/openclaw"
+  },
+  "bugs": {
+    "url": "https://github.com/MemoriLabs/Memori/issues"
+  },
+  "homepage": "https://github.com/MemoriLabs/Memori",
   "openclaw": {
     "extensions": [
       "./dist/index.js"
