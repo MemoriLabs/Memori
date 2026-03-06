@@ -95,7 +95,7 @@ export async function handleAugmentation(
 
     logger.info(`Sending User: ${payload.userMessage}`);
     logger.info(`Sending Agent: ${payload.agentResponse}`);
-    logger.info(`Sending Meta: ${payload.metadata}`);
+    logger.info(`Sending Meta: ${JSON.stringify(payload.metadata)}`);
 
     await memoriClient.augmentation(payload);
     logger.info('Augmentation successful!');
