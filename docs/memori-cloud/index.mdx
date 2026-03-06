@@ -5,7 +5,7 @@ description: Memori gives your AI agents structured, persistent memory — no da
 
 # What is Memori?
 
-_Memori_ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
+__Memori__ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
 
 ## Why Memori Cloud?
 
@@ -14,8 +14,10 @@ With the Memori Cloud platform: [app.memorilabs.ai](https://app.memorilabs.ai), 
 ### LLM Provider Support
 
 OpenAI, Anthropic, Gemini, and Grok (xAI) via direct SDK wrappers. Bedrock is
-supported through LangChain `ChatBedrock`. Supports sync, async, streamed, and
-unstreamed modes, plus LangChain, Agno, and Pydantic AI.
+supported via LangChain `ChatBedrock`. OpenAI-compatible providers (Nebius,
+Deepseek, NVIDIA NIM, Azure OpenAI, and more) work through OpenAI's `base_url`
+parameter. Supports sync, async, streamed, and unstreamed modes, plus LangChain
+, Agno, and Pydantic AI.
 
 ### Zero Configuration
 
@@ -32,9 +34,9 @@ into your existing workflows.
 Background AI processing extracts facts, preferences, and relationships from
 your conversations automatically.
 
-### Semantic Recall
+### Intelligent Recall
 
-Semantic search surfaces the right memories at the right time. Memories are
+Intelligent Recall surfaces the right memories at the right time. Memories are
 ranked by relevance and importance, with intelligent decay so older or less
 relevant facts recede — so your AI stays contextually aware without clutter.
 Use manual recall when you need to display memories in your UI, build custom
@@ -102,4 +104,4 @@ Recall injection: relevant memories are fetched from managed storage and injecte
 
 Async augmentation: Memori Cloud extracts facts, preferences, rules, events, and relationships from conversations without blocking your app.
 
-!["Memori Cloud architecture"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-cloud-architecture.webp)
+!["Memori Cloud architecture"](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/docs/memori-cloud-architecture-detail.webp)

@@ -148,39 +148,6 @@ print(response.output_text)
 Memori automatically captures each interaction and links them within the same session.
 
 <CodeGroup title="Multi-Turn Conversations">
-```typescript
-import OpenAI from 'openai';
-import { Memori } from '@memorilabs/memori';
-
-const client = new OpenAI();
-
-const mem = new Memori().llm.register(client);
-mem.attribution('user_123', 'my_agent');
-
-const messages: OpenAI.ChatCompletionMessageParam[] = [
-  { role: 'user', content: 'My name is Alice.' },
-];
-
-const response = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
-  messages,
-});
-messages.push({
-  role: 'assistant',
-  content: response.choices[0].message.content!,
-});
-
-messages.push({
-  role: 'user',
-  content: "What's my name?",
-});
-const response2 = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
-  messages,
-});
-console.log(response2.choices[0].message.content);
-```
-
 ```python
 from memori import Memori
 from openai import OpenAI
@@ -212,5 +179,38 @@ response = client.chat.completions.create(
     messages=messages
 )
 print(response.choices[0].message.content)
+```
+
+```typescript
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+
+const mem = new Memori().llm.register(client);
+mem.attribution('user_123', 'my_agent');
+
+const messages: OpenAI.ChatCompletionMessageParam[] = [
+  { role: 'user', content: 'My name is Alice.' },
+];
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages,
+});
+messages.push({
+  role: 'assistant',
+  content: response.choices[0].message.content!,
+});
+
+messages.push({
+  role: 'user',
+  content: "What's my name?",
+});
+const response2 = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages,
+});
+console.log(response2.choices[0].message.content);
 ```
 </CodeGroup>
