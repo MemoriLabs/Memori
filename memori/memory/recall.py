@@ -107,10 +107,13 @@ class Recall:
 
         api = Api(self.config)
         resolved_limit = self._resolve_limit(limit)
+        process = None
+        if self.config.process_id is not None:
+            process = {"id": self.config.process_id}
         payload = {
             "attribution": {
                 "entity": {"id": str(self.config.entity_id)},
-                "process": {"id": self.config.process_id},
+                "process": process,
             },
             "query": query,
             "session": {"id": str(self.config.session_id)},
