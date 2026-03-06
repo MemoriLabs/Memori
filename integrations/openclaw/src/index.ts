@@ -30,12 +30,10 @@ const memoriPlugin = {
     logger.info(`\n=== ${PLUGIN_CONFIG.LOG_PREFIX} INITIALIZING PLUGIN ===`);
     logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}`);
 
-    // Register recall hook (before_prompt_build)
     api.on('before_prompt_build', (event: unknown, ctx: unknown) =>
       handleRecall(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
     );
 
-    // Register capture hook (agent_end)
     api.on('agent_end', (event: unknown, ctx: unknown) =>
       handleAugmentation(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
     );

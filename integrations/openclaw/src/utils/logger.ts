@@ -1,9 +1,5 @@
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 import { PLUGIN_CONFIG } from '../constants.js';
-
-/**
- * Wrapper around OpenClaw logger with consistent prefixing
- */
 export class MemoriLogger {
   constructor(private api: OpenClawPluginApi) {}
 
