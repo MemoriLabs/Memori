@@ -26,7 +26,7 @@ export async function handleAugmentation(
 ): Promise<void> {
   logger.section('AUGMENTATION HOOK START');
 
-  if (!event.success || !event.messages || event.messages.length === 0) {
+  if (!event.success || !event.messages || event.messages.length < 2) {
     logger.info('No messages or unsuccessful event. Skipping augmentation.');
     logger.endSection('AUGMENTATION HOOK END');
     return;
@@ -34,14 +34,17 @@ export async function handleAugmentation(
 
   try {
     const recentMessages = event.messages.slice(-AUGMENTATION_CONFIG.MAX_CONTEXT_MESSAGES);
-    const formattedMessages: Array<{ role: string; content: string }> = [];
 
-    for (const msg of recentMessages) {
+    let lastUserMsg: { role: string; content: string } | undefined;
+    let lastAiMsg: { role: string; content: string } | undefined;
+
+    for (let i = recentMessages.length - 1; i >= 0; i--) {
+      const msg = recentMessages[i];
       const role = msg.role;
+
       if (role !== 'user' && role !== 'assistant') continue;
 
       const cleanedContent = cleanText(msg.content);
-
       if (!cleanedContent) continue;
 
       let finalContent = cleanedContent;
@@ -49,14 +52,16 @@ export async function handleAugmentation(
         finalContent = finalContent.replace(/^\[\[.*?\]\]\s*/, '');
       }
 
-      formattedMessages.push({
-        role: role as string,
-        content: finalContent,
-      });
-    }
+      if (role === 'assistant' && !lastAiMsg) {
+        lastAiMsg = { role, content: finalContent };
+      }
 
-    const lastUserMsg = formattedMessages.findLast((m) => m.role === 'user');
-    let lastAiMsg = formattedMessages.findLast((m) => m.role === 'assistant');
+      if (role === 'user' && !lastUserMsg) {
+        lastUserMsg = { role, content: finalContent };
+      }
+
+      if (lastUserMsg && lastAiMsg) break;
+    }
 
     if (!lastUserMsg || !lastAiMsg) {
       logger.info('Missing user or assistant message. Skipping.');
@@ -64,7 +69,6 @@ export async function handleAugmentation(
       return;
     }
 
-    // Check if the user message is a system message that should be ignored
     if (isSystemMessage(lastUserMsg.content)) {
       logger.info('User message is a system message. Skipping augmentation.');
       logger.endSection('AUGMENTATION HOOK END');
@@ -72,9 +76,7 @@ export async function handleAugmentation(
     }
 
     if (lastAiMsg.content === 'NO_REPLY' || lastAiMsg.content === 'SILENT_REPLY') {
-      logger.info(
-        'Assistant used tool-based messaging (NO_REPLY). Using synthetic response for augmentation.'
-      );
+      logger.info('Assistant used tool-based messaging. Using synthetic response.');
       lastAiMsg = {
         role: 'assistant',
         content: "Okay, I'll remember that for you.",

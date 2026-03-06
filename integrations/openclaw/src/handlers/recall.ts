@@ -40,6 +40,7 @@ export async function handleRecall(
     } else {
       logger.info('No relevant memories found.');
     }
+
     return hookReturn;
   } catch (err) {
     logger.error(`Recall failed: ${err instanceof Error ? err.message : String(err)}`);

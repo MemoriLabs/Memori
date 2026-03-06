@@ -9,5 +9,5 @@ export const RECALL_CONFIG = {
 } as const;
 
 export const AUGMENTATION_CONFIG = {
-  MAX_CONTEXT_MESSAGES: 10,
+  MAX_CONTEXT_MESSAGES: 5,
 } as const;
