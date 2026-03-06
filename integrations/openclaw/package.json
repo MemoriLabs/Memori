@@ -50,6 +50,6 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@memorilabs/memori": "^0.0.3"
+    "@memorilabs/memori": "^0.0.4"
   }
 }

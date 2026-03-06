@@ -1,4 +1,4 @@
-name: Publish to npm (TS)
+name: Publish OpenClaw to NPM
 
 on:
   workflow_dispatch: 
