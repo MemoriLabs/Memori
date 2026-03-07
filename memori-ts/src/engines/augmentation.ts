@@ -59,7 +59,9 @@ export class AugmentationEngine {
           version: req.model || null,
         },
       },
-      platform: ctx.metadata.platform || null,
+      platform: {
+        provider: ctx.metadata.platform || null,
+      },
       storage: null,
     };
   }

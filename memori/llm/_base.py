@@ -281,7 +281,7 @@ class BaseInvoke:
             parse_payload_conversation_messages,
         )
 
-        payload = {
+        payload: dict[str, Any] = {
             "attribution": {
                 "entity": {"id": self.config.entity_id},
                 "process": {"id": self.config.process_id},

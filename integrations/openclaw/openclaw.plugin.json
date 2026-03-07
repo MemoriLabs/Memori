@@ -1,0 +1,37 @@
+{
+  "id": "openclaw-memori",
+  "name": "Memori System",
+  "version": "0.0.1-beta",
+  "description": "Hosted memory backend",
+  "kind": "memory",
+  "main": "dist/index.js",
+  "uiHints": {
+    "apiKey": {
+      "label": "Memori API Key",
+      "sensitive": true,
+      "placeholder": "Enter your Memori API key...",
+      "help": "API key from memorilabs.ai (or use MEMORI_API_KEY env var)"
+    },
+    "entityId": {
+      "label": "Entity ID",
+      "placeholder": "e.g., your-app-user-id",
+      "help": "Required. The unique identifier to attribute these memories to."
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiKey": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Memori API Key"
+      },
+      "entityId": {
+        "type": "string",
+        "title": "Entity ID",
+        "description": "Required. Hardcode a specific Entity ID for memories."
+      }
+    },
+    "required": []
+  }
+}

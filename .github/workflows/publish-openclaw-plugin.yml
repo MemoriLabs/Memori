@@ -1,4 +1,4 @@
-name: Publish to npm (TS)
+name: Publish OpenClaw to NPM
 
 on:
   workflow_dispatch: 
@@ -13,7 +13,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: ./memori-ts
+        working-directory: ./integrations/openclaw
 
     steps:
       - name: Checkout repository
@@ -35,9 +35,6 @@ jobs:
 
       - name: Build project
         run: npm run build --if-present
-        
-      - name: Run tests
-        run: npm test --if-present
 
       - name: Publish Package
-        run: npm publish --access public --tag latest
+        run: npm publish --access public --tag beta

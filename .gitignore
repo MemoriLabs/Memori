@@ -70,3 +70,4 @@ coverage
 !tsconfig.json
 !tsconfig.build.json
 !.prettierrc.json
+!openclaw.plugin.json
