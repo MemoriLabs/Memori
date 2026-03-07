@@ -67,15 +67,16 @@ mem.attribution('user_123', 'my_app');
 
 <CodeGroup title="Wait for Augmentation">
 
-```python {{ title: 'Python' }}
+```python title="Python"
 mem.augmentation.wait()
 ```
 
-```typescript {{ title: 'TypeScript' }}
+```typescript title="TypeScript"
 await new Promise((resolve) => setTimeout(resolve, 2000));
 ```
 
 </CodeGroup>
+
 
 ## Recall Returns Empty
 
@@ -90,6 +91,8 @@ await new Promise((resolve) => setTimeout(resolve, 2000));
 
 ## Debug Logging
 
+Enable debug logging to inspect request flow, attribution, and augmentation behavior when troubleshooting missing memories or API errors. Use it temporarily in development, since logs can include sensitive request metadata.
+
 <CodeGroup title="Debug Logging">
 
 ```python {{ title: 'Python' }}
@@ -102,7 +105,6 @@ mem = Memori()
 
 ```typescript {{ title: 'TypeScript' }}
 import { Memori } from '@memorilabs/memori';
-
 const mem = new Memori({ debug: true });
 ```
 
