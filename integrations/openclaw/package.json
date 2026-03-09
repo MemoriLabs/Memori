@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/openclaw-memori",
-  "version": "0.0.4-beta",
+  "version": "0.0.5-beta",
   "description": "Official MemoriLabs.ai long-term memory plugin for OpenClaw",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,7 +17,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run typecheck"
+    "check": "npm run format:check && npm run lint && npm run typecheck",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "peerDependencies": {
     "openclaw": "^2026.3.2"
@@ -25,12 +27,14 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-tsdoc": "^0.5.1",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.0.18"
   },
   "keywords": [
     "openclaw",

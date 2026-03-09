@@ -28,29 +28,21 @@ export function isSystemMessage(text: string): boolean {
  * The message might aslo contain a timestamp prefix like: [Day YYYY-MM-DD HH:MM TZ], that will need to be removed
  */
 function extractRawUserMessage(content: string): string {
-  if (!content.includes('```')) {
-    return content;
-  }
+  let message = content;
 
-  const lastFenceIndex = content.lastIndexOf('```');
-
-  if (lastFenceIndex === -1) {
-    return content;
-  }
-
-  let message = content.substring(lastFenceIndex + 3).trim();
-
-  if (!message) {
-    return content;
+  if (message.includes('```')) {
+    const lastFenceIndex = message.lastIndexOf('```');
+    if (lastFenceIndex !== -1) {
+      message = message.substring(lastFenceIndex + 3).trim();
+    }
   }
 
   const timestampMatch = message.match(TIMESTAMP_PREFIX_REGEX);
-
   if (timestampMatch) {
-    message = message.substring(timestampMatch[0].length);
+    message = message.substring(timestampMatch[0].length).trim();
   }
 
-  return message || content;
+  return message;
 }
 
 function extractMessageText(content: unknown): string {
