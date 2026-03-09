@@ -13,7 +13,7 @@ from dataclasses import asdict, is_dataclass
 
 from memori._network import Api
 from memori.embeddings import embed_texts
-from memori.memory._struct import Memories
+from memori.memory._struct import Memories, build_fact_text_from_triple_entry
 from memori.memory.augmentation._base import AugmentationContext, BaseAugmentation
 from memori.memory.augmentation._models import (
     AttributionData,
@@ -186,9 +186,9 @@ class AdvancedAugmentation(BaseAugmentation):
 
         if not facts and triples:
             facts = [
-                f"{t['subject']['name']} {t['predicate']} {t['object']['name']}"
-                for t in triples
-                if t.get("subject") and t.get("predicate") and t.get("object")
+                fact_text
+                for triple in triples
+                if (fact_text := build_fact_text_from_triple_entry(triple)) is not None
             ]
 
         if facts:

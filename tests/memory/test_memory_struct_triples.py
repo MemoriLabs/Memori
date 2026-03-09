@@ -80,6 +80,26 @@ def test_entity_triples_generates_fact_text():
     assert "House located_in Seattle" in entity.facts
 
 
+def test_entity_triples_prefers_content_field_for_fact_text():
+    entity = Entity().configure_from_advanced_augmentation(
+        {
+            "entity": {
+                "triples": [
+                    {
+                        "subject": {"name": "User", "type": "Person"},
+                        "predicate": "likes",
+                        "object": {"name": "Pizza", "type": "Food"},
+                        "content": "User enjoys pizza on weekends",
+                    }
+                ]
+            }
+        }
+    )
+
+    assert len(entity.facts) == 1
+    assert entity.facts[0] == "User enjoys pizza on weekends"
+
+
 def test_entity_triples_with_existing_facts():
     entity = Entity().configure_from_advanced_augmentation(
         {

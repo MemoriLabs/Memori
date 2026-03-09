@@ -9,6 +9,23 @@ r"""
 """
 
 
+def build_fact_text_from_triple_entry(entry: dict) -> str | None:
+    content = entry.get("content")
+    if isinstance(content, str) and content:
+        return content
+
+    subject = entry.get("subject") or {}
+    predicate = entry.get("predicate")
+    object_ = entry.get("object") or {}
+
+    subject_name = subject.get("name")
+    object_name = object_.get("name")
+    if not subject_name or not predicate or not object_name:
+        return None
+
+    return f"{subject_name} {predicate} {object_name}"
+
+
 class Conversation:
     def __init__(self):
         self.summary: str | None = None
@@ -49,10 +66,9 @@ class Entity:
             triple = self._parse_semantic_triple(entry)
             if triple is not None:
                 self.semantic_triples.append(triple)
-                fact_text = (
-                    f"{triple.subject_name} {triple.predicate} {triple.object_name}"
-                )
-                self.facts.append(fact_text)
+                fact_text = build_fact_text_from_triple_entry(entry)
+                if fact_text is not None:
+                    self.facts.append(fact_text)
 
         return self
 

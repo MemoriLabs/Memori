@@ -306,6 +306,38 @@ async def test_process_api_response_triples_to_facts(augmentation):
 
 
 @pytest.mark.asyncio
+async def test_process_api_response_triples_prefers_content_field(augmentation):
+    api_response = {
+        "entity": {
+            "facts": [],
+            "triples": [
+                {
+                    "subject": {"name": "User", "type": "Person"},
+                    "predicate": "likes",
+                    "object": {"name": "Pizza", "type": "Food"},
+                    "content": "User enjoys pizza on weekends",
+                }
+            ],
+        }
+    }
+
+    with patch(
+        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts",
+        new_callable=AsyncMock,
+    ) as mock_embed:
+        mock_embed.return_value = [[0.1, 0.2]]
+
+        result = await augmentation._process_api_response(api_response)
+
+        mock_embed.assert_called_once_with(
+            ["User enjoys pizza on weekends"],
+            model=augmentation.config.embeddings.model,
+            async_=True,
+        )
+        assert result.entity.facts == ["User enjoys pizza on weekends"]
+
+
+@pytest.mark.asyncio
 async def test_schedule_entity_writes(augmentation, driver, augmentation_input):
     ctx = AugmentationContext(payload=augmentation_input)
     memories = Memories()
