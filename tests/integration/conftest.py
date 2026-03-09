@@ -12,6 +12,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 XAI_API_KEY = os.environ.get("XAI_API_KEY")
+MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY")
 
 requires_openai = pytest.mark.skipif(
     not OPENAI_API_KEY,
@@ -38,6 +39,11 @@ requires_google = pytest.mark.skipif(
 requires_xai = pytest.mark.skipif(
     not XAI_API_KEY,
     reason="XAI_API_KEY environment variable not set",
+)
+
+requires_minimax = pytest.mark.skipif(
+    not MINIMAX_API_KEY,
+    reason="MINIMAX_API_KEY environment variable not set",
 )
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
@@ -237,6 +243,47 @@ def registered_async_xai_client(memori_instance, async_xai_client):
     memori_instance.llm.register(async_xai_client)
     memori_instance.attribution(entity_id="test-entity", process_id="test-process")
     return async_xai_client
+
+
+@pytest.fixture(scope="session")
+def minimax_api_key():
+    if not MINIMAX_API_KEY:
+        pytest.skip("MINIMAX_API_KEY not set")
+    return MINIMAX_API_KEY
+
+
+@pytest.fixture
+def minimax_client(minimax_api_key):
+    from openai import OpenAI
+
+    return OpenAI(
+        api_key=minimax_api_key,
+        base_url="https://api.minimax.io/v1",
+    )
+
+
+@pytest.fixture
+def async_minimax_client(minimax_api_key):
+    from openai import AsyncOpenAI
+
+    return AsyncOpenAI(
+        api_key=minimax_api_key,
+        base_url="https://api.minimax.io/v1",
+    )
+
+
+@pytest.fixture
+def registered_minimax_client(memori_instance, minimax_client):
+    memori_instance.llm.register(minimax_client)
+    memori_instance.attribution(entity_id="test-entity", process_id="test-process")
+    return minimax_client
+
+
+@pytest.fixture
+def registered_async_minimax_client(memori_instance, async_minimax_client):
+    memori_instance.llm.register(async_minimax_client)
+    memori_instance.attribution(entity_id="test-entity", process_id="test-process")
+    return async_minimax_client
 
 
 @pytest.fixture(scope="session")
