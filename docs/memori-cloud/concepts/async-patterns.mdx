@@ -40,7 +40,6 @@ async def main():
         messages=[{"role": "user", "content": "I prefer async Python."}]
     )
     print(response.choices[0].message.content)
-    mem.augmentation.wait()
 
 asyncio.run(main())
 ```
@@ -58,9 +57,6 @@ const response = await client.chat.completions.create({
   messages: [{ role: 'user', content: 'I prefer TypeScript.' }],
 });
 console.log(response.choices[0].message.content);
-
-// Wait for augmentation in short-lived scripts
-await new Promise((resolve) => setTimeout(resolve, 2000));
 ```
 
 </CodeGroup>

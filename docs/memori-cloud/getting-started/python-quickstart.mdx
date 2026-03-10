@@ -5,7 +5,7 @@ description: Get started with Memori Cloud in under 3 minutes.
 
 # Python SDK Quickstart
 
-Get started with Memori in under 3 minutes [using Python]. No database setup required — just your Memori API key and your favorite LLM provider.
+Get started with Memori in under 3 minutes using Python. No database setup required — just your Memori API key and your favorite LLM provider.
 
 <Note>
   In this example, we'll use Memori with OpenAI. Check out our [Integration
@@ -76,9 +76,6 @@ mem.attribution(entity_id="user_123", process_id="test-ai-agent")
 Tell the LLM a fact about yourself. Memori automatically captures the
 conversation and processes it through Advanced Augmentation.
 
-Since Advanced Augmentation runs asynchronously, call `augmentation.wait()` in
-short-lived scripts to ensure memories are fully processed before continuing.
-
 ```python
 response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -87,9 +84,6 @@ response = client.chat.completions.create(
     ]
 )
 print(response.choices[0].message.content + "\n")
-
-# Wait for Advanced Augmentation to finish
-mem.augmentation.wait()
 ```
 
 ### Memory Recall

@@ -1,0 +1,97 @@
+---
+title: OpenClaw Overview
+description: Give your OpenClaw agents structured, persistent memory with the Memori plugin — auto-recall and auto-capture across every session.
+---
+
+# OpenClaw Overview
+
+By default, OpenClaw agents forget everything between sessions. The Memori plugin fixes that. It watches conversations, extracts what matters, and brings it back when relevant — automatically.
+
+## The Problem with OpenClaw's Built-In Memory
+
+OpenClaw ships with a basic memory layer, but it has fundamental limitations that break down at scale:
+
+| Limitation | What happens |
+| --- | --- |
+| **Flat markdown files** | Memory lives in plain text files with no structure or relationships. The agent reads and writes large chunks of text with no way to index, query, or deduplicate facts. |
+| **Context compaction** | As sessions grow longer, important details begin to disappear. Memory gets lost when context is compressed to stay within token limits. |
+| **No relationship reasoning** | OpenClaw retrieves semantically similar text, but cannot understand relationships between facts or connect them to each other. |
+| **Cross-project noise** | When working across multiple projects, memories are not isolated. Searches return irrelevant results from other contexts, polluting the agent's responses. |
+| **No user isolation** | Users do not have their own isolated memories. Memories bleed across users and data is mixed, creating privacy and relevance issues. |
+
+## How Memori Solves This
+
+The Memori plugin replaces OpenClaw's flat-file memory with a structured knowledge graph that understands entities, relationships, and context boundaries.
+
+| Capability | How it works |
+| --- | --- |
+| **Knowledge graph storage** | Facts are stored as structured entities and relationships, not raw text. This enables precise retrieval and deduplication. |
+| **Durable across sessions** | Memory persists in the Memori API, unaffected by context window limits or session resets. Nothing is lost to compaction. |
+| **Intelligent recall** | Memori connects related facts and can traverse relationships — "Alice manages the auth service" links to "the auth service uses JWT". |
+| **Process-level isolation** | Each `process_id` scopes memories to a specific project or workflow. Cross-project noise is eliminated. |
+| **Entity-level isolation** | Each `entity_id` scopes memories to a specific user. No data mixing between users. |
+
+## Key Features
+
+- **Auto-Recall** — Before the agent responds, the plugin searches Memori for memories that match the current context and injects them directly into the prompt.
+- **Auto-Capture** — After the agent responds, the plugin sends the exchange to Memori to extract new facts, update stale ones, and merge duplicates.
+- **Bulletproof Sanitization** — Automatically strips OpenClaw system metadata, internal timestamps, and thinking blocks to prevent context pollution and feedback loops.
+- **Stateless & Thread-Safe** — A completely stateless architecture ensures zero memory leaks and 100% thread safety for multi-agent OpenClaw gateways.
+
+## How It Works
+
+The plugin hooks into two points in OpenClaw's event lifecycle:
+
+### 1. `before_prompt_build` — Intelligent Recall
+
+When a user sends a message, the plugin:
+
+1. Intercepts the event and extracts the user's prompt
+2. Sanitizes the prompt (strips metadata, timestamps, system messages)
+3. Queries the Memori API for relevant memories
+4. Prepends matching memories to the agent's system context
+
+The agent then responds with full awareness of prior context.
+
+### 2. `agent_end` — Capture
+
+After the agent finishes responding, the plugin:
+
+1. Extracts the last user and assistant messages
+2. Sanitizes both (removes thinking blocks, metadata fences, timestamps)
+3. Sends the cleaned exchange to the Memori API
+4. Memori extracts durable facts, updates stale ones, and merges duplicates
+
+This runs asynchronously and never blocks the agent's response.
+
+## Architecture
+
+```
+User Message
+    |
+    v
++-------------------+
+| before_prompt_build|  <-- Recall hook
++-------------------+
+    |
+    | 1. Sanitize prompt
+    | 2. Query Memori API
+    | 3. Prepend memories
+    |
+    v
++-------------------+
+|   Agent Responds   |
++-------------------+
+    |
+    v
++-------------------+
+|    agent_end       |  <-- Capture hook
++-------------------+
+    |
+    | 1. Extract messages
+    | 2. Sanitize content
+    | 3. Send to Memori API
+    |
+    v
+  Memori Knowledge Graph
+```

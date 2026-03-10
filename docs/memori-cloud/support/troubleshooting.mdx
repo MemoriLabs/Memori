@@ -63,25 +63,9 @@ mem.attribution('user_123', 'my_app');
 
 </CodeGroup>
 
-3. **Wait for augmentation** in short-lived scripts:
-
-<CodeGroup title="Wait for Augmentation">
-
-```python title="Python"
-mem.augmentation.wait()
-```
-
-```typescript title="TypeScript"
-await new Promise((resolve) => setTimeout(resolve, 2000));
-```
-
-</CodeGroup>
-
-
 ## Recall Returns Empty
 
 - Verify `entity_id` matches what was used when memories were created
-- Wait for augmentation: `mem.augmentation.wait()`
 - Increase limit: `mem.recall("query", limit=10)`
 - Lower threshold: `mem.config.recall_relevance_threshold = 0.05`
 

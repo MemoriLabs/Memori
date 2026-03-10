@@ -29,8 +29,6 @@ The augmentation flow is fully asynchronous and designed to avoid blocking your 
 4. The augmentation engine extracts structured memories
 5. Memories are stored in Memori Cloud for future recall
 
-In short-lived scripts, call `mem.augmentation.wait()` to ensure processing completes before exit.
-
 <CodeGroup title="Advanced Augmentation">
 
 ```python {{ title: 'Python' }}
@@ -49,9 +47,6 @@ response = client.chat.completions.create(
     ]
 )
 print(response.choices[0].message.content)
-
-# Only needed in short-lived scripts
-mem.augmentation.wait()
 ```
 
 ```typescript {{ title: 'TypeScript' }}
@@ -70,9 +65,6 @@ const response = await client.chat.completions.create({
   ],
 });
 console.log(response.choices[0].message.content);
-
-// Only needed in short-lived scripts
-await new Promise((resolve) => setTimeout(resolve, 2000));
 ```
 
 </CodeGroup>

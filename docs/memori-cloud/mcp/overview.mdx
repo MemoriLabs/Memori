@@ -1,0 +1,95 @@
+---
+title: Memori MCP Overview
+description: Use the Model Context Protocol (MCP) to connect AI agents directly to Memori for real-time recall and memory storage.
+---
+
+# Memori MCP (Model Context Protocol)
+
+MCP (Model Context Protocol) is a standard way for AI agents to connect to external tools and APIs. With Memori's MCP server, your agent can retrieve relevant memories before answering and store durable facts after responding — keeping context across sessions without any SDK integration.
+
+## Why Use MCP
+
+Without MCP, your agent only sees the current conversation. With MCP, it can:
+
+- **Store** stable user facts and preferences after answering using the `advanced_augmentation` tool
+- **Recall** relevant memories before answering using the `recall` tool
+- **Maintain context** across sessions using `entity_id`, `process_id`, and `session_id`
+
+MCP is ideal for IDE agents (Cursor, Claude Code, Codex, Warp, Antigravity) and other MCP-compatible clients where you want persistent memory without writing integration code.
+
+## Server Details
+
+| Property      | Value                                    |
+| ------------- | ---------------------------------------- |
+| **Server**    | Memori MCP                               |
+| **Endpoint**  | `https://api.memorilabs.ai/mcp`          |
+| **Transport** | HTTP with SSE                            |
+| **Auth**      | API key via request headers              |
+
+### Required Headers
+
+<Properties>
+  <Property name="X-Memori-API-Key" type="string" required>
+    Your Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai).
+  </Property>
+  <Property name="X-Memori-Entity-Id" type="string" required>
+    Stable end-user or entity identifier (e.g. `user_123`).
+  </Property>
+  <Property name="X-Memori-Process-Id" type="string" required>
+    Process, app, or workflow identifier (e.g. `my_agent`).
+  </Property>
+</Properties>
+
+<Note>
+  `session_id` is generated automatically by the server from `entity_id` + UTC hour. You do not need to provide it.
+</Note>
+
+## Tools
+
+### `recall`
+
+Fetches relevant memories at the start of a user turn.
+
+<Properties>
+  <Property name="query" type="string" required>
+    The latest user message — typically passed verbatim.
+  </Property>
+</Properties>
+
+`entity_id` and `process_id` are read from the MCP headers. Returns a structured memory payload with relevant context.
+
+### `advanced_augmentation`
+
+Stores durable memory after the agent has drafted a response.
+
+<Properties>
+  <Property name="user_message" type="string" required>
+    The user's message for this turn.
+  </Property>
+  <Property name="assistant_response" type="string" required>
+    The assistant's response for this turn.
+  </Property>
+</Properties>
+
+`entity_id` and `process_id` are read from the MCP headers. Returns a confirmation: `memory being created`.
+
+## Example Agent Flow
+
+Given the user message: _"I prefer Python and use uv for dependency management."_
+
+1. Agent calls `recall` with the user message as `query`
+2. Agent composes a response using any returned facts
+3. Agent sends the response to the user
+4. Agent calls `advanced_augmentation` with the `user_message` and `assistant_response`
+
+On a later turn like _"Write a hello world script"_, the agent recalls the Python + uv preference and personalizes its response.
+
+## Validation Checklist
+
+After configuring your client, verify the setup:
+
+- MCP server shows as connected and healthy in your client UI
+- Tools list includes `recall` and `advanced_augmentation`
+- Calls return non-401 responses
+- `recall` returns memories for known entities
+- `advanced_augmentation` returns `memory being created`

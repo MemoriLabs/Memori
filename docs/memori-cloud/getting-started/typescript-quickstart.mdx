@@ -73,9 +73,6 @@ mem.attribution('user_123', 'test-ai-agent');
 Tell the LLM a fact about yourself. Memori automatically captures the
 conversation and processes it through Advanced Augmentation.
 
-Since Advanced Augmentation runs asynchronously, add a brief delay in
-short-lived scripts to ensure memories are fully processed before continuing.
-
 ```typescript
 const response = await client.chat.completions.create({
   model: 'gpt-4o-mini',
@@ -84,9 +81,6 @@ const response = await client.chat.completions.create({
   ],
 });
 console.log(response.choices[0].message.content + '\n');
-
-// Wait for Advanced Augmentation to finish
-await new Promise((resolve) => setTimeout(resolve, 2000));
 ```
 
 ### Memory Recall
