@@ -64,5 +64,8 @@
   },
   "dependencies": {
     "@memorilabs/memori": "^0.0.4"
+  },
+  "overrides": {
+    "@hono/node-server": "^1.19.10"
   }
 }
