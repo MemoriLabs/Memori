@@ -23,10 +23,10 @@ MCP is ideal for IDE agents (Cursor, Claude Code, Codex, Warp, Antigravity) and 
 | ------------- | ---------------------------------------- |
 | **Server**    | Memori MCP                               |
 | **Endpoint**  | `https://api.memorilabs.ai/mcp`          |
-| **Transport** | HTTP with SSE                            |
+| **Transport** | Stateless HTTP                           |
 | **Auth**      | API key via request headers              |
 
-### Required Headers
+### Headers
 
 <Properties>
   <Property name="X-Memori-API-Key" type="string" required>
@@ -35,13 +35,13 @@ MCP is ideal for IDE agents (Cursor, Claude Code, Codex, Warp, Antigravity) and 
   <Property name="X-Memori-Entity-Id" type="string" required>
     Stable end-user or entity identifier (e.g. `user_123`).
   </Property>
-  <Property name="X-Memori-Process-Id" type="string" required>
-    Process, app, or workflow identifier (e.g. `my_agent`).
+  <Property name="X-Memori-Process-Id" type="string">
+    Optional process, app, or workflow identifier (e.g. `my_agent`) for memory isolation.
   </Property>
 </Properties>
 
 <Note>
-  `session_id` is generated automatically by the server from `entity_id` + UTC hour. You do not need to provide it.
+  `session_id` is derived automatically as `<entity_id>-<UTC year-month-day:hour>`. You do not need to provide it.
 </Note>
 
 ## Tools
@@ -56,7 +56,7 @@ Fetches relevant memories at the start of a user turn.
   </Property>
 </Properties>
 
-`entity_id` and `process_id` are read from the MCP headers. Returns a structured memory payload with relevant context.
+`entity_id` is read from MCP headers. `process_id` is read when provided. Returns a structured memory payload with relevant context.
 
 ### `advanced_augmentation`
 
@@ -71,7 +71,7 @@ Stores durable memory after the agent has drafted a response.
   </Property>
 </Properties>
 
-`entity_id` and `process_id` are read from the MCP headers. Returns a confirmation: `memory being created`.
+`entity_id` is read from MCP headers. `process_id` is read when provided. Returns a confirmation: `memory being created`.
 
 ## Example Agent Flow
 

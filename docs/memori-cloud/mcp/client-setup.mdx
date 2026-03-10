@@ -1,23 +1,23 @@
 ---
 title: Client Setup
-description: Configure the Memori MCP server in Cursor, Claude Code, Codex, Warp, and Antigravity.
+description: Configure the Memori MCP server in Cursor, Claude Code, Codex, Warp, Antigravity, and other MCP clients with custom connectors.
 ---
 
 # Client Setup
 
-Connect your IDE agent to the Memori MCP server. Each client uses a JSON configuration with your API key and attribution headers.
+Connect your IDE agent to the Memori MCP server. Each client uses a local MCP configuration with your API key and attribution headers.
 
 ## Prerequisites
 
 - A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
-- An `entity_id` (identifies the end user) and `process_id` (identifies the agent or workflow)
+- An `entity_id` (identifies the end user) and optional `process_id` (identifies the agent or workflow)
 
 Set these as environment variables or replace the placeholders directly in the config:
 
 ```bash
 export MEMORI_API_KEY="your-memori-api-key"
 export MEMORI_ENTITY_ID="user_123"
-export MEMORI_PROCESS_ID="my_agent"
+export MEMORI_PROCESS_ID="my_agent" # optional
 ```
 
 ## Cursor
@@ -78,25 +78,22 @@ Run `/mcp` inside Claude Code to verify the server status.
 
 ## OpenAI Codex
 
-Codex reads MCP server configuration from your project's `agents.json` file. Create `.agents/agents.json` in your project root:
+Codex reads MCP server configuration from `~/.codex/config.toml`. Add this:
 
-```json
-{
-  "mcpServers": {
-    "memori": {
-      "type": "http",
-      "url": "https://api.memorilabs.ai/mcp",
-      "headers": {
-        "X-Memori-API-Key": "${MEMORI_API_KEY}",
-        "X-Memori-Entity-Id": "${MEMORI_ENTITY_ID}",
-        "X-Memori-Process-Id": "${MEMORI_PROCESS_ID}"
-      }
-    }
-  }
-}
+```toml
+[mcp_servers.memori]
+enabled = true
+url = "https://api.memorilabs.ai/mcp/"
+
+[mcp_servers.memori.http_headers]
+X-Memori-API-Key = "${MEMORI_API_KEY}"
+X-Memori-Entity-Id = "${MEMORI_ENTITY_ID}"
+X-Memori-Process-Id = "${MEMORI_PROCESS_ID}"
 ```
 
-Restart Codex so it picks up the new server.
+`X-Memori-Process-Id` is optional.
+
+You can also add the server from the Codex UI: **Settings > Settings > MCP Servers > + Add Server**.
 
 ## Warp
 
@@ -105,7 +102,7 @@ Warp cloud agents support MCP JSON config with remote URLs. Add the Memori serve
 ```json
 {
   "memori": {
-    "url": "https://api.memorilabs.ai/mcp/",
+    "serverUrl": "https://api.memorilabs.ai/mcp/",
     "headers": {
       "X-Memori-API-Key": "your-memori-api-key",
       "X-Memori-Entity-Id": "user_123",
@@ -115,9 +112,7 @@ Warp cloud agents support MCP JSON config with remote URLs. Add the Memori serve
 }
 ```
 
-<Note>
-  If your Warp version supports direct remote headers in `url` configs, you can use that format instead of the command bridge approach.
-</Note>
+`X-Memori-Process-Id` is optional.
 
 ## Antigravity
 
