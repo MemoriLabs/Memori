@@ -471,6 +471,10 @@ class BaseInvoke:
                     text = self._extract_text_from_parts(content.get("parts", []))
                     if text:
                         return text
+                elif getattr(content, "role", None) == "user":
+                    text = self._extract_text_from_parts(getattr(content, "parts", []))
+                    if text:
+                        return text
         return ""
 
     def _extract_user_query(self, kwargs: dict) -> str:
