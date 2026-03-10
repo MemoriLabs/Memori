@@ -70,6 +70,54 @@ def test_anthropic_register_adds_memori_wrappers_sync(anthropic_client, mocker):
     assert hasattr(mock_client.beta, "_messages_create")
 
 
+def test_anthropic_register_wraps_real_client_and_injects_recall(config, mocker):
+    pytest.importorskip("anthropic")
+
+    from anthropic import Anthropic as AnthropicSdk
+
+    config.cloud = False
+    config.entity_id = "user-123"
+    config.storage = mocker.MagicMock()
+    config.storage.driver = mocker.MagicMock()
+    config.storage.driver.entity.create.return_value = 1
+    config.storage.driver.session.read.return_value = None
+    config.storage.driver.session.create.return_value = None
+    config.storage.driver.conversation.create.return_value = None
+    config.storage.driver.conversation.read_id_by_session_id.return_value = None
+    config.storage.driver.conversation.messages.read.return_value = []
+
+    captured_kwargs = {}
+
+    def fake_messages_create(**kwargs):
+        captured_kwargs.update(kwargs)
+        return mocker.MagicMock(content=[])
+
+    client = AnthropicSdk(api_key="test-key")
+    client.messages.create = fake_messages_create
+    client.beta.messages.create = fake_messages_create
+
+    recall_mock = mocker.patch(
+        "memori.memory.recall.Recall.search_facts",
+        return_value=[{"content": "User likes tennis", "similarity": 0.9}],
+    )
+    mocker.patch("memori.llm._base.BaseInvoke.handle_post_response")
+
+    anthropic_client = Anthropic(config)
+    anthropic_client.register(client)
+
+    client.messages.create(
+        model="claude-3-5-haiku-latest",
+        max_tokens=16,
+        messages=[{"role": "user", "content": "What do I like?"}],
+    )
+
+    assert hasattr(client, "_messages_create")
+    assert client._messages_create is fake_messages_create
+    recall_mock.assert_called_once_with("What do I like?", entity_id=1, cloud=False)
+    assert "system" in captured_kwargs
+    assert "User likes tennis" in captured_kwargs["system"]
+
+
 @pytest.mark.asyncio
 async def test_anthropic_register_adds_memori_wrappers_async(anthropic_client, mocker):
     mock_client = mocker.MagicMock()
@@ -118,6 +166,56 @@ def test_google_register_adds_memori_wrappers(google_client, mocker):
     assert hasattr(mock_client.models, "actual_generate_content")
 
 
+def test_google_register_wraps_real_google_genai_client_and_injects_recall(
+    config, mocker
+):
+    pytest.importorskip("google.genai")
+
+    from google import genai
+    from google.genai.types import Content, Part
+
+    config.cloud = False
+    config.entity_id = "user-123"
+    config.storage = mocker.MagicMock()
+    config.storage.driver = mocker.MagicMock()
+    config.storage.driver.entity.create.return_value = 1
+    config.storage.driver.session.read.return_value = None
+    config.storage.driver.session.create.return_value = None
+    config.storage.driver.conversation.create.return_value = None
+    config.storage.driver.conversation.read_id_by_session_id.return_value = None
+    config.storage.driver.conversation.messages.read.return_value = []
+
+    captured_kwargs = {}
+
+    def fake_generate_content(**kwargs):
+        captured_kwargs.update(kwargs)
+        return mocker.MagicMock(candidates=[])
+
+    client = genai.Client(api_key="test-key")
+    client.models.generate_content = fake_generate_content
+
+    recall_mock = mocker.patch(
+        "memori.memory.recall.Recall.search_facts",
+        return_value=[{"content": "User likes tennis", "similarity": 0.9}],
+    )
+    mocker.patch("memori.llm._base.BaseInvoke.handle_post_response")
+
+    google_client = Google(config)
+    google_client.register(client)
+
+    client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=[Content(role="user", parts=[Part(text="What do I like?")])],
+    )
+
+    assert hasattr(client.models, "actual_generate_content")
+    assert client.models.actual_generate_content is fake_generate_content
+    recall_mock.assert_called_once_with("What do I like?", entity_id=1, cloud=False)
+    assert "config" in captured_kwargs
+    assert "system_instruction" in captured_kwargs["config"]
+    assert "User likes tennis" in captured_kwargs["config"]["system_instruction"]
+
+
 def test_google_register_skips_if_already_installed(google_client, mocker):
     mock_client = mocker.MagicMock()
     mock_client._version = "1.0.0"
@@ -153,6 +251,57 @@ def test_openai_register_adds_memori_wrappers_sync(openai_client, mocker):
     assert mock_client._memori_installed is True
     assert hasattr(mock_client.chat, "_completions_create")
     assert hasattr(mock_client.beta, "_chat_completions_parse")
+
+
+def test_openai_register_wraps_real_client_and_injects_recall(config, mocker):
+    pytest.importorskip("openai")
+
+    from openai import OpenAI as OpenAISdk
+
+    config.cloud = False
+    config.entity_id = "user-123"
+    config.storage = mocker.MagicMock()
+    config.storage.driver = mocker.MagicMock()
+    config.storage.driver.entity.create.return_value = 1
+    config.storage.driver.session.read.return_value = None
+    config.storage.driver.session.create.return_value = None
+    config.storage.driver.conversation.create.return_value = None
+    config.storage.driver.conversation.read_id_by_session_id.return_value = None
+    config.storage.driver.conversation.messages.read.return_value = []
+
+    captured_kwargs = {}
+
+    def fake_chat_completions_create(**kwargs):
+        captured_kwargs.update(kwargs)
+        return mocker.MagicMock(choices=[])
+
+    def fake_chat_completions_parse(**kwargs):
+        return mocker.MagicMock(choices=[], **kwargs)
+
+    client = OpenAISdk(api_key="test-key")
+    client.chat.completions.create = fake_chat_completions_create
+    client.beta.chat.completions.parse = fake_chat_completions_parse
+
+    recall_mock = mocker.patch(
+        "memori.memory.recall.Recall.search_facts",
+        return_value=[{"content": "User likes tennis", "similarity": 0.9}],
+    )
+    mocker.patch("memori.llm._base.BaseInvoke.handle_post_response")
+
+    openai_client = OpenAi(config)
+    openai_client.register(client)
+
+    client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "What do I like?"}],
+    )
+
+    assert hasattr(client.chat, "_completions_create")
+    assert client.chat._completions_create is fake_chat_completions_create
+    recall_mock.assert_called_once_with("What do I like?", entity_id=1, cloud=False)
+    assert "messages" in captured_kwargs
+    assert captured_kwargs["messages"][0]["role"] == "system"
+    assert "User likes tennis" in captured_kwargs["messages"][0]["content"]
 
 
 def test_openai_register_with_streaming_sync(openai_client, mocker):
