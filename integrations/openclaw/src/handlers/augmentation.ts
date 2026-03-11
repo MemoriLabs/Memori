@@ -3,6 +3,7 @@ import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from '../types.js'
 import { extractContext, MemoriLogger, initializeMemoriClient } from '../utils/index.js';
 import { cleanText, isSystemMessage } from '../sanitizer.js';
 import { AUGMENTATION_CONFIG } from '../constants.js';
+import { SDK_VERSION } from '../version.js';
 
 function extractLLMMetadata(event: OpenClawEvent): IntegrationMetadata {
   const messages = event.messages || [];
@@ -12,8 +13,7 @@ function extractLLMMetadata(event: OpenClawEvent): IntegrationMetadata {
     provider: (lastAssistant?.provider as string) || null,
     model: (lastAssistant?.model as string) || null,
     sdkVersion: null,
-    // integrationSdkVersion: SDK_VERSION,
-    integrationSdkVersion: '0.0.1', // TODO: move me back with first releases
+    integrationSdkVersion: SDK_VERSION,
     platform: 'openclaw',
   };
 }
@@ -86,16 +86,11 @@ export async function handleAugmentation(
     const context = extractContext(event, ctx, config.entityId);
     const memoriClient = initializeMemoriClient(config.apiKey, context);
 
-    logger.info('Capturing conversation turn...');
     const payload: IntegrationRequest = {
       userMessage: lastUserMsg.content,
       agentResponse: lastAiMsg.content,
       metadata: extractLLMMetadata(event),
     };
-
-    logger.info(`Sending User: ${payload.userMessage}`);
-    logger.info(`Sending Agent: ${payload.agentResponse}`);
-    logger.info(`Sending Meta: ${JSON.stringify(payload.metadata)}`);
 
     await memoriClient.augmentation(payload);
     logger.info('Augmentation successful!');

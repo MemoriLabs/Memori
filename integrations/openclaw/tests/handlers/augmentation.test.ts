@@ -7,6 +7,7 @@ import type {
   OpenClawMessage,
 } from '../../src/types.js';
 import type { MemoriLogger } from '../../src/utils/logger.js';
+import { SDK_VERSION } from '../../src/version.js';
 
 vi.mock('../../src/sanitizer.js', () => ({
   cleanText: vi.fn((content) => {
@@ -87,7 +88,7 @@ describe('handlers/augmentation', () => {
         expect.objectContaining({
           metadata: expect.objectContaining({
             platform: 'openclaw',
-            integrationSdkVersion: '0.0.1',
+            integrationSdkVersion: SDK_VERSION,
           }),
         })
       );

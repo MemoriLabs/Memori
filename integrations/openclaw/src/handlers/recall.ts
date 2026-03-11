@@ -13,10 +13,6 @@ export async function handleRecall(
 
   try {
     const context = extractContext(event, ctx, config.entityId);
-    logger.info(
-      `EntityID: ${context.entityId} | SessionID: ${context.sessionId} | Provider: ${context.provider}`
-    );
-
     const promptText = cleanText(event.prompt);
 
     if (
@@ -40,8 +36,6 @@ export async function handleRecall(
     } else {
       logger.info('No relevant memories found.');
     }
-
-    logger.info(`Recall Prompt: ${hookReturn?.prependContext}`);
 
     return hookReturn;
   } catch (err) {
