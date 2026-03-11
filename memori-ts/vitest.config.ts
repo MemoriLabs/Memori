@@ -18,6 +18,7 @@ export default defineConfig({
         '**/*.d.ts',
         '**/types/**',
         '**/index.ts',
+        'src/bin/cli.ts',
       ],
     },
     include: ['tests/**/*.test.ts'],
