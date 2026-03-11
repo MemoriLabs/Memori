@@ -171,8 +171,8 @@ To test the full memory loop:
 
 This plugin integrates with OpenClaw's event lifecycle to provide persistent memory without interfering with the agent's core logic:
 
-1. **`before_prompt_build` (Recall):** When a user sends a message, the plugin intercepts the event, queries the Memori API, and safely prepends relevant memories to the agent's system context.
-2. **`agent_end` (Capture):** Once the agent finishes generating its response, the plugin captures the final `user` and `assistant` messages, sanitizes them, and sends them to the Memori integration endpoint for long-term storage and entity mapping.
+1. **`before_prompt_build` (Intelligent Recall):** When a user sends a message, the plugin intercepts the event, queries the Memori API, and safely prepends relevant memories to the agent's system context.
+2. **`agent_end` (Advanced Augmentation):** Once the agent finishes generating its response, the plugin captures the final `user` and `assistant` messages, sanitizes them, and sends them to the Memori integration endpoint for long-term storage and entity mapping.
 
 ## Contributing
 
