@@ -174,38 +174,6 @@ This plugin integrates with OpenClaw's event lifecycle to provide persistent mem
 1. **`before_prompt_build` (Recall):** When a user sends a message, the plugin intercepts the event, queries the Memori API, and safely prepends relevant memories to the agent's system context.
 2. **`agent_end` (Capture):** Once the agent finishes generating its response, the plugin captures the final `user` and `assistant` messages, sanitizes them, and sends them to the Memori integration endpoint for long-term storage and entity mapping.
 
-## Architecture
-
-```text
-User Message
-    |
-    v
-+--------------------+
-| before_prompt_build|  <-- Recall hook
-+--------------------+
-    |
-    | 1. Sanitize prompt
-    | 2. Query Memori API
-    | 3. Prepend memories
-    |
-    v
-+-------------------+
-|   Agent Responds  |
-+-------------------+
-    |
-    v
-+-------------------+
-|     agent_end     |  <-- Capture hook
-+-------------------+
-    |
-    | 1. Extract messages
-    | 2. Sanitize content
-    | 3. Send to Memori API
-    |
-    v
-  Memori Memory Layer
-```
-
 ## Contributing
 
 We welcome contributions from the community! Please see our [Contributing Guidelines](https://github.com/MemoriLabs/Memori/blob/main/CONTRIBUTING.md) for details on code style, standards, and submitting pull requests.
