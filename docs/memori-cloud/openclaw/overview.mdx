@@ -19,24 +19,28 @@ OpenClaw ships with a basic memory layer, but it has fundamental limitations tha
 | **Cross-project noise** | When working across multiple projects, memories are not isolated. Searches return irrelevant results from other contexts, polluting the agent's responses. |
 | **No user isolation** | Users do not have their own isolated memories. Memories bleed across users and data is mixed, creating privacy and relevance issues. |
 
-## How Memori Solves This
+## What Changes When You Add Memori?
 
-The Memori plugin replaces OpenClaw's flat-file memory with a structured knowledge graph that understands entities, relationships, and context boundaries.
+The Memori plugin replaces OpenClaw's flat-file memory workflow with managed, structured memory that is scoped by `entity_id`, `process_id`, and `session_id` and enriched automatically through OpenClaw's existing hooks.
 
-| Capability | How it works |
-| --- | --- |
-| **Knowledge graph storage** | Facts are stored as structured entities and relationships, not raw text. This enables precise retrieval and deduplication. |
-| **Durable across sessions** | Memory persists in the Memori API, unaffected by context window limits or session resets. Nothing is lost to compaction. |
-| **Intelligent recall** | Memori connects related facts and can traverse relationships — "Alice manages the auth service" links to "the auth service uses JWT". |
-| **Process-level isolation** | Each `process_id` scopes memories to a specific project or workflow. Cross-project noise is eliminated. |
-| **Entity-level isolation** | Each `entity_id` scopes memories to a specific user. No data mixing between users. |
+### 1. Structured memory storage
 
-## Key Features
+Instead of raw markdown blobs, Memori stores conversations, facts, preferences, and knowledge-graph triples as structured records tied to an entity, process, and session. Facts are extracted as subject-predicate-object relationships, deduplicated over time, and connected into a graph so related memories stay queryable instead of being buried in text files.
 
-- **Auto-Recall** — Before the agent responds, the plugin searches Memori for memories that match the current context and injects them directly into the prompt.
-- **Auto-Capture** — After the agent responds, the plugin sends the exchange to Memori to extract new facts, update stale ones, and merge duplicates.
-- **Bulletproof Sanitization** — Automatically strips OpenClaw system metadata, internal timestamps, and thinking blocks to prevent context pollution and feedback loops.
-- **Stateless & Thread-Safe** — A completely stateless architecture ensures zero memory leaks and 100% thread safety for multi-agent OpenClaw gateways.
+### 2. Advanced Augmentation
+
+After each conversation, Memori processes the user and assistant exchange asynchronously in the background, identifies facts, preferences, skills, and attributes, generates embeddings for semantic search, and updates the knowledge graph without blocking the agent's response path.
+
+### 3. Intelligent Recall
+
+Before the agent responds, Memori searches the current entity's stored facts and knowledge graph, ranks memories by semantic relevance and importance, and injects the most useful context into the prompt so durable knowledge survives context-window compression.
+
+### 4. Production-ready observability
+
+Memori Cloud gives you dashboard visibility into memory creation, recalls, cache hit rate, sessions, quota usage, top subjects, per-memory retrieval metrics, and knowledge-graph relationships, so you can inspect what was stored and how recall is behaving in production.
+
+> The plugin still remains drop-in: OpenClaw handles the agent loop, while Memori adds recall, augmentation, sanitization, and observability around it.
+
 
 ## How It Works
 
@@ -53,7 +57,7 @@ When a user sends a message, the plugin:
 
 The agent then responds with full awareness of prior context.
 
-### 2. `agent_end` — Capture
+### 2. `agent_end` — Advanced Augmentation
 
 After the agent finishes responding, the plugin:
 
@@ -63,35 +67,3 @@ After the agent finishes responding, the plugin:
 4. Memori extracts durable facts, updates stale ones, and merges duplicates
 
 This runs asynchronously and never blocks the agent's response.
-
-## Architecture
-
-```
-User Message
-    |
-    v
-+-------------------+
-| before_prompt_build|  <-- Recall hook
-+-------------------+
-    |
-    | 1. Sanitize prompt
-    | 2. Query Memori API
-    | 3. Prepend memories
-    |
-    v
-+-------------------+
-|   Agent Responds   |
-+-------------------+
-    |
-    v
-+-------------------+
-|    agent_end       |  <-- Capture hook
-+-------------------+
-    |
-    | 1. Extract messages
-    | 2. Sanitize content
-    | 3. Send to Memori API
-    |
-    v
-  Memori Knowledge Graph
-```
