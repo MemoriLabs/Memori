@@ -165,8 +165,12 @@ export MEMORI_API_KEY=[api_key]
 ```
 
 ## Managing Your Quota
+Any any time, you can check your quota using the Memori CLI:
+```bash
+memori quota
+```
 
-You can check your quota and manage your account by logging in at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
+Or by checking your account by logging in at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
 
 If your API key exceeds its quota limits we will email you and let you know.
 
