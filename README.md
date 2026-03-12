@@ -133,6 +133,22 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 > Want to use your own database? Check out docs for Memori BYODB here:
 > [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
 
+## MCP (Connect Your Agent in One Command)
+
+Your agent forgets everything between sessions. Memori fixes that. It remembers your stack, your conventions, and how you like things done so you stop repeating yourself.
+
+Works for solo developers and teams. Your agent learns coding patterns, reviewer preferences, and project conventions over time. For teams, that means shared context that new engineers pick up on day one instead of absorbing tribal knowledge over months.
+
+If you use Claude Code, Cursor, Codex, Warp, or Antigravity, you can connect Memori with no SDK integration needed:
+
+```bash
+claude mcp add --transport http memori https://api.memorilabs.ai/mcp/ \
+  --header "X-Memori-API-Key: ${MEMORI_API_KEY}" \
+  --header "X-Memori-Entity-Id: your_username" \
+  --header "X-Memori-Process-Id: claude-code"
+```
+
+For Cursor, Codex, Warp, and other clients, see the [MCP client setup guide](docs/memori-cloud/mcp/client-setup.mdx).
 
 ## Attribution
 
