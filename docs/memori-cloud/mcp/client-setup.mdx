@@ -28,7 +28,7 @@ Create `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
 {
   "mcpServers": {
     "memori": {
-      "url": "https://api.memorilabs.ai/mcp",
+      "url": "https://api.memorilabs.ai/mcp/",
       "headers": {
         "X-Memori-API-Key": "${MEMORI_API_KEY}",
         "X-Memori-Entity-Id": "${MEMORI_ENTITY_ID}",
@@ -48,7 +48,7 @@ You can configure via the CLI or a `.mcp.json` file.
 ### CLI
 
 ```bash
-claude mcp add --transport http memori https://api.memorilabs.ai/mcp \
+claude mcp add --transport http memori https://api.memorilabs.ai/mcp/ \
   --header "X-Memori-API-Key: ${MEMORI_API_KEY}" \
   --header "X-Memori-Entity-Id: ${MEMORI_ENTITY_ID}" \
   --header "X-Memori-Process-Id: ${MEMORI_PROCESS_ID}"
@@ -63,7 +63,7 @@ Create `.mcp.json` in your project root:
   "mcpServers": {
     "memori": {
       "type": "http",
-      "url": "https://api.memorilabs.ai/mcp",
+      "url": "https://api.memorilabs.ai/mcp/",
       "headers": {
         "X-Memori-API-Key": "${MEMORI_API_KEY}",
         "X-Memori-Entity-Id": "${MEMORI_ENTITY_ID}",
