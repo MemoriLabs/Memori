@@ -83,7 +83,7 @@ Get persistent memory running in your OpenClaw gateway in three steps.
 
 ### Prerequisites
 
-- [OpenClaw](https://openclaw.com) `v2026.3.2` or later
+- [OpenClaw](https://openclaw.ai) `v2026.3.2` or later
 - A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
 - An Entity ID to attribute memories to, such as a user ID, tenant ID, or agent name
 
