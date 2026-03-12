@@ -183,7 +183,7 @@ By default, Memori handles setting the session for you but you can start a new s
 
 ```typescript
 mem.resetSession();
-# or
+// or
 mem.setSession(sessionId);
 ```
 </details>
@@ -232,7 +232,7 @@ Memories are tracked at several different levels:
 - **process**: think your agent, LLM interaction or program
 - **session**: the current interactions between the entity, process and the LLM
 
-[Memori's Advanced Augmentation](https://github.com/MemoriLabs/Memori/blob/main/docs/advanced-augmentation.md) enhances memories at each of these levels with:
+[Memori's Advanced Augmentation](docs/memori-cloud/concepts/advanced-augmentation.mdx) enhances memories at each of these levels with:
 
 - attributes
 - events
@@ -281,7 +281,7 @@ The Memori CLI is the unified tool for managing your account, keys, and quotas a
 python -m memori
 ```
 
-This will display a menu of the available options. For more information about what you can do with the Memori CLI, please reference [Command Line Interface](https://github.com/MemoriLabs/Memori/blob/main/docs/cli.md).
+This will display a menu of the available options. For more information about what you can do with the Memori CLI, please reference [Command Line Interface](docs/memori-byodb/concepts/cli-quickstart.mdx).
 
 ## Contributing
 
