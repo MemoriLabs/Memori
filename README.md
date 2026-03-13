@@ -133,6 +133,24 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 > Want to use your own database? Check out docs for Memori BYODB here:
 > [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
 
+## OpenClaw (Persistent Memory for Your Gateway)
+
+By default, OpenClaw agents forget everything between sessions. The Memori plugin fixes that. It captures durable facts and preferences after each conversation, then injects the most relevant context back into future prompts automatically.
+
+No changes to your agent code or prompts are required. The plugin hooks into OpenClaw's lifecycle, so you get structured memory, intelligent recall, and background augmentation with a drop-in plugin.
+
+```bash
+openclaw plugins install @memorilabs/openclaw-memori
+openclaw plugins enable openclaw-memori
+
+openclaw config set plugins.entries.openclaw-memori.config.apiKey "YOUR_MEMORI_API_KEY"
+openclaw config set plugins.entries.openclaw-memori.config.entityId "your-app-user-id"
+
+openclaw gateway restart
+```
+
+For setup and configuration, see the [OpenClaw quickstart](docs/memori-cloud/openclaw/quickstart.mdx). For architecture and lifecycle details, see the [OpenClaw overview](docs/memori-cloud/openclaw/overview.mdx).
+
 ## MCP (Connect Your Agent in One Command)
 
 Your agent forgets everything between sessions. Memori fixes that. It remembers your stack, your conventions, and how you like things done so you stop repeating yourself.
