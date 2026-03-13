@@ -137,7 +137,7 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 
 By default, OpenClaw agents forget everything between sessions. The Memori plugin fixes that. It captures durable facts and preferences after each conversation, then injects the most relevant context back into future prompts automatically.
 
-No changes to your agent code or prompts are required. The plugin hooks into OpenClaw's lifecycle, so you get structured memory, intelligent recall, and background augmentation with a drop-in plugin.
+No changes to your agent code or prompts are required. The plugin hooks into OpenClaw's lifecycle, so you get structured memory, Intelligent Recall, and Advanced Augmentation with a drop-in plugin.
 
 ```bash
 openclaw plugins install @memorilabs/openclaw-memori
@@ -149,7 +149,7 @@ openclaw config set plugins.entries.openclaw-memori.config.entityId "your-app-us
 openclaw gateway restart
 ```
 
-For setup and configuration, see the [OpenClaw quickstart](docs/memori-cloud/openclaw/quickstart.mdx). For architecture and lifecycle details, see the [OpenClaw overview](docs/memori-cloud/openclaw/overview.mdx).
+For setup and configuration, see the [OpenClaw Quickstart](docs/memori-cloud/openclaw/quickstart.mdx). For architecture and lifecycle details, see the [OpenClaw Overview](docs/memori-cloud/openclaw/overview.mdx).
 
 ## MCP (Connect Your Agent in One Command)
 
