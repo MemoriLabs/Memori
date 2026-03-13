@@ -16,6 +16,9 @@ import threading
 from typing import Any
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+# Suppress transformers warnings during model loading (e.g., "embeddings.position_ids | UNEXPECTED")
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
