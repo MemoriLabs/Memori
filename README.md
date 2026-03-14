@@ -197,130 +197,17 @@ Memori uses sessions to group your LLM interactions together. For example, if yo
 By default, Memori handles setting the session for you but you can start a new session or override the session by executing the following:
 
 <details open>
-<summary><b>TypeScript SDK</b></summary>
-
-```typescript
-mem.resetSession();
-// or
-mem.setSession(sessionId);
-```
-</details>
-
-<details>
 <summary><b>Python SDK</b></summary>
 
 ```python
-mem.new_session()
-# or
-mem.set_session(session_id)
+from anchorbrowser import AnchorClient
+
+client = AnchorClient(api_key="YOUR_API_KEY")
+session = client.sessions.create()
+# Connect via CDP: session.cdp_url
 ```
 </details>
 
-## Supported LLMs
+## Tools Comparison
 
-- Anthropic
-- Bedrock
-- DeepSeek
-- Gemini
-- Grok (xAI)
-- OpenAI (Chat Completions & Responses API)
-
-_(unstreamed, streamed, synchronous and asynchronous)_
-
-## Supported Frameworks
-
-- Agno
-- LangChain
-- Pydantic AI
-
-## Supported Platforms
-
-- DeepSeek
-- Nebius AI Studio
-
-## Examples
-
-For more examples and demos, check out the [Memori Cookbook](https://github.com/MemoriLabs/memori-cookbook).
-
-## Memori Advanced Augmentation
-
-Memories are tracked at several different levels:
-
-- **entity**: think person, place, or thing; like a user
-- **process**: think your agent, LLM interaction or program
-- **session**: the current interactions between the entity, process and the LLM
-
-[Memori's Advanced Augmentation](docs/memori-cloud/concepts/advanced-augmentation.mdx) enhances memories at each of these levels with:
-
-- attributes
-- events
-- facts
-- people
-- preferences
-- relationships
-- rules
-- skills
-
-Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs in the background incurring no latency.
-
-By default, Memori Advanced Augmentation is available without an account but rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or use the Memori CLI:
-
-```bash
-# Install the CLI via pip to manage your account
-python -m memori sign-up <email_address>
-```
-
-Memori Advanced Augmentation is always free for developers!
-
-Once you've obtained an API key, set the following environment variable (used by both Python and TypeScript SDKs):
-
-```bash
-export MEMORI_API_KEY=[api_key]
-```
-
-## Managing Your Quota
-
-At any time, you can check your quota using the Memori CLI (works for both SDKs):
-
-```bash
-python -m memori quota
-```
-
-Or by checking your account at [https://app.memorilabs.ai/](https://app.memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
-
-If your API key exceeds its quota limits we will email you and let you know.
-
-## Command Line Interface (CLI)
-
-The Memori CLI is the unified tool for managing your account, keys, and quotas across all SDKs. To use it, execute the following from the command line:
-
-```bash
-# Requires Python installed
-python -m memori
-```
-
-This will display a menu of the available options. For more information about what you can do with the Memori CLI, please reference [Command Line Interface](docs/memori-byodb/concepts/cli-quickstart.mdx).
-
-## Contributing
-
-We welcome contributions from the community! Please see our [Contributing Guidelines](https://github.com/MemoriLabs/Memori/blob/main/CONTRIBUTING.md) for details on:
-
-- Setting up your development environment
-- Code style and standards
-- Submitting pull requests
-- Reporting issues
-
----
-
-## Support
-
-- **Memori Cloud Documentation**: [memorilabs.ai/docs/memori-cloud/](https://memorilabs.ai/docs/memori-cloud/)
-- **Memori BYODB Documentation**: [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/)
-- **Discord**: [https://discord.gg/abD4eGym6v](https://discord.gg/abD4eGym6v)
-- **Issues**: [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
-
----
-
-## License
-
-Apache 2.0 - see [LICENSE](https://github.com/MemoriLabs/Memori/blob/main/LICENSE)
+- **Anchor Browser** (https://anchorbrowser.io): Agentic browser infrastructure platform for AI agents and browser automation. Fully managed, humanized Chromium instances that bypass bot detection with official Cloudflare partnership. Integrates with LangChain, CrewAI, and more.
