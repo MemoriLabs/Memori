@@ -85,8 +85,19 @@ class InvokeAsync(BaseInvoke):
             truncate(str(kwargs.get("model", "unknown")), 100),
         )
         raw_response = await self._method(**kwargs)
-        self.handle_post_response(kwargs, start, raw_response)
-        return raw_response
+        if (
+            isinstance(raw_response, AsyncIterator)
+            or hasattr(raw_response, "__aiter__")
+            or isinstance(raw_response, UnaryStreamCall)
+        ):
+            return (
+                MemoriAsyncIterator(self.config, raw_response)
+                .configure_invoke(self)
+                .configure_request(kwargs, start)
+            )
+        else:
+            self.handle_post_response(kwargs, start, raw_response)
+            return raw_response
 
 
 class InvokeAsyncIterator(BaseInvoke):
@@ -98,8 +109,10 @@ class InvokeAsyncIterator(BaseInvoke):
         )
 
         raw_response = await self._method(**kwargs)
-        if isinstance(raw_response, AsyncIterator) or isinstance(
-            raw_response, UnaryStreamCall
+        if (
+            isinstance(raw_response, AsyncIterator)
+            or hasattr(raw_response, "__aiter__")
+            or isinstance(raw_response, UnaryStreamCall)
         ):
             return (
                 MemoriAsyncIterator(self.config, raw_response)

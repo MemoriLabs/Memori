@@ -1,0 +1,33 @@
+name: TS Cloud Integration Tests
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  run-ts-integrations:
+    name: Run TS Cloud Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Memori
+        run: npm run build
+
+      - name: Run Integration Tests
+        run: npm run test:integration
+        env:
+          MEMORI_API_KEY: ${{ secrets.MEMORI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}

@@ -1,0 +1,34 @@
+name: Python Cloud Integration Tests
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  run-python-integrations:
+    name: Run Python Cloud Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install Dependencies
+        run: uv sync --dev
+
+      - name: Run Cloud Integration Tests
+        run: TEST_ENV=integration uv run pytest tests/integration_v2/cloud_v2/ -v
+        env:
+          MEMORI_API_KEY: ${{ secrets.MEMORI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}

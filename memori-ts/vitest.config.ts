@@ -1,8 +1,12 @@
 import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 
+const isIntegration = process.env.TEST_ENV === 'integration';
+
 export default defineConfig({
   test: {
+    setupFiles: ['dotenv/config'],
+    testTimeout: 30000,
     globals: true,
     environment: 'node',
     coverage: {
@@ -21,8 +25,10 @@ export default defineConfig({
         'src/bin/cli.ts',
       ],
     },
-    include: ['tests/**/*.test.ts'],
-    exclude: ['node_modules/', 'dist/'],
+    include: isIntegration ? ['tests/integrations/**/*.test.ts'] : ['tests/**/*.test.ts'],
+    exclude: isIntegration
+      ? ['node_modules/', 'dist/']
+      : ['node_modules/', 'dist/', 'tests/integrations/**'],
   },
   resolve: {
     alias: {

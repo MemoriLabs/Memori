@@ -761,10 +761,11 @@ class BaseInvoke:
     def inject_conversation_messages(self, kwargs: dict) -> dict:
         if self.config.cloud is True:
             messages = self._cloud_conversation_messages
+            self._injected_message_count = len(messages)
+
             if not messages:
                 return kwargs
 
-            self._injected_message_count = len(messages)
             logger.debug(
                 "Injecting %d cloud conversation messages from history",
                 len(messages),
