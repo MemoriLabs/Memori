@@ -135,6 +135,36 @@ Open **Manage MCP Servers** and edit `mcp_config.json`:
 
 Save and restart Antigravity so the tool list refreshes.
 
+## Slack
+
+Set headers dynamically per request using the Slack user ID from the event payload:
+
+```ts
+const memoriHeaders = {
+  "X-Memori-API-Key": process.env.MEMORI_API_KEY,
+  "X-Memori-Entity-Id": slackEvent.user,         // e.g. "U04ABCDEF"
+  "X-Memori-Process-Id": "supportbot",
+};
+```
+
+Pass these headers in every MCP tool call. `session_id` is derived automatically from `entity_id` and the current UTC hour.
+Use `process_id` to isolate memories by integration or workspace so preferences from a personal workspace don't bleed into a team workspace.
+
+## Notion
+
+Set the entity and process IDs from the Notion API user object:
+
+```ts
+const memoriHeaders = {
+  "X-Memori-API-Key": process.env.MEMORI_API_KEY,
+  "X-Memori-Entity-Id": notionUser.id,              // e.g. "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  "X-Memori-Process-Id": "notion_writing_assistant",
+};
+```
+
+Pass these headers in every MCP tool call. `session_id` is derived automatically from `entity_id` and the current UTC hour.
+Use `process_id` to isolate memories by integration or workspace so preferences from a personal workspace don't bleed into a team workspace.
+
 ## Verifying the Connection
 
 After configuring any client:

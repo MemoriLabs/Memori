@@ -180,6 +180,20 @@ mkdir -p .agent/skills/memori-mcp
 # Add SKILL.md content to .agent/skills/memori-mcp/SKILL.md
 ```
 
+### Slack
+
+A Slack bot backed by an LLM uses Memori MCP to persist user preferences across all channels. As Slack is a cloud based service, the integration logic lives in your bot's backend.
+
+To implement this, set the headers dynamically in your server's outgoing MCP tool calls using the Slack User ID from the incoming event payload as shown on the Client Setup page.
+
+### Notion
+
+Custom Notion integrations use Memori MCP to maintain a consistent memory of a user's writing style and project context across different pages and databases.
+
+To implement this, your middleware must map the Notion User ID to the Memori headers as shown on the Client Setup page.
+This ensures that regardless of which workspace or page the user is on, the AI assistant retrieves the same persistent preferences.
+
+
 ## How It All Works Together
 
 Once both the MCP config and skills file are installed:
