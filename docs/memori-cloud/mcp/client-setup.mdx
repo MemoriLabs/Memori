@@ -135,6 +135,29 @@ Open **Manage MCP Servers** and edit `mcp_config.json`:
 
 Save and restart Antigravity so the tool list refreshes.
 
+## LangChain
+
+Set headers dynamically based on the current user session:
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "memori": {
+        "transport": "streamable_http",
+        "url": "https://api.memorilabs.ai/mcp/",
+        "headers": {
+            "X-Memori-API-Key": "your-memori-api-key",
+            "X-Memori-Entity-Id": "user_123",
+            "X-Memori-Process-Id": "langchain_agent"
+        }
+    }
+})
+
+# Load the tools to be used by your LangChain agent
+tools = await client.get_tools()
+```
+
 ## Slack
 
 Set headers dynamically per request using the Slack user ID from the event payload:

@@ -180,6 +180,12 @@ mkdir -p .agent/skills/memori-mcp
 # Add SKILL.md content to .agent/skills/memori-mcp/SKILL.md
 ```
 
+### LangChain
+
+LangChain agents use Memori MCP to persist user preferences and project context across invocations. The integration logic lives in your application layer using the `langchain-mcp-adapters` package.
+
+To implement this, instantiate `MultiServerMCPClient` per request with the end-user's ID set as `X-Memori-Entity-Id`, as shown on the Client Setup page.
+
 ### Slack
 
 A Slack bot backed by an LLM uses Memori MCP to persist user preferences across all channels. As Slack is a cloud based service, the integration logic lives in your bot's backend.
