@@ -165,7 +165,9 @@ export MEMORI_API_KEY=[api_key]
 ```
 
 ## Managing Your Quota
+
 Any any time, you can check your quota using the Memori CLI:
+
 ```bash
 memori quota
 ```
