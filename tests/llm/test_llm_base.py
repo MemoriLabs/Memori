@@ -842,7 +842,7 @@ def test_inject_recalled_facts_cloud_uses_filtered_summaries():
 
     assert "Relevant fact" in result["messages"][0]["content"]
     assert "## Summaries" in result["messages"][0]["content"]
-    assert "[7:50 pm on 9 March, 2026]" in result["messages"][0]["content"]
+    assert "[2026-03-09 19:50]" in result["messages"][0]["content"]
     assert "Relevant summary" in result["messages"][0]["content"]
     assert invoke._cloud_summaries == [
         {"content": "Relevant summary", "date_created": "2026-03-09 19:50:09"}

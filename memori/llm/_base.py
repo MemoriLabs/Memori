@@ -13,7 +13,6 @@ import inspect
 import json
 import logging
 from collections.abc import Mapping
-from datetime import datetime, timezone
 from typing import Any, cast
 
 from google.protobuf import json_format
@@ -54,39 +53,6 @@ def _str_object_mapping(value: object) -> Mapping[str, object] | None:
     if isinstance(value, Mapping) and all(isinstance(k, str) for k in value.keys()):
         return cast(Mapping[str, object], value)
     return None
-
-
-def _parse_date_created(value: object) -> datetime | None:
-    if value is None:
-        return None
-
-    if isinstance(value, datetime):
-        return value.astimezone(timezone.utc) if value.tzinfo else value
-
-    if isinstance(value, str):
-        s = value.strip()
-        if not s:
-            return None
-        try:
-            normalized = s[:-1] + "+00:00" if s.endswith("Z") else s
-            if "T" not in normalized and " " in normalized:
-                normalized = normalized.replace(" ", "T", 1)
-            dt = datetime.fromisoformat(normalized)
-            return dt.astimezone(timezone.utc) if dt.tzinfo else dt
-        except Exception:
-            return None
-
-    return None
-
-
-def _format_summary_date_created(value: object) -> str | None:
-    dt = _parse_date_created(value)
-    if dt is None:
-        return None
-
-    hour = dt.hour % 12 or 12
-    suffix = "am" if dt.hour < 12 else "pm"
-    return f"{hour}:{dt.minute:02d} {suffix} on {dt.day} {dt.strftime('%B')}, {dt.year}"
 
 
 class BaseClient:
@@ -698,7 +664,7 @@ class BaseInvoke:
             if not isinstance(content, str) or not content:
                 continue
 
-            ts = _format_summary_date_created(summary.get("date_created"))
+            ts = format_date_created(summary.get("date_created"))
             if ts:
                 lines.append(f"- [{ts}]\n  {content}")
             else:
