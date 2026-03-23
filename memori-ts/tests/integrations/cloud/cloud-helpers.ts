@@ -33,7 +33,7 @@ export function clearMockState() {
 }
 
 export function setupMemoriMock() {
-  // Gracefully intercept all POST requests made by the Memori Api class
+  // Intercept all POST requests made by the Memori Api class
   vi.spyOn(Api.prototype, 'post').mockImplementation(async (route: string, body?: any) => {
     if (route.includes('cloud/conversation/messages')) {
       state.captured_message_payloads.push(body as MockPayload);

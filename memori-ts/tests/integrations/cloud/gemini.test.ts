@@ -9,7 +9,6 @@ import {
   mockConfig,
 } from './cloud-helpers.js';
 
-// Automatically skip the test suite if API keys are missing from the .env
 const hasKeys = !!(process.env.GEMINI_API_KEY && process.env.MEMORI_API_KEY);
 
 describe.runIf(hasKeys)('Cloud Integration: Gemini', () => {
@@ -25,7 +24,6 @@ describe.runIf(hasKeys)('Cloud Integration: Gemini', () => {
     clearMockState();
     setupMemoriMock();
 
-    // Dynamically grab the test name to isolate IDs
     const testName = expect.getState().currentTestName?.replace(/[^a-zA-Z0-9]/g, '-') || 'test';
     e_id = `user-${testName}`;
     p_id = `process-${testName}`;
@@ -74,20 +72,17 @@ describe.runIf(hasKeys)('Cloud Integration: Gemini', () => {
     const geminiClient = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
     memoriClient.llm.register(geminiClient);
 
-    // Turn 1
     await geminiClient.models.generateContent({
       model: MODEL,
       contents: 'My favorite color is blue.',
     });
     await waitForPayload(2);
 
-    // Turn 2
     const response2 = await geminiClient.models.generateContent({
       model: MODEL,
       contents: 'What is my favorite color?',
     });
 
-    // Validates that Memori stripped the injected history payload cleanly
     await waitForPayload(2);
 
     const content = response2.text!;
@@ -100,7 +95,6 @@ describe.runIf(hasKeys)('Cloud Integration: Gemini', () => {
     const geminiClient = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
     memoriClient.llm.register(geminiClient);
 
-    // Trip the manual mock injection state
     mockConfig.injectedFact = "The user's favorite word is 'MEMORI_42'.";
 
     const response = await geminiClient.models.generateContent({

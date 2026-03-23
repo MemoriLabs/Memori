@@ -24,7 +24,6 @@ describe.runIf(hasKeys)('Cloud Integration: OpenAI', () => {
     clearMockState();
     setupMemoriMock();
 
-    // Generate a safe string from the current test name
     const testName = expect.getState().currentTestName?.replace(/[^a-zA-Z0-9]/g, '-') || 'test';
     e_id = `user-${testName}`;
     p_id = `process-${testName}`;
@@ -82,7 +81,7 @@ describe.runIf(hasKeys)('Cloud Integration: OpenAI', () => {
       model: MODEL,
       messages: [{ role: 'user', content: 'What is my favorite color?' }],
     });
-    // Waits for the payload that was appropriately stripped of injected history
+
     await waitForPayload(2);
 
     const content = response2.choices[0].message.content!;
@@ -95,7 +94,6 @@ describe.runIf(hasKeys)('Cloud Integration: OpenAI', () => {
     const openaiClient = new OpenAI();
     memoriClient.llm.register(openaiClient);
 
-    // This dynamically trips the behavior inside our helper mock!
     mockConfig.injectedFact = "The user's favorite word is 'MEMORI_42'.";
 
     const response = await openaiClient.chat.completions.create({
