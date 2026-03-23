@@ -11,6 +11,7 @@ r"""
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import faiss
@@ -27,7 +28,7 @@ def _query_dim(query_embedding: list[float]) -> int:
 
 
 def _parse_valid_embeddings(
-    embeddings: list[tuple[FactId, Any]], *, query_dim: int
+    embeddings: Sequence[tuple[FactId, Any]], *, query_dim: int
 ) -> tuple[list[np.ndarray], list[FactId]]:
     embeddings_list: list[np.ndarray] = []
     id_list: list[FactId] = []
@@ -89,7 +90,7 @@ def _faiss_search(
 
 
 def find_similar_embeddings(
-    embeddings: list[tuple[FactId, Any]],
+    embeddings: Sequence[tuple[FactId, Any]],
     query_embedding: list[float],
     limit: int = 5,
 ) -> list[tuple[FactId, float]]:

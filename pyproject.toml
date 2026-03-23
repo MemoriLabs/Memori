@@ -133,6 +133,7 @@ exclude_lines = [
 
 [tool.ty.src]
 exclude = [
+    "benchmarks/**/*.ipynb",
     "tests/**/*.py",
     "**/__pycache__/**",
 ]

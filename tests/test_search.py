@@ -480,6 +480,12 @@ def test_search_facts_candidates_success():
             content="Fact A",
             score=0.99,
             date_created="2026-01-01 10:30:00",
+            summaries=[
+                {
+                    "content": "Summary A",
+                    "date_created": "2026-01-01 10:31:00",
+                }
+            ],
         ),
         FactCandidate(
             id=2,
@@ -496,6 +502,9 @@ def test_search_facts_candidates_success():
     assert result[0].content == "Fact A"
     assert isinstance(result[0].similarity, float)
     assert result[0].date_created == "2026-01-01 10:30:00"
+    assert result[0].summaries == [
+        {"content": "Summary A", "date_created": "2026-01-01 10:31:00"}
+    ]
 
 
 def test_search_facts_candidates_can_rerank_with_query_text():
@@ -511,6 +520,12 @@ def test_search_facts_candidates_can_rerank_with_query_text():
             content="This mentions blue explicitly",
             score=0.8,
             date_created="2026-01-02 11:15:00",
+            summaries=[
+                {
+                    "content": "Blue summary",
+                    "date_created": "2026-01-02 11:16:00",
+                }
+            ],
         ),
     ]
 
@@ -522,3 +537,6 @@ def test_search_facts_candidates_can_rerank_with_query_text():
     assert len(result) == 1
     assert result[0].id == 2
     assert result[0].date_created == "2026-01-02 11:15:00"
+    assert result[0].summaries == [
+        {"content": "Blue summary", "date_created": "2026-01-02 11:16:00"}
+    ]

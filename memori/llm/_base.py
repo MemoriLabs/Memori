@@ -13,6 +13,7 @@ import inspect
 import json
 import logging
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from google.protobuf import json_format
@@ -40,37 +41,52 @@ from memori.memory.augmentation.augmentations.memori.models import (
     ProcessData,
     SessionData,
 )
+from memori.memory.recall import (
+    _collect_cloud_summaries_from_facts,
+    _score_for_recall_threshold,
+)
 from memori.search._types import FactSearchResult
 
 logger = logging.getLogger(__name__)
 
 
-def _score_for_recall_threshold(
-    fact: FactSearchResult | Mapping[str, object] | str,
-) -> float:
-    """
-    Extract a numeric score for recall relevance thresholding.
+def _str_object_mapping(value: object) -> Mapping[str, object] | None:
+    if isinstance(value, Mapping) and all(isinstance(k, str) for k in value.keys()):
+        return cast(Mapping[str, object], value)
+    return None
 
-    Prefer rank_score when present; fall back to similarity.
-    Plain strings (from cloud recall API) are treated as fully relevant.
-    """
-    if isinstance(fact, str):
-        return 1.0
-    if isinstance(fact, Mapping):
-        fact_map = cast(Mapping[str, object], fact)
-        raw = fact_map.get("rank_score")
-        if raw is None:
-            raw = fact_map.get("similarity", 0.0)
-    else:
-        raw = fact.rank_score
-    if raw is None:
-        return 0.0
-    if isinstance(raw, (int, float)):
-        return float(raw)
-    try:
-        return float(cast(Any, raw))
-    except (TypeError, ValueError):
-        return 0.0
+
+def _parse_date_created(value: object) -> datetime | None:
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc) if value.tzinfo else value
+
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            normalized = s[:-1] + "+00:00" if s.endswith("Z") else s
+            if "T" not in normalized and " " in normalized:
+                normalized = normalized.replace(" ", "T", 1)
+            dt = datetime.fromisoformat(normalized)
+            return dt.astimezone(timezone.utc) if dt.tzinfo else dt
+        except Exception:
+            return None
+
+    return None
+
+
+def _format_summary_date_created(value: object) -> str | None:
+    dt = _parse_date_created(value)
+    if dt is None:
+        return None
+
+    hour = dt.hour % 12 or 12
+    suffix = "am" if dt.hour < 12 else "pm"
+    return f"{hour}:{dt.minute:02d} {suffix} on {dt.day} {dt.strftime('%B')}, {dt.year}"
 
 
 class BaseClient:
@@ -140,6 +156,7 @@ class BaseInvoke:
         self._uses_protobuf = False
         self._injected_message_count = 0
         self._cloud_conversation_messages: list[dict[str, str]] = []
+        self._cloud_summaries: list[dict[str, object]] = []
 
     def _ensure_cached_conversation_id(self) -> bool:
         if self.config.storage is None or self.config.storage.driver is None:
@@ -467,8 +484,11 @@ class BaseInvoke:
             for content in reversed(contents):
                 if isinstance(content, str):
                     return content
-                elif isinstance(content, dict) and content.get("role") == "user":
-                    text = self._extract_text_from_parts(content.get("parts", []))
+                content_dict = _str_object_mapping(content)
+                if content_dict is not None and content_dict.get("role") == "user":
+                    text = self._extract_text_from_parts(
+                        cast(list[object], content_dict.get("parts", []))
+                    )
                     if text:
                         return text
                 elif getattr(content, "role", None) == "user":
@@ -490,17 +510,21 @@ class BaseInvoke:
                 return input_val
             if isinstance(input_val, list):
                 for item in reversed(input_val):
-                    if isinstance(item, dict) and item.get("role") == "user":
-                        content = item.get("content", "")
+                    item_dict = _str_object_mapping(item)
+                    if item_dict is not None and item_dict.get("role") == "user":
+                        content = item_dict.get("content", "")
                         if isinstance(content, str):
                             return content
                         if isinstance(content, list):
                             for c in content:
+                                c_dict = _str_object_mapping(c)
                                 if (
-                                    isinstance(c, dict)
-                                    and c.get("type") == "input_text"
+                                    c_dict is not None
+                                    and c_dict.get("type") == "input_text"
                                 ):
-                                    return c.get("text", "")
+                                    text = c_dict.get("text", "")
+                                    if isinstance(text, str):
+                                        return text
                                 if isinstance(c, str):
                                     return c
         if "contents" in kwargs:
@@ -665,9 +689,26 @@ class BaseInvoke:
             lines.append(f"- {content}{suffix}")
         return lines
 
+    def _format_recalled_summary_lines(
+        self, summaries: list[dict[str, object]]
+    ) -> list[str]:
+        lines: list[str] = []
+        for summary in summaries:
+            content = summary.get("content")
+            if not isinstance(content, str) or not content:
+                continue
+
+            ts = _format_summary_date_created(summary.get("date_created"))
+            if ts:
+                lines.append(f"- [{ts}]\n  {content}")
+            else:
+                lines.append(f"- {content}")
+        return lines
+
     def inject_recalled_facts(self, kwargs: dict) -> dict:
         if self.config.cloud is True:
             self._cloud_conversation_messages = []
+            self._cloud_summaries = []
 
         if self.config.entity_id is None:
             return kwargs
@@ -693,9 +734,12 @@ class BaseInvoke:
 
         recall = Recall(self.config)
         if self.config.cloud is True:
-            data = recall._cloud_recall(user_query)
-            facts, messages = recall._parse_cloud_recall_response(data)
-            self._cloud_conversation_messages = messages
+            from memori.memory.recall import CloudRecallResponse
+
+            cloud_response = cast(CloudRecallResponse, recall.search_facts(user_query))
+            facts = cloud_response["facts"]
+            self._cloud_conversation_messages = cloud_response.get("messages", [])
+            self._cloud_summaries = _collect_cloud_summaries_from_facts(facts)
         else:
             facts = recall.search_facts(
                 user_query,
@@ -723,11 +767,14 @@ class BaseInvoke:
         logger.debug("Injecting %d recalled facts into prompt", len(relevant_facts))
 
         fact_lines = self._format_recalled_fact_lines(relevant_facts)
+        summary_lines = self._format_recalled_summary_lines(self._cloud_summaries)
+        context_body = "Relevant context about the user:\n" + "\n".join(fact_lines)
+        if summary_lines:
+            context_body += "\n\n## Summaries\n\n" + "\n\n".join(summary_lines)
         recall_context = (
             "\n\n<memori_context>\n"
             "Only use the relevant context if it is relevant to the user's query. "
-            "Relevant context about the user:\n"
-            + "\n".join(fact_lines)
+            + context_body
             + "\n</memori_context>"
         )
 

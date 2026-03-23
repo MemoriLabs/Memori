@@ -11,7 +11,7 @@ r"""
 import logging
 import time
 from collections.abc import Mapping
-from typing import TypeGuard, cast
+from typing import Any, TypedDict, TypeGuard, cast
 
 from sqlalchemy.exc import OperationalError
 
@@ -27,11 +27,123 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 0.05
 
+RecallFact = FactSearchResult | Mapping[str, object] | str
+CloudRecallSummary = dict[str, object]
+
+
+class CloudRecallResponse(TypedDict, total=False):
+    facts: list[RecallFact]
+    messages: list[dict[str, str]]
+
 
 def _is_str_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
     if not isinstance(value, Mapping):
         return False
     return all(isinstance(k, str) for k in value.keys())
+
+
+def _score_for_recall_threshold(fact: RecallFact) -> float:
+    if isinstance(fact, str):
+        return 1.0
+    if _is_str_object_mapping(fact):
+        raw = fact.get("rank_score")
+        if raw is None:
+            raw = fact.get("similarity", 0.0)
+    else:
+        raw = fact.rank_score
+    if raw is None:
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    try:
+        return float(cast(Any, raw))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _collect_cloud_summary_items(items: list[object]) -> list[CloudRecallSummary]:
+    summaries: list[CloudRecallSummary] = []
+    for item in items:
+        if _is_str_object_mapping(item):
+            summaries.append(dict(item))
+    return summaries
+
+
+def _normalize_cloud_fact(item: object) -> RecallFact | None:
+    if isinstance(item, str):
+        return item
+    if not _is_str_object_mapping(item):
+        return None
+
+    fact = dict(item)
+    summaries_raw = fact.get("summaries")
+    if isinstance(summaries_raw, list):
+        fact["summaries"] = _collect_cloud_summary_items(
+            cast(list[object], summaries_raw)
+        )
+    return fact
+
+
+def _attach_top_level_summaries_to_facts(
+    facts: list[RecallFact], summaries: list[CloudRecallSummary]
+) -> list[RecallFact]:
+    if not summaries:
+        return facts
+
+    summaries_by_fact_id: dict[object, list[CloudRecallSummary]] = {}
+    for summary in summaries:
+        summary_fact_id = summary.get("entity_fact_id")
+        if summary_fact_id is None:
+            summary_fact_id = summary.get("fact_id")
+        if summary_fact_id is None:
+            continue
+        summaries_by_fact_id.setdefault(summary_fact_id, []).append(summary)
+
+    if not summaries_by_fact_id:
+        return facts
+
+    facts_with_summaries: list[RecallFact] = []
+    for fact in facts:
+        if not _is_str_object_mapping(fact):
+            facts_with_summaries.append(fact)
+            continue
+
+        fact_id = fact.get("id")
+        fact_dict = dict(fact)
+        existing_summaries_raw = fact_dict.get("summaries")
+        existing_summaries = (
+            _collect_cloud_summary_items(cast(list[object], existing_summaries_raw))
+            if isinstance(existing_summaries_raw, list)
+            else []
+        )
+        matched_summaries = (
+            summaries_by_fact_id.get(fact_id, []) if fact_id is not None else []
+        )
+        if existing_summaries or matched_summaries:
+            fact_dict["summaries"] = [*existing_summaries, *matched_summaries]
+        facts_with_summaries.append(fact_dict)
+
+    return facts_with_summaries
+
+
+def _collect_cloud_summaries_from_facts(
+    facts: list[RecallFact],
+) -> list[CloudRecallSummary]:
+    summaries: list[CloudRecallSummary] = []
+    for fact in facts:
+        if _is_str_object_mapping(fact):
+            summaries_raw = fact.get("summaries")
+            if isinstance(summaries_raw, list):
+                summaries.extend(
+                    _collect_cloud_summary_items(cast(list[object], summaries_raw))
+                )
+        elif hasattr(fact, "summaries"):
+            summaries_raw = fact.summaries
+            if isinstance(summaries_raw, list):
+                summaries.extend(
+                    _collect_cloud_summary_items(cast(list[object], summaries_raw))
+                )
+    return summaries
 
 
 class Recall:
@@ -95,10 +207,25 @@ class Recall:
 
     def _search_with_retries_cloud(
         self, *, query: str, limit: int
-    ) -> list[FactSearchResult | Mapping[str, object] | str]:
+    ) -> CloudRecallResponse:
         data = self._cloud_recall(query, limit=limit)
-        facts, _messages = self._parse_cloud_recall_response(data)
-        return facts
+        return self._parse_cloud_recall_response(data)
+
+    def _filter_cloud_recall_response(
+        self, response: CloudRecallResponse
+    ) -> CloudRecallResponse:
+        relevant_facts = [
+            fact
+            for fact in response["facts"]
+            if _score_for_recall_threshold(fact)
+            >= self.config.recall_relevance_threshold
+        ]
+        filtered_response: CloudRecallResponse = {"facts": relevant_facts}
+
+        if "messages" in response:
+            filtered_response["messages"] = response["messages"]
+
+        return filtered_response
 
     def _cloud_recall(self, query: str, *, limit: int | None = None) -> object:
         if self.config.entity_id is None:
@@ -124,20 +251,20 @@ class Recall:
     @staticmethod
     def _parse_cloud_recall_response(
         data: object,
-    ) -> tuple[
-        list[FactSearchResult | Mapping[str, object] | str], list[dict[str, str]]
-    ]:
+    ) -> CloudRecallResponse:
+        def _collect_items(items: list[object]) -> list[RecallFact]:
+            collected: list[RecallFact] = []
+            for item in items:
+                fact = _normalize_cloud_fact(item)
+                if fact is not None:
+                    collected.append(fact)
+            return collected
+
         if isinstance(data, list):
-            facts_from_list: list[FactSearchResult | Mapping[str, object] | str] = []
-            for item in data:
-                if isinstance(item, str):
-                    facts_from_list.append(item)
-                elif _is_str_object_mapping(item):
-                    facts_from_list.append(item)
-            return facts_from_list, []
+            return {"facts": _collect_items(cast(list[object], data))}
 
         if not isinstance(data, dict):
-            return [], []
+            return {"facts": []}
 
         data_map = cast(Mapping[str, object], data)
 
@@ -149,17 +276,17 @@ class Recall:
             return None
 
         facts_raw = _extract_list("facts", "results", "memories", "data") or []
-        facts: list[FactSearchResult | Mapping[str, object] | str] = []
-        for item in facts_raw:
-            if isinstance(item, str):
-                facts.append(item)
-            elif _is_str_object_mapping(item):
-                facts.append(item)
+        facts = _collect_items(facts_raw)
+        summaries_raw = _extract_list("summaries")
+        if summaries_raw is not None:
+            facts = _attach_top_level_summaries_to_facts(
+                facts, _collect_cloud_summary_items(summaries_raw)
+            )
 
-        messages_raw: list[object] = (
-            _extract_list("messages", "conversation_messages", "history") or []
-        )
-        if not messages_raw:
+        response: CloudRecallResponse = {"facts": facts}
+
+        messages_raw = _extract_list("messages", "conversation_messages", "history")
+        if messages_raw is None:
             convo = data_map.get("conversation")
             if _is_str_object_mapping(convo):
                 nested = convo.get("messages")
@@ -167,18 +294,20 @@ class Recall:
                     messages_raw = cast(list[object], nested)
 
         messages: list[dict[str, str]] = []
-        for msg in messages_raw:
-            if not _is_str_object_mapping(msg):
-                continue
-            role = msg.get("role")
-            content = msg.get("content")
-            if content is None:
-                content = msg.get("text")
-            if not isinstance(role, str) or not isinstance(content, str):
-                continue
-            messages.append({"role": role, "content": content})
+        if messages_raw is not None:
+            for msg in messages_raw:
+                if not _is_str_object_mapping(msg):
+                    continue
+                role = msg.get("role")
+                content = msg.get("content")
+                if content is None:
+                    content = msg.get("text")
+                if not isinstance(role, str) or not isinstance(content, str):
+                    continue
+                messages.append({"role": role, "content": content})
+            response["messages"] = messages
 
-        return facts, messages
+        return response
 
     def search_facts(
         self,
@@ -186,7 +315,7 @@ class Recall:
         limit: int | None = None,
         entity_id: int | None = None,
         cloud: bool = False,
-    ) -> list[FactSearchResult | Mapping[str, object] | str]:
+    ) -> list[RecallFact] | CloudRecallResponse:
         logger.debug(
             "Recall started - query: %s (%d chars), limit: %s",
             truncate(query, 50),
@@ -197,7 +326,7 @@ class Recall:
         if self.config.cloud:
             if self.config.entity_id is None:
                 logger.debug("Recall aborted - no entity_id configured")
-                return []
+                return {"facts": []}
 
             logger.debug(
                 "Recall started - query: %s (%d chars), limit: %s, cloud: true",
@@ -206,7 +335,10 @@ class Recall:
                 limit,
             )
             resolved_limit = self._resolve_limit(limit)
-            return self._search_with_retries_cloud(query=query, limit=resolved_limit)
+            response = self._search_with_retries_cloud(
+                query=query, limit=resolved_limit
+            )
+            return self._filter_cloud_recall_response(response)
 
         if self.config.storage is None or self.config.storage.driver is None:
             logger.debug("Recall aborted - storage not configured")

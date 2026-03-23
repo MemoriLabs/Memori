@@ -809,3 +809,41 @@ def test_inject_conversation_messages_cloud_fetches_from_cloud(mocker):
         "New question",
     ]
     assert invoke._injected_message_count == 2
+
+
+def test_inject_recalled_facts_cloud_uses_filtered_summaries():
+    config = Config()
+    config.cloud = True
+    config.session_id = "session-uuid"
+    config.entity_id = "entity-id"
+    invoke = BaseInvoke(config, "test_method")
+
+    kwargs = {"messages": [{"role": "user", "content": "New question"}]}
+
+    with patch("memori.memory.recall.Recall") as mock_recall:
+        mock_recall.return_value.search_facts.return_value = {
+            "facts": [
+                {
+                    "id": 1,
+                    "content": "Relevant fact",
+                    "similarity": 0.9,
+                    "summaries": [
+                        {
+                            "content": "Relevant summary",
+                            "date_created": "2026-03-09 19:50:09",
+                        }
+                    ],
+                },
+            ],
+            "messages": [],
+        }
+
+        result = invoke.inject_recalled_facts(kwargs)
+
+    assert "Relevant fact" in result["messages"][0]["content"]
+    assert "## Summaries" in result["messages"][0]["content"]
+    assert "[7:50 pm on 9 March, 2026]" in result["messages"][0]["content"]
+    assert "Relevant summary" in result["messages"][0]["content"]
+    assert invoke._cloud_summaries == [
+        {"content": "Relevant summary", "date_created": "2026-03-09 19:50:09"}
+    ]
