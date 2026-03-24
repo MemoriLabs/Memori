@@ -72,3 +72,4 @@ coverage
 !tsconfig.build.json
 !.prettierrc.json
 !openclaw.plugin.json
+docs/memori-cloud/mcp/use-cases.mdx
