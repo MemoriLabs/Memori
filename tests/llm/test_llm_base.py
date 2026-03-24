@@ -496,6 +496,46 @@ def test_inject_recalled_facts_local_includes_summaries():
     assert "Prefers concise bullets" in result["messages"][0]["content"]
 
 
+def test_inject_recalled_facts_local_dedupes_repeated_summaries():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.storage.driver.entity.create.return_value = 1
+    config.entity_id = "test-entity"
+    invoke = BaseInvoke(config, "test_method")
+
+    kwargs = {"messages": [{"role": "user", "content": "What should I remember?"}]}
+
+    repeated_summary = {
+        "content": "The assistant stated the favorite actor is Viggo Mortensen.",
+        "date_created": "2026-03-24 18:01:00",
+    }
+    with patch("memori.memory.recall.Recall") as mock_recall:
+        mock_recall.return_value.search_facts.return_value = [
+            {
+                "id": 1,
+                "content": "Favorite actor is Viggo Mortensen",
+                "similarity": 0.95,
+                "date_created": "2026-03-24 18:01:00",
+                "summaries": [repeated_summary, repeated_summary],
+            },
+            {
+                "id": 2,
+                "content": "Favorite movie is Lord of the Rings",
+                "similarity": 0.91,
+                "date_created": "2026-03-24 18:00:00",
+                "summaries": [repeated_summary],
+            },
+        ]
+        result = invoke.inject_recalled_facts(kwargs)
+
+    context = result["messages"][0]["content"]
+    assert (
+        context.count("The assistant stated the favorite actor is Viggo Mortensen.")
+        == 1
+    )
+
+
 def test_inject_recalled_facts_filters_by_relevance():
     config = Config()
     config.storage = Mock()

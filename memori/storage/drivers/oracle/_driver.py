@@ -381,7 +381,7 @@ class EntityFact(BaseEntityFact):
                 ON c.id = m.conversation_id
              WHERE m.fact_id IN ({placeholders})
                AND c.summary IS NOT NULL
-               AND c.summary != ''
+               AND DBMS_LOB.GETLENGTH(c.summary) > 0
         """
         summary_rows = (
             self.conn.execute(summary_query, tuple(fact_ids)).mappings().fetchall()

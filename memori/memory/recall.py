@@ -130,19 +130,39 @@ def _collect_cloud_summaries_from_facts(
     facts: list[RecallFact],
 ) -> list[CloudRecallSummary]:
     summaries: list[CloudRecallSummary] = []
+    seen: set[tuple[str, str]] = set()
+
+    def _key(summary: CloudRecallSummary) -> tuple[str, str] | None:
+        content = summary.get("content")
+        if not isinstance(content, str) or not content:
+            return None
+        date_created = summary.get("date_created")
+        date_text = date_created if isinstance(date_created, str) else ""
+        return content, date_text
+
     for fact in facts:
         if _is_str_object_mapping(fact):
             summaries_raw = fact.get("summaries")
             if isinstance(summaries_raw, list):
-                summaries.extend(
-                    _collect_cloud_summary_items(cast(list[object], summaries_raw))
-                )
+                for summary in _collect_cloud_summary_items(
+                    cast(list[object], summaries_raw)
+                ):
+                    summary_key = _key(summary)
+                    if summary_key is None or summary_key in seen:
+                        continue
+                    seen.add(summary_key)
+                    summaries.append(summary)
         elif hasattr(fact, "summaries"):
             summaries_raw = fact.summaries
             if isinstance(summaries_raw, list):
-                summaries.extend(
-                    _collect_cloud_summary_items(cast(list[object], summaries_raw))
-                )
+                for summary in _collect_cloud_summary_items(
+                    cast(list[object], summaries_raw)
+                ):
+                    summary_key = _key(summary)
+                    if summary_key is None or summary_key in seen:
+                        continue
+                    seen.add(summary_key)
+                    summaries.append(summary)
     return summaries
 
 
