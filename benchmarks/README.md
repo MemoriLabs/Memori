@@ -1,5 +1,7 @@
 # Memori Benchmarks — LoCoMo Evaluation
 
+Read the [benchmark overview](docs/memori-cloud/benchmark/overview.mdx), see the [results](docs/memori-cloud/benchmark/results.mdx), or download the [paper](https://arxiv.org/abs/2603.19935).
+
 This directory contains two Jupyter notebooks that evaluate **Memori's Advanced Augmentation** retrieval pipeline against the [LoCoMo](https://github.com/snap-research/locomo) long-conversation benchmark.
 
 The goal is to measure how well Memori's memory layer can answer questions about past conversations, compared to a naive "dump the entire chat history" baseline.
