@@ -453,7 +453,10 @@ def test_entity_fact_create_new_fact(mock_conn, mocker):
         return_value=mock_binary,
     )
 
-    mock_conn.execute.return_value = None  # No existing fact
+    mock_conn.execute.side_effect = [
+        None,  # find_one: no existing fact
+        Mock(inserted_id=555),  # insert_one
+    ]
 
     entity_fact = EntityFact(mock_conn)
     facts = ["User likes Python"]
@@ -552,7 +555,12 @@ def test_entity_fact_create_multiple_facts(mock_conn, mocker):
         side_effect=[mock_binary1, mock_binary2],
     )
 
-    mock_conn.execute.side_effect = [None, None, None, None]  # No existing facts
+    mock_conn.execute.side_effect = [
+        None,
+        Mock(inserted_id=1),
+        None,
+        Mock(inserted_id=2),
+    ]
 
     entity_fact = EntityFact(mock_conn)
     facts = ["Fact 1", "Fact 2"]
@@ -575,7 +583,7 @@ def test_entity_fact_create_without_embeddings(mock_conn, mocker):
         return_value=mock_binary,
     )
 
-    mock_conn.execute.return_value = None
+    mock_conn.execute.side_effect = [None, Mock(inserted_id=777)]
 
     entity_fact = EntityFact(mock_conn)
     facts = ["User likes Python"]
@@ -650,19 +658,29 @@ def test_entity_fact_get_embeddings_default_limit(mock_conn):
 
 def test_entity_fact_get_facts_by_ids(mock_conn):
     """Test retrieving fact content by IDs."""
-    mock_cursor = [
-        {
-            "_id": 1,
-            "content": "User likes Python",
-            "date_created": "2026-01-01 10:30:00",
-        },
-        {
-            "_id": 2,
-            "content": "User works as engineer",
-            "date_created": "2026-01-02 11:15:00",
-        },
+    mock_conn.execute.side_effect = [
+        [
+            {
+                "_id": 1,
+                "content": "User likes Python",
+                "date_created": "2026-01-01 10:30:00",
+            },
+            {
+                "_id": 2,
+                "content": "User works as engineer",
+                "date_created": "2026-01-02 11:15:00",
+            },
+        ],
+        [{"fact_id": 1, "conversation_id": 99}],
+        [
+            {
+                "_id": 99,
+                "summary": "User prefers concise responses",
+                "date_created": "2026-01-03 09:00:00",
+                "date_updated": None,
+            }
+        ],
     ]
-    mock_conn.execute.return_value = mock_cursor
 
     entity_fact = EntityFact(mock_conn)
     result = entity_fact.get_facts_by_ids([1, 2])
@@ -674,6 +692,13 @@ def test_entity_fact_get_facts_by_ids(mock_conn):
     assert result[1]["id"] == 2
     assert result[1]["content"] == "User works as engineer"
     assert result[1]["date_created"] == "2026-01-02 11:15:00"
+    assert result[0]["summaries"] == [
+        {
+            "content": "User prefers concise responses",
+            "date_created": "2026-01-03 09:00:00",
+        }
+    ]
+    assert result[1]["summaries"] == []
 
     # Verify find query
     find_call = mock_conn.execute.call_args_list[0]
@@ -681,6 +706,38 @@ def test_entity_fact_get_facts_by_ids(mock_conn):
     assert find_call[0][1] == "find"
     assert find_call[0][2] == {"_id": {"$in": [1, 2]}}
     assert find_call[0][3] == {"_id": 1, "content": 1, "date_created": 1}
+
+
+def test_entity_fact_create_with_conversation_mention(mock_conn, mocker):
+    """Test creating mention mapping when conversation_id is provided."""
+    mocker.patch("memori._utils.generate_uniq", return_value="uniq123")
+    mocker.patch(
+        "memori.embeddings.format_embedding_for_db",
+        return_value=Mock(),
+    )
+    mock_conn.execute.side_effect = [
+        None,  # find_one fact
+        Mock(inserted_id=42),  # insert_one fact
+        None,  # update_one mention upsert
+    ]
+
+    entity_fact = EntityFact(mock_conn)
+    entity_fact.create(
+        entity_id=123,
+        facts=["User likes Python"],
+        fact_embeddings=[[0.1, 0.2, 0.3]],
+        conversation_id=456,
+    )
+
+    mention_call = mock_conn.execute.call_args_list[2]
+    assert mention_call[0][0] == "memori_entity_fact_mention"
+    assert mention_call[0][1] == "update_one"
+    assert mention_call[0][2] == {
+        "entity_id": 123,
+        "fact_id": 42,
+        "conversation_id": 456,
+    }
+    assert mention_call[1]["upsert"] is True
 
 
 def test_entity_fact_get_facts_by_ids_empty(mock_conn):

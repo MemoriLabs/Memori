@@ -18,7 +18,13 @@ from memori.storage.migrations._oceanbase import migrations
 
 
 class EntityFact(MysqlEntityFact):
-    def create(self, entity_id: int, facts: list, fact_embeddings: list | None = None):
+    def create(
+        self,
+        entity_id: int,
+        facts: list,
+        fact_embeddings: list | None = None,
+        conversation_id: int | None = None,
+    ):
         if facts is None or len(facts) == 0:
             return self
 
@@ -33,6 +39,7 @@ class EntityFact(MysqlEntityFact):
                 else []
             )
             embedding_formatted = format_embedding_for_db(embedding, dialect)
+            uniq = generate_uniq(fact)
 
             self.conn.execute(
                 """
@@ -63,9 +70,42 @@ class EntityFact(MysqlEntityFact):
                     fact,
                     embedding_formatted,
                     1,
-                    generate_uniq(fact),
+                    uniq,
                 ),
             )
+
+            if conversation_id is not None:
+                fact_row = (
+                    self.conn.execute(
+                        """
+                        SELECT id
+                          FROM memori_entity_fact
+                         WHERE entity_id = %s
+                           AND uniq = %s
+                        """,
+                        (entity_id, uniq),
+                    )
+                    .mappings()
+                    .fetchone()
+                )
+                fact_id = fact_row.get("id") if fact_row else None
+                if fact_id is not None:
+                    self.conn.execute(
+                        """
+                        INSERT IGNORE INTO memori_entity_fact_mention(
+                            uuid,
+                            entity_id,
+                            fact_id,
+                            conversation_id
+                        ) VALUES (
+                            %s,
+                            %s,
+                            %s,
+                            %s
+                        )
+                        """,
+                        (uuid4(), entity_id, fact_id, conversation_id),
+                    )
 
         self.conn.commit()
 

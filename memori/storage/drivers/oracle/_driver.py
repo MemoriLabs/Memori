@@ -233,7 +233,13 @@ class Entity(BaseEntity):
 
 
 class EntityFact(BaseEntityFact):
-    def create(self, entity_id: int, facts: list, fact_embeddings: list | None = None):
+    def create(
+        self,
+        entity_id: int,
+        facts: list,
+        fact_embeddings: list | None = None,
+        conversation_id: int | None = None,
+    ):
         if facts is None or len(facts) == 0:
             return self
 
@@ -275,6 +281,44 @@ class EntityFact(BaseEntityFact):
                 ),
             )
 
+            if conversation_id is not None:
+                fact_row = (
+                    self.conn.execute(
+                        """
+                        SELECT id
+                          FROM memori_entity_fact
+                         WHERE entity_id = :1
+                           AND uniq = :2
+                        """,
+                        (entity_id, uniq),
+                    )
+                    .mappings()
+                    .fetchone()
+                )
+                fact_id = fact_row.get("id") if fact_row else None
+                if fact_id is not None:
+                    self.conn.execute(
+                        """
+                        MERGE INTO memori_entity_fact_mention dst
+                        USING (
+                            SELECT :1 AS uuid,
+                                   :2 AS entity_id,
+                                   :3 AS fact_id,
+                                   :4 AS conversation_id
+                              FROM DUAL
+                        ) src
+                        ON (
+                            dst.entity_id = src.entity_id
+                            AND dst.fact_id = src.fact_id
+                            AND dst.conversation_id = src.conversation_id
+                        )
+                        WHEN NOT MATCHED THEN
+                            INSERT (uuid, entity_id, fact_id, conversation_id)
+                            VALUES (src.uuid, src.entity_id, src.fact_id, src.conversation_id)
+                        """,
+                        (str(uuid4()), entity_id, fact_id, conversation_id),
+                    )
+
         self.conn.commit()
         return self
 
@@ -307,15 +351,53 @@ class EntityFact(BaseEntityFact):
 
         # Oracle doesn't support ANY, so we need to use IN with placeholders
         placeholders = ",".join([f":{i + 1}" for i in range(len(fact_ids))])
-        query = f"""
+        fact_query = f"""
             SELECT id,
                    content,
                    date_created
               FROM memori_entity_fact
              WHERE id IN ({placeholders})
         """
+        fact_rows = self.conn.execute(fact_query, tuple(fact_ids)).mappings().fetchall()
+        if not fact_rows:
+            return []
 
-        return self.conn.execute(query, tuple(fact_ids)).mappings().fetchall()
+        facts_by_id = {
+            row["id"]: {
+                "id": row["id"],
+                "content": row["content"],
+                "date_created": row.get("date_created"),
+                "summaries": [],
+            }
+            for row in fact_rows
+        }
+
+        summary_query = f"""
+            SELECT m.fact_id,
+                   c.summary AS content,
+                   COALESCE(c.date_updated, c.date_created) AS date_created
+              FROM memori_entity_fact_mention m
+              JOIN memori_conversation c
+                ON c.id = m.conversation_id
+             WHERE m.fact_id IN ({placeholders})
+               AND c.summary IS NOT NULL
+               AND c.summary != ''
+        """
+        summary_rows = (
+            self.conn.execute(summary_query, tuple(fact_ids)).mappings().fetchall()
+        )
+
+        for row in summary_rows:
+            fact_id = row.get("fact_id")
+            fact = facts_by_id.get(fact_id)
+            content = row.get("content")
+            if fact is None or not isinstance(content, str) or not content:
+                continue
+            fact["summaries"].append(
+                {"content": content, "date_created": row.get("date_created")}
+            )
+
+        return [facts_by_id[fact_id] for fact_id in fact_ids if fact_id in facts_by_id]
 
 
 class KnowledgeGraph(BaseKnowledgeGraph):

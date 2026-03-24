@@ -231,7 +231,13 @@ class Entity(BaseEntity):
 
 
 class EntityFact(BaseEntityFact):
-    def create(self, entity_id: int, facts: list, fact_embeddings: list | None = None):
+    def create(
+        self,
+        entity_id: int,
+        facts: list,
+        fact_embeddings: list | None = None,
+        conversation_id: int | None = None,
+    ):
         if facts is None or len(facts) == 0:
             return self
 
@@ -280,6 +286,39 @@ class EntityFact(BaseEntityFact):
                 ),
             )
 
+            if conversation_id is not None:
+                fact_row = (
+                    self.conn.execute(
+                        """
+                        SELECT id
+                          FROM memori_entity_fact
+                         WHERE entity_id = ?
+                           AND uniq = ?
+                        """,
+                        (entity_id, uniq),
+                    )
+                    .mappings()
+                    .fetchone()
+                )
+                fact_id = fact_row.get("id") if fact_row else None
+                if fact_id is not None:
+                    self.conn.execute(
+                        """
+                        INSERT OR IGNORE INTO memori_entity_fact_mention(
+                            uuid,
+                            entity_id,
+                            fact_id,
+                            conversation_id
+                        ) VALUES (
+                            ?,
+                            ?,
+                            ?,
+                            ?
+                        )
+                        """,
+                        (str(uuid4()), entity_id, fact_id, conversation_id),
+                    )
+
         self.conn.commit()
 
         return self
@@ -308,14 +347,56 @@ class EntityFact(BaseEntityFact):
             return []
         placeholders = ",".join(["?"] * len(fact_ids))
 
-        query = f"""
+        fact_query = f"""
                 SELECT id,
                        content,
                        date_created
                   FROM memori_entity_fact
                  WHERE id IN ({placeholders})
                 """  # nosec B608: Safe - only interpolating placeholder count, actual values parameterized
-        return self.conn.execute(query, tuple(fact_ids)).mappings().fetchall()
+        fact_rows = self.conn.execute(fact_query, tuple(fact_ids)).mappings().fetchall()
+        if not fact_rows:
+            return []
+
+        facts_by_id = {
+            row["id"]: {
+                "id": row["id"],
+                "content": row["content"],
+                "date_created": row.get("date_created"),
+                "summaries": [],
+            }
+            for row in fact_rows
+        }
+
+        summary_query = f"""
+                SELECT m.fact_id,
+                       c.summary AS content,
+                       COALESCE(c.date_updated, c.date_created) AS date_created
+                  FROM memori_entity_fact_mention m
+                  JOIN memori_conversation c
+                    ON c.id = m.conversation_id
+                 WHERE m.fact_id IN ({placeholders})
+                   AND c.summary IS NOT NULL
+                   AND c.summary != ''
+                """  # nosec B608: Safe - only interpolating placeholder count, actual values parameterized
+        summary_rows = (
+            self.conn.execute(summary_query, tuple(fact_ids)).mappings().fetchall()
+        )
+
+        for row in summary_rows:
+            fact_id = row.get("fact_id")
+            fact = facts_by_id.get(fact_id)
+            content = row.get("content")
+            if fact is None or not isinstance(content, str) or not content:
+                continue
+            fact["summaries"].append(
+                {
+                    "content": content,
+                    "date_created": row.get("date_created"),
+                }
+            )
+
+        return [facts_by_id[fact_id] for fact_id in fact_ids if fact_id in facts_by_id]
 
 
 class KnowledgeGraph(BaseKnowledgeGraph):

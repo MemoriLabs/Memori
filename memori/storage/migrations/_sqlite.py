@@ -274,5 +274,40 @@ migrations = {
                 )
             """,
         },
-    ]
+    ],
+    2: [
+        {
+            "description": "create table memori_entity_fact_mention",
+            "operation": """
+                CREATE TABLE IF NOT EXISTS memori_entity_fact_mention(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid TEXT NOT NULL,
+                    entity_id INTEGER NOT NULL,
+                    fact_id INTEGER NOT NULL,
+                    conversation_id INTEGER NOT NULL,
+                    date_created TEXT NOT NULL DEFAULT (datetime('now')),
+                    date_updated TEXT DEFAULT NULL,
+                    --
+                    CONSTRAINT uk_memori_entity_fact_mention_uuid UNIQUE (uuid),
+                    CONSTRAINT uk_memori_entity_fact_mention UNIQUE (entity_id, fact_id, conversation_id),
+                    --
+                    CONSTRAINT fk_memori_ent_fact_mention_entity_fact
+                       FOREIGN KEY (entity_id, fact_id)
+                        REFERENCES memori_entity_fact (entity_id, id)
+                         ON DELETE CASCADE,
+                    CONSTRAINT fk_memori_ent_fact_mention_conversation
+                       FOREIGN KEY (conversation_id)
+                        REFERENCES memori_conversation (id)
+                         ON DELETE CASCADE
+                )
+            """,
+        },
+        {
+            "description": "create index on memori_entity_fact_mention for conversation lookups",
+            "operation": """
+                CREATE INDEX IF NOT EXISTS idx_memori_ent_fact_mention_entity_conversation
+                ON memori_entity_fact_mention (entity_id, conversation_id)
+            """,
+        },
+    ],
 }

@@ -464,6 +464,38 @@ def test_inject_recalled_facts_success():
     assert result["messages"][1]["role"] == "user"
 
 
+def test_inject_recalled_facts_local_includes_summaries():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.storage.driver.entity.create.return_value = 1
+    config.entity_id = "test-entity"
+    invoke = BaseInvoke(config, "test_method")
+
+    kwargs = {"messages": [{"role": "user", "content": "What should I remember?"}]}
+
+    with patch("memori.memory.recall.Recall") as mock_recall:
+        mock_recall.return_value.search_facts.return_value = [
+            {
+                "id": 1,
+                "content": "User likes structured answers",
+                "similarity": 0.92,
+                "date_created": "2026-01-01 10:30:00",
+                "summaries": [
+                    {
+                        "content": "Prefers concise bullets",
+                        "date_created": "2026-01-02 11:15:00",
+                    }
+                ],
+            }
+        ]
+        result = invoke.inject_recalled_facts(kwargs)
+
+    assert "User likes structured answers" in result["messages"][0]["content"]
+    assert "## Summaries" in result["messages"][0]["content"]
+    assert "Prefers concise bullets" in result["messages"][0]["content"]
+
+
 def test_inject_recalled_facts_filters_by_relevance():
     config = Config()
     config.storage = Mock()

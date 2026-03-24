@@ -149,7 +149,13 @@ class BaseEntityFact:
     def __init__(self, conn: BaseStorageAdapter):
         self.conn = conn
 
-    def create(self, entity_id: int, facts: list, fact_embeddings: list | None = None):
+    def create(
+        self,
+        entity_id: int,
+        facts: list,
+        fact_embeddings: list | None = None,
+        conversation_id: int | None = None,
+    ):
         raise NotImplementedError
 
     def get_embeddings(self, entity_id: int, limit: int = 1000):

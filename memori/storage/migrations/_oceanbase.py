@@ -274,5 +274,35 @@ migrations = {
                 )
             """,
         },
-    ]
+    ],
+    2: [
+        {
+            "description": "create table memori_entity_fact_mention",
+            "operation": """
+                create table if not exists memori_entity_fact_mention(
+                    id bigint not null auto_increment,
+                    uuid varchar(36) not null,
+                    entity_id bigint not null,
+                    fact_id bigint not null,
+                    conversation_id bigint not null,
+                    date_created datetime not null default current_timestamp,
+                    date_updated datetime default null on update current_timestamp,
+                    --
+                    primary key (id),
+                    unique key (uuid),
+                    unique key (entity_id, fact_id, conversation_id),
+                    key idx_memori_ent_fact_mention_entity_conversation (entity_id, conversation_id),
+                    --
+                    constraint fk_memori_ent_fact_mention_entity_fact
+                       foreign key (entity_id, fact_id)
+                    references memori_entity_fact (entity_id, id)
+                     on delete cascade,
+                    constraint fk_memori_ent_fact_mention_conversation
+                       foreign key (conversation_id)
+                    references memori_conversation (id)
+                     on delete cascade
+                )
+            """,
+        },
+    ],
 }

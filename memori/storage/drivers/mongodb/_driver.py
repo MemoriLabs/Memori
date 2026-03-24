@@ -169,7 +169,13 @@ class Entity(BaseEntity):
 
 
 class EntityFact(BaseEntityFact):
-    def create(self, entity_id: int, facts: list, fact_embeddings: list | None = None):
+    def create(
+        self,
+        entity_id: int,
+        facts: list,
+        fact_embeddings: list | None = None,
+        conversation_id: int | None = None,
+    ):
         if facts is None or len(facts) == 0:
             return self
 
@@ -192,6 +198,7 @@ class EntityFact(BaseEntityFact):
                 {"entity_id": entity_id, "uniq": uniq},
             )
 
+            fact_id = None
             if existing:
                 # Update existing fact
                 self.conn.execute(
@@ -203,6 +210,7 @@ class EntityFact(BaseEntityFact):
                         "$set": {"date_last_time": datetime.now(timezone.utc)},
                     },
                 )
+                fact_id = existing["_id"]
             else:
                 # Insert new fact
                 fact_doc = {
@@ -217,7 +225,40 @@ class EntityFact(BaseEntityFact):
                     "date_updated": None,
                 }
 
-                self.conn.execute("memori_entity_fact", "insert_one", fact_doc)
+                inserted = self.conn.execute(
+                    "memori_entity_fact", "insert_one", fact_doc
+                )
+                if inserted is not None and hasattr(inserted, "inserted_id"):
+                    fact_id = inserted.inserted_id
+                else:
+                    created = self.conn.execute(
+                        "memori_entity_fact",
+                        "find_one",
+                        {"entity_id": entity_id, "uniq": uniq},
+                        {"_id": 1},
+                    )
+                    if created is not None:
+                        fact_id = created.get("_id")
+
+            if conversation_id is not None and fact_id is not None:
+                now = datetime.now(timezone.utc)
+                self.conn.execute(
+                    "memori_entity_fact_mention",
+                    "update_one",
+                    {
+                        "entity_id": entity_id,
+                        "fact_id": fact_id,
+                        "conversation_id": conversation_id,
+                    },
+                    {
+                        "$setOnInsert": {
+                            "uuid": str(uuid4()),
+                            "date_created": now,
+                        },
+                        "$set": {"date_updated": now},
+                    },
+                    upsert=True,
+                )
 
         return self
 
@@ -269,12 +310,62 @@ class EntityFact(BaseEntityFact):
         )
 
         facts = []
+        facts_by_id = {}
         for result in results:
-            facts.append(
+            fact_row = {
+                "id": result["_id"],
+                "content": result["content"],
+                "date_created": result.get("date_created"),
+                "summaries": [],
+            }
+            facts.append(fact_row)
+            facts_by_id[result["_id"]] = fact_row
+
+        if not facts:
+            return []
+
+        mention_rows = self.conn.execute(
+            "memori_entity_fact_mention",
+            "find",
+            {"fact_id": {"$in": fact_ids}},
+            {"fact_id": 1, "conversation_id": 1},
+        )
+        mentions = list(mention_rows)
+        if not mentions:
+            return facts
+
+        conversation_ids = [
+            row.get("conversation_id")
+            for row in mentions
+            if row.get("conversation_id") is not None
+        ]
+        if not conversation_ids:
+            return facts
+
+        conversation_rows = self.conn.execute(
+            "memori_conversation",
+            "find",
+            {"_id": {"$in": conversation_ids}},
+            {"_id": 1, "summary": 1, "date_created": 1, "date_updated": 1},
+        )
+        conversations = {row["_id"]: row for row in conversation_rows}
+
+        for mention in mentions:
+            fact_id = mention.get("fact_id")
+            conversation = conversations.get(mention.get("conversation_id"))
+            fact = facts_by_id.get(fact_id)
+            if fact is None or conversation is None:
+                continue
+
+            content = conversation.get("summary")
+            if not isinstance(content, str) or not content:
+                continue
+
+            fact["summaries"].append(
                 {
-                    "id": result["_id"],
-                    "content": result["content"],
-                    "date_created": result.get("date_created"),
+                    "content": content,
+                    "date_created": conversation.get("date_updated")
+                    or conversation.get("date_created"),
                 }
             )
 

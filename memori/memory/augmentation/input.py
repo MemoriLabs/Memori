@@ -17,7 +17,7 @@ from memori.memory.augmentation._message import ConversationMessage
 class AugmentationInput:
     """Data class for augmentation input."""
 
-    conversation_id: str | None
+    conversation_id: int | str | None
     entity_id: str | None
     process_id: str | None
     conversation_messages: list[ConversationMessage]

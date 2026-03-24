@@ -359,5 +359,44 @@ migrations = {
                 END;
             """,
         },
-    ]
+    ],
+    2: [
+        {
+            "description": "create table memori_entity_fact_mention",
+            "operation": """
+                BEGIN
+                    EXECUTE IMMEDIATE '
+                        CREATE TABLE memori_entity_fact_mention(
+                            id NUMBER(19) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                            uuid VARCHAR2(36) NOT NULL,
+                            entity_id NUMBER(19) NOT NULL,
+                            fact_id NUMBER(19) NOT NULL,
+                            conversation_id NUMBER(19) NOT NULL,
+                            date_created TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+                            date_updated TIMESTAMP DEFAULT NULL,
+                            CONSTRAINT uk_memori_entity_fact_mention_uuid UNIQUE (uuid),
+                            CONSTRAINT uk_memori_entity_fact_mention UNIQUE (entity_id, fact_id, conversation_id),
+                            CONSTRAINT fk_memori_ent_fact_mention_entity_fact
+                               FOREIGN KEY (entity_id, fact_id)
+                                REFERENCES memori_entity_fact (entity_id, id)
+                                 ON DELETE CASCADE,
+                            CONSTRAINT fk_memori_ent_fact_mention_conversation
+                               FOREIGN KEY (conversation_id)
+                                REFERENCES memori_conversation (id)
+                                 ON DELETE CASCADE
+                        )
+                    ';
+                    EXECUTE IMMEDIATE '
+                        CREATE INDEX idx_memori_ent_fact_mention_entity_conversation
+                        ON memori_entity_fact_mention (entity_id, conversation_id)
+                    ';
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        IF SQLCODE = -955 OR SQLCODE = -1408 THEN NULL;
+                        ELSE RAISE;
+                        END IF;
+                END;
+            """,
+        },
+    ],
 }

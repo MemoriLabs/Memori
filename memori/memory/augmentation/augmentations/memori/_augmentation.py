@@ -41,7 +41,7 @@ class AdvancedAugmentation(BaseAugmentation):
     def __init__(self, config=None, enabled: bool = True):
         super().__init__(config=config, enabled=enabled)
 
-    def _get_conversation_summary(self, driver, conversation_id: str) -> str:
+    def _get_conversation_summary(self, driver, conversation_id: int | str) -> str:
         try:
             conversation = driver.conversation.read(conversation_id)
             if conversation and conversation.get("summary"):
@@ -241,6 +241,7 @@ class AdvancedAugmentation(BaseAugmentation):
                 entity_id,
                 facts_to_write,
                 embeddings_to_write,
+                ctx.payload.conversation_id,
             )
 
         if memories.entity.semantic_triples:

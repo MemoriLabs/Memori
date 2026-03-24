@@ -390,6 +390,37 @@ def test_entity_fact_create_without_embeddings(mock_conn, mocker):
     assert params[3] == b""  # content_embedding (empty binary)
 
 
+def test_entity_fact_create_with_conversation_mention(
+    mock_conn, mock_single_result, mocker
+):
+    """Test creating mention mapping when conversation_id is provided."""
+    mocker.patch("memori._utils.generate_uniq", return_value="uniq123")
+    mocker.patch(
+        "memori.embeddings.format_embedding_for_db",
+        return_value=b"\x01\x02",
+    )
+    mock_conn.execute.side_effect = [
+        None,  # upsert fact
+        mock_single_result({"id": 789}),  # resolve fact id by entity_id+uniq
+        None,  # insert mention mapping
+    ]
+
+    entity_fact = EntityFact(mock_conn)
+    entity_fact.create(
+        entity_id=123,
+        facts=["User likes Python"],
+        fact_embeddings=[[0.1, 0.2]],
+        conversation_id=456,
+    )
+
+    assert mock_conn.execute.call_count == 3
+    mention_call = mock_conn.execute.call_args_list[2]
+    assert (
+        "insert or ignore into memori_entity_fact_mention" in mention_call[0][0].lower()
+    )
+    assert mention_call[0][1][1:] == (123, 789, 456)
+
+
 def test_entity_fact_get_embeddings(mock_conn, mock_multiple_results):
     """Test retrieving embeddings for an entity."""
     mock_conn.execute.return_value = mock_multiple_results(
@@ -433,20 +464,31 @@ def test_entity_fact_get_embeddings_default_limit(mock_conn, mock_empty_result):
 
 def test_entity_fact_get_facts_by_ids(mock_conn, mock_multiple_results):
     """Test retrieving fact content by IDs."""
-    mock_conn.execute.return_value = mock_multiple_results(
-        [
-            {
-                "id": 1,
-                "content": "User likes Python",
-                "date_created": "2026-01-01 10:30:00",
-            },
-            {
-                "id": 2,
-                "content": "User works as engineer",
-                "date_created": "2026-01-02 11:15:00",
-            },
-        ]
-    )
+    mock_conn.execute.side_effect = [
+        mock_multiple_results(
+            [
+                {
+                    "id": 1,
+                    "content": "User likes Python",
+                    "date_created": "2026-01-01 10:30:00",
+                },
+                {
+                    "id": 2,
+                    "content": "User works as engineer",
+                    "date_created": "2026-01-02 11:15:00",
+                },
+            ]
+        ),
+        mock_multiple_results(
+            [
+                {
+                    "fact_id": 1,
+                    "content": "Summary for fact 1",
+                    "date_created": "2026-01-03 09:00:00",
+                }
+            ]
+        ),
+    ]
 
     entity_fact = EntityFact(mock_conn)
     result = entity_fact.get_facts_by_ids([1, 2])
@@ -458,15 +500,24 @@ def test_entity_fact_get_facts_by_ids(mock_conn, mock_multiple_results):
     assert result[1]["id"] == 2
     assert result[1]["content"] == "User works as engineer"
     assert result[1]["date_created"] == "2026-01-02 11:15:00"
+    assert result[0]["summaries"] == [
+        {"content": "Summary for fact 1", "date_created": "2026-01-03 09:00:00"}
+    ]
+    assert result[1]["summaries"] == []
 
     # Verify SELECT query
-    select_call = mock_conn.execute.call_args_list[0]
-    assert "select id" in select_call[0][0].lower()
-    assert "content" in select_call[0][0].lower()
-    assert "date_created" in select_call[0][0].lower()
-    assert "from memori_entity_fact" in select_call[0][0].lower()
-    assert "where id in (?,?)" in select_call[0][0].lower()
-    assert select_call[0][1] == (1, 2)
+    fact_select_call = mock_conn.execute.call_args_list[0]
+    assert "select id" in fact_select_call[0][0].lower()
+    assert "content" in fact_select_call[0][0].lower()
+    assert "date_created" in fact_select_call[0][0].lower()
+    assert "from memori_entity_fact" in fact_select_call[0][0].lower()
+    assert "where id in (?,?)" in fact_select_call[0][0].lower()
+    assert fact_select_call[0][1] == (1, 2)
+
+    summary_select_call = mock_conn.execute.call_args_list[1]
+    assert "from memori_entity_fact_mention" in summary_select_call[0][0].lower()
+    assert "join memori_conversation" in summary_select_call[0][0].lower()
+    assert summary_select_call[0][1] == (1, 2)
 
 
 def test_entity_fact_get_facts_by_ids_empty(mock_conn):

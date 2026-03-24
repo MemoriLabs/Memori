@@ -269,5 +269,34 @@ migrations = {
                 },
             ],
         },
-    ]
+    ],
+    2: [
+        {
+            "description": "create collection memori_entity_fact_mention",
+            "operations": [
+                {
+                    "collection": "memori_entity_fact_mention",
+                    "method": "create_index",
+                    "args": [[("uuid", 1)]],
+                    "kwargs": {"unique": True},
+                },
+                {
+                    "collection": "memori_entity_fact_mention",
+                    "method": "create_index",
+                    "args": [
+                        [("entity_id", 1), ("fact_id", 1), ("conversation_id", 1)]
+                    ],
+                    "kwargs": {"unique": True},
+                },
+                {
+                    "collection": "memori_entity_fact_mention",
+                    "method": "create_index",
+                    "args": [[("entity_id", 1), ("conversation_id", 1)]],
+                    "kwargs": {
+                        "name": "idx_memori_ent_fact_mention_entity_conversation"
+                    },
+                },
+            ],
+        },
+    ],
 }

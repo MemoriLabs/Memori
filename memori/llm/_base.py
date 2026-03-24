@@ -672,9 +672,9 @@ class BaseInvoke:
         return lines
 
     def inject_recalled_facts(self, kwargs: dict) -> dict:
+        self._cloud_summaries = []
         if self.config.cloud is True:
             self._cloud_conversation_messages = []
-            self._cloud_summaries = []
 
         if self.config.entity_id is None:
             return kwargs
@@ -707,11 +707,15 @@ class BaseInvoke:
             self._cloud_conversation_messages = cloud_response.get("messages", [])
             self._cloud_summaries = _collect_cloud_summaries_from_facts(facts)
         else:
-            facts = recall.search_facts(
-                user_query,
-                entity_id=resolved_entity_id,
-                cloud=bool(self.config.cloud),
+            facts = cast(
+                list[FactSearchResult | Mapping[str, object] | str],
+                recall.search_facts(
+                    user_query,
+                    entity_id=resolved_entity_id,
+                    cloud=bool(self.config.cloud),
+                ),
             )
+            self._cloud_summaries = _collect_cloud_summaries_from_facts(facts)
 
         if not facts:
             logger.debug("No facts found to inject into prompt")
@@ -743,7 +747,6 @@ class BaseInvoke:
             + context_body
             + "\n</memori_context>"
         )
-
         if llm_is_anthropic(
             self.config.framework.provider, self.config.llm.provider
         ) or llm_is_bedrock(self.config.framework.provider, self.config.llm.provider):
