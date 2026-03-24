@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memori-benchmarks"
+version = "0.1.0"
+description = "Dependencies for Memori benchmark notebooks (e.g. FAISS index loading)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "faiss-cpu>=1.7.0",
+    "iprogress>=0.4",
+    "ipykernel>=7.2.0",
+    "ipywidgets>=8.1.8",
+    "numpy>=1.24.0",
+    "openai>=2.29.0",
+    "pandas>=2.3.3",
+    "python-dotenv>=1.0.0",
+    "rank-bm25>=0.2.2",
+    "ruff>=0.15.7",
+    "sentence-transformers>=3.0.0",
+    "tenacity>=9.1.4",
+    "tiktoken>=0.12.0",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+# `tqdm.notebook` progress bars in Jupyter need ipywidgets; add jupyter if you run .ipynb locally
+notebook = [
+    "ipywidgets>=8.0.0",
+    "jupyterlab>=4.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+# No importable package — dependency metadata only for `pip install .` / `uv sync`
+bypass-selection = true

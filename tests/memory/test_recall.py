@@ -8,6 +8,7 @@ r"""
                       memorilabs.ai
 """
 
+from typing import cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -129,7 +130,10 @@ def test_search_facts_success():
                 ),
             ]
 
-            result = recall.search_facts("What do I like?", limit=5, entity_id=1)
+            result = cast(
+                list[FactSearchResult],
+                recall.search_facts("What do I like?", limit=5, entity_id=1),
+            )
 
             assert len(result) == 2
             assert result[0].content == "User likes pizza"
@@ -320,7 +324,7 @@ def test_search_facts_cloud_includes_explicit_limit_in_payload(mocker):
 
     result = recall.search_facts("test query", limit=10)
 
-    assert result == ["fact-a"]
+    assert result == {"facts": ["fact-a"], "messages": []}
     assert post.call_args[0][1] == "cloud/recall"
     payload = post.call_args[0][2]
     assert payload["limit"] == 10
@@ -367,6 +371,151 @@ def test_search_facts_cloud_uses_none_for_missing_process_id(mocker):
     assert post.call_args[0][1] == "cloud/recall"
     payload = post.call_args[0][2]
     assert payload["attribution"]["process"] is None
+
+
+def test_search_facts_cloud_returns_optional_summaries(mocker):
+    config = Config()
+    config.cloud = True
+    config.entity_id = "entity-id"
+    config.process_id = "process-id"
+    config.session_id = "session-id"
+    recall = Recall(config)
+
+    mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={
+            "facts": [
+                {
+                    "id": 1,
+                    "content": "fact-a",
+                    "rank_score": 0.9,
+                    "summaries": [
+                        {
+                            "content": "summary-a",
+                            "date_created": "2026-03-09 19:50:09",
+                        }
+                    ],
+                }
+            ],
+            "messages": [{"role": "user", "content": "hello"}],
+        },
+    )
+
+    result = recall.search_facts("test query")
+
+    assert result == {
+        "facts": [
+            {
+                "id": 1,
+                "content": "fact-a",
+                "rank_score": 0.9,
+                "summaries": [
+                    {
+                        "content": "summary-a",
+                        "date_created": "2026-03-09 19:50:09",
+                    }
+                ],
+            }
+        ],
+        "messages": [{"role": "user", "content": "hello"}],
+    }
+
+
+def test_search_facts_cloud_filters_nested_summaries_with_facts(mocker):
+    config = Config()
+    config.cloud = True
+    config.entity_id = "entity-id"
+    config.process_id = "process-id"
+    config.session_id = "session-id"
+    recall = Recall(config)
+
+    mocker.patch(
+        "memori.memory.recall.Api.post",
+        autospec=True,
+        return_value={
+            "facts": [
+                {
+                    "id": 1241,
+                    "content": "Relevant fact",
+                    "rank_score": 0.7,
+                    "summaries": [
+                        {
+                            "content": "Relevant summary",
+                            "date_created": "2026-03-09 19:50:09",
+                        }
+                    ],
+                },
+                {
+                    "id": 1242,
+                    "content": "Irrelevant fact",
+                    "rank_score": 0.05,
+                    "summaries": [
+                        {
+                            "content": "Irrelevant summary",
+                            "date_created": "2026-03-09 19:50:10",
+                        }
+                    ],
+                },
+            ],
+        },
+    )
+
+    result = recall.search_facts("test query")
+
+    assert result == {
+        "facts": [
+            {
+                "id": 1241,
+                "content": "Relevant fact",
+                "rank_score": 0.7,
+                "summaries": [
+                    {
+                        "content": "Relevant summary",
+                        "date_created": "2026-03-09 19:50:09",
+                    }
+                ],
+            }
+        ]
+    }
+
+
+def test_parse_cloud_recall_response_attaches_top_level_summaries_to_facts():
+    result = Recall._parse_cloud_recall_response(
+        {
+            "facts": [{"id": 1, "content": "fact-a", "rank_score": 0.9}],
+            "summaries": [
+                {
+                    "entity_fact_id": 1,
+                    "content": "summary-a",
+                    "date_created": "2026-03-09 19:50:09",
+                }
+            ],
+        }
+    )
+
+    assert result == {
+        "facts": [
+            {
+                "id": 1,
+                "content": "fact-a",
+                "rank_score": 0.9,
+                "summaries": [
+                    {
+                        "entity_fact_id": 1,
+                        "content": "summary-a",
+                        "date_created": "2026-03-09 19:50:09",
+                    }
+                ],
+            }
+        ]
+    }
+
+
+def test_parse_cloud_recall_response_omits_optional_fields_when_missing():
+    result = Recall._parse_cloud_recall_response({"facts": ["fact-a"]})
+
+    assert result == {"facts": ["fact-a"]}
 
 
 def test_constants():

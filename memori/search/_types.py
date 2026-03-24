@@ -10,7 +10,7 @@ r"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -27,6 +27,7 @@ class FactCandidate:
     content: str
     score: float
     date_created: str
+    summaries: list[dict[str, object]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class FactSearchResult:
     similarity: float
     rank_score: float
     date_created: str
+    summaries: list[dict[str, object]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -44,4 +46,5 @@ class FactSearchResult:
             "similarity": self.similarity,
             "rank_score": self.rank_score,
             "date_created": self.date_created,
+            "summaries": self.summaries,
         }

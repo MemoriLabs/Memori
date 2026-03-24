@@ -11,10 +11,13 @@ r"""
 import asyncio
 import json
 import time
+from collections.abc import Mapping
+from typing import cast
 
 from google.protobuf import json_format
 
 from memori.llm._constants import XAI_LLM_PROVIDER
+from memori.memory.augmentation._message import ConversationMessage
 
 
 class XAiWrappers:
@@ -31,6 +34,30 @@ class XAiWrappers:
 
     def __init__(self, config):
         self.config = config
+
+    @staticmethod
+    def _str_object_mapping(value: object) -> Mapping[str, object] | None:
+        if isinstance(value, Mapping) and all(isinstance(k, str) for k in value.keys()):
+            return cast(Mapping[str, object], value)
+        return None
+
+    @staticmethod
+    def _messages_for_augmentation(messages: object) -> list[ConversationMessage]:
+        if not isinstance(messages, list):
+            return []
+
+        conversation_messages: list[ConversationMessage] = []
+        for message in messages:
+            message_map = XAiWrappers._str_object_mapping(message)
+            if message_map is None:
+                continue
+            role = message_map.get("role")
+            content = message_map.get("content")
+            if isinstance(role, str) and isinstance(content, str):
+                conversation_messages.append(
+                    ConversationMessage(role=role, content=content)
+                )
+        return conversation_messages
 
     def _ensure_cached_conversation_id(self) -> bool:
         if self.config.storage is None or self.config.storage.driver is None:
@@ -139,9 +166,9 @@ class XAiWrappers:
                 from memori.memory.augmentation.input import AugmentationInput
 
                 messages = payload["conversation"]["query"].get("messages", [])
-                messages_for_aug = list(messages) if isinstance(messages, list) else []
+                messages_for_aug = self._messages_for_augmentation(messages)
                 messages_for_aug.append(
-                    {"role": "assistant", "content": response.content}
+                    ConversationMessage(role="assistant", content=response.content)
                 )
 
                 if self.config.entity_id or self.config.process_id:
@@ -186,9 +213,9 @@ class XAiWrappers:
                 from memori.memory.augmentation.input import AugmentationInput
 
                 messages = payload["conversation"]["query"].get("messages", [])
-                messages_for_aug = list(messages) if isinstance(messages, list) else []
+                messages_for_aug = self._messages_for_augmentation(messages)
                 messages_for_aug.append(
-                    {"role": "assistant", "content": response.content}
+                    ConversationMessage(role="assistant", content=response.content)
                 )
 
                 if self.config.entity_id or self.config.process_id:
@@ -249,11 +276,11 @@ class XAiWrappers:
                     from memori.memory.augmentation.input import AugmentationInput
 
                     messages = payload["conversation"]["query"].get("messages", [])
-                    messages_for_aug = (
-                        list(messages) if isinstance(messages, list) else []
-                    )
+                    messages_for_aug = self._messages_for_augmentation(messages)
                     messages_for_aug.append(
-                        {"role": "assistant", "content": "".join(full_content)}
+                        ConversationMessage(
+                            role="assistant", content="".join(full_content)
+                        )
                     )
 
                     if self.config.entity_id or self.config.process_id:

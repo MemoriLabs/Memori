@@ -1,0 +1,32 @@
+---
+title: LoCoMo Benchmark Experiments
+description: These experiments evaluate the quality and accuracy of the memory assets produced by Memori's Advanced Augmentation pipeline.
+---
+
+# LoCoMo Benchmark Experiments
+
+The primary objective of these experiments is to evaluate the quality and accuracy of the memory assets produced by Memori's Advanced Augmentation pipeline.
+
+### Dataset: The LoCoMo Benchmark
+
+The primary dataset utilized for benchmarking is the Long Conversation Memory (LoCoMo) dataset. LoCoMo is a rigorous framework engineered to evaluate an AI agent's ability to track, retain, and synthesize information across extensive, multi-session chat histories. Unlike standard QA datasets, LoCoMo challenges models with complex state tracking, temporal reasoning, and the retrieval of subtle user preferences buried deep within noisy, unstructured conversational logs
+
+To ensure a fair comparison with other published results on this benchmark, we excluded the adversarial category from the evaluation.
+
+### Evaluating Memory Extraction via Advanced Augmentation
+
+To measure the quality of Memori's Advanced Augmentation, all sections of each LoCoMo conversation were processed through the pipeline. Each session produced a set of semantic triples along with a conversation-level summary. The extracted triples were embedded using the Gemma-300 embedding model, enabling efficient semantic retrieval for the benchmark’s question-answering tasks. All generated memories were indexed and stored locally using FAISS to support fast similarity search. The ultimate accuracy of the LLM’s answers serves as a direct reflection of how well the Advanced Augmentation pipeline structured, preserved, and surfaced the relevant facts.
+
+### Answer Generation
+
+Each question in the LoCoMo benchmark was answered using GPT-4.1-mini, conditioned on the retrieved triples and their corresponding summaries (the utilized prompt is presented in the appendix). Triples were retrieved using a hybrid search approach that combines cosine similarity over embeddings with BM25 keyword matching.
+
+### Performance Metrics: LLM-as-a-Judge
+
+We employ an LLM-as-a-Judge methodology (the utilized prompt is presented in the Appendix), using GPT-4.1-mini as the evaluator. The judge model analyzes the user query, the ground-truth answer, and the generated response to provide a nuanced assessment. 
+
+### Token-Driven Cost Analysis 
+
+Beyond response quality, practical deployment considerations are paramount for enterprise AI applications. We evaluate Memori against traditional architectures (e.g., standard RAG) by systematically measuring system efficiency as a function of context consumption.. 
+
+The absolute number of tokens added to the LLM prompt is the primary driver of operational costs in conversational AI. We measure the exact number of tokens extracted during retrieval and injected into the prompt context. This metric highlights a critical architectural distinction: while traditional architectures consume massive token budgets by indiscriminately injecting large, raw text chunks or full histories into the prompt, Memori retrieves highly concise, structured memory facts. By minimizing the context footprint, Memori directly curtails API expenditure and optimizes operational economics.

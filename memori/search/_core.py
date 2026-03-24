@@ -19,6 +19,17 @@ from memori.search._types import FactCandidate, FactId, FactSearchResult
 logger = logging.getLogger(__name__)
 
 
+def _normalize_fact_summaries(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+
+    summaries: list[dict[str, object]] = []
+    for item in value:
+        if isinstance(item, Mapping) and all(isinstance(k, str) for k in item.keys()):
+            summaries.append(dict(cast(Mapping[str, object], item)))
+    return summaries
+
+
 def _candidate_pool_from_candidates(
     candidates: list[FactCandidate], *, limit: int, query_text: str | None
 ) -> tuple[
@@ -31,6 +42,7 @@ def _candidate_pool_from_candidates(
     content_map = {i: r.content for i, r in enumerate(candidates)}
     similarities_map = {i: float(r.score) for i, r in enumerate(candidates)}
     date_created_map = {i: r.date_created for i, r in enumerate(candidates)}
+    summaries_map = {i: r.summaries for i, r in enumerate(candidates)}
 
     cand_limit = _candidate_limit(
         limit=limit, total_embeddings=len(candidates), query_text=query_text
@@ -46,6 +58,7 @@ def _candidate_pool_from_candidates(
         i: {
             "id": idx_to_original_id.get(i),
             "date_created": date_created_map.get(i, ""),
+            "summaries": summaries_map.get(i, []),
         }
         for i in candidate_ids
     }
@@ -152,6 +165,7 @@ def _build_fact_rows(
         if content is None:
             continue
         date_created = fact_row.get("date_created")
+        summaries = fact_row.get("summaries")
         similarity = float(similarities_map.get(fact_id, 0.0))
         rank_score = float(rank_score_map.get(fact_id, similarity))
         facts_with_similarity.append(
@@ -161,6 +175,7 @@ def _build_fact_rows(
                 similarity=similarity,
                 rank_score=rank_score,
                 date_created=str(date_created) if date_created is not None else "",
+                summaries=_normalize_fact_summaries(summaries),
             )
         )
 
@@ -253,6 +268,7 @@ def search_entity_facts_core(
                         similarity=row.similarity,
                         rank_score=row.rank_score,
                         date_created=row.date_created,
+                        summaries=row.summaries,
                     )
                 )
             else:

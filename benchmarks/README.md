@@ -1,126 +1,111 @@
-## Benchmarks
+# Memori Benchmarks — LoCoMo Evaluation
 
-This directory contains **benchmark harnesses** that are intentionally **not** part of the
-default `pytest` unit test suite.
+This directory contains two Jupyter notebooks that evaluate **Memori's Advanced Augmentation** retrieval pipeline against the [LoCoMo](https://github.com/snap-research/locomo) long-conversation benchmark.
 
-### Performance / latency (pytest-benchmark)
+The goal is to measure how well Memori's memory layer can answer questions about past conversations, compared to a naive "dump the entire chat history" baseline.
 
-Performance benchmarks (including **end-to-end recall latency**) live in `benchmarks/perf/`.
+## What the notebooks do
 
-Run locally (example):
+| Notebook | Purpose |
+|----------|---------|
+| [`01_load_indexes.ipynb`](01_load_indexes.ipynb) | Downloads augmented memories, embeds them with [EmbeddingGemma-300M](https://huggingface.co/google/embeddinggemma-300m), and builds a FAISS search index per conversation. |
+| [`02_run_benchmark.ipynb`](02_run_benchmark.ipynb) | Loads the LoCoMo benchmark questions, retrieves relevant memories via hybrid search (FAISS + BM25), generates answers with an LLM, judges correctness, and reports accuracy metrics. |
 
-```bash
-uv run pytest -m benchmark --benchmark-only benchmarks/perf/test_recall_benchmarks.py -v
-```
+Run **`01`** first to build the indexes (skip if `indexes_gemma/` already exists), then run **`02`** to evaluate.
 
-For EC2 / VPC-adjacent database benchmarking, see `benchmarks/perf/README.md` and the helper
-scripts in `benchmarks/perf/`.
+## Prerequisites
 
-### LoCoMo (retrieval evaluation)
+- **Python 3.10+** (see [`pyproject.toml`](pyproject.toml) for full dependency list).
+- A **Hugging Face** account with access to the gated embedding model (see below).
+- An **OpenAI API key** (only needed for notebook `02`).
 
-LoCoMo is a benchmark dataset by Snap Research for long conversation memory.
+## Quick start
 
-In Memori, we treat LoCoMo as a **retrieval evaluation** problem: given a question, does
-Memori retrieve the right supporting context (evidence)?
+### 1. Install dependencies
 
-#### Dataset
-
-LoCoMo is not vendored in this repo. Download the dataset JSON locally, then point the
-harness at that file path.
-
-Upstream: `https://github.com/snap-research/locomo`
-
-#### Preprocess (recommended for Memori)
-
-The upstream LoCoMo format is a **third-person** dialogue between two speakers, and some
-conversations include multimodal fields (e.g., image URLs + captions) that Memori does not
-currently handle well.
-
-To make evaluation more representative of Memori usage, we provide a small preprocessing step
-that:
-
-- Skips any conversation that contains multimodal turn fields (`img_url`, `blip_caption`, `query`)
-- Rewrites speakers so `conversation.speaker_b` becomes `assistant` and the other speaker becomes `user`
-
-Run:
+From this directory, using [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv run python benchmarks/locomo/preprocess.py \
-  --in benchmarks/locomo10.json \
-  --out benchmarks/locomo10_memori.json
+cd benchmarks
+uv sync                       # core dependencies
+uv sync --extra notebook      # adds JupyterLab + widgets (optional)
 ```
 
-#### What gets written (artifacts)
-
-Each run writes:
-
-- `predictions.jsonl`: one row per QA question (retrieved top-k + hit@k/MRR metrics)
-- `summary.json`: aggregated metrics (overall + by category)
-- `locomo.sqlite`: SQLite DB used by Memori storage during the run
-- `locomo_provenance.sqlite`: (AA mode only) benchmark-only mapping of `fact_id → dia_id` for scoring
-
-#### Modes (ingestion)
-
-LoCoMo ingestion always uses **Advanced Augmentation**:
-
-- Stores turns as `conversation_message`s and runs Memori **Advanced Augmentation** to produce
-  derived `entity_fact`s (closest to real usage).
-- Because LoCoMo evidence is turn-level, we write a **benchmark-only provenance DB**
-  (`locomo_provenance.sqlite`) that maps each derived fact back to the LoCoMo `dia_id` turn(s),
-  then score hit@k/MRR against evidence.
-- **Requires**: `MEMORI_API_KEY`.
-- **Note**: may be non-deterministic (API + model changes).
-
-#### Quickstart (advanced_augmentation, seeds + scores)
-
-Prerequisite:
-
-- `MEMORI_API_KEY` set (Advanced Augmentation API access)
-- LoCoMo harness forces staging routing (`MEMORI_TEST_MODE=1`)
-
-Run:
+Or with pip:
 
 ```bash
-export MEMORI_API_KEY="..."
-# Optional: increase AA request timeout (default is 30s)
-export MEMORI_AUGMENTATION_TIMEOUT_SECONDS=120
-
-uv run python benchmarks/locomo/run.py \
-  --dataset benchmarks/locomo10.json \
-  --out results/locomo/aa_run \
-  --aa-batch per_pair
+pip install -e ".[notebook]"
 ```
 
-#### Score-only (reuse an existing DB, no AA calls)
+Make sure to select the resulting environment as your Jupyter kernel.
 
-If you already seeded a SQLite DB (and, for AA runs, a provenance DB), you can skip ingestion and
-run retrieval+scoring directly from the existing DB:
+### 2. Set up environment variables
+
+Copy the example file and fill in your tokens:
 
 ```bash
-uv run python benchmarks/locomo/run.py \
-  --dataset benchmarks/locomo10.json \
-  --out results/locomo/score_only \
-  --sqlite-db results/locomo/aa_run/locomo.sqlite \
-  --provenance-db results/locomo/aa_run/locomo_provenance.sqlite \
-  --reuse-db
+cp .env.example .env
 ```
 
-If the DB contains multiple prior LoCoMo runs, pass `--run-id` to choose which one to score.
+| Variable | Required by | Description |
+|----------|-------------|-------------|
+| `HF_TOKEN` | `01` and `02` | Hugging Face read token for the gated embedding model. |
+| `OPENAI_API_KEY` | `02` only | OpenAI API key for answer generation and judging. |
 
-#### Useful knobs (AA mode)
+Both notebooks call `load_dotenv()` to pick these up automatically.
 
-- **Batching**:
-  - `--aa-batch per_pair` (one AA request per user+assistant pair)
+### 3. Authorize the embedding model on Hugging Face
 
-- **Dry-run** (inspect payload; no network call):
-  - `--aa-dry-run` writes `aa_payload_preview.json` and prints the payload + URL.
+The embedding model ([`google/embeddinggemma-300m`](https://huggingface.co/google/embeddinggemma-300m)) is **gated** — you must accept its license before downloading:
 
-- **Metadata** (only if your AA endpoint requires it; defaults are provided):
-  - `--meta-llm-provider`
-  - `--meta-llm-version`
-  - `--meta-llm-sdk-version`
-  - `--meta-framework-provider`
-  - `--meta-platform-provider`
+1. [Create a Hugging Face account](https://huggingface.co/join) if you don't have one.
+2. Visit the [model page](https://huggingface.co/google/embeddinggemma-300m), sign in, and **agree to the terms**.
+3. Generate a **Read** token at [Settings > Access Tokens](https://huggingface.co/settings/tokens).
+4. Add it to `.env` as `HF_TOKEN=hf_...`, or run `huggingface-cli login` in the same environment.
 
-- **Timeout**:
-  - AA HTTP timeout is configured via `MEMORI_AUGMENTATION_TIMEOUT_SECONDS`.
+> The first run downloads the model (~1.2 GB), which may take a few minutes.
+
+### 4. Run the notebooks
+
+Open each notebook in Jupyter and run all cells top to bottom:
+
+1. **`01_load_indexes.ipynb`** — builds `indexes_gemma/` from augmented memories.
+2. **`02_run_benchmark.ipynb`** — runs the full evaluation pipeline.
+
+## Notebook details
+
+### `01_load_indexes.ipynb`
+
+- **Input:** `advanced_augmented_memories.json` (downloaded automatically if missing).
+- **Output:** `indexes_gemma/<conv_id>/` directories, each containing `faiss.index` and `metadata.json`.
+- Re-run this notebook whenever the memory data or embedding model changes.
+
+### `02_run_benchmark.ipynb`
+
+- Requires the `indexes_gemma/` directory from notebook `01`.
+- Run the configuration cell first, then sections 1 through 8 in order.
+- **Benchmark data** is fetched from a URL by default (`locomo10.json`). Set `LOCOMO_LOCAL_PATH` in the config cell to use a local copy.
+- **Key config** (all in the first code cell): `INDEX_DIR` (default `./indexes_gemma`), `RESULTS_DIR` (default `./results_gemma`), `OPENAI_MODEL` (default `gpt-4.1-mini`).
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| **401 / 403** when loading the embedding model | Make sure you accepted the license on the [model page](https://huggingface.co/google/embeddinggemma-300m) and that `HF_TOKEN` is set (or you ran `huggingface-cli login`). |
+| `FileNotFoundError` for indexes | Run notebook `01` first, or check that `INDEX_DIR` in notebook `02` points to the right directory. |
+| `OPENAI_API_KEY` errors in notebook `02` | Set the key in your `.env` file. |
+| Very slow first run | This is normal — the model download and FAISS index build are one-time costs. CPU is supported but slower than GPU. |
+
+## Verify your environment
+
+Quick check that tokens are configured (doesn't print secrets):
+
+```python
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+hf = bool(os.getenv("HF_TOKEN", "").strip())
+openai = bool(os.getenv("OPENAI_API_KEY", "").strip())
+print(f"HF_TOKEN set: {hf}  |  OPENAI_API_KEY set: {openai}")
+```

@@ -54,6 +54,7 @@ tests/examples/*
 
 # Benchmarking results
 tests/benchmarks/results/
+indexes_gemma/
 results/
 *.json
 *.csv

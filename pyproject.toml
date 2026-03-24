@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memori"
-version = "3.2.3"
+version = "3.2.4"
 description = "Memori Python SDK"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
 license = {text = "Apache-2.0"}
@@ -134,6 +134,7 @@ exclude_lines = [
 
 [tool.ty.src]
 exclude = [
+    "benchmarks/**/*.ipynb",
     "tests/**/*.py",
     "**/__pycache__/**",
 ]
