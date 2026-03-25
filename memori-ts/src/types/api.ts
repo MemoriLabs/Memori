@@ -4,16 +4,29 @@
  * @internal
  */
 export interface RecallObject {
+  id: number;
   content: string;
   rank_score?: number;
   similarity?: number;
   date_created?: string;
+  summaries?: RecallSummary[];
 }
 
 /**
  * @internal
  */
 export type RecallItem = string | RecallObject;
+
+/**
+ * Represents a summary associated with a recalled fact.
+ * @internal
+ */
+export interface RecallSummary {
+  content: string;
+  date_created: string;
+  entity_fact_id: number;
+  fact_id: number;
+}
 
 /**
  * Raw response shape from the Memori Cloud API.
@@ -25,6 +38,7 @@ export interface CloudRecallResponse {
   results?: RecallItem[];
   memories?: RecallItem[];
   data?: RecallItem[];
+  summaries?: RecallSummary[];
 
   // History fields
   messages?: unknown[];
@@ -53,4 +67,25 @@ export interface ParsedFact {
    * Undefined if the backend did not return temporal data.
    */
   dateCreated?: string;
+
+  /**
+   * Summaries associated with this fact, if provided by the backend.
+   */
+  summaries?: ParsedSummary[];
+}
+
+/**
+ * A normalized summary returned alongside a fact.
+ */
+export interface ParsedSummary {
+  /**
+   * The actual summary text.
+   */
+  content: string;
+
+  /**
+   * The ISO timestamp (YYYY-MM-DD HH:mm) when this summary was created.
+   * Undefined if the backend did not return temporal data.
+   */
+  dateCreated: string;
 }

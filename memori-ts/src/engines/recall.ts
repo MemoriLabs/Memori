@@ -2,9 +2,14 @@ import { CallContext, LLMRequest, Message, Role } from '@memorilabs/axon';
 import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
-import { extractFacts, extractHistory, stringifyContent } from '../utils/utils.js';
+import {
+  extractFacts,
+  extractHistory,
+  extractLastUserMessage,
+  formatSummariesFromFacts,
+  stringifyContent,
+} from '../utils/utils.js';
 import { CloudRecallResponse, ParsedFact } from '../types/api.js';
-import { extractLastUserMessage } from '../utils/utils.js';
 
 export class RecallEngine {
   constructor(
@@ -75,6 +80,9 @@ export class RecallEngine {
         const dateSuffix = f.dateCreated ? `. Stated at ${f.dateCreated}` : '';
         return `- ${f.content}${dateSuffix}`;
       });
+    const relevantSummaries = formatSummariesFromFacts(
+      facts.filter((f) => f.score >= this.config.recallRelevanceThreshold)
+    );
 
     let messages = [...req.messages];
 
@@ -83,8 +91,12 @@ export class RecallEngine {
     }
 
     if (relevantFacts.length > 0) {
-      const factList = relevantFacts.join('\n');
-      const recallContext = `\n\n<memori_context>\nOnly use the relevant context if it is relevant to the user's query. Relevant context about the user:\n${factList}\n</memori_context>`;
+      let contextBody = `Relevant context about the user:\n${relevantFacts.join('\n')}`;
+      if (relevantSummaries.length > 0) {
+        contextBody += `\n\n## Summaries\n\n${relevantSummaries.join('\n\n')}`;
+      }
+
+      const recallContext = `\n\n<memori_context>\nOnly use the relevant context if it is relevant to the user's query. ${contextBody}\n</memori_context>`;
 
       const systemIdx = messages.findIndex((m) => m.role === 'system');
       if (systemIdx >= 0) {

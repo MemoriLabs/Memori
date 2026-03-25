@@ -35,7 +35,7 @@ describe('RecallEngine', () => {
   describe('handleRecall()', () => {
     it('should inject context into system prompt if facts are relevant', async () => {
       (mockApi.post as any).mockResolvedValue({
-        facts: [{ content: 'User likes apples', rank_score: 0.9 }],
+        facts: [{ id: 1, content: 'User likes apples', rank_score: 0.9 }],
       });
 
       const req = {
@@ -86,7 +86,7 @@ describe('RecallEngine', () => {
 
     it('should create a new system message if one does not exist', async () => {
       (mockApi.post as any).mockResolvedValue({
-        facts: [{ content: 'Fact', rank_score: 0.9 }],
+        facts: [{ id: 1, content: 'Fact', rank_score: 0.9 }],
       });
 
       // Request WITHOUT a system message
@@ -99,6 +99,62 @@ describe('RecallEngine', () => {
       // Verify a system message was added to the front
       expect(newReq.messages[0].role).toBe('system');
       expect(newReq.messages[0].content).toContain('Fact');
+    });
+
+    it('should include deduped summaries in the injected recall context', async () => {
+      (mockApi.post as any).mockResolvedValue({
+        facts: [
+          {
+            id: 1,
+            content: 'User likes apples',
+            rank_score: 0.9,
+            summaries: [
+              {
+                content: 'User consistently mentions apples as a favorite.',
+                date_created: '2023-01-01T12:00:00Z',
+                entity_fact_id: 1,
+                fact_id: 1,
+              },
+            ],
+          },
+          {
+            id: 2,
+            content: 'User buys apples weekly',
+            rank_score: 0.8,
+          },
+        ],
+        summaries: [
+          {
+            content: 'User consistently mentions apples as a favorite.',
+            date_created: '2023-01-01T12:00:00Z',
+            entity_fact_id: 2,
+            fact_id: 2,
+          },
+          {
+            content: 'User eats fruit regularly.',
+            date_created: '2023-01-02T09:30:00Z',
+            entity_fact_id: 2,
+            fact_id: 2,
+          },
+        ],
+      });
+
+      const req = {
+        messages: [
+          { role: 'system', content: 'You are helpful.' },
+          { role: 'user', content: 'What fruit do I like?' },
+        ],
+      } as unknown as LLMRequest;
+
+      const newReq = await recallEngine.handleRecall(req, {} as any);
+      const systemMsg = newReq.messages.find((m) => m.role === 'system');
+
+      expect(systemMsg?.content).toContain('## Summaries');
+      expect(systemMsg?.content).toContain('[2023-01-01 12:00]');
+      expect(systemMsg?.content).toContain('User eats fruit regularly.');
+      expect(
+        systemMsg?.content.match(/User consistently mentions apples as a favorite\./g)
+      ).toHaveLength(1);
     });
 
     it('should return original request if no user message is found', async () => {
