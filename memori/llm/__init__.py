@@ -8,7 +8,7 @@ r"""
                        memorilabs.ai
 """
 
-from memori.llm import _clients  # noqa: F401
+from memori.llm import clients  # noqa: F401
 from memori.llm._registry import Registry
 from memori.llm.adapters import anthropic, bedrock, google, openai, xai  # noqa: F401
 

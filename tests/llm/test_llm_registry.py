@@ -2,7 +2,7 @@ import pytest
 
 from memori._exceptions import UnsupportedLLMProviderError
 from memori.llm._constants import (
-    ATHROPIC_LLM_PROVIDER,
+    ANTHROPIC_LLM_PROVIDER,
     GOOGLE_LLM_PROVIDER,
     LANGCHAIN_CHATBEDROCK_LLM_PROVIDER,
     LANGCHAIN_FRAMEWORK_PROVIDER,
@@ -17,7 +17,7 @@ from memori.llm.adapters.openai._adapter import Adapter as OpenAiLlmAdapter
 
 def test_llm_anthropic():
     assert isinstance(
-        Registry().adapter(None, ATHROPIC_LLM_PROVIDER), AnthropicLlmAdapter
+        Registry().adapter(None, ANTHROPIC_LLM_PROVIDER), AnthropicLlmAdapter
     )
 
 

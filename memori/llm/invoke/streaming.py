@@ -1,13 +1,3 @@
-r"""
- __  __                           _
-|  \/  | ___ _ __ ___   ___  _ __(_)
-| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
-| |  | |  __/ | | | | | (_) | |  | |
-|_|  |_|\___|_| |_| |_|\___/|_|  |_|
-                  perfectam memoriam
-                       memorilabs.ai
-"""
-
 import json
 import time
 
@@ -15,6 +5,8 @@ from memori._config import Config
 from memori._utils import bytes_to_json
 from memori.llm._base import BaseInvoke
 from memori.llm._utils import client_is_bedrock
+from memori.llm.helpers.serialization import format_kwargs, format_response
+from memori.llm.pipelines.post_invoke import format_payload
 from memori.memory._manager import Manager as MemoryManager
 
 
@@ -44,14 +36,22 @@ class StreamingBody:
         data = self.source_streaming_body.read(*args, **kwargs)
 
         MemoryManager(self.config).execute(
-            self.invoke._format_payload(
+            format_payload(
+                self.invoke,
                 self.config.framework.provider,
                 self.config.llm.provider,
                 self.config.llm.version,
                 self._time_start,
                 time.time(),
-                self.invoke._format_kwargs(self._kwargs),
-                self.invoke._format_response(json.loads(data.decode())),
+                format_kwargs(
+                    self._kwargs,
+                    uses_protobuf=self.invoke._uses_protobuf,
+                    framework_provider=self.config.framework.provider,
+                    injected_count=self.invoke._injected_message_count,
+                ),
+                format_response(
+                    json.loads(data.decode()), uses_protobuf=self.invoke._uses_protobuf
+                ),
             )
         )
 

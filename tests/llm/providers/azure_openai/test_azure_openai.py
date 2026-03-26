@@ -9,7 +9,7 @@ both OpenAI and AzureOpenAI clients.
 import pytest
 
 from memori._config import Config
-from memori.llm._clients import OpenAi
+from memori.llm.clients import OpenAi
 
 
 @pytest.fixture

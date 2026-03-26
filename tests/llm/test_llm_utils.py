@@ -4,7 +4,7 @@ from memori.llm._constants import (
     AGNO_GOOGLE_LLM_PROVIDER,
     AGNO_OPENAI_LLM_PROVIDER,
     AGNO_XAI_LLM_PROVIDER,
-    ATHROPIC_LLM_PROVIDER,
+    ANTHROPIC_LLM_PROVIDER,
     GOOGLE_LLM_PROVIDER,
     LANGCHAIN_CHATBEDROCK_LLM_PROVIDER,
     LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
@@ -42,8 +42,8 @@ def test_client_is_bedrock():
 
 def test_llm_is_anthropic():
     assert llm_is_anthropic("abc", "def") is False
-    assert llm_is_anthropic("abc", ATHROPIC_LLM_PROVIDER) is True
-    assert llm_is_anthropic(None, ATHROPIC_LLM_PROVIDER) is True
+    assert llm_is_anthropic("abc", ANTHROPIC_LLM_PROVIDER) is True
+    assert llm_is_anthropic(None, ANTHROPIC_LLM_PROVIDER) is True
 
 
 def test_llm_is_bedrock():

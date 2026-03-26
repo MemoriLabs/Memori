@@ -1,16 +1,8 @@
-r"""
- __  __                           _
-|  \/  | ___ _ __ ___   ___  _ __(_)
-| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
-| |  | |  __/ | | | | | (_) | |  | |
-|_|  |_|\___|_| |_| |_|\___/|_|  |_|
-                  perfectam memoriam
-                       memorilabs.ai
-"""
-
 import time
 
 from memori.llm._base import BaseIterator
+from memori.llm.helpers.serialization import format_kwargs, format_response
+from memori.llm.pipelines.post_invoke import format_payload
 from memori.memory._manager import Manager as MemoryManager
 
 
@@ -31,14 +23,22 @@ class AsyncIterator(BaseIterator):
             return chunk
         except StopAsyncIteration:
             MemoryManager(self.config).execute(
-                self.invoke._format_payload(
+                format_payload(
+                    self.invoke,
                     self.config.framework.provider,
                     self.config.llm.provider,
                     self.config.llm.version,
                     self._time_start,
                     time.time(),
-                    self.invoke._format_kwargs(self._kwargs),
-                    self.invoke._format_response(self.raw_response),
+                    format_kwargs(
+                        self._kwargs,
+                        uses_protobuf=self.invoke._uses_protobuf,
+                        framework_provider=self.config.framework.provider,
+                        injected_count=self.invoke._injected_message_count,
+                    ),
+                    format_response(
+                        self.raw_response, uses_protobuf=self.invoke._uses_protobuf
+                    ),
                 )
             )
             raise
@@ -68,14 +68,22 @@ class Iterator(BaseIterator):
             return chunk
         except StopIteration:
             MemoryManager(self.config).execute(
-                self.invoke._format_payload(
+                format_payload(
+                    self.invoke,
                     self.config.framework.provider,
                     self.config.llm.provider,
                     self.config.llm.version,
                     self._time_start,
                     time.time(),
-                    self.invoke._format_kwargs(self._kwargs),
-                    self.invoke._format_response(self.raw_response),
+                    format_kwargs(
+                        self._kwargs,
+                        uses_protobuf=self.invoke._uses_protobuf,
+                        framework_provider=self.config.framework.provider,
+                        injected_count=self.invoke._injected_message_count,
+                    ),
+                    format_response(
+                        self.raw_response, uses_protobuf=self.invoke._uses_protobuf
+                    ),
                 )
             )
 

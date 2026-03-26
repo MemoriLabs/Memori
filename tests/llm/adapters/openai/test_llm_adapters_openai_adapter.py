@@ -4,9 +4,12 @@ import pytest
 
 from memori._config import Config
 from memori.llm._base import BaseInvoke
-from memori.llm._invoke import Invoke, InvokeAsync
-from memori.llm._iterator import AsyncIterator, Iterator
 from memori.llm.adapters.openai._adapter import Adapter
+from memori.llm.helpers.query_extraction import extract_user_query
+from memori.llm.invoke.invoke import Invoke, InvokeAsync
+from memori.llm.invoke.iterator import AsyncIterator, Iterator
+from memori.llm.pipelines.conversation_injection import inject_conversation_messages
+from memori.llm.pipelines.recall_injection import inject_recalled_facts
 
 
 class MockEvent:
@@ -230,8 +233,9 @@ def test_iterator_iter_returns_self():
     assert iterator.__iter__() is iterator
 
 
-@patch("memori.llm._iterator.MemoryManager")
-def test_iterator_yields_all_events(mock_memory_manager):
+@patch("memori.llm.invoke.iterator.MemoryManager")
+@patch("memori.llm.invoke.iterator.format_payload", return_value={})
+def test_iterator_yields_all_events(mock_format_payload, mock_memory_manager):
     config = Config()
     events = [
         MockEvent("response.created"),
@@ -241,6 +245,7 @@ def test_iterator_yields_all_events(mock_memory_manager):
 
     mock_invoke = MagicMock()
     mock_invoke._uses_protobuf = False
+    mock_invoke._injected_message_count = 0
     mock_invoke._format_payload.return_value = {}
     mock_invoke._format_kwargs.return_value = {}
     mock_invoke._format_response.return_value = {}
@@ -251,8 +256,11 @@ def test_iterator_yields_all_events(mock_memory_manager):
     assert len(collected) == 2
 
 
-@patch("memori.llm._iterator.MemoryManager")
-def test_iterator_captures_response_on_completed_event(mock_memory_manager):
+@patch("memori.llm.invoke.iterator.MemoryManager")
+@patch("memori.llm.invoke.iterator.format_payload", return_value={})
+def test_iterator_captures_response_on_completed_event(
+    mock_format_payload, mock_memory_manager
+):
     config = Config()
     mock_response = MockResponse("Test output")
     events = [MockEvent("response.completed", mock_response)]
@@ -260,6 +268,7 @@ def test_iterator_captures_response_on_completed_event(mock_memory_manager):
 
     mock_invoke = MagicMock()
     mock_invoke._uses_protobuf = False
+    mock_invoke._injected_message_count = 0
     mock_invoke._format_payload.return_value = {}
     mock_invoke._format_kwargs.return_value = {}
     mock_invoke._format_response.return_value = {}
@@ -279,8 +288,11 @@ def test_async_iterator_aiter_returns_self():
 
 
 @pytest.mark.asyncio
-@patch("memori.llm._iterator.MemoryManager")
-async def test_async_iterator_yields_all_events(mock_memory_manager):
+@patch("memori.llm.invoke.iterator.MemoryManager")
+@patch("memori.llm.invoke.iterator.format_payload", return_value={})
+async def test_async_iterator_yields_all_events(
+    mock_format_payload, mock_memory_manager
+):
     config = Config()
     events = [
         MockEvent("response.created"),
@@ -295,6 +307,7 @@ async def test_async_iterator_yields_all_events(mock_memory_manager):
 
     mock_invoke = MagicMock()
     mock_invoke._uses_protobuf = False
+    mock_invoke._injected_message_count = 0
     mock_invoke._format_payload.return_value = {}
     mock_invoke._format_kwargs.return_value = {}
     mock_invoke._format_response.return_value = {}
@@ -316,28 +329,24 @@ async def test_async_iterator_raises_runtime_error_if_not_initialized():
         await iterator.__anext__()
 
 
-def test_extract_user_query_from_string_input():
-    config = Config()
-    invoke = BaseInvoke(config, lambda **kwargs: None)
-    assert invoke._extract_user_query({"input": "What is 2+2?"}) == "What is 2+2?"
-
-
-def test_extract_user_query_from_list_input():
-    config = Config()
-    invoke = BaseInvoke(config, lambda **kwargs: None)
-    kwargs = {
-        "input": [
-            {"role": "user", "content": "First"},
-            {"role": "user", "content": "Second"},
-        ]
-    }
-    assert invoke._extract_user_query(kwargs) == "Second"
-
-
-def test_extract_user_query_from_missing_input():
-    config = Config()
-    invoke = BaseInvoke(config, lambda **kwargs: None)
-    assert invoke._extract_user_query({}) == ""
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({"input": "What is 2+2?"}, "What is 2+2?"),
+        (
+            {
+                "input": [
+                    {"role": "user", "content": "First"},
+                    {"role": "user", "content": "Second"},
+                ]
+            },
+            "Second",
+        ),
+        ({}, ""),
+    ],
+)
+def test_extract_user_query(kwargs, expected):
+    assert extract_user_query(kwargs) == expected
 
 
 def test_inject_recalled_facts_returns_kwargs_when_no_storage():
@@ -345,7 +354,7 @@ def test_inject_recalled_facts_returns_kwargs_when_no_storage():
     config.storage = None
     invoke = BaseInvoke(config, lambda **kwargs: None)
     kwargs = {"input": "test", "instructions": "Be helpful"}
-    assert invoke.inject_recalled_facts(kwargs) == kwargs
+    assert inject_recalled_facts(invoke, kwargs) == kwargs
 
 
 def test_inject_recalled_facts_appends_facts_to_instructions():
@@ -365,7 +374,7 @@ def test_inject_recalled_facts_appends_facts_to_instructions():
     with patch("memori.memory.recall.Recall") as MockRecall:
         MockRecall.return_value.search_facts.return_value = mock_facts
         kwargs = {"input": "Test", "instructions": "Be helpful."}
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
         assert "<memori_context>" in result["instructions"]
         assert "User likes Python" in result["instructions"]
 
@@ -375,7 +384,7 @@ def test_inject_conversation_messages_returns_kwargs_when_no_conversation_id():
     config.cache.conversation_id = None
     invoke = BaseInvoke(config, lambda **kwargs: None)
     kwargs = {"input": "test"}
-    assert invoke.inject_conversation_messages(kwargs) == kwargs
+    assert inject_conversation_messages(invoke, kwargs) == kwargs
 
 
 def test_inject_conversation_messages_converts_string_input_to_list():
@@ -391,7 +400,7 @@ def test_inject_conversation_messages_converts_string_input_to_list():
     invoke = BaseInvoke(config, lambda **kwargs: None)
     invoke.set_client(None, "openai_responses", "1.0.0")
 
-    result = invoke.inject_conversation_messages({"input": "New"})
+    result = inject_conversation_messages(invoke, {"input": "New"})
     assert isinstance(result["input"], list)
     assert len(result["input"]) == 2
 

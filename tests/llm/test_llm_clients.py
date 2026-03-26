@@ -1,7 +1,7 @@
 import pytest
 
 from memori._config import Config
-from memori.llm._clients import (
+from memori.llm.clients import (
     Agno,
     Anthropic,
     Google,
@@ -100,7 +100,7 @@ def test_anthropic_register_wraps_real_client_and_injects_recall(config, mocker)
         "memori.memory.recall.Recall.search_facts",
         return_value=[{"content": "User likes tennis", "similarity": 0.9}],
     )
-    mocker.patch("memori.llm._base.BaseInvoke.handle_post_response")
+    mocker.patch("memori.llm.invoke.invoke.handle_post_response")
 
     anthropic_client = Anthropic(config)
     anthropic_client.register(client)
@@ -198,7 +198,7 @@ def test_google_register_wraps_real_google_genai_client_and_injects_recall(
         "memori.memory.recall.Recall.search_facts",
         return_value=[{"content": "User likes tennis", "similarity": 0.9}],
     )
-    mocker.patch("memori.llm._base.BaseInvoke.handle_post_response")
+    mocker.patch("memori.llm.invoke.invoke.handle_post_response")
 
     google_client = Google(config)
     google_client.register(client)
@@ -286,7 +286,7 @@ def test_openai_register_wraps_real_client_and_injects_recall(config, mocker):
         "memori.memory.recall.Recall.search_facts",
         return_value=[{"content": "User likes tennis", "similarity": 0.9}],
     )
-    mocker.patch("memori.llm._base.BaseInvoke.handle_post_response")
+    mocker.patch("memori.llm.invoke.invoke.handle_post_response")
 
     openai_client = OpenAi(config)
     openai_client.register(client)

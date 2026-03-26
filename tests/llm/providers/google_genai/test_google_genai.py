@@ -10,6 +10,7 @@ import pytest
 
 from memori._config import Config
 from memori.llm._base import BaseInvoke, BaseIterator
+from memori.llm.helpers.serialization import format_response
 
 
 @pytest.fixture
@@ -95,7 +96,7 @@ class TestGoogleGenaiNonStreamingFormat:
         invoke._uses_protobuf = True
 
         response = MockGoogleGenaiResponse("Hello world", role="model")
-        formatted = invoke._format_response(response)
+        formatted = format_response(response, uses_protobuf=invoke._uses_protobuf)
 
         assert "candidates" in formatted
         assert len(formatted["candidates"]) == 1
@@ -113,7 +114,7 @@ class TestGoogleGenaiNonStreamingFormat:
 
         response = MockGoogleGenaiResponse("Test")
         response.candidates = []
-        formatted = invoke._format_response(response)
+        formatted = format_response(response, uses_protobuf=invoke._uses_protobuf)
 
         # Empty candidates returns empty dict (no content to save)
         assert formatted == {}
@@ -124,7 +125,7 @@ class TestGoogleGenaiNonStreamingFormat:
         invoke._uses_protobuf = True
 
         response = MockGoogleGenaiResponse("Hello", role="model")
-        formatted = invoke._format_response(response)
+        formatted = format_response(response, uses_protobuf=invoke._uses_protobuf)
 
         assert formatted["candidates"][0]["content"]["role"] == "model"
 
@@ -222,6 +223,6 @@ class TestGoogleGenaiBackwardsCompatibility:
         invoke._uses_protobuf = False
 
         response = {"choices": [{"message": {"content": "Hello"}}]}
-        formatted = invoke._format_response(response)
+        formatted = format_response(response, uses_protobuf=invoke._uses_protobuf)
 
         assert formatted == response

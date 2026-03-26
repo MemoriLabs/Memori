@@ -1,13 +1,3 @@
-r"""
- __  __                           _
-|  \/  | ___ _ __ ___   ___  _ __(_)
-| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
-| |  | |  __/ | | | | | (_) | |  | |
-|_|  |_|\___|_| |_| |_|\___/|_|  |_|
-                  perfectam memoriam
-                       memorilabs.ai
-"""
-
 import inspect
 import logging
 import time
@@ -19,11 +9,14 @@ from grpc.experimental.aio import UnaryStreamCall
 from memori._logging import truncate
 from memori._utils import merge_chunk
 from memori.llm._base import BaseInvoke
-from memori.llm._iterable import Iterable as MemoriIterable
-from memori.llm._iterator import AsyncIterator as MemoriAsyncIterator
-from memori.llm._iterator import Iterator as MemoriIterator
-from memori.llm._streaming import StreamingBody as MemoriStreamingBody
 from memori.llm._utils import client_is_bedrock
+from memori.llm.invoke.iterable import Iterable as MemoriIterable
+from memori.llm.invoke.iterator import AsyncIterator as MemoriAsyncIterator
+from memori.llm.invoke.iterator import Iterator as MemoriIterator
+from memori.llm.invoke.streaming import StreamingBody as MemoriStreamingBody
+from memori.llm.pipelines.conversation_injection import inject_conversation_messages
+from memori.llm.pipelines.post_invoke import handle_post_response
+from memori.llm.pipelines.recall_injection import inject_recalled_facts
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +25,9 @@ class Invoke(BaseInvoke):
     def invoke(self, **kwargs):
         start = time.time()
 
-        kwargs = self.inject_conversation_messages(
-            self.inject_recalled_facts(self.configure_for_streaming_usage(kwargs))
+        kwargs = inject_conversation_messages(
+            self,
+            inject_recalled_facts(self, self.configure_for_streaming_usage(kwargs)),
         )
 
         logger.debug(
@@ -67,7 +61,7 @@ class Invoke(BaseInvoke):
 
             return raw_response
         else:
-            self.handle_post_response(kwargs, start, raw_response)
+            handle_post_response(self, kwargs, start, raw_response)
             return raw_response
 
 
@@ -75,8 +69,9 @@ class InvokeAsync(BaseInvoke):
     async def invoke(self, **kwargs):
         start = time.time()
 
-        kwargs = self.inject_conversation_messages(
-            self.inject_recalled_facts(self.configure_for_streaming_usage(kwargs))
+        kwargs = inject_conversation_messages(
+            self,
+            inject_recalled_facts(self, self.configure_for_streaming_usage(kwargs)),
         )
 
         logger.debug(
@@ -96,7 +91,7 @@ class InvokeAsync(BaseInvoke):
                 .configure_request(kwargs, start)
             )
         else:
-            self.handle_post_response(kwargs, start, raw_response)
+            handle_post_response(self, kwargs, start, raw_response)
             return raw_response
 
 
@@ -104,8 +99,9 @@ class InvokeAsyncIterator(BaseInvoke):
     async def invoke(self, **kwargs):
         start = time.time()
 
-        kwargs = self.inject_conversation_messages(
-            self.inject_recalled_facts(self.configure_for_streaming_usage(kwargs))
+        kwargs = inject_conversation_messages(
+            self,
+            inject_recalled_facts(self, self.configure_for_streaming_usage(kwargs)),
         )
 
         raw_response = await self._method(**kwargs)
@@ -120,7 +116,7 @@ class InvokeAsyncIterator(BaseInvoke):
                 .configure_request(kwargs, start)
             )
         else:
-            self.handle_post_response(kwargs, start, raw_response)
+            handle_post_response(self, kwargs, start, raw_response)
             return raw_response
 
 
@@ -128,8 +124,9 @@ class InvokeAsyncStream(BaseInvoke):
     async def invoke(self, **kwargs):
         start = time.time()
 
-        kwargs = self.inject_conversation_messages(
-            self.inject_recalled_facts(self.configure_for_streaming_usage(kwargs))
+        kwargs = inject_conversation_messages(
+            self,
+            inject_recalled_facts(self, self.configure_for_streaming_usage(kwargs)),
         )
 
         stream = await self._method(**kwargs)
@@ -139,18 +136,19 @@ class InvokeAsyncStream(BaseInvoke):
             raw_response = merge_chunk(raw_response, chunk.__dict__)
             yield chunk
 
-        self.handle_post_response(kwargs, start, raw_response)
+        handle_post_response(self, kwargs, start, raw_response)
 
 
 class InvokeStream(BaseInvoke):
     async def invoke(self, **kwargs):
         start = time.time()
 
-        kwargs = self.inject_conversation_messages(
-            self.inject_recalled_facts(self.configure_for_streaming_usage(kwargs))
+        kwargs = inject_conversation_messages(
+            self,
+            inject_recalled_facts(self, self.configure_for_streaming_usage(kwargs)),
         )
 
         raw_response = await self._method(**kwargs)
 
-        self.handle_post_response(kwargs, start, raw_response)
+        handle_post_response(self, kwargs, start, raw_response)
         return raw_response

@@ -1,7 +1,7 @@
 import pytest
 
 from memori._config import Config
-from memori.llm._clients import Anthropic, Google, OpenAi, XAi
+from memori.llm.clients import Anthropic, Google, OpenAi, XAi
 
 
 @pytest.fixture

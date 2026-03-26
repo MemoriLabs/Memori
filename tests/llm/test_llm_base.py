@@ -1,6 +1,8 @@
 import json
 from unittest.mock import Mock, patch
 
+import pytest
+
 from memori._config import Config
 from memori.llm._base import BaseInvoke, BaseLlmAdaptor
 from memori.llm._constants import (
@@ -8,19 +10,33 @@ from memori.llm._constants import (
     LANGCHAIN_OPENAI_LLM_PROVIDER,
     OPENAI_LLM_PROVIDER,
 )
+from memori.llm.helpers.google_system_instruction import (
+    append_to_content_dict,
+    append_to_google_system_instruction_dict,
+    append_to_list,
+)
+from memori.llm.helpers.query_extraction import (
+    extract_from_contents,
+    extract_text_from_parts,
+    extract_user_query,
+)
+from memori.llm.helpers.serialization import dict_to_json, get_response_content
+from memori.llm.pipelines.conversation_injection import inject_conversation_messages
+from memori.llm.pipelines.post_invoke import handle_post_response
+from memori.llm.pipelines.recall_injection import inject_recalled_facts
 
 
 def test_dict_to_json_dict():
-    assert BaseInvoke(Config(), "abc").dict_to_json({"a": "b", "c": "d"}) == {
+    assert dict_to_json({"a": "b", "c": "d"}) == {
         "a": "b",
         "c": "d",
     }
 
 
 def test_dist_to_json_dict_has_dict():
-    assert BaseInvoke(Config(), "abc").dict_to_json(
-        {"a": {"b": {"c": "d"}, "e": 123}}
-    ) == {"a": {"b": {"c": "d"}, "e": 123}}
+    assert dict_to_json({"a": {"b": {"c": "d"}, "e": 123}}) == {
+        "a": {"b": {"c": "d"}, "e": 123}
+    }
 
 
 def test_configure_for_streaming_usage_openai():
@@ -105,9 +121,9 @@ def test_configure_for_streaming_usage_only_if_stream_is_true_langchain_openai()
 
 
 def test_get_response_content():
-    invoke = BaseInvoke(Config(), "abc")
+    BaseInvoke(Config(), "abc")
 
-    assert invoke.get_response_content({"abc": "def"}) == {"abc": "def"}
+    assert get_response_content({"abc": "def"}) == {"abc": "def"}
 
     class MockLegacyAPIResponse:
         def __init__(self):
@@ -117,7 +133,7 @@ def test_get_response_content():
     legacy_api_response.__class__.__name__ = "LegacyAPIResponse"
     legacy_api_response.__class__.__module__ = "openai._legacy_response"
 
-    assert invoke.get_response_content(legacy_api_response) == {"abc": "def"}
+    assert get_response_content(legacy_api_response) == {"abc": "def"}
 
 
 def test_exclude_injected_messages():
@@ -161,7 +177,7 @@ def test_handle_post_response_without_augmentation():
         ) as mock_parse:
             mock_parse.return_value = [{"role": "user", "type": None, "text": "Hello"}]
 
-            invoke.handle_post_response(kwargs, start_time, raw_response)
+            handle_post_response(invoke, kwargs, start_time, raw_response)
 
             mock_memory_manager.assert_called_once_with(config)
             mock_manager_instance.execute.assert_called_once()
@@ -187,7 +203,7 @@ def test_handle_post_response_with_augmentation_no_conversation():
         ) as mock_parse:
             mock_parse.return_value = [{"role": "user", "type": None, "text": "Hello"}]
 
-            invoke.handle_post_response(kwargs, start_time, raw_response)
+            handle_post_response(invoke, kwargs, start_time, raw_response)
 
             mock_memory_manager.assert_called_once_with(config)
             mock_manager_instance.execute.assert_called_once()
@@ -220,7 +236,7 @@ def test_handle_post_response_with_augmentation_and_conversation():
         ) as mock_parse:
             mock_parse.return_value = [{"role": "user", "type": None, "text": "Hello"}]
 
-            invoke.handle_post_response(kwargs, start_time, raw_response)
+            handle_post_response(invoke, kwargs, start_time, raw_response)
 
             mock_memory_manager.assert_called_once_with(config)
             mock_manager_instance.execute.assert_called_once()
@@ -232,125 +248,83 @@ def test_handle_post_response_with_augmentation_and_conversation():
             assert call_args.conversation_messages[0].content == "Hello"
 
 
-def test_extract_user_query_with_user_message():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {
-        "messages": [
-            {"role": "system", "content": "You are helpful"},
-            {"role": "user", "content": "What is the weather?"},
-        ]
-    }
-    assert invoke._extract_user_query(kwargs) == "What is the weather?"
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        (
+            {
+                "messages": [
+                    {"role": "system", "content": "You are helpful"},
+                    {"role": "user", "content": "What is the weather?"},
+                ]
+            },
+            "What is the weather?",
+        ),
+        (
+            {
+                "messages": [
+                    {"role": "user", "content": "First question"},
+                    {"role": "assistant", "content": "First answer"},
+                    {"role": "user", "content": "Second question"},
+                ]
+            },
+            "Second question",
+        ),
+        ({}, ""),
+        ({"messages": []}, ""),
+        (
+            {
+                "messages": [
+                    {"role": "system", "content": "You are helpful"},
+                    {"role": "assistant", "content": "I can help"},
+                ]
+            },
+            "",
+        ),
+        ({"contents": "What is the weather?"}, "What is the weather?"),
+        ({"contents": ["First message", "Second message"]}, "Second message"),
+        (
+            {
+                "contents": [
+                    {"role": "user", "parts": [{"text": "First question"}]},
+                    {"role": "model", "parts": [{"text": "Answer"}]},
+                    {"role": "user", "parts": [{"text": "Second question"}]},
+                ]
+            },
+            "Second question",
+        ),
+        ({"contents": [{"role": "user", "parts": ["Hello", "World"]}]}, "Hello World"),
+        ({"contents": []}, ""),
+        ({"contents": ""}, ""),
+    ],
+)
+def test_extract_user_query(kwargs, expected):
+    assert extract_user_query(kwargs) == expected
 
 
-def test_extract_user_query_with_multiple_user_messages():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {
-        "messages": [
-            {"role": "user", "content": "First question"},
-            {"role": "assistant", "content": "First answer"},
-            {"role": "user", "content": "Second question"},
-        ]
-    }
-    assert invoke._extract_user_query(kwargs) == "Second question"
+@pytest.mark.parametrize(
+    ("parts", "expected"),
+    [
+        (["Hello", "World"], "Hello World"),
+        ([{"text": "Hello"}, {"text": "World"}], "Hello World"),
+        (["Hello", {"text": "World"}], "Hello World"),
+        ([], ""),
+    ],
+)
+def test_extract_text_from_parts(parts, expected):
+    assert extract_text_from_parts(parts) == expected
 
 
-def test_extract_user_query_no_messages():
-    invoke = BaseInvoke(Config(), "test_method")
-    assert invoke._extract_user_query({}) == ""
-    assert invoke._extract_user_query({"messages": []}) == ""
-
-
-def test_extract_user_query_no_user_messages():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {
-        "messages": [
-            {"role": "system", "content": "You are helpful"},
-            {"role": "assistant", "content": "I can help"},
-        ]
-    }
-    assert invoke._extract_user_query(kwargs) == ""
-
-
-def test_extract_user_query_google_contents_string():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {"contents": "What is the weather?"}
-    assert invoke._extract_user_query(kwargs) == "What is the weather?"
-
-
-def test_extract_user_query_google_contents_list_of_strings():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {"contents": ["First message", "Second message"]}
-    assert invoke._extract_user_query(kwargs) == "Second message"
-
-
-def test_extract_user_query_google_contents_list_of_dicts():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {
-        "contents": [
-            {"role": "user", "parts": [{"text": "First question"}]},
-            {"role": "model", "parts": [{"text": "Answer"}]},
-            {"role": "user", "parts": [{"text": "Second question"}]},
-        ]
-    }
-    assert invoke._extract_user_query(kwargs) == "Second question"
-
-
-def test_extract_user_query_google_contents_with_string_parts():
-    invoke = BaseInvoke(Config(), "test_method")
-    kwargs = {
-        "contents": [
-            {"role": "user", "parts": ["Hello", "World"]},
-        ]
-    }
-    assert invoke._extract_user_query(kwargs) == "Hello World"
-
-
-def test_extract_user_query_google_contents_empty():
-    invoke = BaseInvoke(Config(), "test_method")
-    assert invoke._extract_user_query({"contents": []}) == ""
-    assert invoke._extract_user_query({"contents": ""}) == ""
-
-
-def test_extract_text_from_parts_with_strings():
-    invoke = BaseInvoke(Config(), "test_method")
-    parts = ["Hello", "World"]
-    assert invoke._extract_text_from_parts(parts) == "Hello World"
-
-
-def test_extract_text_from_parts_with_dicts():
-    invoke = BaseInvoke(Config(), "test_method")
-    parts = [{"text": "Hello"}, {"text": "World"}]
-    assert invoke._extract_text_from_parts(parts) == "Hello World"
-
-
-def test_extract_text_from_parts_mixed():
-    invoke = BaseInvoke(Config(), "test_method")
-    parts = ["Hello", {"text": "World"}]
-    assert invoke._extract_text_from_parts(parts) == "Hello World"
-
-
-def test_extract_text_from_parts_empty():
-    invoke = BaseInvoke(Config(), "test_method")
-    assert invoke._extract_text_from_parts([]) == ""
-
-
-def test_extract_from_contents_string():
-    invoke = BaseInvoke(Config(), "test_method")
-    assert invoke._extract_from_contents("Hello") == "Hello"
-
-
-def test_extract_from_contents_list_strings():
-    invoke = BaseInvoke(Config(), "test_method")
-    assert invoke._extract_from_contents(["First", "Second"]) == "Second"
-
-
-def test_extract_from_contents_list_dicts():
-    invoke = BaseInvoke(Config(), "test_method")
-    contents = [
-        {"role": "user", "parts": [{"text": "Question"}]},
-    ]
-    assert invoke._extract_from_contents(contents) == "Question"
+@pytest.mark.parametrize(
+    ("contents", "expected"),
+    [
+        ("Hello", "Hello"),
+        (["First", "Second"], "Second"),
+        ([{"role": "user", "parts": [{"text": "Question"}]}], "Question"),
+    ],
+)
+def test_extract_from_contents(contents, expected):
+    assert extract_from_contents(contents) == expected
 
 
 def test_inject_recalled_facts_no_storage():
@@ -359,7 +333,7 @@ def test_inject_recalled_facts_no_storage():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_recalled_facts(kwargs)
+    result = inject_recalled_facts(invoke, kwargs)
 
     assert result == kwargs
 
@@ -371,7 +345,7 @@ def test_inject_recalled_facts_no_entity_id():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_recalled_facts(kwargs)
+    result = inject_recalled_facts(invoke, kwargs)
 
     assert result == kwargs
 
@@ -385,7 +359,7 @@ def test_inject_recalled_facts_no_user_query():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "system", "content": "You are helpful"}]}
-    result = invoke.inject_recalled_facts(kwargs)
+    result = inject_recalled_facts(invoke, kwargs)
 
     assert result == kwargs
 
@@ -402,7 +376,7 @@ def test_inject_recalled_facts_no_facts_found():
 
     with patch("memori.memory.recall.Recall") as mock_recall:
         mock_recall.return_value.search_facts.return_value = []
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert result == kwargs
     assert len(kwargs["messages"]) == 1
@@ -422,7 +396,7 @@ def test_inject_recalled_facts_no_relevant_facts():
         mock_recall.return_value.search_facts.return_value = [
             {"content": "Irrelevant fact", "similarity": 0.05}
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert result == kwargs
     assert len(kwargs["messages"]) == 1
@@ -451,7 +425,7 @@ def test_inject_recalled_facts_success():
                 "date_created": "2026-01-02 11:15:00",
             },
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert len(result["messages"]) == 2
     assert result["messages"][0]["role"] == "system"
@@ -489,7 +463,7 @@ def test_inject_recalled_facts_local_includes_summaries():
                 ],
             }
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert "User likes structured answers" in result["messages"][0]["content"]
     assert "## Summaries" in result["messages"][0]["content"]
@@ -527,7 +501,7 @@ def test_inject_recalled_facts_local_dedupes_repeated_summaries():
                 "summaries": [repeated_summary],
             },
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     context = result["messages"][0]["content"]
     assert (
@@ -551,7 +525,7 @@ def test_inject_recalled_facts_filters_by_relevance():
             {"content": "Relevant fact", "similarity": 0.9},
             {"content": "Irrelevant fact", "similarity": 0.05},
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert len(result["messages"]) == 2
     assert "Relevant fact" in result["messages"][0]["content"]
@@ -577,7 +551,7 @@ def test_inject_recalled_facts_extends_existing_system_message():
         mock_recall.return_value.search_facts.return_value = [
             {"content": "User likes pizza", "similarity": 0.9},
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     # Should still have 2 messages (not 3)
     assert len(result["messages"]) == 2
@@ -603,7 +577,7 @@ def test_inject_recalled_facts_creates_system_message_when_none_exists():
         mock_recall.return_value.search_facts.return_value = [
             {"content": "User likes pizza", "similarity": 0.9},
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     # Should have 2 messages now (system + user)
     assert len(result["messages"]) == 2
@@ -630,7 +604,7 @@ def test_inject_recalled_facts_google_creates_config():
         mock_recall.return_value.search_facts.return_value = [
             {"content": "User likes pizza", "similarity": 0.9},
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert "config" in result
     assert "system_instruction" in result["config"]
@@ -656,7 +630,7 @@ def test_inject_recalled_facts_google_extends_existing_config():
         mock_recall.return_value.search_facts.return_value = [
             {"content": "User likes pizza", "similarity": 0.9},
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert "You are helpful." in result["config"]["system_instruction"]
     assert "User likes pizza" in result["config"]["system_instruction"]
@@ -682,7 +656,7 @@ def test_inject_recalled_facts_google_with_contents_list():
         mock_recall.return_value.search_facts.return_value = [
             {"content": "User likes pizza", "similarity": 0.9},
         ]
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert "config" in result
     assert "system_instruction" in result["config"]
@@ -690,69 +664,60 @@ def test_inject_recalled_facts_google_with_contents_list():
 
 
 def test_append_to_google_system_instruction_dict_empty():
-    invoke = BaseInvoke(Config(), "test_method")
     config = {}
-    invoke._append_to_google_system_instruction_dict(config, "\n\ntest context")
+    append_to_google_system_instruction_dict(config, "\n\ntest context")
     assert config["system_instruction"] == "test context"
 
 
 def test_append_to_google_system_instruction_dict_string():
-    invoke = BaseInvoke(Config(), "test_method")
     config = {"system_instruction": "Existing."}
-    invoke._append_to_google_system_instruction_dict(config, "\n\ntest context")
+    append_to_google_system_instruction_dict(config, "\n\ntest context")
     assert config["system_instruction"] == "Existing.\n\ntest context"
 
 
 def test_append_to_google_system_instruction_dict_list_of_dicts():
-    invoke = BaseInvoke(Config(), "test_method")
     config = {"system_instruction": [{"text": "Existing."}]}
-    invoke._append_to_google_system_instruction_dict(config, "\n\ntest context")
+    append_to_google_system_instruction_dict(config, "\n\ntest context")
     assert config["system_instruction"][0]["text"] == "Existing.\n\ntest context"
 
 
 def test_append_to_google_system_instruction_dict_list_of_strings():
-    invoke = BaseInvoke(Config(), "test_method")
     config = {"system_instruction": ["Existing."]}
-    invoke._append_to_google_system_instruction_dict(config, "\n\ntest context")
+    append_to_google_system_instruction_dict(config, "\n\ntest context")
     assert config["system_instruction"][0] == "Existing.\n\ntest context"
 
 
 def test_append_to_list_empty():
-    invoke = BaseInvoke(Config(), "test_method")
     parent = {"key": []}
-    invoke._append_to_list(parent["key"], "\n\ntest", parent, "key")
+    append_to_list(parent["key"], "\n\ntest", parent, "key")
     assert parent["key"] == [{"text": "test"}]
 
 
 def test_append_to_list_dict_with_text():
-    invoke = BaseInvoke(Config(), "test_method")
     lst = [{"text": "Existing"}]
     parent = {"key": lst}
-    invoke._append_to_list(lst, "\n\ntest", parent, "key")
+    append_to_list(lst, "\n\ntest", parent, "key")
     assert lst[0]["text"] == "Existing\n\ntest"
 
 
 def test_append_to_list_strings():
-    invoke = BaseInvoke(Config(), "test_method")
     lst = ["Existing"]
     parent = {"key": lst}
-    invoke._append_to_list(lst, "\n\ntest", parent, "key")
+    append_to_list(lst, "\n\ntest", parent, "key")
     assert lst[0] == "Existing\n\ntest"
 
 
 def test_append_to_content_dict_with_parts():
-    invoke = BaseInvoke(Config(), "test_method")
     content = {"parts": [{"text": "Existing"}]}
     parent = {"key": content}
-    invoke._append_to_content_dict(content, "\n\ntest", parent, "key")
+    append_to_content_dict(content, "\n\ntest", parent, "key")
     assert content["parts"][0]["text"] == "Existing\n\ntest"
 
 
 def test_append_to_content_dict_with_text():
-    invoke = BaseInvoke(Config(), "test_method")
     content = {"text": "Existing"}
     parent = {"key": content}
-    invoke._append_to_content_dict(content, "\n\ntest", parent, "key")
+    append_to_content_dict(content, "\n\ntest", parent, "key")
     assert content["text"] == "Existing\n\ntest"
 
 
@@ -762,7 +727,7 @@ def test_inject_conversation_messages_no_conversation_id():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_conversation_messages(kwargs)
+    result = inject_conversation_messages(invoke, kwargs)
 
     assert result == kwargs
 
@@ -774,7 +739,7 @@ def test_inject_conversation_messages_no_storage():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_conversation_messages(kwargs)
+    result = inject_conversation_messages(invoke, kwargs)
 
     assert result == kwargs
 
@@ -788,7 +753,7 @@ def test_inject_conversation_messages_no_messages():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
-    result = invoke.inject_conversation_messages(kwargs)
+    result = inject_conversation_messages(invoke, kwargs)
 
     assert result == kwargs
     assert invoke._injected_message_count == 0
@@ -807,7 +772,7 @@ def test_inject_conversation_messages_openai_success():
     invoke = BaseInvoke(config, "test_method")
 
     kwargs = {"messages": [{"role": "user", "content": "New question"}]}
-    result = invoke.inject_conversation_messages(kwargs)
+    result = inject_conversation_messages(invoke, kwargs)
 
     assert len(result["messages"]) == 3
     assert result["messages"][0]["content"] == "Previous question"
@@ -836,7 +801,7 @@ def test_inject_conversation_messages_cache_miss_loads_from_session(mocker):
     invoke = BaseInvoke(config, "test_method")
     kwargs = {"messages": [{"role": "user", "content": "New question"}]}
 
-    result = invoke.inject_conversation_messages(kwargs)
+    result = inject_conversation_messages(invoke, kwargs)
 
     assert config.cache.session_id == 11
     assert config.cache.conversation_id == 22
@@ -872,8 +837,8 @@ def test_inject_conversation_messages_cloud_fetches_from_cloud(mocker):
         },
     )
 
-    kwargs = invoke.inject_recalled_facts(kwargs)
-    result = invoke.inject_conversation_messages(kwargs)
+    kwargs = inject_recalled_facts(invoke, kwargs)
+    result = inject_conversation_messages(invoke, kwargs)
 
     assert [m["content"] for m in result["messages"]] == [
         "cloud previous question",
@@ -910,7 +875,7 @@ def test_inject_recalled_facts_cloud_uses_filtered_summaries():
             "messages": [],
         }
 
-        result = invoke.inject_recalled_facts(kwargs)
+        result = inject_recalled_facts(invoke, kwargs)
 
     assert "Relevant fact" in result["messages"][0]["content"]
     assert "## Summaries" in result["messages"][0]["content"]

@@ -16,6 +16,13 @@ from memori.llm._base import BaseClient, BaseLlmAdaptor
 
 
 class Registry:
+    """Runtime registry for client wrappers and payload adapters.
+
+    Note:
+    - Client handlers are selected by matcher registration order.
+    - Adapter classes are registered at import time via `memori.llm.__init__`.
+    """
+
     _clients: dict[Callable[[Any], bool], type[BaseClient]] = {}
     _adapters: dict[Callable[[str | None, str | None], bool], type[BaseLlmAdaptor]] = {}
 
@@ -89,6 +96,11 @@ def register_llm(
         llm.register(chatgooglegenai=model)
         llm.register(chatopenai=model)
         llm.register(chatvertexai=model)
+
+    Registration paths:
+    - Framework path (Agno/LangChain): uses named parameters and delegates to
+      `memori.agno.register(...)` or `memori.langchain.register(...)`.
+    - Direct client path: resolves wrapper with `Registry().client(...)`.
     """
     agno_args = [openai_chat, claude, gemini, xai]
     langchain_args = [chatbedrock, chatgooglegenai, chatopenai, chatvertexai]

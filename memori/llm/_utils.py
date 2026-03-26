@@ -14,7 +14,7 @@ from memori.llm._constants import (
     AGNO_GOOGLE_LLM_PROVIDER,
     AGNO_OPENAI_LLM_PROVIDER,
     AGNO_XAI_LLM_PROVIDER,
-    ATHROPIC_LLM_PROVIDER,
+    ANTHROPIC_LLM_PROVIDER,
     GOOGLE_LLM_PROVIDER,
     LANGCHAIN_CHATBEDROCK_LLM_PROVIDER,
     LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
@@ -26,6 +26,32 @@ from memori.llm._constants import (
 )
 
 
+def _client_module(client) -> str:
+    return str(type(client).__module__)
+
+
+def client_is_anthropic(client) -> bool:
+    return _client_module(client).startswith("anthropic")
+
+
+def client_is_google(client) -> bool:
+    return _client_module(client).startswith(
+        ("google.generativeai", "google.ai.generativelanguage", "google.genai")
+    )
+
+
+def client_is_openai(client) -> bool:
+    return _client_module(client).startswith("openai")
+
+
+def client_is_pydantic_ai(client) -> bool:
+    return _client_module(client).startswith("pydantic_ai")
+
+
+def client_is_xai(client) -> bool:
+    return "xai" in _client_module(client).lower()
+
+
 def client_is_bedrock(provider, title):
     return (
         provider_is_langchain(provider) and title == LANGCHAIN_CHATBEDROCK_LLM_PROVIDER
@@ -33,7 +59,7 @@ def client_is_bedrock(provider, title):
 
 
 def llm_is_anthropic(provider, title):
-    return title == ATHROPIC_LLM_PROVIDER
+    return title == ANTHROPIC_LLM_PROVIDER
 
 
 def llm_is_bedrock(provider, title):

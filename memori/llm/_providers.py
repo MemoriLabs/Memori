@@ -11,13 +11,13 @@ r"""
 import warnings
 
 from memori.llm._base import BaseProvider
-from memori.llm._clients import Agno as AgnoMemoriClient
-from memori.llm._clients import Anthropic as AnthropicMemoriClient
-from memori.llm._clients import Google as GoogleMemoriClient
-from memori.llm._clients import LangChain as LangChainMemoriClient
-from memori.llm._clients import OpenAi as OpenAiMemoriClient
-from memori.llm._clients import PydanticAi as PydanticAiMemoriClient
-from memori.llm._clients import XAi as XAiMemoriClient
+from memori.llm.clients import Agno as AgnoMemoriClient
+from memori.llm.clients import Anthropic as AnthropicMemoriClient
+from memori.llm.clients import Google as GoogleMemoriClient
+from memori.llm.clients import LangChain as LangChainMemoriClient
+from memori.llm.clients import OpenAi as OpenAiMemoriClient
+from memori.llm.clients import PydanticAi as PydanticAiMemoriClient
+from memori.llm.clients import XAi as XAiMemoriClient
 
 
 class Agno(BaseProvider):

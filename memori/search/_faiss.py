@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import faiss
 import numpy as np
@@ -76,10 +76,11 @@ def _faiss_search(
     faiss.normalize_L2(query_array)
 
     index = faiss.IndexFlatIP(embeddings_array.shape[1])
-    index.add(embeddings_array)  # type: ignore[call-arg]
+    typed_index = cast(Any, index)
+    typed_index.add(embeddings_array)
 
     k = min(limit, len(embeddings_array))
-    similarities, indices = index.search(query_array, k)  # type: ignore[call-arg]
+    similarities, indices = typed_index.search(query_array, k)
 
     results: list[tuple[FactId, float]] = []
     for result_idx, embedding_idx in enumerate(indices[0]):
