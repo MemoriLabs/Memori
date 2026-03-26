@@ -498,6 +498,8 @@ def _detect_platform(client):
             return "deepseek"
         elif "nvidia" in base_url:
             return "nvidia_nim"
+        elif "minimax" in base_url:
+            return "minimax"
     return None
 
 
