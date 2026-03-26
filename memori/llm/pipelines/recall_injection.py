@@ -52,10 +52,18 @@ def format_recalled_fact_lines(
 
 def format_recalled_summary_lines(summaries: list[dict[str, object]]) -> list[str]:
     lines: list[str] = []
+    seen: set[tuple[str, str]] = set()
     for summary in summaries:
         content = summary.get("content")
         if not isinstance(content, str) or not content:
             continue
+
+        date_created = summary.get("date_created")
+        date_key = date_created if isinstance(date_created, str) else ""
+        summary_key = (content, date_key)
+        if summary_key in seen:
+            continue
+        seen.add(summary_key)
 
         ts = format_date_created(summary.get("date_created"))
         if ts:
@@ -130,6 +138,10 @@ def inject_recalled_facts(invoke, kwargs: dict) -> dict:
 
     logger.debug("Injecting %d recalled facts into prompt", len(relevant_facts))
 
+    # Keep summaries scoped to the same relevant fact subset we inject.
+    invoke._cloud_summaries = _collect_cloud_summaries_from_facts(
+        cast(list, relevant_facts)
+    )
     fact_lines = format_recalled_fact_lines(relevant_facts)
     summary_lines = format_recalled_summary_lines(invoke._cloud_summaries)
     context_body = "Relevant context about the user:\n" + "\n".join(fact_lines)
@@ -141,6 +153,7 @@ def inject_recalled_facts(invoke, kwargs: dict) -> dict:
         + context_body
         + "\n</memori_context>"
     )
+    print(recall_context)
     if llm_is_anthropic(
         invoke.config.framework.provider, invoke.config.llm.provider
     ) or llm_is_bedrock(invoke.config.framework.provider, invoke.config.llm.provider):
