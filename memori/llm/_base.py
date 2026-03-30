@@ -11,6 +11,7 @@ r"""
 import copy
 import inspect
 import json
+from typing import TYPE_CHECKING
 
 from google.protobuf import json_format
 
@@ -18,6 +19,9 @@ from memori._config import Config
 from memori._utils import merge_chunk
 from memori.llm._utils import agno_is_openai, llm_is_openai, llm_is_xai
 from memori.llm.helpers.serialization import convert_to_json
+
+if TYPE_CHECKING:
+    from memori import Memori
 
 
 class BaseClient:
@@ -244,7 +248,7 @@ class BaseLlmAdaptor:
 
 
 class BaseProvider:
-    def __init__(self, entity):
+    def __init__(self, entity: "Memori") -> None:
         self.client = None
         self.entity = entity
         self.config = entity.config

@@ -30,7 +30,7 @@ from memori.llm._providers import OpenAi as LlmProviderOpenAi
 from memori.llm._providers import PydanticAi as LlmProviderPydanticAi
 from memori.llm._providers import XAi as LlmProviderXAi
 from memori.memory.augmentation import Manager as AugmentationManager
-from memori.memory.recall import Recall
+from memori.memory.recall import CloudRecallResponse, Recall, RecallFact
 from memori.storage import Manager as StorageManager
 
 __all__ = ["Memori", "QuotaExceededError", "UnsupportedLLMProviderError"]
@@ -39,21 +39,28 @@ warn_if_legacy_memorisdk_installed()
 
 
 class LlmRegistry:
-    def __init__(self, memori):
+    """Entry point for registering supported LLM clients and framework models."""
+
+    def __init__(self, memori: "Memori") -> None:
         self.memori = memori
 
     def register(
         self,
-        client=None,
-        openai_chat=None,
-        claude=None,
-        gemini=None,
-        xai=None,
-        chatbedrock=None,
-        chatgooglegenai=None,
-        chatopenai=None,
-        chatvertexai=None,
-    ):
+        client: Any | None = None,
+        openai_chat: Any | None = None,
+        claude: Any | None = None,
+        gemini: Any | None = None,
+        xai: Any | None = None,
+        chatbedrock: Any | None = None,
+        chatgooglegenai: Any | None = None,
+        chatopenai: Any | None = None,
+        chatvertexai: Any | None = None,
+    ) -> "Memori":
+        """Register an LLM client/model and return the parent `Memori` instance.
+
+        This supports direct clients (`client=...`) and framework-specific named
+        model arguments (Agno/LangChain), but they cannot be mixed in one call.
+        """
         from memori.llm._registry import register_llm
 
         return register_llm(
@@ -71,11 +78,14 @@ class LlmRegistry:
 
 
 class Memori:
+    """Primary SDK entry point for memory collection and recall operations."""
+
     def __init__(
         self,
         conn: Callable[[], Any] | Any | None = None,
         debug_truncate: bool = True,
-    ):
+    ) -> None:
+        """Initialize Memori with cloud mode or a user-provided connection."""
         from memori._logging import set_truncate_enabled
 
         self.config = Config()
@@ -119,34 +129,44 @@ class Memori:
             raise MissingMemoriApiKeyError()
         return None
 
-    def attribution(self, entity_id=None, process_id=None):
-        if entity_id is not None:
-            entity_id = str(entity_id)
+    def attribution(
+        self,
+        entity_id: str,
+        process_id: str | None = None,
+    ) -> "Memori":
+        """Set attribution identifiers used when persisting and recalling memory."""
+        if not isinstance(entity_id, str):
+            raise TypeError("entity_id must be a string")
 
-            if len(entity_id) > 100:
-                raise RuntimeError("entity_id cannot be greater than 100 characters")
+        if len(entity_id) > 100:
+            raise RuntimeError("entity_id cannot be greater than 100 characters")
 
-        if process_id is not None:
-            process_id = str(process_id)
+        if process_id is not None and not isinstance(process_id, str):
+            raise TypeError("process_id must be a string or None")
 
-            if len(process_id) > 100:
-                raise RuntimeError("process_id cannot be greater than 100 characters")
+        if process_id is not None and len(process_id) > 100:
+            raise RuntimeError("process_id cannot be greater than 100 characters")
 
         self.config.entity_id = entity_id
         self.config.process_id = process_id
 
         return self
 
-    def new_session(self):
+    def new_session(self) -> "Memori":
+        """Start a new session and clear in-memory caches for this instance."""
         self.config.session_id = uuid4()
         self.config.reset_cache()
         return self
 
-    def set_session(self, id):
-        self.config.session_id = id
+    def set_session(self, session_id: Any) -> "Memori":
+        """Set an explicit session identifier on the current instance."""
+        self.config.session_id = session_id
         return self
 
-    def recall(self, query: str, limit: int | None = None):
+    def recall(
+        self, query: str, limit: int | None = None
+    ) -> list[RecallFact] | CloudRecallResponse:
+        """Return relevant memories for a query."""
         return Recall(self.config).search_facts(query, limit)
 
     def close(self) -> None:
@@ -171,6 +191,7 @@ class Memori:
         self.close()
 
     def embed_texts(self, texts: str | list[str], *, async_: bool = False) -> Any:
+        """Generate embedding vectors for one or many input strings."""
         embeddings_cfg = self.config.embeddings
         return embed_texts(
             texts,
