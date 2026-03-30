@@ -9,6 +9,7 @@ r"""
 """
 
 import warnings
+from typing import TYPE_CHECKING, Any
 
 from memori.llm._base import BaseProvider
 from memori.llm.clients import Agno as AgnoMemoriClient
@@ -19,9 +20,22 @@ from memori.llm.clients import OpenAi as OpenAiMemoriClient
 from memori.llm.clients import PydanticAi as PydanticAiMemoriClient
 from memori.llm.clients import XAi as XAiMemoriClient
 
+if TYPE_CHECKING:
+    from memori import Memori
+
 
 class Agno(BaseProvider):
-    def register(self, openai_chat=None, claude=None, gemini=None, xai=None):
+    def register(
+        self,
+        openai_chat: Any | None = None,
+        claude: Any | None = None,
+        gemini: Any | None = None,
+        xai: Any | None = None,
+    ) -> "Memori":
+        """Register Agno models.
+
+        Deprecated: use `memori.llm.register(...)` with named parameters instead.
+        """
         warnings.warn(
             "memori.agno.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,
@@ -39,7 +53,11 @@ class Agno(BaseProvider):
 
 
 class Anthropic(BaseProvider):
-    def register(self, client):
+    def register(self, client: Any) -> "Memori":
+        """Register an Anthropic client.
+
+        Deprecated: use `memori.llm.register(client=...)` instead.
+        """
         warnings.warn(
             "memori.anthropic.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,
@@ -52,7 +70,11 @@ class Anthropic(BaseProvider):
 
 
 class Google(BaseProvider):
-    def register(self, client):
+    def register(self, client: Any) -> "Memori":
+        """Register a Google client.
+
+        Deprecated: use `memori.llm.register(client=...)` instead.
+        """
         warnings.warn(
             "memori.google.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,
@@ -66,8 +88,16 @@ class Google(BaseProvider):
 
 class LangChain(BaseProvider):
     def register(
-        self, chatbedrock=None, chatgooglegenai=None, chatopenai=None, chatvertexai=None
-    ):
+        self,
+        chatbedrock: Any | None = None,
+        chatgooglegenai: Any | None = None,
+        chatopenai: Any | None = None,
+        chatvertexai: Any | None = None,
+    ) -> "Memori":
+        """Register LangChain chat models.
+
+        Deprecated: use `memori.llm.register(...)` with named parameters instead.
+        """
         warnings.warn(
             "memori.langchain.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,
@@ -85,7 +115,11 @@ class LangChain(BaseProvider):
 
 
 class OpenAi(BaseProvider):
-    def register(self, client, stream=False):
+    def register(self, client: Any, stream: bool = False) -> "Memori":
+        """Register an OpenAI client.
+
+        Deprecated: use `memori.llm.register(client=...)` instead.
+        """
         warnings.warn(
             "memori.openai.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,
@@ -100,7 +134,11 @@ class OpenAi(BaseProvider):
 
 
 class PydanticAi(BaseProvider):
-    def register(self, client):
+    def register(self, client: Any) -> "Memori":
+        """Register a PydanticAI client.
+
+        Deprecated: use `memori.llm.register(client=...)` instead.
+        """
         warnings.warn(
             "memori.pydantic_ai.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,
@@ -113,7 +151,11 @@ class PydanticAi(BaseProvider):
 
 
 class XAi(BaseProvider):
-    def register(self, client, stream=False):
+    def register(self, client: Any, stream: bool = False) -> "Memori":
+        """Register an XAI client.
+
+        Deprecated: use `memori.llm.register(client=...)` instead.
+        """
         warnings.warn(
             "memori.xai.register() is deprecated. Use memori.llm.register(client) instead.",
             DeprecationWarning,

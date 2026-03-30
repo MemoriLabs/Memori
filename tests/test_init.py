@@ -63,9 +63,42 @@ def test_attribution_exceptions(mocker):
     assert str(e.value) == "entity_id cannot be greater than 100 characters"
 
     with pytest.raises(RuntimeError) as e:
-        Memori(conn=lambda: mock_conn).attribution(process_id="a" * 101)
+        Memori(conn=lambda: mock_conn).attribution(
+            entity_id="entity", process_id="a" * 101
+        )
 
     assert str(e.value) == "process_id cannot be greater than 100 characters"
+
+
+def test_attribution_requires_string_entity_id(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(TypeError) as e:
+        Memori(conn=lambda: mock_conn).attribution(entity_id=123)
+
+    assert str(e.value) == "entity_id must be a string"
+
+
+def test_attribution_requires_string_or_none_process_id(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(TypeError) as e:
+        Memori(conn=lambda: mock_conn).attribution(entity_id="user-1", process_id=123)
+
+    assert str(e.value) == "process_id must be a string or None"
+
+    mem = Memori(conn=lambda: mock_conn).attribution(
+        entity_id="user-1", process_id=None
+    )
+    assert mem.config.process_id is None
 
 
 def test_new_session(mocker):

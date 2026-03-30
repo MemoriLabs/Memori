@@ -9,10 +9,14 @@ r"""
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from memori._config import Config
 from memori._exceptions import UnsupportedLLMProviderError
 from memori.llm._base import BaseClient, BaseLlmAdaptor
+
+if TYPE_CHECKING:
+    from memori import Memori
 
 
 class Registry:
@@ -27,7 +31,7 @@ class Registry:
     _adapters: dict[Callable[[str | None, str | None], bool], type[BaseLlmAdaptor]] = {}
 
     @classmethod
-    def register_client(cls, matcher: Callable[[Any], bool]):
+    def register_client(cls, matcher: Callable[[Any], bool]) -> Callable[..., Any]:
         def decorator(client_class: type[BaseClient]):
             cls._clients[matcher] = client_class
             return client_class
@@ -35,14 +39,16 @@ class Registry:
         return decorator
 
     @classmethod
-    def register_adapter(cls, matcher: Callable[[str | None, str | None], bool]):
+    def register_adapter(
+        cls, matcher: Callable[[str | None, str | None], bool]
+    ) -> Callable[..., Any]:
         def decorator(adapter_class: type[BaseLlmAdaptor]):
             cls._adapters[matcher] = adapter_class
             return adapter_class
 
         return decorator
 
-    def client(self, client_obj: Any, config) -> BaseClient:
+    def client(self, client_obj: Any, config: Config) -> BaseClient:
         for matcher, client_class in self._clients.items():
             if matcher(client_obj):
                 return client_class(config)
@@ -69,17 +75,17 @@ class Registry:
 
 
 def register_llm(
-    memori,
-    client=None,
-    openai_chat=None,
-    claude=None,
-    gemini=None,
-    xai=None,
-    chatbedrock=None,
-    chatgooglegenai=None,
-    chatopenai=None,
-    chatvertexai=None,
-):
+    memori: "Memori",
+    client: Any | None = None,
+    openai_chat: Any | None = None,
+    claude: Any | None = None,
+    gemini: Any | None = None,
+    xai: Any | None = None,
+    chatbedrock: Any | None = None,
+    chatgooglegenai: Any | None = None,
+    chatopenai: Any | None = None,
+    chatvertexai: Any | None = None,
+) -> "Memori":
     """Register LLM clients or framework models.
 
     For direct LLM clients:
