@@ -65,7 +65,7 @@ export class AugmentationEngine {
     if (!data) return Promise.resolve(res);
 
     const payload = {
-      conversation: data.messages,
+      conversation: { messages: data.messages },
       summary: summary || null,
       trace: trace || null,
       meta: data.meta,
