@@ -16,16 +16,21 @@ import threading
 from typing import Any
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-# Suppress transformers warnings during model loading (e.g., "embeddings.position_ids | UNEXPECTED")
-os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
-os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 import numpy as np
+from huggingface_hub.utils import disable_progress_bars
 from sentence_transformers import SentenceTransformer
+from transformers.utils import logging as transformers_logging
 
 from memori.embeddings._utils import embedding_dimension, zero_vectors
 
 logger = logging.getLogger(__name__)
+
+
+def _configure_huggingface_logging() -> None:
+    # Suppress noisy model-loading warnings and progress output.
+    transformers_logging.set_verbosity_error()
+    disable_progress_bars()
 
 
 class SentenceTransformersEmbedder:
@@ -38,6 +43,7 @@ class SentenceTransformersEmbedder:
     def _get_model(self) -> SentenceTransformer:
         with self._model_lock:
             if self._model is None:
+                _configure_huggingface_logging()
                 self._model = SentenceTransformer(self._model_name)
             return self._model
 
