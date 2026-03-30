@@ -39,7 +39,7 @@ export class OpenClawIntegration extends BaseIntegration {
    * @throws Does not throw - errors are logged but swallowed to prevent disrupting the agent
    */
   public async augmentation(req: IntegrationRequest): Promise<void> {
-    await this.executeAugmentation(req);
+    await this.executeAgentAugmentation(req);
   }
 
   /**

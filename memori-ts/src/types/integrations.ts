@@ -19,6 +19,36 @@ export interface MemoriCore {
 }
 
 /**
+ * Represents a single tool execution captured during an agent's conversation turn.
+ */
+export interface ToolCall {
+  /**
+   * The name of the tool or function executed by the agent.
+   */
+  name: string;
+
+  /**
+   * The arguments passed to the tool, parsed as a key-value record.
+   */
+  args: Record<string, unknown>;
+
+  /**
+   * The raw result returned by the tool execution.
+   */
+  result: unknown;
+}
+
+/**
+ * Represents an agentic execution trace containing tool calls made during a conversation turn.
+ */
+export interface Trace {
+  /**
+   * An ordered list of tool calls executed by the agent before its final response.
+   */
+  tools: ToolCall[];
+}
+
+/**
  * Represents a single turn of conversation to be captured by Memori.
  * This payload is used by framework integrations to send user and agent messages
  * to the persistence and augmentation engines.
@@ -40,6 +70,16 @@ export interface IntegrationRequest {
    * Optional telemetry and contextual metadata about the LLM execution.
    */
   metadata?: IntegrationMetadata;
+
+  /**
+   * Optional summary of the interaction turn.
+   */
+  summary?: string | null;
+
+  /**
+   * Optional agentic execution trace containing tool calls and their results.
+   */
+  trace?: Trace;
 }
 
 /**

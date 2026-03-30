@@ -4,6 +4,7 @@ import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { extractLastUserMessage } from '../utils/utils.js';
 import { SDK_VERSION } from '../version.js';
+import { Trace } from '../types/integrations.js';
 
 export class AugmentationEngine {
   constructor(
@@ -12,31 +13,68 @@ export class AugmentationEngine {
     private readonly session: SessionManager
   ) {}
 
-  public handleAugmentation(
-    req: LLMRequest,
-    res: LLMResponse,
-    ctx: CallContext
-  ): Promise<LLMResponse> {
+  private prepareAugmentationData(req: LLMRequest, res: LLMResponse, ctx: CallContext) {
     const sessionId = this.session.id;
-    if (!sessionId) return Promise.resolve(res);
+    if (!sessionId) return null;
 
     const lastUserMessage = extractLastUserMessage(req.messages);
-    if (!lastUserMessage) return Promise.resolve(res);
+    if (!lastUserMessage) return null;
 
     const messages = [
       { role: 'user', content: lastUserMessage },
       { role: 'assistant', content: res.content },
     ];
 
-    const payload = {
-      conversation: { messages, summary: null },
+    return {
+      sessionId,
+      messages,
       meta: this.buildMeta(req, ctx),
-      session: { id: sessionId },
+    };
+  }
+
+  public handleAugmentation(
+    req: LLMRequest,
+    res: LLMResponse,
+    ctx: CallContext
+  ): Promise<LLMResponse> {
+    const data = this.prepareAugmentationData(req, res, ctx);
+    if (!data) return Promise.resolve(res);
+
+    const payload = {
+      conversation: { messages: data.messages, summary: null },
+      meta: data.meta,
+      session: { id: data.sessionId },
     };
 
     // Fire-and-forget
     this.api.post('cloud/augmentation', payload).catch((e: unknown) => {
       if (this.config.testMode) console.warn('Augmentation failed:', e);
+    });
+
+    return Promise.resolve(res);
+  }
+
+  public handleAgentAugmentation(
+    req: LLMRequest,
+    res: LLMResponse,
+    ctx: CallContext,
+    trace?: Trace | null,
+    summary?: string | null
+  ): Promise<LLMResponse> {
+    const data = this.prepareAugmentationData(req, res, ctx);
+    if (!data) return Promise.resolve(res);
+
+    const payload = {
+      conversation: data.messages,
+      summary: summary || null,
+      trace: trace || null,
+      meta: data.meta,
+      session: { id: data.sessionId },
+    };
+
+    // Fire-and-forget to the dedicated agent endpoint
+    this.api.post('agent/augmentation', payload).catch((e: unknown) => {
+      if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
     });
 
     return Promise.resolve(res);
