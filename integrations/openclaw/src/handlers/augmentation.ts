@@ -224,8 +224,6 @@ export async function handleAugmentation(
       event
     );
 
-    logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
-
     const context = extractContext(event, ctx, config.entityId);
     const memoriClient = initializeMemoriClient(config.apiKey, context);
 
