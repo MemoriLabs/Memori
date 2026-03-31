@@ -402,6 +402,18 @@ class EntityFact(BaseEntityFact):
 
         return [facts_by_id[fact_id] for fact_id in fact_ids if fact_id in facts_by_id]
 
+    def delete_by_entity(self, entity_id: int):
+        self.conn.execute(
+            """
+            DELETE
+              FROM memori_entity_fact
+             WHERE entity_id = %s
+            """,
+            (entity_id,),
+        )
+        self.conn.commit()
+        return self
+
 
 class KnowledgeGraph(BaseKnowledgeGraph):
     def create(self, entity_id: int, semantic_triples: list):
@@ -564,6 +576,51 @@ class KnowledgeGraph(BaseKnowledgeGraph):
                     (str(uuid4()), entity_id, subject_id, predicate_id, object_id),
                 )
 
+        return self
+
+    def delete_by_entity(self, entity_id: int):
+        self.conn.execute(
+            """
+            DELETE
+              FROM memori_knowledge_graph
+             WHERE entity_id = %s
+            """,
+            (entity_id,),
+        )
+        self.conn.execute(
+            """
+            DELETE
+              FROM memori_subject
+             WHERE NOT EXISTS (
+                   SELECT 1
+                     FROM memori_knowledge_graph
+                    WHERE memori_knowledge_graph.subject_id = memori_subject.id
+             )
+            """
+        )
+        self.conn.execute(
+            """
+            DELETE
+              FROM memori_predicate
+             WHERE NOT EXISTS (
+                   SELECT 1
+                     FROM memori_knowledge_graph
+                    WHERE memori_knowledge_graph.predicate_id = memori_predicate.id
+             )
+            """
+        )
+        self.conn.execute(
+            """
+            DELETE
+              FROM memori_object
+             WHERE NOT EXISTS (
+                   SELECT 1
+                     FROM memori_knowledge_graph
+                    WHERE memori_knowledge_graph.object_id = memori_object.id
+             )
+            """
+        )
+        self.conn.commit()
         return self
 
 

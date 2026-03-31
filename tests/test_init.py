@@ -194,3 +194,59 @@ def test_recall_defaults_to_config_limit_in_cloud(monkeypatch, mocker):
     mem.recall("test query", limit=3)
     payload = post.call_args[0][2]
     assert payload["limit"] == 3
+
+
+def test_delete_entity_memories_supported_in_explicit_conn_mode(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    delete_memories = mocker.patch(
+        "memori.memory.recall.Recall.delete_entity_memories",
+        autospec=True,
+    )
+    mem = Memori(conn=lambda: mock_conn)
+    mem.delete_entity_memories("entity-id")
+
+    assert mem.config.byodb is True
+    assert mem.config.cloud is False
+    delete_memories.assert_called_once()
+    assert delete_memories.call_args[0][1] == "entity-id"
+
+
+def test_delete_entity_memories_rejected_in_cloud_mode(monkeypatch):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    mem = Memori()
+
+    with pytest.raises(RuntimeError) as e:
+        mem.delete_entity_memories("entity-id")
+
+    assert str(e.value) == "delete_entity_memories is only available in BYODB mode"
+
+
+def test_delete_entity_memories_rejected_for_cockroach_connection_string(
+    monkeypatch, mocker
+):
+    monkeypatch.setenv(
+        "MEMORI_COCKROACHDB_CONNECTION_STRING",
+        "postgresql://user:pass@localhost:26257/defaultdb?sslmode=disable",
+    )
+
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    mocker.patch("psycopg.connect", return_value=mock_conn)
+
+    mem = Memori(conn=None)
+    with pytest.raises(RuntimeError) as e:
+        mem.delete_entity_memories("entity-id")
+
+    assert mem.config.byodb is False
+    assert str(e.value) == "delete_entity_memories is only available in BYODB mode"

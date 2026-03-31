@@ -136,6 +136,9 @@ class BaseKnowledgeGraph:
     def create(self, entity_id: int, semantic_triples: list):
         raise NotImplementedError
 
+    def delete_by_entity(self, entity_id: int):
+        raise NotImplementedError
+
 
 class BaseEntity:
     def __init__(self, conn: BaseStorageAdapter):
@@ -162,6 +165,9 @@ class BaseEntityFact:
         raise NotImplementedError
 
     def get_facts_by_ids(self, fact_ids: list[int]):
+        raise NotImplementedError
+
+    def delete_by_entity(self, entity_id: int):
         raise NotImplementedError
 
 

@@ -527,3 +527,46 @@ def test_entity_fact_get_facts_by_ids_empty(mock_conn):
 
     assert result == []
     assert mock_conn.execute.call_count == 0
+
+
+def test_entity_fact_delete_by_entity(mock_conn):
+    entity_fact = EntityFact(mock_conn)
+    result = entity_fact.delete_by_entity(123)
+
+    assert result == entity_fact
+    assert mock_conn.execute.call_count == 1
+    assert mock_conn.commit.call_count == 1
+    delete_call = mock_conn.execute.call_args_list[0]
+    assert "delete" in delete_call[0][0].lower()
+    assert "from memori_entity_fact" in delete_call[0][0].lower()
+    assert "where entity_id = ?" in delete_call[0][0].lower()
+    assert delete_call[0][1] == (123,)
+
+
+def test_knowledge_graph_delete_by_entity(mock_conn):
+    knowledge_graph = Driver(mock_conn).knowledge_graph
+    result = knowledge_graph.delete_by_entity(123)
+
+    assert result == knowledge_graph
+    assert mock_conn.execute.call_count == 4
+    assert mock_conn.commit.call_count == 1
+    kg_delete_call = mock_conn.execute.call_args_list[0]
+    assert "delete" in kg_delete_call[0][0].lower()
+    assert "from memori_knowledge_graph" in kg_delete_call[0][0].lower()
+    assert "where entity_id = ?" in kg_delete_call[0][0].lower()
+    assert kg_delete_call[0][1] == (123,)
+
+    subject_delete_call = mock_conn.execute.call_args_list[1]
+    assert "delete" in subject_delete_call[0][0].lower()
+    assert "from memori_subject" in subject_delete_call[0][0].lower()
+    assert "not exists" in subject_delete_call[0][0].lower()
+
+    predicate_delete_call = mock_conn.execute.call_args_list[2]
+    assert "delete" in predicate_delete_call[0][0].lower()
+    assert "from memori_predicate" in predicate_delete_call[0][0].lower()
+    assert "not exists" in predicate_delete_call[0][0].lower()
+
+    object_delete_call = mock_conn.execute.call_args_list[3]
+    assert "delete" in object_delete_call[0][0].lower()
+    assert "from memori_object" in object_delete_call[0][0].lower()
+    assert "not exists" in object_delete_call[0][0].lower()
