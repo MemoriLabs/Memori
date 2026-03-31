@@ -25,6 +25,58 @@ def test_recall_init():
     assert recall.config is config
 
 
+def test_delete_entity_memories_no_storage():
+    config = Config()
+    config.storage = None
+    recall = Recall(config)
+
+    recall.delete_entity_memories("entity-id")
+
+
+def test_delete_entity_memories_no_entity_id():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.entity_id = None
+    recall = Recall(config)
+
+    recall.delete_entity_memories()
+
+    config.storage.driver.entity.create.assert_not_called()
+    config.storage.driver.knowledge_graph.delete_by_entity.assert_not_called()
+    config.storage.driver.entity_fact.delete_by_entity.assert_not_called()
+
+
+def test_delete_entity_memories_entity_create_returns_none():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.storage.driver.entity.create.return_value = None
+    recall = Recall(config)
+
+    recall.delete_entity_memories("entity-id")
+
+    config.storage.driver.entity.create.assert_called_once_with("entity-id")
+    config.storage.driver.knowledge_graph.delete_by_entity.assert_not_called()
+    config.storage.driver.entity_fact.delete_by_entity.assert_not_called()
+
+
+def test_delete_entity_memories_deletes_knowledge_graph_and_entity_facts():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.storage.driver.entity.create.return_value = 123
+    recall = Recall(config)
+
+    recall.delete_entity_memories("entity-id")
+
+    config.storage.driver.entity.create.assert_called_once_with("entity-id")
+    config.storage.driver.knowledge_graph.delete_by_entity.assert_called_once_with(123)
+    config.storage.driver.entity_fact.delete_by_entity.assert_called_once_with(123)
+    config.storage.driver.conversation.update.assert_not_called()
+    config.storage.driver.conversation.message.create.assert_not_called()
+
+
 def test_search_facts_no_storage():
     config = Config()
     config.storage = None

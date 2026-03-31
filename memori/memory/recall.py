@@ -187,6 +187,26 @@ class Recall:
     def _resolve_limit(self, limit: int | None) -> int:
         return self.config.recall_facts_limit if limit is None else limit
 
+    def delete_entity_memories(self, entity_external_id: str | None = None) -> None:
+        if self.config.storage is None or self.config.storage.driver is None:
+            logger.debug("Entity memory deletion aborted - storage not configured")
+            return
+
+        resolved_external_id = entity_external_id or self.config.entity_id
+        if resolved_external_id is None:
+            logger.debug("Entity memory deletion aborted - no entity_id configured")
+            return
+
+        entity_id = self.config.storage.driver.entity.create(resolved_external_id)
+        if entity_id is None:
+            logger.debug(
+                "Entity memory deletion aborted - entity_id is None after resolution"
+            )
+            return
+
+        self.config.storage.driver.knowledge_graph.delete_by_entity(entity_id)
+        self.config.storage.driver.entity_fact.delete_by_entity(entity_id)
+
     def _embed_query(self, query: str) -> list[float]:
         logger.debug("Generating query embedding")
         embeddings_config = self.config.embeddings

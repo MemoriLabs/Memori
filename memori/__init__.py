@@ -98,6 +98,7 @@ class Memori:
             conn = self._get_default_connection()
         else:
             self.config.cloud = False
+            self.config.byodb = True
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
@@ -121,9 +122,11 @@ class Memori:
                 raise MissingPsycopgError("CockroachDB") from e
 
             self.config.cloud = False
+            self.config.byodb = False
             return lambda: psycopg.connect(connection_string)
 
         self.config.cloud = True
+        self.config.byodb = False
         api_key = os.environ.get("MEMORI_API_KEY", None)
         if api_key is None or api_key == "":
             raise MissingMemoriApiKeyError()
@@ -168,6 +171,18 @@ class Memori:
     ) -> list[RecallFact] | CloudRecallResponse:
         """Return relevant memories for a query."""
         return Recall(self.config).search_facts(query, limit)
+
+    def delete_entity_memories(self, entity_id: str | None = None) -> None:
+        """Delete memory records for an entity while preserving conversations."""
+        if not self.config.byodb:
+            raise RuntimeError("delete_entity_memories is only available in BYODB mode")
+
+        if entity_id is not None and not isinstance(entity_id, str):
+            raise TypeError("entity_id must be a string or None")
+        if entity_id is not None and len(entity_id) > 100:
+            raise RuntimeError("entity_id cannot be greater than 100 characters")
+
+        Recall(self.config).delete_entity_memories(entity_id)
 
     def close(self) -> None:
         """Close the underlying storage connection/session, if any.

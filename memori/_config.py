@@ -68,6 +68,7 @@ class Config:
             or self.embeddings.model
         )
         self.cloud: bool | None = None
+        self.byodb: bool = False
         self.llm = Llm()
         self.framework = Framework()
         self.platform = Platform()

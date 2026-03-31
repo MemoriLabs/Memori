@@ -747,3 +747,88 @@ def test_entity_fact_get_facts_by_ids_empty(mock_conn):
 
     assert result == []
     assert mock_conn.execute.call_count == 0
+
+
+def test_entity_fact_delete_by_entity_cleans_mentions(mock_conn):
+    entity_fact = EntityFact(mock_conn)
+    result = entity_fact.delete_by_entity(123)
+
+    assert result == entity_fact
+    assert mock_conn.execute.call_count == 2
+
+    mention_delete_call = mock_conn.execute.call_args_list[0]
+    assert mention_delete_call[0][0] == "memori_entity_fact_mention"
+    assert mention_delete_call[0][1] == "delete_many"
+    assert mention_delete_call[0][2] == {"entity_id": 123}
+
+    fact_delete_call = mock_conn.execute.call_args_list[1]
+    assert fact_delete_call[0][0] == "memori_entity_fact"
+    assert fact_delete_call[0][1] == "delete_many"
+    assert fact_delete_call[0][2] == {"entity_id": 123}
+
+
+def test_knowledge_graph_delete_by_entity_cleans_orphan_dimensions(mock_conn):
+    mock_conn.execute.side_effect = [
+        None,  # delete knowledge graph by entity
+        [1, 2],  # distinct subject ids
+        [3, 4],  # distinct predicate ids
+        [5, 6],  # distinct object ids
+        None,  # delete orphan subjects
+        None,  # delete orphan predicates
+        None,  # delete orphan objects
+    ]
+
+    knowledge_graph = Driver(mock_conn).knowledge_graph
+    result = knowledge_graph.delete_by_entity(123)
+
+    assert result == knowledge_graph
+    assert mock_conn.execute.call_count == 7
+
+    kg_delete_call = mock_conn.execute.call_args_list[0]
+    assert kg_delete_call[0] == (
+        "memori_knowledge_graph",
+        "delete_many",
+        {"entity_id": 123},
+    )
+
+    subject_distinct_call = mock_conn.execute.call_args_list[1]
+    assert subject_distinct_call[0] == (
+        "memori_knowledge_graph",
+        "distinct",
+        "subject_id",
+    )
+
+    predicate_distinct_call = mock_conn.execute.call_args_list[2]
+    assert predicate_distinct_call[0] == (
+        "memori_knowledge_graph",
+        "distinct",
+        "predicate_id",
+    )
+
+    object_distinct_call = mock_conn.execute.call_args_list[3]
+    assert object_distinct_call[0] == (
+        "memori_knowledge_graph",
+        "distinct",
+        "object_id",
+    )
+
+    subject_cleanup_call = mock_conn.execute.call_args_list[4]
+    assert subject_cleanup_call[0] == (
+        "memori_subject",
+        "delete_many",
+        {"_id": {"$nin": [1, 2]}},
+    )
+
+    predicate_cleanup_call = mock_conn.execute.call_args_list[5]
+    assert predicate_cleanup_call[0] == (
+        "memori_predicate",
+        "delete_many",
+        {"_id": {"$nin": [3, 4]}},
+    )
+
+    object_cleanup_call = mock_conn.execute.call_args_list[6]
+    assert object_cleanup_call[0] == (
+        "memori_object",
+        "delete_many",
+        {"_id": {"$nin": [5, 6]}},
+    )

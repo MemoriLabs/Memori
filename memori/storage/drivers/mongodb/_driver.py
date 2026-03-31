@@ -371,6 +371,13 @@ class EntityFact(BaseEntityFact):
 
         return facts
 
+    def delete_by_entity(self, entity_id: int):
+        self.conn.execute(
+            "memori_entity_fact_mention", "delete_many", {"entity_id": entity_id}
+        )
+        self.conn.execute("memori_entity_fact", "delete_many", {"entity_id": entity_id})
+        return self
+
 
 class KnowledgeGraph(BaseKnowledgeGraph):
     def create(self, entity_id: int, semantic_triples: list):
@@ -489,6 +496,36 @@ class KnowledgeGraph(BaseKnowledgeGraph):
                     }
                     self.conn.execute("memori_knowledge_graph", "insert_one", kg_doc)
 
+        return self
+
+    def delete_by_entity(self, entity_id: int):
+        self.conn.execute(
+            "memori_knowledge_graph", "delete_many", {"entity_id": entity_id}
+        )
+        subject_ids = self.conn.execute(
+            "memori_knowledge_graph", "distinct", "subject_id"
+        )
+        predicate_ids = self.conn.execute(
+            "memori_knowledge_graph", "distinct", "predicate_id"
+        )
+        object_ids = self.conn.execute(
+            "memori_knowledge_graph", "distinct", "object_id"
+        )
+        self.conn.execute(
+            "memori_subject",
+            "delete_many",
+            {"_id": {"$nin": list(subject_ids)}},
+        )
+        self.conn.execute(
+            "memori_predicate",
+            "delete_many",
+            {"_id": {"$nin": list(predicate_ids)}},
+        )
+        self.conn.execute(
+            "memori_object",
+            "delete_many",
+            {"_id": {"$nin": list(object_ids)}},
+        )
         return self
 
 
