@@ -333,11 +333,10 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 
 ## Support
 
-- **Memori Cloud Documentation**: [memorilabs.ai/docs/memori-cloud/](https://memorilabs.ai/docs/memori-cloud/)
-- **Memori BYODB Documentation**: [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/)
-- **Discord**: [https://discord.gg/abD4eGym6v](https://discord.gg/abD4eGym6v)
-- **Issues**: [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
-
+- [**Memori Cloud Documentation**](https://memorilabs.ai/docs/memori-cloud)
+- [**Memori BYODB Documentation**](https://memorilabs.ai/docs/memori-byodb)
+- [**Discord**](https://discord.gg/FpytKAxnFb)
+- [**Issues**](https://github.com/MemoriLabs/Memori/issues)
 ---
 
 ## License
