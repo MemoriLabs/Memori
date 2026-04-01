@@ -1,7 +1,7 @@
 [![Memori Labs](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/banner.png)](https://memorilabs.ai/)
 
 <p align="center">
-  <strong>The memory fabric for enterprise AI</strong>
+  <strong>Memory from what agents do, not just what they say.</strong>
 </p>
 
 <p align="center">
@@ -40,6 +40,14 @@
     <img src="https://img.shields.io/badge/⭐%20Give%20a%20Star-Support%20the%20project-orange?style=for-the-badge" alt="Give a Star">
   </a>
 </p>
+
+<p align="center">
+  <strong>Choose memory that performs</strong>
+</p>
+
+
+
+[![Memori Labs](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/stats.jpg)](https://memorilabs.ai/benchmark)
 
 ---
 
