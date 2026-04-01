@@ -5,17 +5,21 @@ description: Use the Model Context Protocol (MCP) to connect AI agents directly 
 
 # Memori MCP (Model Context Protocol)
 
-MCP (Model Context Protocol) is a standard way for AI agents to connect to external tools and APIs. With Memori's MCP server, your agent can retrieve relevant memories before answering and store durable facts after responding — keeping context across sessions without any SDK integration.
+**memori-mcp** is the official [Memori](https://memorilabs.ai) MCP server. Connect it to your AI agent to give it long-term memory: recall relevant facts before answering, store durable preferences after responding, and maintain context across sessions.
 
-## Why Use MCP
+## Why Memori MCP?
 
-Without MCP, your agent only sees the current conversation. With MCP, it can:
+Memori turns stateless agents into **stateful systems** by providing structured, persistent memory that works across sessions and workflows.
 
-- **Store** stable user facts and preferences after answering using the `advanced_augmentation` tool
-- **Recall** relevant memories before answering using the `recall` tool
-- **Maintain context** across sessions using `entity_id`, `process_id`, and `session_id`
+1. **Persistent state beyond prompts** — Most agents rely on prompt context and lose state between runs. Memori provides **durable, structured memory** so agents can retain facts, decisions, and outcomes over time.
+2. **Memory from execution (not just natural language)** — Traditional systems extract memory from chat. Memori builds memory from **agent execution itself** — including tool calls, decisions, and results. This enables true **agent-native memory**, not just conversational recall.
+3. **Lower cost, higher accuracy** — Instead of expanding prompt context, Memori retrieves only what matters.
+   - Significantly reduced token usage
+   - Faster responses
+   - Improved accuracy vs long-context approaches
+4. **Works with any MCP client and production-ready** - No SDK, no code changes, just config
 
-MCP is ideal for IDE agents (Cursor, Claude Code, Codex, Warp, Antigravity) and other MCP-compatible clients where you want persistent memory without writing integration code.
+Memori is **state infrastructure for production agents** — enabling persistent memory, efficient retrieval, and structured context across both natural language and agent execution.
 
 ## Server Details
 
