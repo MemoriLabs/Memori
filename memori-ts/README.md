@@ -1,4 +1,4 @@
-[![Memori Labs](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/banner-dark.jpg)](https://memorilabs.ai/)
+[![Memori Labs](https://s3.us-east-1.amazonaws.com/images.memorilabs.ai/banner-dark-large.jpg)](https://memorilabs.ai/)
 
 <p align="center">
   <strong>Memory from what agents do, not just what they say.</strong>
