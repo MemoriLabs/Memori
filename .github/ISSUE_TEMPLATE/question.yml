@@ -1,0 +1,66 @@
+name: Question
+description: Ask a question about using Memori
+title: "[Question] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your question! Please share enough detail so we can help effectively.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: First Check
+      description: Please ensure you have done the following before submitting your question.
+      options:
+        - label: I added a clear and descriptive title.
+          required: true
+        - label: I searched existing issues and documentation.
+          required: true
+
+  - type: dropdown
+    id: question_type
+    attributes:
+      label: Question Type
+      description: What kind of question do you have?
+      options:
+        - Usage / How-to
+        - Integration setup
+        - Behavior clarification
+        - Best practices
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Memori Version
+      description: What version of the SDK are you using?
+      placeholder: e.g., 3.0.0
+
+  - type: input
+    id: environment
+    attributes:
+      label: OS / Python Version
+      description: e.g., macOS 14 / Python 3.12
+      placeholder: macOS / Python 3.12
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What are you trying to do, and what would you like clarified?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant Context
+      description: Share relevant code, configuration, or logs that help explain your situation.
+      placeholder: |
+        from memori import Memori
+        # Context here...
+      render: python
