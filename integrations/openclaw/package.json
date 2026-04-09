@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/openclaw-memori",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Official MemoriLabs.ai long-term memory plugin for OpenClaw",
   "type": "module",
   "main": "./dist/index.js",
