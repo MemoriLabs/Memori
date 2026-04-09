@@ -1,7 +1,7 @@
-[![Memori Labs](https://images.memorilabs.ai/banner.png)](https://memorilabs.ai/)
+[![Memori Labs](https://images.memorilabs.ai/banner-dark-large.jpg)](https://memorilabs.ai/)
 
 <p align="center">
-  <strong>The memory fabric for enterprise AI</strong>
+  <strong>Memory from what agents do, not just what they say.</strong>
 </p>
 
 <p align="center">
@@ -197,9 +197,9 @@ npm run check
 
 ## Support
 
-- **Documentation**: [https://memorilabs.ai/docs](https://memorilabs.ai/docs)
-- **Discord**: [https://discord.gg/abD4eGym6v](https://discord.gg/abD4eGym6v)
-- **Issues**: [GitHub Issues](https://github.com/memorilabs/openclaw-memori/issues)
+- [**Documentation**](https://memorilabs.ai/docs/memori-cloud/openclaw/quickstart)
+- [**Discord**](https://discord.gg/abD4eGym6v)
+- [**Issues**](https://github.com/MemoriLabs/memori/issues)
 
 ---
 
