@@ -198,3 +198,26 @@ def test_manager_wait_for_db_writer_queue():
             assert result is True
     finally:
         db_writer.queue = original_queue
+
+
+def test_manager_wait_calls_rust_core_wait():
+    config = Config()
+    config.rust_core = Mock()
+    config.rust_core.wait_for_augmentation.return_value = True
+    manager = Manager(config)
+
+    result = manager.wait(timeout=1.0)
+
+    assert result is True
+    config.rust_core.wait_for_augmentation.assert_called_once()
+
+
+def test_manager_wait_propagates_rust_core_timeout():
+    config = Config()
+    config.rust_core = Mock()
+    config.rust_core.wait_for_augmentation.return_value = False
+    manager = Manager(config)
+
+    result = manager.wait(timeout=0.1)
+
+    assert result is False

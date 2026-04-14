@@ -50,3 +50,9 @@ def test_recall_env_overrides(monkeypatch):
     config = Config()
     assert config.recall_embeddings_limit == 1234
     assert config.embeddings.model == "google/embeddinggemma-300m"
+
+
+def test_rust_core_env_override(monkeypatch):
+    monkeypatch.setenv("MEMORI_USE_RUST_CORE", "true")
+    config = Config()
+    assert config.use_rust_core is True

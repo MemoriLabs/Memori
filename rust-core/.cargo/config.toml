@@ -1,0 +1,8 @@
+[alias]
+lint = "clippy --workspace --all-targets -- -D warnings"
+check-all = "check --workspace"
+test-all = "test --workspace"
+doc-all = "doc --workspace --no-deps"
+
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]

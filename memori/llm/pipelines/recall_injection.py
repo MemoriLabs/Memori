@@ -129,25 +129,51 @@ def inject_recalled_facts(invoke, kwargs: dict) -> dict:
         if resolved_entity_id is None:
             return kwargs
 
-    from memori.memory.recall import Recall
-
-    recall = Recall(invoke.config)
     if invoke.config.cloud is True:
-        from memori.memory.recall import CloudRecallResponse
+        from memori.memory.recall import CloudRecallResponse, Recall
 
+        recall = Recall(invoke.config)
         cloud_response = cast(CloudRecallResponse, recall.search_facts(user_query))
         facts = cloud_response["facts"]
         invoke._cloud_conversation_messages = cloud_response.get("messages", [])
         invoke._cloud_summaries = _collect_cloud_summaries_from_facts(facts)
     else:
-        facts = cast(
-            list[FactSearchResult | Mapping[str, object] | str],
-            recall.search_facts(
-                user_query,
-                entity_id=resolved_entity_id,
-                cloud=bool(invoke.config.cloud),
-            ),
-        )
+        rust_core = getattr(invoke.config, "rust_core", None)
+        if rust_core is not None:
+            try:
+                facts = cast(
+                    list[FactSearchResult | Mapping[str, object] | str],
+                    rust_core.retrieve_facts(
+                        query=user_query,
+                        entity_id=str(resolved_entity_id),
+                        limit=invoke.config.recall_facts_limit,
+                        dense_limit=invoke.config.recall_embeddings_limit,
+                    ),
+                )
+            except Exception:
+                from memori.memory.recall import Recall
+
+                recall = Recall(invoke.config)
+                facts = cast(
+                    list[FactSearchResult | Mapping[str, object] | str],
+                    recall.search_facts(
+                        user_query,
+                        entity_id=resolved_entity_id,
+                        cloud=bool(invoke.config.cloud),
+                    ),
+                )
+        else:
+            from memori.memory.recall import Recall
+
+            recall = Recall(invoke.config)
+            facts = cast(
+                list[FactSearchResult | Mapping[str, object] | str],
+                recall.search_facts(
+                    user_query,
+                    entity_id=resolved_entity_id,
+                    cloud=bool(invoke.config.cloud),
+                ),
+            )
         invoke._cloud_summaries = _collect_cloud_summaries_from_facts(facts)
 
     if not facts:

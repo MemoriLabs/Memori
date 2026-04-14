@@ -1,0 +1,15 @@
+[package]
+name = "python-bindings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "memori_python"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+engine-orchestrator = { path = "../.." }
+pyo3 = { workspace = true, features = ["extension-module", "abi3-py310"] }
+serde_json = "1"

@@ -207,4 +207,14 @@ class Manager:
         if extra_wait > 0:
             time.sleep(extra_wait)
 
+        rust_core = getattr(self.config, "rust_core", None)
+        wait_for_augmentation = getattr(rust_core, "wait_for_augmentation", None)
+        if callable(wait_for_augmentation):
+            remaining_timeout: float | None
+            if timeout is None:
+                remaining_timeout = None
+            else:
+                remaining_timeout = max(0.0, timeout - (time.time() - start_time))
+            return bool(wait_for_augmentation(remaining_timeout))
+
         return True

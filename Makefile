@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-unit run-integration run-integration-provider run-integration-cloud
+.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-unit run-integration run-integration-provider run-integration-cloud run-rust-core-benchmark run-rust-core-byodb-example
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -67,6 +67,42 @@ run-integration-provider: ## Run specific provider tests (e.g., make run-integra
 run-integration-cloud: ## Run cloud integration tests (production API, requires MEMORI_API_KEY)
 	@echo "Running cloud integration tests..."
 	uv run pytest tests/integration/cloud/ -v -m integration --tb=short
+
+run-rust-core-benchmark: ## Build Rust binding and compare recall latency
+	@TARGET_DIR="$${CARGO_TARGET_DIR:-$(PWD)/target}"; \
+	MANIFEST_PATH="rust-core/Cargo.toml"; \
+	if [ ! -f "$$MANIFEST_PATH" ]; then \
+		echo "error: missing rust-core/Cargo.toml"; \
+		exit 1; \
+	fi; \
+	if [ "$$(uname)" = "Darwin" ]; then \
+		CARGO_TARGET_DIR="$$TARGET_DIR" PYO3_PYTHON="$(PWD)/.venv/bin/python" RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" cargo build --release -p python-bindings --manifest-path "$$MANIFEST_PATH"; \
+		MEMORI_PYTHON_LIB="$$TARGET_DIR/release/libmemori_python.dylib" uv run python examples/rust_core_recall_benchmark.py $(BENCH_ARGS); \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		CARGO_TARGET_DIR="$$TARGET_DIR" PYO3_PYTHON="$(PWD)/.venv/bin/python" cargo build --release -p python-bindings --manifest-path "$$MANIFEST_PATH"; \
+		MEMORI_PYTHON_LIB="$$TARGET_DIR/release/libmemori_python.so" uv run python examples/rust_core_recall_benchmark.py $(BENCH_ARGS); \
+	else \
+		CARGO_TARGET_DIR="$$TARGET_DIR" PYO3_PYTHON="$(PWD)/.venv/bin/python" cargo build --release -p python-bindings --manifest-path "$$MANIFEST_PATH"; \
+		uv run python examples/rust_core_recall_benchmark.py $(BENCH_ARGS); \
+	fi
+
+run-rust-core-byodb-example: ## Run SQLite BYODB rust-core smoke example
+	@TARGET_DIR="$${CARGO_TARGET_DIR:-$(PWD)/target}"; \
+	MANIFEST_PATH="rust-core/Cargo.toml"; \
+	if [ ! -f "$$MANIFEST_PATH" ]; then \
+		echo "error: missing rust-core/Cargo.toml"; \
+		exit 1; \
+	fi; \
+	if [ "$$(uname)" = "Darwin" ]; then \
+		CARGO_TARGET_DIR="$$TARGET_DIR" PYO3_PYTHON="$(PWD)/.venv/bin/python" RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" cargo build --release -p python-bindings --manifest-path "$$MANIFEST_PATH"; \
+		MEMORI_PYTHON_LIB="$$TARGET_DIR/release/libmemori_python.dylib" uv run python examples/sqlite/rust_core_main.py; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+		CARGO_TARGET_DIR="$$TARGET_DIR" PYO3_PYTHON="$(PWD)/.venv/bin/python" cargo build --release -p python-bindings --manifest-path "$$MANIFEST_PATH"; \
+		MEMORI_PYTHON_LIB="$$TARGET_DIR/release/libmemori_python.so" uv run python examples/sqlite/rust_core_main.py; \
+	else \
+		CARGO_TARGET_DIR="$$TARGET_DIR" PYO3_PYTHON="$(PWD)/.venv/bin/python" cargo build --release -p python-bindings --manifest-path "$$MANIFEST_PATH"; \
+		uv run python examples/sqlite/rust_core_main.py; \
+	fi
 
 lint: ## Run linting (format check)
 	docker compose exec dev uv run ruff check .

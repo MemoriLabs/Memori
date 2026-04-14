@@ -25,8 +25,115 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-  deploy:
+  build-memori-wheels:
     needs: integration-tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build
+
+      - name: Build memori wheel (macOS)
+        if: runner.os == 'macOS'
+        env:
+          PYO3_PYTHON: python
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
+          RUSTFLAGS: -C link-arg=-undefined -C link-arg=dynamic_lookup
+        run: python -m build --wheel --outdir dist
+
+      - name: Build memori wheel (non-macOS)
+        if: runner.os != 'macOS'
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
+        run: python -m build --wheel --outdir dist
+
+      - name: Smoke test built wheel
+        shell: bash
+        run: |
+          python -m venv .wheel-smoke
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./.wheel-smoke/Scripts/python -m pip install --upgrade pip
+            ./.wheel-smoke/Scripts/python -m pip install dist/*.whl
+            ./.wheel-smoke/Scripts/python -c "import memori, memori_python; print(memori.__version__)"
+          else
+            ./.wheel-smoke/bin/python -m pip install --upgrade pip
+            ./.wheel-smoke/bin/python -m pip install dist/*.whl
+            ./.wheel-smoke/bin/python -c "import memori, memori_python; print(memori.__version__)"
+          fi
+
+      - name: Upload memori wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-wheel-${{ matrix.os }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  build-memori-sdist:
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build
+
+      - name: Build memori source distribution
+        run: python -m build --sdist --outdir dist
+
+      - name: Upload memori sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish-memori:
+    needs: [build-memori-wheels, build-memori-sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Download memori distributions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: memori-*
+          path: dist/memori
+          merge-multiple: true
+
+      - name: Verify memori distribution
+        run: |
+          python -m pip install --upgrade pip twine
+          python -m twine check dist/memori/*
+
+      - name: Publish memori to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/memori/
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+  deploy:
+    needs: [integration-tests, publish-memori]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -39,19 +146,6 @@ jobs:
 
       - name: Install build tools
         run: pip install --upgrade pip build twine toml
-
-      - name: Build memori package
-        run: python -m build --outdir dist/memori
-
-      - name: Verify memori distribution
-        run: twine check dist/memori/*
-
-      - name: Publish memori to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/memori/
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Update package name to memorisdk
         run: |

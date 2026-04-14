@@ -102,6 +102,79 @@ def test_handle_augmentation_non_cloud_enqueues(mocker):
     assert input_data.conversation_messages[0].content == "hi"
 
 
+def test_handle_augmentation_non_cloud_uses_rust_core(mocker):
+    cfg = Config()
+    cfg.cloud = False
+    cfg.entity_id = "abc"
+    cfg.process_id = "def"
+    cfg.cache.conversation_id = 123
+    cfg.rust_core = mocker.Mock()
+    cfg.llm.provider = "openai"
+    cfg.llm.version = "gpt-4o"
+    cfg.framework.provider = "langchain"
+    cfg.version = "1.2.3"
+    cfg.thread_pool_executor = mocker.Mock()
+
+    aug = mocker.Mock()
+
+    handle_augmentation(
+        config=cfg,
+        payload=AugmentationInputData(
+            attribution=AttributionData(
+                entity=EntityData(id="abc"),
+                process=ProcessData(id="def"),
+            ),
+            messages=[ConversationMessage(role="user", content="hi")],
+            session=SessionData(id=str(cfg.session_id)),
+        ),
+        kwargs={},
+        augmentation_manager=aug,
+        log_content=None,
+    )
+
+    cfg.thread_pool_executor.submit.assert_called_once()
+    fn, cfg_arg, payload_arg, aug_arg = cfg.thread_pool_executor.submit.call_args.args
+    fn(cfg_arg, payload_arg, aug_arg)
+    cfg.rust_core.submit_augmentation.assert_called_once()
+    aug.enqueue.assert_not_called()
+
+
+def test_handle_augmentation_non_cloud_falls_back_when_rust_fails(mocker):
+    cfg = Config()
+    cfg.cloud = False
+    cfg.entity_id = "abc"
+    cfg.process_id = "def"
+    cfg.cache.conversation_id = 123
+    cfg.rust_core = mocker.Mock()
+    cfg.rust_core.submit_augmentation.side_effect = RuntimeError("rust unavailable")
+    cfg.thread_pool_executor = mocker.Mock()
+
+    aug = mocker.Mock()
+    error_log = mocker.patch("memori.memory.augmentation._handler.logger.error")
+
+    handle_augmentation(
+        config=cfg,
+        payload=AugmentationInputData(
+            attribution=AttributionData(
+                entity=EntityData(id="abc"),
+                process=ProcessData(id="def"),
+            ),
+            messages=[ConversationMessage(role="user", content="hi")],
+            session=SessionData(id=str(cfg.session_id)),
+        ),
+        kwargs={},
+        augmentation_manager=aug,
+        log_content=None,
+    )
+
+    cfg.thread_pool_executor.submit.assert_called_once()
+    fn, cfg_arg, payload_arg, aug_arg = cfg.thread_pool_executor.submit.call_args.args
+    fn(cfg_arg, payload_arg, aug_arg)
+    cfg.rust_core.submit_augmentation.assert_called_once()
+    aug.enqueue.assert_called_once()
+    error_log.assert_called_once()
+
+
 def test_handle_augmentation_cloud_logs_error_on_failed_post(mocker):
     cfg = Config()
     cfg.cloud = True

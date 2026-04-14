@@ -86,6 +86,8 @@ class Config:
         self.storage = None
         self.storage_config = Storage()
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=15)
+        self.use_rust_core = _env_bool("MEMORI_USE_RUST_CORE", False)
+        self.rust_core = None
         self.version = version("memori")
 
     def is_test_mode(self):

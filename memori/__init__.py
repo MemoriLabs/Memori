@@ -21,6 +21,7 @@ from memori._exceptions import (
     UnsupportedLLMProviderError,
     warn_if_legacy_memorisdk_installed,
 )
+from memori._rust_core import RustCoreAdapter
 from memori.embeddings import embed_texts
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
@@ -102,6 +103,7 @@ class Memori:
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
+        self.config.rust_core = RustCoreAdapter.maybe_create(self.config)
 
         self.augmentation = self.config.augmentation
         self.llm = LlmRegistry(self)
@@ -170,6 +172,19 @@ class Memori:
         self, query: str, limit: int | None = None
     ) -> list[RecallFact] | CloudRecallResponse:
         """Return relevant memories for a query."""
+        if self.config.cloud is False and self.config.rust_core is not None:
+            resolved_limit = self.config.recall_facts_limit if limit is None else limit
+            if not self.config.entity_id:
+                return []
+            try:
+                return self.config.rust_core.retrieve_facts(
+                    query=query,
+                    entity_id=str(self.config.entity_id),
+                    limit=resolved_limit,
+                    dense_limit=self.config.recall_embeddings_limit,
+                )
+            except Exception:  # noqa: BLE001
+                pass
         return Recall(self.config).search_facts(query, limit)
 
     def delete_entity_memories(self, entity_id: str | None = None) -> None:

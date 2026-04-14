@@ -106,6 +106,54 @@ def _send_cloud_augmentation_background(config, payload: dict) -> None:
         logger.error("cloud augmentation background task failed: %s", e, exc_info=True)
 
 
+def _enqueue_python_augmentation(
+    config, payload: AugmentationInputData, augmentation_manager
+):
+    augmentation_input = AugmentationInput(
+        conversation_id=config.cache.conversation_id,
+        entity_id=config.entity_id,
+        process_id=config.process_id,
+        conversation_messages=payload.messages,
+    )
+    augmentation_manager.enqueue(augmentation_input)
+
+
+def _submit_rust_augmentation_background(
+    config, payload: AugmentationInputData, augmentation_manager
+) -> None:
+    rust_core = getattr(config, "rust_core", None)
+    if rust_core is None:
+        _enqueue_python_augmentation(config, payload, augmentation_manager)
+        return
+
+    try:
+        rust_core.submit_augmentation(
+            entity_id=config.entity_id,
+            process_id=config.process_id,
+            conversation_id=config.cache.conversation_id,
+            conversation_messages=[m.to_dict() for m in payload.messages],
+            llm_provider=getattr(getattr(config, "llm", None), "provider", None),
+            llm_model=getattr(getattr(config, "llm", None), "version", None),
+            llm_provider_sdk_version=getattr(
+                getattr(config, "llm", None), "provider_sdk_version", None
+            ),
+            framework=getattr(getattr(config, "framework", None), "provider", None),
+            platform_provider=getattr(
+                getattr(config, "platform", None), "provider", None
+            ),
+            storage_dialect=getattr(
+                getattr(config, "storage_config", None), "dialect", None
+            ),
+            storage_cockroachdb=bool(
+                getattr(getattr(config, "storage_config", None), "cockroachdb", False)
+            ),
+            sdk_version=getattr(config, "version", None),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.error("Rust augmentation failed, falling back to Python: %s", e)
+        _enqueue_python_augmentation(config, payload, augmentation_manager)
+
+
 def handle_augmentation(
     *,
     config,
@@ -135,10 +183,18 @@ def handle_augmentation(
             _send_cloud_augmentation_background(config, aug_payload)
         return
 
-    augmentation_input = AugmentationInput(
-        conversation_id=config.cache.conversation_id,
-        entity_id=config.entity_id,
-        process_id=config.process_id,
-        conversation_messages=payload.messages,
-    )
-    augmentation_manager.enqueue(augmentation_input)
+    rust_core = getattr(config, "rust_core", None)
+    if rust_core is not None:
+        executor = getattr(config, "thread_pool_executor", None)
+        if executor is not None:
+            executor.submit(
+                _submit_rust_augmentation_background,
+                config,
+                payload,
+                augmentation_manager,
+            )
+        else:
+            _submit_rust_augmentation_background(config, payload, augmentation_manager)
+        return
+
+    _enqueue_python_augmentation(config, payload, augmentation_manager)

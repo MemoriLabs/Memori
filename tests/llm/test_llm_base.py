@@ -402,6 +402,53 @@ def test_inject_recalled_facts_no_relevant_facts():
     assert len(kwargs["messages"]) == 1
 
 
+def test_inject_recalled_facts_uses_rust_core_when_available():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.storage.driver.entity.create.return_value = 1
+    config.entity_id = "test-entity"
+    config.rust_core = Mock()
+    config.rust_core.retrieve_facts.return_value = [
+        {
+            "content": "User likes rust-first recall",
+            "similarity": 0.9,
+            "date_created": "2026-01-01 10:30:00",
+        }
+    ]
+    invoke = BaseInvoke(config, "test_method")
+    kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
+
+    with patch("memori.memory.recall.Recall") as mock_recall:
+        result = inject_recalled_facts(invoke, kwargs)
+
+    config.rust_core.retrieve_facts.assert_called_once()
+    mock_recall.assert_not_called()
+    assert "User likes rust-first recall" in result["messages"][0]["content"]
+
+
+def test_inject_recalled_facts_falls_back_when_rust_core_errors():
+    config = Config()
+    config.storage = Mock()
+    config.storage.driver = Mock()
+    config.storage.driver.entity.create.return_value = 1
+    config.entity_id = "test-entity"
+    config.rust_core = Mock()
+    config.rust_core.retrieve_facts.side_effect = RuntimeError("rust error")
+    invoke = BaseInvoke(config, "test_method")
+    kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
+
+    with patch("memori.memory.recall.Recall") as mock_recall:
+        mock_recall.return_value.search_facts.return_value = [
+            {"content": "fallback recall result", "similarity": 0.9}
+        ]
+        result = inject_recalled_facts(invoke, kwargs)
+
+    config.rust_core.retrieve_facts.assert_called_once()
+    mock_recall.return_value.search_facts.assert_called_once()
+    assert "fallback recall result" in result["messages"][0]["content"]
+
+
 def test_inject_recalled_facts_success():
     config = Config()
     config.storage = Mock()
