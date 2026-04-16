@@ -67,4 +67,3 @@ def test_get_dialect_postgres(postgres_session):
 def test_rollback_postgres(postgres_session):
     adapter = SqlAlchemyAdapter(lambda: postgres_session)
     adapter.rollback()
-

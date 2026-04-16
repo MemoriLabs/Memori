@@ -12,6 +12,7 @@ def mock_mongo_client(mocker):
     client.get_default_database = mocker.MagicMock(return_value=mocker.MagicMock())
     # Make isinstance(client, MongoClient) work by patching the class
     from pymongo.synchronous.mongo_client import MongoClient
+
     mocker.patch(
         "memori.storage.adapters.mongodb._adapter.MongoClient",
         MongoClient,
@@ -80,7 +81,9 @@ def test_execute_with_args(mongodb_conn):
     """Test MongoDB adapter execute method with various arguments."""
     adapter = Adapter(lambda: mongodb_conn)
 
-    adapter.execute("test_collection", "find", {"test": "value"}, {"field": 1, "_id": 0})
+    adapter.execute(
+        "test_collection", "find", {"test": "value"}, {"field": 1, "_id": 0}
+    )
     adapter.execute("test_collection", "delete_many", {"test": "value"})
 
 

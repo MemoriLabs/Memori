@@ -27,7 +27,11 @@ class Adapter(BaseStorageAdapter):
 
     def __init__(self, conn):
         super().__init__(conn)
-        client = self.conn if isinstance(self.conn, MongoClient) else getattr(self.conn, "client", None)
+        client = (
+            self.conn
+            if isinstance(self.conn, MongoClient)
+            else getattr(self.conn, "client", None)
+        )
         if hasattr(client, "append_metadata"):
             client.append_metadata(_DRIVER_INFO)
 
