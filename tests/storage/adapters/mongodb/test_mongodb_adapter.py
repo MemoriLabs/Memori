@@ -60,3 +60,38 @@ def test_append_metadata_includes_version(mocker, mock_mongo_db):
     call_arg = mock_mongo_db.client.append_metadata.call_args[0][0]
     assert call_arg.version is not None
     assert call_arg.version != ""
+
+
+def test_execute(mongodb_conn):
+    """Test MongoDB adapter execute method."""
+    adapter = Adapter(lambda: mongodb_conn)
+
+    adapter.execute("test_collection", "find_one", {"test": "value"})
+    adapter.execute("test_collection", "insert_one", {"test": "value"})
+
+
+def test_get_dialect(mongodb_conn):
+    """Test MongoDB adapter get_dialect method."""
+    adapter = Adapter(lambda: mongodb_conn)
+    assert adapter.get_dialect() == "mongodb"
+
+
+def test_execute_with_args(mongodb_conn):
+    """Test MongoDB adapter execute method with various arguments."""
+    adapter = Adapter(lambda: mongodb_conn)
+
+    adapter.execute("test_collection", "find", {"test": "value"}, {"field": 1, "_id": 0})
+    adapter.execute("test_collection", "delete_many", {"test": "value"})
+
+
+def test_execute_with_kwargs(mongodb_conn):
+    """Test MongoDB adapter execute method with keyword arguments."""
+    adapter = Adapter(lambda: mongodb_conn)
+
+    adapter.execute(
+        "test_collection",
+        "update_one",
+        {"test": "value"},
+        {"$set": {"updated": True}},
+        upsert=True,
+    )
