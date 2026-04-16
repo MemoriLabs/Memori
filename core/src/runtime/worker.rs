@@ -92,7 +92,7 @@ pub struct WorkerRuntime<J: Send + 'static> {
 }
 
 impl<J: Send + 'static> WorkerRuntime<J> {
-    /// Creates a runtime in [`LifecycleState::NotStarted`]. Validates [`RuntimeConfig`].
+    /// Creates a runtime in the "not started" state. Validates [`RuntimeConfig`].
     pub fn new<F, Fut>(config: RuntimeConfig, handler: F) -> Result<Self, RuntimeError>
     where
         F: Fn(J) -> Fut + Send + Sync + 'static,

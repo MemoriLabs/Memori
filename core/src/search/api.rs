@@ -61,3 +61,68 @@ pub fn search_facts(
 
     results
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::search::models::FactId;
+
+    fn candidate(id: i64, content: &str, score: f32) -> FactCandidate {
+        FactCandidate {
+            id: FactId::Int(id),
+            content: content.to_string(),
+            score,
+            date_created: "2026-01-01".to_string(),
+            summaries: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn search_facts_returns_empty_when_limit_is_zero() {
+        let results = search_facts(vec![candidate(1, "a", 1.0)], 0, None);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_facts_returns_empty_when_candidates_empty() {
+        let results = search_facts(Vec::new(), 5, Some("rust"));
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn search_facts_without_query_preserves_cosine_as_rank_score() {
+        let candidates = vec![
+            candidate(1, "rust language", 0.8),
+            candidate(2, "python language", 0.9),
+        ];
+        let results = search_facts(candidates, 2, None);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].id, FactId::Int(2));
+        assert!((results[0].rank_score - 0.9).abs() < 1e-6);
+        assert!((results[0].similarity - 0.9).abs() < 1e-6);
+    }
+
+    #[test]
+    fn search_facts_blends_cosine_and_lexical_with_query() {
+        let candidates = vec![
+            candidate(1, "rust memory safety language", 0.5),
+            candidate(2, "completely unrelated payload", 0.6),
+        ];
+        let results = search_facts(candidates, 2, Some("rust language"));
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].id, FactId::Int(1));
+        assert!(results[0].rank_score > results[1].rank_score);
+    }
+
+    #[test]
+    fn search_facts_truncates_to_limit() {
+        let candidates: Vec<FactCandidate> = (0..10)
+            .map(|i| candidate(i, "content", i as f32 / 10.0))
+            .collect();
+        let results = search_facts(candidates, 3, None);
+        assert_eq!(results.len(), 3);
+        for window in results.windows(2) {
+            assert!(window[0].rank_score >= window[1].rank_score);
+        }
+    }
+}

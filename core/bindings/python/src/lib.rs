@@ -1,3 +1,11 @@
+//! PyO3 bindings over [`engine_orchestrator::EngineOrchestrator`].
+//!
+//! This crate is a thin adapter: it deserialises JSON payloads coming from the
+//! Python SDK into engine types, invokes the engine, and serialises the result
+//! back out. All business logic lives in the root `engine-orchestrator` crate.
+
+#![forbid(unsafe_code)]
+
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::Duration;
@@ -34,9 +42,9 @@ impl PythonStorageBridge {
                 let value = callback
                     .call1(py, (payload_json,))
                     .map_err(|e| HostStorageError::new("python_callback_failed", e.to_string()))?;
-                value.extract::<String>(py).map_err(|e| {
-                    HostStorageError::new("python_callback_bad_return", e.to_string())
-                })
+                value
+                    .extract::<String>(py)
+                    .map_err(|e| HostStorageError::new("python_callback_bad_return", e.to_string()))
             });
             let _ = tx.send(result);
         });

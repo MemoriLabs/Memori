@@ -208,7 +208,10 @@ impl MemoriClient {
         self.post_async("sdk/augmentation", payload).await
     }
 
-    pub async fn augmentation_raw_async<T: Serialize>(&self, payload: &T) -> Result<String, ApiError> {
+    pub async fn augmentation_raw_async<T: Serialize>(
+        &self,
+        payload: &T,
+    ) -> Result<String, ApiError> {
         self.post_async_raw("sdk/augmentation", payload).await
     }
 

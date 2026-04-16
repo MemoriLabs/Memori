@@ -149,3 +149,86 @@ pub fn dense_lexical_weights(q_token_count: usize) -> (f32, f32) {
     };
     (1.0 - w_lex, w_lex)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn candidate(id: i64, content: &str) -> FactCandidate {
+        FactCandidate {
+            id: FactId::Int(id),
+            content: content.to_string(),
+            score: 0.0,
+            date_created: "2026-01-01".to_string(),
+            summaries: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn tokenize_lowercases_splits_and_removes_stopwords() {
+        let tokens = tokenize("The Quick brown-fox, jumps over the LAZY dog.");
+        assert_eq!(
+            tokens,
+            vec!["quick", "brown", "fox", "jumps", "over", "lazy", "dog"]
+        );
+    }
+
+    #[test]
+    fn tokenize_handles_empty_and_whitespace() {
+        assert!(tokenize("").is_empty());
+        assert!(tokenize("   \n\t").is_empty());
+        assert!(tokenize("the a of").is_empty());
+    }
+
+    #[test]
+    fn tokenize_keeps_alphanumerics_only() {
+        let tokens = tokenize("user42 loves Rust2024!");
+        assert_eq!(tokens, vec!["user42", "loves", "rust2024"]);
+    }
+
+    #[test]
+    fn lexical_scores_returns_zero_when_query_is_empty() {
+        let candidates = vec![
+            candidate(1, "rust language"),
+            candidate(2, "python language"),
+        ];
+        let scores = lexical_scores(&[], &candidates);
+        assert_eq!(scores.len(), 2);
+        assert!(scores.values().all(|&s| s == 0.0));
+    }
+
+    #[test]
+    fn lexical_scores_ranks_matching_document_highest() {
+        let candidates = vec![
+            candidate(1, "rust memory safety language"),
+            candidate(2, "javascript frontend framework"),
+            candidate(3, "python data science"),
+        ];
+        let scores = lexical_scores(&["rust".to_string()], &candidates);
+        let rust = *scores.get(&FactId::Int(1)).expect("id 1");
+        let js = *scores.get(&FactId::Int(2)).expect("id 2");
+        let py = *scores.get(&FactId::Int(3)).expect("id 3");
+        assert!(rust > js);
+        assert!(rust > py);
+        assert!(
+            (rust - 1.0).abs() < 1e-6,
+            "max score should normalize to 1.0"
+        );
+    }
+
+    #[test]
+    fn lexical_scores_all_zero_when_no_candidate_matches() {
+        let candidates = vec![candidate(1, "python"), candidate(2, "java")];
+        let scores = lexical_scores(&["rust".to_string()], &candidates);
+        assert!(scores.values().all(|&s| s == 0.0));
+    }
+
+    #[test]
+    fn dense_lexical_weights_favor_lexical_on_short_queries() {
+        let (w_cos_short, w_lex_short) = dense_lexical_weights(1);
+        let (w_cos_long, w_lex_long) = dense_lexical_weights(8);
+        assert!(w_lex_short >= w_lex_long);
+        assert!((w_cos_short + w_lex_short - 1.0).abs() < 1e-6);
+        assert!((w_cos_long + w_lex_long - 1.0).abs() < 1e-6);
+    }
+}

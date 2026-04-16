@@ -31,8 +31,6 @@ pub fn chunk_text_by_tokens(
 
     let ids = encoding.get_ids();
 
-    // FAIL-FAST SHORT-CIRCUIT: The text fits in a single model context window.
-    // Returning None lets the caller reuse the original owned string with no allocations.
     if ids.len() <= chunk_size {
         return None;
     }

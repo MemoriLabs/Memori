@@ -4,6 +4,15 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate artifacts; skip all PyPI uploads and integration tests."
+        type: boolean
+        default: false
+      publish_memorisdk:
+        description: "Also publish the memorisdk mirror package. Auto-disabled for GitHub pre-releases."
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -14,8 +23,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Run integration tests before publishing
   integration-tests:
+    if: ${{ inputs.dry_run != true }}
     uses: ./.github/workflows/integration.yml
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -27,10 +36,23 @@ jobs:
 
   build-memori-wheels:
     needs: integration-tests
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    if: ${{ always() && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') }}
+    name: wheels ${{ matrix.os }} / ${{ matrix.archs }}
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            archs: x86_64
+          - os: ubuntu-24.04-arm
+            archs: aarch64
+          - os: macos-13
+            archs: x86_64
+          - os: macos-14
+            archs: arm64
+          - os: windows-latest
+            archs: AMD64
     steps:
       - uses: actions/checkout@v5
 
@@ -42,46 +64,42 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install build tools
-        run: python -m pip install --upgrade pip build
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
 
-      - name: Build memori wheel (macOS)
-        if: runner.os == 'macOS'
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.0
         env:
-          PYO3_PYTHON: python
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
-          RUSTFLAGS: -C link-arg=-undefined -C link-arg=dynamic_lookup
-        run: python -m build --wheel --outdir dist
+          # abi3 wheels are forward-compatible across 3.10+, so one build per
+          # (os, arch) covers every supported interpreter.
+          CIBW_BUILD: "cp310-*"
+          CIBW_SKIP: "*-musllinux_* *-manylinux_i686 *-win32"
+          CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
+          CIBW_BEFORE_BUILD_LINUX: >-
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable &&
+            source $HOME/.cargo/env
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+          CIBW_ENVIRONMENT_MACOS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" MACOSX_DEPLOYMENT_TARGET=11.0'
+          CIBW_ENVIRONMENT_WINDOWS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+          CIBW_TEST_COMMAND: 'python -c "import memori, memori_python; from importlib.metadata import version; print(version(\"memori\"))"'
+          # aarch64 runners don't cross-test emulated wheels; skip test there
+          CIBW_TEST_SKIP: "*-manylinux_aarch64"
+        with:
+          output-dir: wheelhouse
 
-      - name: Build memori wheel (non-macOS)
-        if: runner.os != 'macOS'
-        env:
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: "1"
-        run: python -m build --wheel --outdir dist
-
-      - name: Smoke test built wheel
-        shell: bash
-        run: |
-          python -m venv .wheel-smoke
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            ./.wheel-smoke/Scripts/python -m pip install --upgrade pip
-            ./.wheel-smoke/Scripts/python -m pip install dist/*.whl
-            ./.wheel-smoke/Scripts/python -c "import memori, memori_python; print(memori.__version__)"
-          else
-            ./.wheel-smoke/bin/python -m pip install --upgrade pip
-            ./.wheel-smoke/bin/python -m pip install dist/*.whl
-            ./.wheel-smoke/bin/python -c "import memori, memori_python; print(memori.__version__)"
-          fi
-
-      - name: Upload memori wheel
+      - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memori-wheel-${{ matrix.os }}
-          path: dist/*.whl
+          name: memori-wheels-${{ matrix.os }}-${{ matrix.archs }}
+          path: wheelhouse/*.whl
           if-no-files-found: error
 
   build-memori-sdist:
     needs: integration-tests
+    if: ${{ always() && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -96,6 +114,21 @@ jobs:
 
       - name: Build memori source distribution
         run: python -m build --sdist --outdir dist
+
+      - name: Verify sdist contains core crate
+        run: |
+          python -c "
+          import tarfile, glob, sys
+          archives = glob.glob('dist/*.tar.gz')
+          assert archives, 'no sdist built'
+          with tarfile.open(archives[0]) as tf:
+              names = tf.getnames()
+          if not any('/core/Cargo.toml' in n for n in names):
+              sys.exit('sdist missing core/Cargo.toml')
+          if not any('/setup.py' in n for n in names):
+              sys.exit('sdist missing setup.py')
+          print('sdist looks good')
+          "
 
       - name: Upload memori sdist
         uses: actions/upload-artifact@v4
@@ -120,20 +153,31 @@ jobs:
           path: dist/memori
           merge-multiple: true
 
+      - name: List built artifacts
+        run: ls -lh dist/memori
+
       - name: Verify memori distribution
         run: |
           python -m pip install --upgrade pip twine
           python -m twine check dist/memori/*
 
       - name: Publish memori to PyPI
+        if: ${{ inputs.dry_run != true }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/memori/
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
 
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "::notice::Dry run complete. Artifacts validated with twine but not uploaded to PyPI."
+          echo "Download the memori-wheels-* and memori-sdist artifacts from this run to inspect."
+
   deploy:
-    needs: [integration-tests, publish-memori]
+    needs: [publish-memori]
+    if: ${{ inputs.dry_run != true && inputs.publish_memorisdk != false && github.event.release.prerelease != true }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -150,16 +194,16 @@ jobs:
       - name: Update package name to memorisdk
         run: |
           python -c "
-            import toml
-            with open('pyproject.toml', 'r') as f:
-                config = toml.load(f)
-            config['project']['name'] = 'memorisdk'
-            with open('pyproject.toml', 'w') as f:
-                toml.dump(config, f)
+          import toml
+          with open('pyproject.toml', 'r') as f:
+              config = toml.load(f)
+          config['project']['name'] = 'memorisdk'
+          with open('pyproject.toml', 'w') as f:
+              toml.dump(config, f)
           "
 
-      - name: Build memorisdk package
-        run: python -m build --outdir dist/memorisdk
+      - name: Build memorisdk sdist
+        run: python -m build --sdist --outdir dist/memorisdk
 
       - name: Verify memorisdk distribution
         run: twine check dist/memorisdk/*

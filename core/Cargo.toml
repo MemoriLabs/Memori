@@ -2,27 +2,26 @@
 name = "engine-orchestrator"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "Apache-2.0"
 rust-version = "1.86"
 
 [dependencies]
-thiserror.workspace = true
-tokio.workspace = true
-fastembed = "5"
-tokenizers = { version = "0.19", features = ["http"] }
-hf-hub = "0.5"
 anyhow = "1.0"
-serde_json = "1.0"
-parking_lot = "0.12"
-log = "0.4"
-serde = "1.0.228"
 base64 = "0.22"
-# Note: We explicitly use default features (native-tls) instead of rustls-tls.
-# rustls famously rejects corporate proxies/SSL inspection. native-tls ensures
-# we use the OS-level trust store, guaranteeing Corporate VPN compatibility.
+fastembed = "5"
+hf-hub = "0.5"
+log = "0.4"
+parking_lot = "0.12"
+# Uses reqwest's default TLS backend (native-tls) so the OS trust store is
+# honored. Do not enable `rustls-tls` — it bypasses corporate proxies/SSL
+# inspection that customers rely on.
 reqwest = { version = "0.12", features = ["json"] }
-dotenvy = "0.15"
+serde = "1.0.228"
+serde_json = "1.0"
 sha2 = "0.10"
+thiserror.workspace = true
+tokenizers = "0.19"
+tokio.workspace = true
 
 [workspace]
 members = [
@@ -34,7 +33,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 version = "0.1.0"
-license = "MIT"
+license = "Apache-2.0"
 rust-version = "1.86"
 
 [workspace.dependencies]

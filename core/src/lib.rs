@@ -1,8 +1,17 @@
-//! The central nervous system of the Memori Engine.
+//! Engine orchestrator crate: the Rust core shared by the Memori Python and Node SDKs.
 //!
-//! This library manages two distinct execution contexts:
-//! 1. A synchronous, high-performance math pipeline for local Embeddings.
-//! 2. An asynchronous, heavily-bounded worker pool (`WorkerRuntime`) for background I/O tasks.
+//! Responsibilities:
+//!
+//! - Synchronous embedding generation via `sentence-transformers` models.
+//! - Bounded, async background worker pools ([`WorkerRuntime`]) for postprocess and
+//!   augmentation jobs.
+//! - Sync retrieval pipeline (dense cosine + BM25 re-rank) over a host-provided
+//!   [`storage::StorageBridge`].
+//!
+//! Language bindings live under `bindings/python` (PyO3) and `bindings/node`
+//! (napi-rs) and are thin adapters over [`EngineOrchestrator`].
+
+#![forbid(unsafe_code)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -37,10 +46,10 @@ pub struct AugmentationAccepted {
     pub job_id: u64,
 }
 
-/// The main application state.
+/// Top-level engine handle shared across SDK calls.
 ///
-/// We hold the `SentenceTransformersEmbedder` inside an `Arc` so its massive ML model
-/// is natively tied to the lifecycle of the engine and cleanly dropped when the engine is destroyed.
+/// Owns the embedding model and the postprocess/augmentation worker runtimes.
+/// Cloning is cheap — the underlying resources are shared via `Arc`.
 #[derive(Clone)]
 pub struct EngineOrchestrator {
     embedder: Arc<SentenceTransformersEmbedder>,
@@ -78,11 +87,11 @@ impl EngineOrchestrator {
         })
     }
 
-    /// Synchronously processes text embeddings.
+    /// Synchronously embeds `texts` and returns `(flat_buffer, [rows, cols])`.
     ///
-    /// Note: This function prioritizes pipeline continuity. If the underlying ML model
-    /// fails to evaluate a batch, it will fall back to sequential processing. If all
-    /// fallbacks fail, it returns degraded zero-vectors rather than crashing the FFI process.
+    /// Falls back to sequential embedding if the batched call fails, and returns
+    /// zero-vectors of the correct shape as a last resort so callers always see a
+    /// well-formed output buffer. Empty / whitespace-only inputs are filtered out.
     pub fn embed(&self, texts: Vec<String>) -> (Vec<f32>, [usize; 2]) {
         embed_texts(&self.embedder, texts)
     }
@@ -338,4 +347,127 @@ fn validate_augmentation_input(input: &AugmentationInput) -> Result<(), Orchestr
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::augmentation::ConversationMessage;
+
+    fn minimal_input() -> AugmentationInput {
+        AugmentationInput {
+            entity_id: "entity".to_string(),
+            process_id: None,
+            conversation_id: None,
+            conversation_messages: Vec::new(),
+            system_prompt: None,
+            llm_provider: None,
+            llm_model: None,
+            llm_provider_sdk_version: None,
+            framework: None,
+            platform_provider: None,
+            storage_dialect: None,
+            storage_cockroachdb: None,
+            sdk_version: None,
+            use_mock_response: true,
+            mock_response: None,
+            session_id: None,
+            fact_id: None,
+            content: None,
+            metadata: serde_json::json!({}),
+        }
+    }
+
+    #[test]
+    fn execute_command_pings() {
+        assert_eq!(execute_command("ping"), Ok("pong".to_string()));
+    }
+
+    #[test]
+    fn execute_command_rejects_empty() {
+        assert!(matches!(
+            execute_command("   "),
+            Err(OrchestratorError::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn execute_command_rejects_unknown() {
+        assert!(matches!(
+            execute_command("restart-universe"),
+            Err(OrchestratorError::UnsupportedCommand(_))
+        ));
+    }
+
+    #[test]
+    fn validate_postprocess_rejects_empty() {
+        assert!(validate_postprocess_payload("   ").is_err());
+        assert!(validate_postprocess_payload("ok").is_ok());
+    }
+
+    #[test]
+    fn validate_augmentation_requires_entity_id() {
+        let mut input = minimal_input();
+        input.entity_id = "   ".to_string();
+        input.content = Some("something".to_string());
+        assert!(matches!(
+            validate_augmentation_input(&input),
+            Err(OrchestratorError::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn validate_augmentation_requires_message_or_content() {
+        let input = minimal_input();
+        assert!(matches!(
+            validate_augmentation_input(&input),
+            Err(OrchestratorError::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn validate_augmentation_accepts_populated_message() {
+        let mut input = minimal_input();
+        input.conversation_messages.push(ConversationMessage {
+            role: "user".to_string(),
+            content: "hi".to_string(),
+        });
+        assert!(validate_augmentation_input(&input).is_ok());
+    }
+
+    #[test]
+    fn validate_augmentation_rejects_blank_message_fields() {
+        let mut input = minimal_input();
+        input.conversation_messages.push(ConversationMessage {
+            role: "   ".to_string(),
+            content: "hi".to_string(),
+        });
+        assert!(matches!(
+            validate_augmentation_input(&input),
+            Err(OrchestratorError::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn validate_augmentation_accepts_content_only() {
+        let mut input = minimal_input();
+        input.content = Some("fact".to_string());
+        assert!(validate_augmentation_input(&input).is_ok());
+    }
+
+    #[test]
+    fn status_codes_are_distinct() {
+        let codes = [
+            OrchestratorError::InvalidInput("x".to_string()).status_code(),
+            OrchestratorError::UnsupportedCommand("x".to_string()).status_code(),
+            OrchestratorError::QueueFull.status_code(),
+            OrchestratorError::BackgroundUnavailable("x".to_string()).status_code(),
+            OrchestratorError::ModelError("x".to_string()).status_code(),
+            OrchestratorError::StorageUnavailable.status_code(),
+        ];
+        let mut seen = codes.to_vec();
+        seen.sort_unstable();
+        seen.dedup();
+        assert_eq!(seen.len(), codes.len());
+    }
 }

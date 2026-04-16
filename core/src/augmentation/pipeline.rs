@@ -13,21 +13,23 @@ pub async fn run_advanced_augmentation(
     input: &AugmentationInput,
 ) -> Result<WriteBatch, OrchestratorError> {
     let payload = build_payload(input);
-    if let Ok(payload_json) = serde_json::to_string_pretty(&payload) {
-        eprintln!("[rust-core][aa] request payload:\n{payload_json}");
+    if log::log_enabled!(log::Level::Trace) {
+        if let Ok(payload_json) = serde_json::to_string(&payload) {
+            log::trace!("augmentation request payload: {payload_json}");
+        }
     }
 
     let response = if input.use_mock_response {
-        eprintln!("[rust-core][aa] using mock response path");
+        log::debug!("augmentation using mock response");
         input
             .mock_response
             .clone()
             .unwrap_or_else(default_mock_augmentation_response)
     } else {
-        eprintln!("[rust-core][aa] calling Memori API: sdk/augmentation");
+        log::debug!("augmentation calling Memori API: sdk/augmentation");
         let client = MemoriClient::new(ApiSubdomain::Default)?;
         let raw_response = client.augmentation_raw_async(&payload).await?;
-        eprintln!("[rust-core][aa] raw response body:\n{raw_response}");
+        log::trace!("augmentation raw response body: {raw_response}");
         serde_json::from_str::<serde_json::Value>(&raw_response).map_err(|e| {
             OrchestratorError::ApiError(ApiError::Network(format!(
                 "failed to parse augmentation response body as JSON: {e}"
@@ -164,7 +166,10 @@ pub fn build_write_batch_from_response(
 }
 
 fn extract_facts(response: &serde_json::Value) -> Option<Vec<String>> {
-    if let Some(arr) = response.pointer("/entity/facts").and_then(|value| value.as_array()) {
+    if let Some(arr) = response
+        .pointer("/entity/facts")
+        .and_then(|value| value.as_array())
+    {
         let mut facts = Vec::new();
         for item in arr {
             if let Some(text) = item.as_str() {
@@ -239,4 +244,86 @@ fn default_mock_augmentation_response() -> serde_json::Value {
             ]
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash_id_is_deterministic_and_sha256_length() {
+        let a = hash_id("entity-1");
+        let b = hash_id("entity-1");
+        assert_eq!(a, b);
+        assert_eq!(a.len(), 64);
+    }
+
+    #[test]
+    fn hash_id_changes_with_input() {
+        assert_ne!(hash_id("entity-1"), hash_id("entity-2"));
+    }
+
+    #[test]
+    fn build_payload_hashes_ids_and_fills_defaults_when_missing() {
+        let input = AugmentationInput {
+            entity_id: "entity-1".to_string(),
+            process_id: None,
+            conversation_id: None,
+            conversation_messages: Vec::new(),
+            system_prompt: None,
+            llm_provider: None,
+            llm_model: None,
+            llm_provider_sdk_version: None,
+            framework: None,
+            platform_provider: None,
+            storage_dialect: None,
+            storage_cockroachdb: None,
+            sdk_version: None,
+            use_mock_response: true,
+            mock_response: None,
+            session_id: None,
+            fact_id: None,
+            content: Some("fact content".to_string()),
+            metadata: serde_json::json!({}),
+        };
+        let payload = build_payload(&input);
+        assert_eq!(payload.meta.attribution.entity.id, hash_id("entity-1"));
+        assert_eq!(payload.meta.attribution.process.id, hash_id(""));
+        assert!(!payload.meta.storage.cockroachdb);
+        assert_eq!(payload.conversation.messages.len(), 1);
+        assert_eq!(payload.conversation.messages[0].role, "assistant");
+        assert_eq!(payload.conversation.messages[0].content, "fact content");
+    }
+
+    #[test]
+    fn build_write_batch_falls_back_to_upsert_fact_when_response_empty() {
+        let input = AugmentationInput {
+            entity_id: "entity-1".to_string(),
+            process_id: None,
+            conversation_id: None,
+            conversation_messages: Vec::new(),
+            system_prompt: None,
+            llm_provider: None,
+            llm_model: None,
+            llm_provider_sdk_version: None,
+            framework: None,
+            platform_provider: None,
+            storage_dialect: None,
+            storage_cockroachdb: None,
+            sdk_version: None,
+            use_mock_response: true,
+            mock_response: None,
+            session_id: None,
+            fact_id: Some("fact-1".to_string()),
+            content: Some("manual fact".to_string()),
+            metadata: serde_json::json!({ "source": "manual" }),
+        };
+        let batch = build_write_batch_from_response(&input, serde_json::json!({}));
+        assert_eq!(batch.ops.len(), 1);
+        assert_eq!(batch.ops[0].op_type, "upsert_fact");
+        assert_eq!(
+            batch.ops[0].payload.get("content").and_then(|v| v.as_str()),
+            Some("manual fact")
+        );
+    }
 }

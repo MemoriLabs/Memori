@@ -370,10 +370,30 @@ fn augmentation_pipeline_accepts_current_aa_response_contract() {
 
     let batch = build_write_batch_from_response(&input, input.mock_response.clone().expect("mock"));
     assert_eq!(batch.ops.len(), 4);
-    assert!(batch.ops.iter().any(|op| op.op_type == "entity_fact.create"));
-    assert!(batch.ops.iter().any(|op| op.op_type == "knowledge_graph.create"));
-    assert!(batch.ops.iter().any(|op| op.op_type == "process_attribute.create"));
-    assert!(batch.ops.iter().any(|op| op.op_type == "conversation.update"));
+    assert!(
+        batch
+            .ops
+            .iter()
+            .any(|op| op.op_type == "entity_fact.create")
+    );
+    assert!(
+        batch
+            .ops
+            .iter()
+            .any(|op| op.op_type == "knowledge_graph.create")
+    );
+    assert!(
+        batch
+            .ops
+            .iter()
+            .any(|op| op.op_type == "process_attribute.create")
+    );
+    assert!(
+        batch
+            .ops
+            .iter()
+            .any(|op| op.op_type == "conversation.update")
+    );
 
     let fact_op = batch
         .ops
@@ -385,5 +405,8 @@ fn augmentation_pipeline_accepts_current_aa_response_contract() {
         .get("facts")
         .and_then(|v| v.as_array())
         .expect("facts should be an array");
-    assert_eq!(facts[0].as_str(), Some("The user's favorite color is blue."));
+    assert_eq!(
+        facts[0].as_str(),
+        Some("The user's favorite color is blue.")
+    );
 }

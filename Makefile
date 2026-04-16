@@ -70,9 +70,9 @@ run-integration-cloud: ## Run cloud integration tests (production API, requires 
 
 run-rust-core-benchmark: ## Build Rust binding and compare recall latency
 	@TARGET_DIR="$${CARGO_TARGET_DIR:-$(PWD)/target}"; \
-	MANIFEST_PATH="rust-core/Cargo.toml"; \
+	MANIFEST_PATH="core/Cargo.toml"; \
 	if [ ! -f "$$MANIFEST_PATH" ]; then \
-		echo "error: missing rust-core/Cargo.toml"; \
+		echo "error: missing core/Cargo.toml"; \
 		exit 1; \
 	fi; \
 	if [ "$$(uname)" = "Darwin" ]; then \
@@ -88,9 +88,9 @@ run-rust-core-benchmark: ## Build Rust binding and compare recall latency
 
 run-rust-core-byodb-example: ## Run SQLite BYODB rust-core smoke example
 	@TARGET_DIR="$${CARGO_TARGET_DIR:-$(PWD)/target}"; \
-	MANIFEST_PATH="rust-core/Cargo.toml"; \
+	MANIFEST_PATH="core/Cargo.toml"; \
 	if [ ! -f "$$MANIFEST_PATH" ]; then \
-		echo "error: missing rust-core/Cargo.toml"; \
+		echo "error: missing core/Cargo.toml"; \
 		exit 1; \
 	fi; \
 	if [ "$$(uname)" = "Darwin" ]; then \

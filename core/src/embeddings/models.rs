@@ -1,4 +1,4 @@
-//! Manages ONNX runtime instances, models, and tokenizers via `fastembed`.
+//! ONNX-backed sentence-transformers embedder via `fastembed`.
 
 use anyhow::{Result, anyhow};
 use fastembed::{EmbeddingModel, ModelTrait, TextEmbedding, TextInitOptions, get_cache_dir};
@@ -7,10 +7,10 @@ use parking_lot::Mutex;
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
-/// The embedded ML model and its operational parameters.
+/// Sentence-transformers embedder with metadata required by the chunking pipeline.
 pub struct SentenceTransformersEmbedder {
-    // Note: FastEmbed requires `&mut self` to run predictions because of internal ONNX runtime state.
-    // The Mutex provides the necessary interior mutability to share this model safely across threads.
+    // `TextEmbedding::embed` requires `&mut self` for internal ONNX runtime state,
+    // so we wrap it in a `Mutex` to share the loaded model across threads safely.
     model: Mutex<TextEmbedding>,
     tokenizer: Tokenizer,
     dim: usize,
@@ -18,10 +18,8 @@ pub struct SentenceTransformersEmbedder {
 }
 
 impl SentenceTransformersEmbedder {
-    /// Attempts to extract the model's sequence length limit from standard HuggingFace config layouts.
+    /// Reads the model's maximum sequence length from HuggingFace config files, if available.
     fn fetch_max_seq_length(repo: &ApiRepo) -> Option<usize> {
-        // We use the `?` operator pattern here to heavily flatten nested `if let` matching,
-        // eliminating the "Arrow Anti-Pattern" and keeping error paths clean.
         if let Ok(sbert_path) = repo.get("sentence_bert_config.json") {
             let content = std::fs::read_to_string(sbert_path).ok()?;
             let json = serde_json::from_str::<serde_json::Value>(&content).ok()?;
@@ -60,8 +58,6 @@ impl SentenceTransformersEmbedder {
                 .with_cache_dir(cache_dir.clone()),
         )?;
 
-        // Run a dummy pass to dynamically determine output dimension layout
-        // without hardcoding it for every possible model.
         let dummy_pass = model.embed(vec!["test"], None)?;
         let dim = dummy_pass[0].len();
 

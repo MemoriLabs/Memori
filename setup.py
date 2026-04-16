@@ -5,7 +5,7 @@ setup(
     rust_extensions=[
         RustExtension(
             "memori_python",
-            path="rust-core/bindings/python/Cargo.toml",
+            path="core/bindings/python/Cargo.toml",
             binding=Binding.PyO3,
             py_limited_api=True,
         )

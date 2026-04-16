@@ -1,4 +1,5 @@
-//! High-performance embedding pipeline: Batches, chunks, pools, and flattens text into vectors.
+//! Embedding pipeline: chunks inputs, runs the model in one batch, pools
+//! multi-chunk inputs, and flattens the result for FFI transport.
 
 use crate::embeddings::chunking::chunk_text_by_tokens;
 use crate::embeddings::models::SentenceTransformersEmbedder;
@@ -150,10 +151,11 @@ fn fallback_one_by_one(
     Ok(out)
 }
 
-/// Primary execution pipeline for generating semantic vectors.
+/// Converts `texts` into a flattened embedding buffer `(Vec<f32>, [rows, cols])`.
 ///
-/// Converts a list of text documents into a unified, flattened memory buffer
-/// `(Vec<f32>, [rows, cols])` to ensure Zero-Cost FFI transfers to Node/Python.
+/// On model failure the pipeline degrades through `run_batch` →
+/// `fallback_sequential` → `fallback_one_by_one`, and as a last resort
+/// returns zero-vectors so callers always receive a well-formed buffer.
 pub fn embed_texts(
     embedder: &SentenceTransformersEmbedder,
     texts: Vec<String>,
@@ -178,7 +180,6 @@ pub fn embed_texts(
         return (Vec::new(), [0, dim]);
     }
 
-    // All three paths return one pooled Vec<f32> per document (len == metas.len()).
     let doc_embs = match run_batch(embedder, &flat, &metas) {
         Ok(e) => e,
         Err(e) => {
@@ -202,7 +203,6 @@ pub fn embed_texts(
         }
     };
 
-    // All paths produce one embedding per document — just flatten.
     let mut flat_out = Vec::with_capacity(num_inputs * dim);
     for emb in doc_embs {
         flat_out.extend_from_slice(&emb);

@@ -1,0 +1,98 @@
+name: Core CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'setup.py'
+      - 'pyproject.toml'
+      - 'MANIFEST.in'
+      - '.github/workflows/core-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'setup.py'
+      - 'pyproject.toml'
+      - 'MANIFEST.in'
+      - '.github/workflows/core-ci.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  rust-quality:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace
+
+  wheel-build:
+    name: cibuildwheel smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Build single abi3 wheel via cibuildwheel
+        uses: pypa/cibuildwheel@v3.4.0
+        env:
+          CIBW_BUILD: "cp310-*"
+          CIBW_SKIP: "*-musllinux_* *-manylinux_i686 *-win32"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_MACOS: "${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_BEFORE_BUILD_LINUX: >-
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable &&
+            source $HOME/.cargo/env
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+          CIBW_ENVIRONMENT_MACOS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" MACOSX_DEPLOYMENT_TARGET=11.0'
+          CIBW_ENVIRONMENT_WINDOWS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+          CIBW_TEST_COMMAND: 'python -c "import memori, memori_python; from importlib.metadata import version; print(version(\"memori\"))"'
+        with:
+          output-dir: wheelhouse
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-wheel-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error

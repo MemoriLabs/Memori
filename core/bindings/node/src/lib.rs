@@ -1,3 +1,11 @@
+//! napi-rs bindings over [`engine_orchestrator::EngineOrchestrator`].
+//!
+//! This crate is a thin adapter: it deserialises JSON payloads coming from the
+//! Node SDK into engine types, invokes the engine, and serialises the result
+//! back out. All business logic lives in the root `engine-orchestrator` crate.
+
+#![forbid(unsafe_code)]
+
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::Duration;

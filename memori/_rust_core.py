@@ -22,7 +22,6 @@ class RustCoreAdapterError(RuntimeError):
 
 
 def _try_import_memori_python() -> bool:
-    debug = os.environ.get("MEMORI_DEBUG_AA_PAYLOAD") == "1"
     env_path = os.environ.get("MEMORI_PYTHON_LIB")
     candidates: list[Path] = []
     if env_path:
@@ -50,12 +49,12 @@ def _try_import_memori_python() -> bool:
             Path("target/debug/libmemori_python.dylib"),
             Path("target/debug/libmemori_python.so"),
             Path("target/debug/memori_python.dll"),
-            Path("rust-core/target/release/libmemori_python.dylib"),
-            Path("rust-core/target/release/libmemori_python.so"),
-            Path("rust-core/target/release/memori_python.dll"),
-            Path("rust-core/target/debug/libmemori_python.dylib"),
-            Path("rust-core/target/debug/libmemori_python.so"),
-            Path("rust-core/target/debug/memori_python.dll"),
+            Path("core/target/release/libmemori_python.dylib"),
+            Path("core/target/release/libmemori_python.so"),
+            Path("core/target/release/memori_python.dll"),
+            Path("core/target/debug/libmemori_python.dylib"),
+            Path("core/target/debug/libmemori_python.so"),
+            Path("core/target/debug/memori_python.dll"),
         ]
     )
 
@@ -70,8 +69,7 @@ def _try_import_memori_python() -> bool:
             module = importlib.util.module_from_spec(spec)
             loader.exec_module(module)
             sys.modules["memori_python"] = module
-            if debug:
-                print(f"[rust-core][load] memori_python from {candidate}", flush=True)
+            logger.debug("Loaded memori_python from %s", candidate)
             return True
         except ImportError:
             continue
@@ -79,12 +77,10 @@ def _try_import_memori_python() -> bool:
     try:
         import memori_python  # noqa: F401
 
-        if debug:
-            print(
-                f"[rust-core][load] memori_python from {getattr(memori_python, '__file__', 'unknown')}",
-                flush=True,
-            )
-
+        logger.debug(
+            "Loaded memori_python from %s",
+            getattr(memori_python, "__file__", "unknown"),
+        )
         return True
     except ImportError:
         return False
@@ -215,11 +211,9 @@ class RustCoreAdapter:
             "sdk_version": sdk_version,
             "session_id": str(getattr(self.config, "session_id", "")),
         }
-        if os.environ.get("MEMORI_DEBUG_AA_PAYLOAD") == "1":
-            print(
-                "[rust-core][aa][python->rust] submit_augmentation payload:\n"
-                f"{json.dumps(payload, indent=2)}",
-                flush=True,
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "submit_augmentation payload: %s", json.dumps(payload, indent=2)
             )
         result = self._engine.submit_augmentation(json.dumps(payload))
         try:
