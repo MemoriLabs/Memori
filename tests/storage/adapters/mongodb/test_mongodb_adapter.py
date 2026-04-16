@@ -33,7 +33,7 @@ def mock_mongo_db(mocker):
 
 def test_append_metadata_called_when_conn_is_mongo_client(mocker, mock_mongo_client):
     """Adapter calls append_metadata on a MongoClient passed directly."""
-    adapter = Adapter(lambda: mock_mongo_client)
+    Adapter(lambda: mock_mongo_client)
     mock_mongo_client.append_metadata.assert_called_once()
     call_arg = mock_mongo_client.append_metadata.call_args[0][0]
     assert call_arg.name == "Memori"
@@ -41,7 +41,7 @@ def test_append_metadata_called_when_conn_is_mongo_client(mocker, mock_mongo_cli
 
 def test_append_metadata_called_when_conn_is_database(mocker, mock_mongo_db):
     """Adapter calls append_metadata on client retrieved from a database object."""
-    adapter = Adapter(lambda: mock_mongo_db)
+    Adapter(lambda: mock_mongo_db)
     mock_mongo_db.client.append_metadata.assert_called_once()
     call_arg = mock_mongo_db.client.append_metadata.call_args[0][0]
     assert call_arg.name == "Memori"
@@ -51,12 +51,12 @@ def test_append_metadata_skipped_when_not_available(mocker, mock_mongo_db):
     """Adapter does not raise if append_metadata is absent (older PyMongo)."""
     del mock_mongo_db.client.append_metadata
     # Should not raise
-    adapter = Adapter(lambda: mock_mongo_db)
+    Adapter(lambda: mock_mongo_db)
 
 
 def test_append_metadata_includes_version(mocker, mock_mongo_db):
     """DriverInfo passed to append_metadata carries a non-empty version string."""
-    adapter = Adapter(lambda: mock_mongo_db)
+    Adapter(lambda: mock_mongo_db)
     call_arg = mock_mongo_db.client.append_metadata.call_args[0][0]
     assert call_arg.version is not None
     assert call_arg.version != ""
