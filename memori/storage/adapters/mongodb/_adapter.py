@@ -8,10 +8,15 @@ r"""
                        memorilabs.ai
 """
 
+from importlib.metadata import version as get_version
+
+from pymongo.driver_info import DriverInfo
 from pymongo.synchronous.mongo_client import MongoClient
 
 from memori.storage._base import BaseStorageAdapter
 from memori.storage._registry import Registry
+
+_DRIVER_INFO = DriverInfo(name="Memori", version=get_version("memori"))
 
 
 @Registry.register_adapter(
@@ -19,6 +24,16 @@ from memori.storage._registry import Registry
 )
 class Adapter(BaseStorageAdapter):
     """MongoDB storage adapter for MongoDB database connections."""
+
+    def __init__(self, conn):
+        super().__init__(conn)
+        client = (
+            self.conn
+            if isinstance(self.conn, MongoClient)
+            else getattr(self.conn, "client", None)
+        )
+        if hasattr(client, "append_metadata"):
+            client.append_metadata(_DRIVER_INFO)
 
     def execute(self, collection_name_or_ops, operation=None, *args, **kwargs):
         """Execute MongoDB operations.
