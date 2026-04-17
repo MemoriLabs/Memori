@@ -108,6 +108,25 @@ def _onnxruntime_lib_filename() -> str:
     return "libonnxruntime.so"
 
 
+def _resolve_onnxruntime_lib_path(lib_dir: Path) -> Path | None:
+    direct_path = lib_dir / _onnxruntime_lib_filename()
+    if direct_path.exists():
+        return direct_path
+
+    system = platform.system().lower()
+    if system == "darwin":
+        fallback_pattern = "libonnxruntime.*.dylib"
+    elif system == "windows":
+        fallback_pattern = "onnxruntime*.dll"
+    else:
+        fallback_pattern = "libonnxruntime.so.*"
+
+    for candidate in sorted(lib_dir.glob(fallback_pattern)):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def _is_within_directory(directory: Path, candidate: Path) -> bool:
     directory = directory.resolve()
     candidate = candidate.resolve()
@@ -140,7 +159,7 @@ def _extract_onnxruntime_archive(archive_path: Path, destination: Path) -> None:
             if member.isdir():
                 target.mkdir(parents=True, exist_ok=True)
                 continue
-            if not member.isfile():
+            if not (member.isfile() or member.islnk()):
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             source = archive.extractfile(member)
@@ -242,8 +261,9 @@ def _ensure_onnxruntime_dylib() -> None:
 
     cache_root = Path.home() / ".cache" / "memori" / "onnxruntime" / _ORT_VERSION
     asset_root = asset_name.removesuffix(".tgz").removesuffix(".zip")
-    lib_path = cache_root / asset_root / "lib" / _onnxruntime_lib_filename()
-    if lib_path.exists():
+    lib_dir = cache_root / asset_root / "lib"
+    lib_path = _resolve_onnxruntime_lib_path(lib_dir)
+    if lib_path is not None:
         _configure_onnxruntime_env(lib_path)
         return
 
@@ -253,8 +273,9 @@ def _ensure_onnxruntime_dylib() -> None:
         logger.warning("Timed out waiting for ONNX Runtime cache lock")
         return
     try:
-        if lib_path.exists():
-            _configure_onnxruntime_env(lib_path)
+        existing_lib_path = _resolve_onnxruntime_lib_path(lib_dir)
+        if existing_lib_path is not None:
+            _configure_onnxruntime_env(existing_lib_path)
             return
 
         with tempfile.NamedTemporaryFile(
@@ -295,8 +316,9 @@ def _ensure_onnxruntime_dylib() -> None:
         finally:
             archive_path.unlink(missing_ok=True)
 
-        if lib_path.exists():
-            _configure_onnxruntime_env(lib_path)
+        resolved_lib_path = _resolve_onnxruntime_lib_path(lib_dir)
+        if resolved_lib_path is not None:
+            _configure_onnxruntime_env(resolved_lib_path)
     finally:
         _release_cache_lock(lock_path)
 

@@ -273,6 +273,29 @@ def test_ensure_onnxruntime_dylib_uses_cached_binary(mocker, tmp_path):
     mock_get.assert_not_called()
 
 
+def test_ensure_onnxruntime_dylib_uses_versioned_cached_binary(mocker, tmp_path):
+    cache_root = tmp_path / ".cache" / "memori" / "onnxruntime" / "1.23.2"
+    lib_path = (
+        cache_root
+        / "onnxruntime-osx-arm64-1.23.2"
+        / "lib"
+        / "libonnxruntime.1.23.2.dylib"
+    )
+    lib_path.parent.mkdir(parents=True)
+    lib_path.write_text("placeholder")
+
+    mocker.patch("memori._rust_core.platform.system", return_value="Darwin")
+    mocker.patch("memori._rust_core.platform.machine", return_value="arm64")
+    mocker.patch("memori._rust_core.Path.home", return_value=tmp_path)
+    mock_get = mocker.patch("memori._rust_core.requests.get")
+
+    os.environ.pop("ORT_DYLIB_PATH", None)
+    _rust_core._ensure_onnxruntime_dylib()
+
+    assert os.environ["ORT_DYLIB_PATH"] == str(lib_path)
+    mock_get.assert_not_called()
+
+
 def test_compute_sha256_produces_expected_digest(tmp_path):
     target = tmp_path / "payload.bin"
     target.write_bytes(b"memori")

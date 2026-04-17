@@ -87,7 +87,7 @@ jobs:
           CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
           CIBW_ENVIRONMENT_MACOS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" MACOSX_DEPLOYMENT_TARGET=11.0'
           CIBW_ENVIRONMENT_WINDOWS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 CFLAGS=/MD CXXFLAGS=/MD'
-          CIBW_TEST_COMMAND: 'python -c "from importlib.metadata import version; from pathlib import Path; import memori; from memori import _rust_core; _rust_core._ensure_onnxruntime_dylib(); ort_path = Path(_rust_core.os.environ[\"ORT_DYLIB_PATH\"]); assert ort_path.exists(), ort_path; import memori_python; print(version(\"memori\"))"'
+          CIBW_TEST_COMMAND: 'python -c "from importlib.metadata import version; from pathlib import Path; import memori; from memori import _rust_core; _rust_core._ensure_onnxruntime_dylib(); ort_env = _rust_core.os.environ.get(\"ORT_DYLIB_PATH\"); assert ort_env, \"ORT_DYLIB_PATH missing after bootstrap\"; ort_path = Path(ort_env); assert ort_path.exists(), ort_path; import memori_python; print(version(\"memori\"))"'
           # aarch64 runners don't cross-test emulated wheels; skip test there
           CIBW_TEST_SKIP: "*-manylinux_aarch64"
         with:
