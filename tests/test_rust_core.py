@@ -16,7 +16,7 @@ def _fake_connection_context(_conn_factory, driver):
 
 def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
     config = Config()
-    config.storage = SimpleNamespace(conn_factory=lambda: object())
+    config.storage = SimpleNamespace(conn_factory=object)
     driver = SimpleNamespace(
         entity=SimpleNamespace(create=mocker.Mock(return_value=42)),
         entity_fact=SimpleNamespace(
@@ -51,7 +51,7 @@ def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
 
 def test_write_batch_callback_maps_process_attribute_dict(mocker):
     config = Config()
-    config.storage = SimpleNamespace(conn_factory=lambda: object())
+    config.storage = SimpleNamespace(conn_factory=object)
     driver = SimpleNamespace(
         process=SimpleNamespace(create=mocker.Mock(return_value=7)),
         process_attribute=SimpleNamespace(create=mocker.Mock()),
@@ -91,7 +91,7 @@ def test_write_batch_callback_maps_process_attribute_dict(mocker):
 
 def test_write_batch_callback_embeds_entity_facts(mocker):
     config = Config()
-    config.storage = SimpleNamespace(conn_factory=lambda: object())
+    config.storage = SimpleNamespace(conn_factory=object)
     config.embeddings = SimpleNamespace(model="all-MiniLM-L6-v2")
     driver = SimpleNamespace(
         entity=SimpleNamespace(create=mocker.Mock(return_value=42)),
@@ -138,7 +138,7 @@ def test_write_batch_callback_embeds_entity_facts(mocker):
 
 def test_write_batch_callback_rejects_malformed_json():
     callback = _rust_core.RustCoreAdapter._write_batch_cb(
-        SimpleNamespace(storage=SimpleNamespace(conn_factory=lambda: object()))
+        SimpleNamespace(storage=SimpleNamespace(conn_factory=object))
     )
     with pytest.raises(_rust_core.RustCoreAdapterError, match="Invalid JSON"):
         callback("{not-json")

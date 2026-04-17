@@ -6,7 +6,6 @@ import os
 import sys
 from dataclasses import dataclass
 from importlib.machinery import ExtensionFileLoader
-from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
@@ -566,7 +565,7 @@ def _to_optional_int(value: Any) -> int | None:
 def _parse_json(raw: str, context: str) -> Any:
     try:
         return json.loads(raw)
-    except JSONDecodeError as exc:
+    except json.JSONDecodeError as exc:
         raise RustCoreAdapterError(f"Invalid JSON in {context}") from exc
 
 

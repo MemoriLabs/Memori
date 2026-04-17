@@ -76,9 +76,9 @@ jobs:
           CIBW_BUILD: "cp310-*"
           CIBW_SKIP: "*-musllinux_* *-manylinux_i686 *-win32"
           CIBW_ARCHS: ${{ matrix.archs }}
-          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
-          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
-          # manylinux_2_28 (AlmaLinux 8) needs perl for vendored OpenSSL builds,
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_34"
+          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_34"
+          # manylinux_2_34 needs perl for vendored OpenSSL builds,
           # and openssl-devel/pkgconf for non-vendored host/build-script paths.
           CIBW_BEFORE_ALL_LINUX: "dnf install -y perl-core openssl-devel pkgconf-pkg-config"
           CIBW_BEFORE_BUILD_LINUX: >-
