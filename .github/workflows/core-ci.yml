@@ -80,15 +80,15 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_MACOS: "${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          # manylinux_2_28 (AlmaLinux 8) has gcc/make but needs perl to build
-          # the vendored OpenSSL used by reqwest/hf-hub/ort-sys.
-          CIBW_BEFORE_ALL_LINUX: "dnf install -y perl-core"
+          # manylinux_2_28 (AlmaLinux 8) needs perl for vendored OpenSSL builds,
+          # and openssl-devel/pkgconf for non-vendored host/build-script paths.
+          CIBW_BEFORE_ALL_LINUX: "dnf install -y perl-core openssl-devel pkgconf-pkg-config"
           CIBW_BEFORE_BUILD_LINUX: >-
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable &&
             source $HOME/.cargo/env
           CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
           CIBW_ENVIRONMENT_MACOS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" MACOSX_DEPLOYMENT_TARGET=11.0'
-          CIBW_ENVIRONMENT_WINDOWS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+          CIBW_ENVIRONMENT_WINDOWS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 CFLAGS=/MD CXXFLAGS=/MD'
           CIBW_TEST_COMMAND: 'python -c "import memori, memori_python; from importlib.metadata import version; print(version(\"memori\"))"'
         with:
           output-dir: wheelhouse
