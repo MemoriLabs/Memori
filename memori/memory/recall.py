@@ -13,14 +13,19 @@ import time
 from collections.abc import Mapping
 from typing import Any, TypedDict, TypeGuard, cast
 
-from sqlalchemy.exc import OperationalError
-
 from memori._config import Config
 from memori._logging import truncate
 from memori._network import Api
 from memori.embeddings import embed_texts
 from memori.search import search_facts as search_facts_api
 from memori.search._types import FactSearchResult
+
+try:
+    from sqlalchemy.exc import OperationalError
+
+    _RETRYABLE_DB_ERRORS: tuple[type[Exception], ...] = (OperationalError,)
+except ImportError:
+    _RETRYABLE_DB_ERRORS = ()
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +237,7 @@ class Recall:
                 )
                 logger.debug("Recall complete - found %d facts", len(facts))
                 break
-            except OperationalError as e:
+            except _RETRYABLE_DB_ERRORS as e:
                 if "restart transaction" in str(e) and attempt < MAX_RETRIES - 1:
                     logger.debug(
                         "Retry attempt %d due to OperationalError", attempt + 1

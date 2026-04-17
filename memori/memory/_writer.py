@@ -11,9 +11,14 @@ r"""
 import logging
 import time
 
-from sqlalchemy.exc import OperationalError
-
 from memori._config import Config
+
+try:
+    from sqlalchemy.exc import OperationalError
+
+    _RETRYABLE_DB_ERRORS: tuple[type[Exception], ...] = (OperationalError,)
+except ImportError:
+    _RETRYABLE_DB_ERRORS = ()
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +41,7 @@ class Writer:
             try:
                 self._execute_transaction(payload)
                 return self
-            except OperationalError as e:
+            except _RETRYABLE_DB_ERRORS as e:
                 if "restart transaction" in str(e) and attempt < max_retries - 1:
                     logger.debug(
                         "Writer retry attempt %d due to OperationalError", attempt + 1

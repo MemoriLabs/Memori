@@ -38,7 +38,7 @@ pub fn parse_embedding_batch_from_db(bytes: &[u8], dim: usize) -> (Vec<f32>, [us
         .chunks_exact(4)
         .map(|chunk| f32::from_le_bytes(chunk.try_into().unwrap()))
         .collect();
-    let rows = if dim > 0 { flat.len() / dim } else { 0 };
+    let rows = flat.len().checked_div(dim).unwrap_or(0);
     (flat, [rows, dim])
 }
 

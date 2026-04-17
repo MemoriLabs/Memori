@@ -80,6 +80,9 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_MACOS: "${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}"
           CIBW_ARCHS_WINDOWS: "AMD64"
+          # manylinux_2_28 (AlmaLinux 8) has gcc/make but needs perl to build
+          # the vendored OpenSSL used by reqwest/hf-hub/ort-sys.
+          CIBW_BEFORE_ALL_LINUX: "dnf install -y perl-core"
           CIBW_BEFORE_BUILD_LINUX: >-
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable &&
             source $HOME/.cargo/env

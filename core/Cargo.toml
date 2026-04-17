@@ -11,6 +11,12 @@ base64 = "0.22"
 fastembed = "5"
 hf-hub = "0.5"
 log = "0.4"
+# Force a vendored build of OpenSSL so transitive dependencies (reqwest,
+# hf-hub, ort-sys, ...) link against a statically built libssl instead of the
+# system package. This keeps native-tls semantics (OS trust store is still
+# honored on macOS/Windows) while making manylinux/Windows wheel builds
+# self-contained.
+openssl-sys = { version = "0.9", features = ["vendored"] }
 parking_lot = "0.12"
 # Uses reqwest's default TLS backend (native-tls) so the OS trust store is
 # honored. Do not enable `rustls-tls` — it bypasses corporate proxies/SSL

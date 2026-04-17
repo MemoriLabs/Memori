@@ -42,7 +42,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cockroachdb = ["psycopg[binary]>=3.1.0"]
+sqlalchemy = ["sqlalchemy>=2.0.44"]
+cockroachdb = [
+    "psycopg[binary]>=3.1.0",
+    "sqlalchemy>=2.0.44",
+    "sqlalchemy-cockroachdb>=1.4.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -137,6 +142,7 @@ exclude = [
     "benchmarks/**/*.ipynb",
     "tests/**/*.py",
     "**/__pycache__/**",
+    "setup.py",
 ]
 
 [tool.ty.environment]

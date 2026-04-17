@@ -75,7 +75,7 @@ def _try_import_memori_python() -> bool:
             continue
 
     try:
-        import memori_python  # noqa: F401
+        import memori_python  # noqa: F401  # ty: ignore[unresolved-import]
 
         logger.debug(
             "Loaded memori_python from %s",
@@ -114,7 +114,7 @@ class RustCoreAdapter:
             return None
         _try_import_memori_python()
         try:
-            from memori_python import EngineHandle
+            from memori_python import EngineHandle  # ty: ignore[unresolved-import]
         except ImportError as exc:
             logger.warning(
                 "Rust core unavailable, falling back to Python path: %s", exc
@@ -351,7 +351,7 @@ def _normalize_fact_id(fact_id: Any) -> int | str:
 
 
 def _normalize_embedding_row(fact_id: Any, embedding: Any) -> dict[str, Any] | None:
-    payload = {"id": _normalize_fact_id(fact_id)}
+    payload: dict[str, Any] = {"id": _normalize_fact_id(fact_id)}
     if embedding is None:
         return None
 
@@ -444,7 +444,8 @@ def _apply_write_op(
             embeddings_model = getattr(
                 getattr(config, "embeddings", None), "model", None
             )
-            embeddings = embed_texts(facts_str, model=embeddings_model)
+            if isinstance(embeddings_model, str) and embeddings_model:
+                embeddings = embed_texts(facts_str, model=embeddings_model)
         except Exception:  # noqa: BLE001
             logger.exception(
                 "Failed to embed AA facts before write; falling back without embeddings"
