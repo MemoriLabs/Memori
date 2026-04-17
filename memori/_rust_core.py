@@ -118,17 +118,36 @@ def _extract_onnxruntime_archive(archive_path: Path, destination: Path) -> None:
     if archive_path.suffix == ".zip":
         with zipfile.ZipFile(archive_path, "r") as archive:
             for member in archive.infolist():
+                if not member.filename:
+                    continue
                 target = destination / member.filename
                 if not _is_within_directory(destination, target):
                     raise RuntimeError("Unsafe path in ONNX Runtime zip archive")
-            archive.extractall(destination)
+                if member.is_dir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(member, "r") as source, target.open("wb") as output:
+                    shutil.copyfileobj(source, output)
         return
     with tarfile.open(archive_path, "r:gz") as archive:
         for member in archive.getmembers():
+            if not member.name:
+                continue
             target = destination / member.name
             if not _is_within_directory(destination, target):
                 raise RuntimeError("Unsafe path in ONNX Runtime tar archive")
-        archive.extractall(destination)
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            if not member.isfile():
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            source = archive.extractfile(member)
+            if source is None:
+                continue
+            with source, target.open("wb") as output:
+                shutil.copyfileobj(source, output)
 
 
 def _compute_sha256(path: Path) -> str:
