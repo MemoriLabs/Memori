@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 from contextlib import contextmanager
 from types import SimpleNamespace
 
@@ -236,3 +237,46 @@ def test_wait_for_augmentation_forwards_timeout_ms(mocker):
 
     assert result is True
     engine.wait_for_augmentation.assert_called_once_with(1250)
+
+
+def test_onnxruntime_asset_mapping_for_supported_platforms(mocker):
+    mocker.patch("memori._rust_core.platform.system", return_value="Linux")
+    mocker.patch("memori._rust_core.platform.machine", return_value="x86_64")
+    assert _rust_core._onnxruntime_asset_for_current_platform() == (
+        "onnxruntime-linux-x64-1.23.2.tgz",
+        "1fa4dcaef22f6f7d5cd81b28c2800414350c10116f5fdd46a2160082551c5f9b",
+    )
+
+    mocker.patch("memori._rust_core.platform.system", return_value="Darwin")
+    mocker.patch("memori._rust_core.platform.machine", return_value="arm64")
+    assert _rust_core._onnxruntime_asset_for_current_platform() == (
+        "onnxruntime-osx-arm64-1.23.2.tgz",
+        "b4d513ab2b26f088c66891dbbc1408166708773d7cc4163de7bdca0e9bbb7856",
+    )
+
+
+def test_ensure_onnxruntime_dylib_uses_cached_binary(mocker, tmp_path):
+    cache_root = tmp_path / ".cache" / "memori" / "onnxruntime" / "1.23.2"
+    lib_path = cache_root / "onnxruntime-linux-x64-1.23.2" / "lib" / "libonnxruntime.so"
+    lib_path.parent.mkdir(parents=True)
+    lib_path.write_text("placeholder")
+
+    mocker.patch("memori._rust_core.platform.system", return_value="Linux")
+    mocker.patch("memori._rust_core.platform.machine", return_value="x86_64")
+    mocker.patch("memori._rust_core.Path.home", return_value=tmp_path)
+    mock_get = mocker.patch("memori._rust_core.requests.get")
+
+    os.environ.pop("ORT_DYLIB_PATH", None)
+    _rust_core._ensure_onnxruntime_dylib()
+
+    assert os.environ["ORT_DYLIB_PATH"] == str(lib_path)
+    mock_get.assert_not_called()
+
+
+def test_compute_sha256_produces_expected_digest(tmp_path):
+    target = tmp_path / "payload.bin"
+    target.write_bytes(b"memori")
+    assert (
+        _rust_core._compute_sha256(target)
+        == "e2092aab4fc7f734b716bd2eaccd02e6c8a83a7aeb4955acab115716847bb7f1"
+    )

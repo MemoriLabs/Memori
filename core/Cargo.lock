@@ -1057,12 +1057,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hmac-sha256"
-version = "1.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec9d92d097f4749b64e8cc33d924d9f40a2d4eb91402b458014b781f5733d60f"
-
-[[package]]
 name = "http"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1508,6 +1502,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libloading"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "754ca22de805bb5744484a5b151a9e1a8e837d5dc232c2d7d8c2e3492edc8b60"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
+
+[[package]]
 name = "libredox"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,12 +1561,6 @@ checksum = "0fae87c125b03c1d2c0150c90365d7d6bcc53fb73a9acaef207d2d065860f062"
 dependencies = [
  "imgref",
 ]
-
-[[package]]
-name = "lzma-rust2"
-version = "0.15.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1670343e58806300d87950e3401e820b519b9384281bbabfb15e3636689ffd69"
 
 [[package]]
 name = "macro_rules_attribute"
@@ -1734,7 +1732,7 @@ version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "427802e8ec3a734331fec1035594a210ce1ff4dc5bc1950530920ab717964ea3"
 dependencies = [
- "libloading",
+ "libloading 0.8.9",
 ]
 
 [[package]]
@@ -1986,11 +1984,11 @@ version = "2.0.0-rc.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5df903c0d2c07b56950f1058104ab0c8557159f2741782223704de9be73c3c"
 dependencies = [
+ "libloading 0.9.0",
  "ndarray",
  "ort-sys",
  "smallvec",
  "tracing",
- "ureq 3.3.0",
 ]
 
 [[package]]
@@ -1998,11 +1996,6 @@ name = "ort-sys"
 version = "2.0.0-rc.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06503bb33f294c5f1ba484011e053bfa6ae227074bdb841e9863492dc5960d4b"
-dependencies = [
- "hmac-sha256",
- "lzma-rust2",
- "ureq 3.3.0",
-]
 
 [[package]]
 name = "parking_lot"

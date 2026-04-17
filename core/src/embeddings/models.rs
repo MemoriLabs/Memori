@@ -9,9 +9,11 @@ use tokenizers::Tokenizer;
 
 /// Sentence-transformers embedder with metadata required by the chunking pipeline.
 pub struct SentenceTransformersEmbedder {
-    // `TextEmbedding::embed` requires `&mut self` for internal ONNX runtime state,
-    // so we wrap it in a `Mutex` to share the loaded model across threads safely.
-    model: Mutex<TextEmbedding>,
+    // `TextEmbedding::embed` requires `&mut self` for internal ONNX runtime state.
+    // We initialize lazily so engine startup does not require loading ONNX runtime.
+    model: Mutex<Option<TextEmbedding>>,
+    embedding_model: EmbeddingModel,
+    cache_dir: PathBuf,
     tokenizer: Tokenizer,
     dim: usize,
     chunk_size: usize,
@@ -52,16 +54,9 @@ impl SentenceTransformersEmbedder {
             .ok_or_else(|| anyhow!("No model info found for {embedding_model}"))?;
 
         let cache_dir: PathBuf = get_cache_dir().into();
-        let mut model = TextEmbedding::try_new(
-            TextInitOptions::new(embedding_model.clone())
-                .with_show_download_progress(true)
-                .with_cache_dir(cache_dir.clone()),
-        )?;
+        let dim = model_info.dim;
 
-        let dummy_pass = model.embed(vec!["test"], None)?;
-        let dim = dummy_pass[0].len();
-
-        let api = ApiBuilder::from_cache(Cache::new(cache_dir))
+        let api = ApiBuilder::from_cache(Cache::new(cache_dir.clone()))
             .build()
             .map_err(|e| anyhow!("Failed to initialize HF API: {}", e))?;
         let repo = api.model(model_info.model_code.clone());
@@ -80,11 +75,30 @@ impl SentenceTransformersEmbedder {
             .map_err(|e| anyhow!("Failed to load tokenizer file: {}", e))?;
 
         Ok(Self {
-            model: Mutex::new(model),
+            model: Mutex::new(None),
+            embedding_model,
+            cache_dir,
             tokenizer,
             dim,
             chunk_size,
         })
+    }
+
+    fn with_model<T>(&self, f: impl FnOnce(&mut TextEmbedding) -> Result<T>) -> Result<T> {
+        let mut model_guard = self.model.lock();
+        if model_guard.is_none() {
+            let model = TextEmbedding::try_new(
+                TextInitOptions::new(self.embedding_model.clone())
+                    .with_show_download_progress(true)
+                    .with_cache_dir(self.cache_dir.clone()),
+            )?;
+            *model_guard = Some(model);
+        }
+
+        match model_guard.as_mut() {
+            Some(model) => f(model),
+            None => Err(anyhow!("Failed to initialize embedding model")),
+        }
     }
 
     pub fn tokenizer(&self) -> &Tokenizer {
@@ -100,25 +114,25 @@ impl SentenceTransformersEmbedder {
     }
 
     pub fn embed_single(&self, text: &str) -> Result<Vec<f32>> {
-        let mut model = self.model.lock();
-        let embeddings = model.embed(vec![text], None)?;
-        Ok(embeddings[0].clone())
+        self.with_model(|model| {
+            let embeddings = model.embed(vec![text], None)?;
+            Ok(embeddings[0].clone())
+        })
     }
 
     pub fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
-        let mut model = self.model.lock();
-        let embeddings = model.embed(texts, None)?;
-        Ok(embeddings)
+        self.with_model(|model| model.embed(texts, None))
     }
 
     pub fn embed_one_by_one(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
         let mut results = Vec::with_capacity(texts.len());
-        let mut model = self.model.lock();
-
-        for text in texts {
-            let embeddings = model.embed(vec![text.as_str()], None)?;
-            results.push(embeddings[0].clone());
-        }
+        self.with_model(|model| {
+            for text in texts {
+                let embeddings = model.embed(vec![text.as_str()], None)?;
+                results.push(embeddings[0].clone());
+            }
+            Ok(())
+        })?;
 
         let dim_set: std::collections::HashSet<usize> = results.iter().map(|v| v.len()).collect();
 
