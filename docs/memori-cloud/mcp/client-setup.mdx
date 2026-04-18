@@ -188,6 +188,38 @@ const memoriHeaders = {
 Pass these headers in every MCP tool call. `session_id` is derived automatically from `entity_id` and the current UTC hour.
 Use `process_id` to isolate memories by integration or workspace so preferences from a personal workspace don't bleed into a team workspace.
 
+## Project-Scoped Setup
+
+When you work across multiple projects, use a **per-project `.mcp.json`** so `entity_id` and `process_id` are fixed to that project and never need manual switching.
+
+Place `.mcp.json` in each project root with project-specific values:
+
+```json
+{
+  "mcpServers": {
+    "memori": {
+      "type": "http",
+      "url": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "${MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "project-alpha",
+        "X-Memori-Process-Id": "project-alpha"
+      }
+    }
+  }
+}
+```
+
+Because the values are hardcoded per file, the correct identifiers are loaded automatically whenever you open that project — no manual switching required.
+
+**When to use the same value for both headers:**
+Set `X-Memori-Entity-Id` and `X-Memori-Process-Id` to the same string (e.g. `project-alpha`) when a project has a single agent or workflow. All memories are scoped to that project and shared across sessions.
+
+**When to use different values:**
+Set `X-Memori-Process-Id` to a distinct agent name (e.g. `research-agent`, `review-agent`) when multiple agents share the same project entity. Facts are shared across agents for that entity; conversation history stays isolated per process.
+
+**Keep the API key as an environment variable** — export `MEMORI_API_KEY` once in your shell profile (`.bashrc` / `.zshrc`) and reference it via `${MEMORI_API_KEY}` in every project config.
+
 ## Verifying the Connection
 
 After configuring any client:
