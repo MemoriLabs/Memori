@@ -9,6 +9,10 @@ on:
         description: "Build and validate artifacts; skip all PyPI uploads and integration tests."
         type: boolean
         default: false
+      skip_integration_tests:
+        description: "Skip integration-tests job for manual publishes when a recent run is already green."
+        type: boolean
+        default: false
       publish_memorisdk:
         description: "Also publish the memorisdk mirror package. Auto-disabled for GitHub pre-releases."
         type: boolean
@@ -24,7 +28,7 @@ concurrency:
 
 jobs:
   integration-tests:
-    if: ${{ inputs.dry_run != true }}
+    if: ${{ inputs.dry_run != true && inputs.skip_integration_tests != true }}
     uses: ./.github/workflows/integration.yml
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
