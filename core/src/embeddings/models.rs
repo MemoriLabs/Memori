@@ -89,7 +89,7 @@ impl SentenceTransformersEmbedder {
         if model_guard.is_none() {
             let model = TextEmbedding::try_new(
                 TextInitOptions::new(self.embedding_model.clone())
-                    .with_show_download_progress(true)
+                    .with_show_download_progress(false)
                     .with_cache_dir(self.cache_dir.clone()),
             )?;
             *model_guard = Some(model);

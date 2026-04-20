@@ -16,6 +16,7 @@ import threading
 from typing import Any
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_VERBOSITY", "error")
 
 import numpy as np
 from huggingface_hub.utils import disable_progress_bars
@@ -30,6 +31,8 @@ logger = logging.getLogger(__name__)
 def _configure_huggingface_logging() -> None:
     # Suppress noisy model-loading warnings and progress output.
     transformers_logging.set_verbosity_error()
+    transformers_logging.disable_progress_bar()
+    logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
     disable_progress_bars()
 
 
