@@ -5,7 +5,9 @@ import { Config } from '../src/core/config.js';
 
 // Mock the storage manager so we don't need real DB adapters in unit tests
 vi.mock('../src/storage/manager.js', () => ({
-  StorageManager: vi.fn().mockImplementation(() => ({ setEmbedder: vi.fn() })),
+  StorageManager: vi
+    .fn()
+    .mockImplementation(() => ({ setEmbedder: vi.fn(), setEngineShutdown: vi.fn() })),
 }));
 
 describe('Memori SDK', () => {

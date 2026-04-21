@@ -73,4 +73,5 @@ export declare class MemoriEngine {
   recall(request: NapiRetrievalRequest): Promise<string>
   submitAugmentation(input: NapiAugmentationInput): string
   waitForAugmentation(timeoutMs?: number | undefined | null): Promise<boolean>
+  shutdown(): void
 }

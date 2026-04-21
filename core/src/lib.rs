@@ -188,12 +188,19 @@ impl EngineOrchestrator {
                 .map_err(map_flush_error),
         }
     }
+
+    /// Gracefully shuts down background worker runtimes.
+    ///
+    /// This is idempotent and safe to call multiple times.
+    pub fn shutdown(&self) {
+        self.postprocess_runtime.shutdown();
+        self.augmentation_runtime.shutdown();
+    }
 }
 
 impl Drop for EngineOrchestrator {
     fn drop(&mut self) {
-        self.postprocess_runtime.shutdown();
-        self.augmentation_runtime.shutdown();
+        self.shutdown();
     }
 }
 

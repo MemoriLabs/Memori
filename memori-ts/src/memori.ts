@@ -86,6 +86,9 @@ export class Memori {
       // Give the storage manager access to the engine's fastembed so it can
       // embed facts that arrive without embeddings from the augmentation API.
       this.config.storage.setEmbedder(this.engine.embedTexts.bind(this.engine));
+      // Ensure storage.close() tears down native worker runtimes so short-lived
+      // scripts can exit without lingering background handles.
+      this.config.storage.setEngineShutdown(this.engine.shutdown.bind(this.engine));
     } else {
       this.engine = new NativeEngine(undefined, options.embeddingModel);
     }

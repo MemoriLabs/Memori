@@ -36,6 +36,7 @@ export class StorageManager implements StorageBridge {
   private readonly driver: BaseDriver;
   private readonly config: Config;
   private embedder?: (texts: string[]) => Float32Array[];
+  private engineShutdown?: () => void;
 
   constructor(rawConnection: unknown) {
     this.config = new Config();
@@ -52,12 +53,20 @@ export class StorageManager implements StorageBridge {
     this.embedder = fn;
   }
 
+  public setEngineShutdown(fn: () => void): void {
+    this.engineShutdown = fn;
+  }
+
   public async build(): Promise<void> {
     const builder = new Builder(this.config, this.adapter, this.driver);
     await builder.execute();
   }
 
   public async close(): Promise<void> {
+    if (this.engineShutdown) {
+      this.engineShutdown();
+      this.engineShutdown = undefined;
+    }
     // Brief delay to let any in-flight async write callbacks settle before
     // closing the underlying connection (e.g. SQLite WAL checkpointing).
     await new Promise((resolve) => setTimeout(resolve, 100));

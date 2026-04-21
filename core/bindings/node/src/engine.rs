@@ -210,4 +210,9 @@ impl MemoriEngine {
             .map_err(|e| Error::from_reason(e.to_string()))?
             .map_err(|e| Error::from_reason(e.to_string()))
     }
+
+    #[napi]
+    pub fn shutdown(&self) {
+        self.inner.shutdown();
+    }
 }

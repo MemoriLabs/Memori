@@ -192,4 +192,11 @@ export class NativeEngine {
     if (!this.memoriEngine) return false;
     return await this.memoriEngine.waitForAugmentation(timeoutMs);
   }
+
+  public shutdown(): void {
+    if (!this.memoriEngine) return;
+    this.memoriEngine.shutdown();
+    this.memoriEngine = undefined;
+    this._hasStorage = false;
+  }
 }
