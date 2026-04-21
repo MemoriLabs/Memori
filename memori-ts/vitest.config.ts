@@ -5,7 +5,7 @@ const isIntegration = process.env.TEST_ENV === 'integration';
 
 export default defineConfig({
   test: {
-    setupFiles: ['dotenv/config'],
+    setupFiles: ['dotenv/config', 'tests/setup.ts'],
     testTimeout: 30000,
     globals: true,
     environment: 'node',

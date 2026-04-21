@@ -1,24 +1,33 @@
 /**
- * Quickstart: Memori + OpenAI + Cloud
+ * Quickstart: Memori + OpenAI + PostgreSQL
  *
  * Demonstrates how Memori adds memory across conversations.
  */
 
 import 'dotenv/config';
+import pg from 'pg';
 import { OpenAI } from 'openai';
 import { Memori } from '../../src/index.js';
 
-// Setup OpenAI
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '<your_api_key_here>',
-});
+const databaseConnectionString = process.env.DATABASE_CONNECTION_STRING;
+if (!databaseConnectionString) {
+  throw new Error('DATABASE_CONNECTION_STRING must be set in the environment');
+}
 
-// Setup Memori - that's it!
-const mem = new Memori().llm.register(client);
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const pool = new pg.Pool({ connectionString: databaseConnectionString });
+
+const mem = new Memori({ conn: pool }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
-async function main() {
-  // First conversation - establish facts
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+try {
+  await mem.config.storage.build();
+
   console.log('You: My favorite color is blue and I live in Paris');
   const response1 = await client.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -26,10 +35,6 @@ async function main() {
   });
   console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
 
-  // Give the cloud API a brief moment to index the new memory
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  // Second conversation - Memori recalls context automatically
   console.log("You: What's my favorite color?");
   const response2 = await client.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -37,18 +42,18 @@ async function main() {
   });
   console.log(`AI: ${response2.choices[0]?.message?.content}\n`);
 
-  // Third conversation - context is maintained
   console.log('You: What city do I live in?');
   const response3 = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [{ role: 'user', content: 'What city do I live in?' }],
   });
-  console.log(`AI: ${response3.choices[0]?.message?.content}\n`);
+  console.log(`AI: ${response3.choices[0]?.message?.content}`);
 
   // Advanced Augmentation runs asynchronously to efficiently
   // create memories. For this example, a short lived command
   // line program, we need to wait for it to finish.
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await mem.engine.waitForAugmentation();
+} finally {
+  await mem.config.storage.close();
+  await pool.end();
 }
-
-main().catch(console.error);

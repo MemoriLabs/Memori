@@ -6,7 +6,7 @@ import {
   CandidateFactRow,
   WriteAck,
 } from '../types/storage.js';
-import { RetrievalRequest, RecallObject } from '../types/api.js';
+import { RetrievalRequest, RecallObject, NapiRecallRow } from '../types/api.js';
 import { AugmentationInput } from '../types/integrations.js';
 
 export class NativeEngine {
@@ -120,7 +120,7 @@ export class NativeEngine {
   public async retrieve(request: RetrievalRequest): Promise<RecallObject[]> {
     if (!this.memoriEngine) throw new Error('Native engine not initialized.');
 
-    const napiResults = await this.memoriEngine.retrieve({
+    const napiResults: NapiRecallRow[] = await this.memoriEngine.retrieve({
       entityId: request.entity_id,
       queryText: request.query_text,
       denseLimit: request.dense_limit,

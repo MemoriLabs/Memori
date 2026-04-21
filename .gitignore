@@ -75,7 +75,7 @@ coverage
 !.prettierrc.json
 !openclaw.plugin.json
 docs/memori-cloud/mcp/use-cases.mdx
-memori-ts/src/native/
+# Keep lightweight TS-native bridge sources in repo; ignore only compiled *.node
 
 # Rust / native build artifacts
 target/
@@ -109,5 +109,9 @@ memori.egg-info/
 *.node
 src/native/index.js
 src/native/index.d.ts
+!memori-ts/src/native/
+!memori-ts/src/native/index.js
+!memori-ts/src/native/index.d.ts
+!memori-ts/src/native/package.json
 core/bindings/node/index.d.ts
 core/bindings/node/index.js

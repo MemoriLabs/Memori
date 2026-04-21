@@ -23,6 +23,23 @@ export interface RecallObject {
 }
 
 /**
+ * Single row from the native N-API `retrieve` response (camelCase before mapping to `RecallObject`).
+ */
+export interface NapiRecallRow {
+  id: number;
+  content: string;
+  rankScore?: number;
+  similarity?: number;
+  dateCreated?: string;
+  summaries?: Array<{
+    content: string;
+    dateCreated: string;
+    entityFactId?: number;
+    factId?: number;
+  }>;
+}
+
+/**
  * @internal
  */
 export type RecallItem = string | RecallObject;
