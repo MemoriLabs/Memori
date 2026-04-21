@@ -26,6 +26,12 @@ function copyFolderSync(from, to) {
 }
 
 function sync() {
+  // Ensure NAPI CLI dependencies are installed
+  if (!fs.existsSync(path.join(RUST_BINDINGS_DIR, 'node_modules'))) {
+    console.log('Installing NAPI dependencies...');
+    execSync('npm install', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
+  }
+
   console.log('Building Rust artifacts...');
   execSync('npm run build', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
 
