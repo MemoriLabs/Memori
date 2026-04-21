@@ -23,8 +23,7 @@
     }
   },
   "scripts": {
-    "build": "napi build --platform --release",
-    "prepublish": "napi prepublish -t npm"
+    "build": "napi build --platform --release"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0"
