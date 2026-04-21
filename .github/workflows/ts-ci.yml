@@ -39,6 +39,13 @@ jobs:
         working-directory: ./core/bindings/node
         run: npm install
 
+      - name: Set Windows C/C++ dynamic CRT flags
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "CFLAGS=/MD" >> $env:GITHUB_ENV
+          echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
+
       - name: Build Rust bindings
         working-directory: ./core/bindings/node
         run: npm run build
