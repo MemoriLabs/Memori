@@ -23,7 +23,7 @@
     }
   },
   "scripts": {
-    "build": "napi build --platform --release"
+    "build": "node build.js"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0"
