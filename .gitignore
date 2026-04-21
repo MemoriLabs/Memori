@@ -34,6 +34,8 @@ env/
 # SQLite databases
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
 # UV
 uv.lock
