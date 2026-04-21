@@ -42,6 +42,10 @@ jobs:
         working-directory: ./core/bindings/node
         run: npm run build
 
+      - name: Sync native bindings to memori-ts
+        working-directory: ./memori-ts
+        run: node scripts/sync-native.js
+
       - name: Install TypeScript dependencies
         working-directory: ./memori-ts
         run: npm ci
