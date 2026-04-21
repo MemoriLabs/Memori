@@ -10,10 +10,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest  
-    
-    defaults:
-      run:
-        working-directory: ./memori-ts
 
     steps:
       - name: Checkout repository
@@ -25,19 +21,41 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install dependencies
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build
+
+      - name: Install TypeScript dependencies
+        working-directory: ./memori-ts
         run: npm ci
 
       - name: Generate version.ts
+        working-directory: ./memori-ts
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
 
       - name: Build project
-        run: npm run build --if-present
+        working-directory: ./memori-ts
+        run: npm run build
         
       - name: Run tests
+        working-directory: ./memori-ts
         run: npm test --if-present
 
       - name: Publish Package
+        working-directory: ./memori-ts
         run: npm publish --access public --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
