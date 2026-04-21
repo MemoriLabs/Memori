@@ -108,3 +108,5 @@ memori.egg-info/
 *.node
 src/native/index.js
 src/native/index.d.ts
+core/bindings/node/index.d.ts
+core/bindings/node/index.js
