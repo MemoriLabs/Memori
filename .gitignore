@@ -101,3 +101,8 @@ memori_python.abi3.so
 memori.egg-info/
 
 *.cache/
+
+# NAPI compiled native bindings and generated wrappers
+*.node
+src/native/index.js
+src/native/index.d.ts

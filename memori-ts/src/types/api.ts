@@ -1,4 +1,14 @@
 /**
+ * Request payload for retrieving facts from the Rust core.
+ */
+export interface RetrievalRequest {
+  entity_id: string;
+  query_text: string;
+  dense_limit: number;
+  limit: number;
+}
+
+/**
  * Represents a single recalled item from the backend.
  * Can be a simple string or a structured object with scoring metadata.
  * @internal

@@ -4,11 +4,25 @@ import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { extractLastUserMessage } from '../utils/utils.js';
 import { SDK_VERSION } from '../version.js';
-import { Trace } from '../types/integrations.js';
+import { AugmentationInput, Trace } from '../types/integrations.js';
+import { NativeEngine } from '../core/engine.js';
 
+type AugmentationData = {
+  sessionId: string;
+  messages: { role: string; content: string }[];
+  meta: Record<string, unknown>;
+};
+
+/**
+ * Handles sending conversation turns to the augmentation pipeline after each LLM response.
+ *
+ * Routes to the local Rust engine when a storage connection is present (BYODB mode),
+ * otherwise fires a request to the Memori Cloud API.
+ */
 export class AugmentationEngine {
   constructor(
     private readonly api: Api,
+    private readonly engine: NativeEngine,
     private readonly config: Config,
     private readonly session: SessionManager
   ) {}
@@ -40,13 +54,23 @@ export class AugmentationEngine {
     const data = this.prepareAugmentationData(req, res, ctx);
     if (!data) return Promise.resolve(res);
 
+    // Route to Rust engine for BYODB processing
+    if (this.engine.hasStorage) {
+      try {
+        this.engine.submitAugmentation(this.buildAugmentationInput(req, ctx, data));
+      } catch (e: unknown) {
+        if (this.config.testMode) console.warn('Local Augmentation failed:', e);
+      }
+      return Promise.resolve(res);
+    }
+
     const payload = {
       conversation: { messages: data.messages, summary: null },
       meta: data.meta,
       session: { id: data.sessionId },
     };
 
-    // Fire-and-forget
+    // Fire-and-forget to cloud
     this.api.post('cloud/augmentation', payload).catch((e: unknown) => {
       if (this.config.testMode) console.warn('Augmentation failed:', e);
     });
@@ -63,6 +87,16 @@ export class AugmentationEngine {
   ): Promise<LLMResponse> {
     const data = this.prepareAugmentationData(req, res, ctx);
     if (!data) return Promise.resolve(res);
+
+    // Route to Rust engine for BYODB processing
+    if (this.engine.hasStorage) {
+      try {
+        this.engine.submitAugmentation(this.buildAugmentationInput(req, ctx, data));
+      } catch (e: unknown) {
+        if (this.config.testMode) console.warn('Local Agent Augmentation failed:', e);
+      }
+      return Promise.resolve(res);
+    }
 
     const payload = {
       conversation: { messages: data.messages },
@@ -87,7 +121,7 @@ export class AugmentationEngine {
         process: { id: this.config.processId },
       },
       sdk: { lang: 'javascript', version: ctx.metadata.integrationSdkVersion || SDK_VERSION },
-      framework: null,
+      framework: { provider: null },
       llm: {
         model: {
           provider: ctx.metadata.provider || null,
@@ -100,7 +134,31 @@ export class AugmentationEngine {
       platform: {
         provider: ctx.metadata.platform || null,
       },
-      storage: null,
+      storage: {
+        cockroachdb: false,
+        dialect: this.config.storage ? this.config.storage.getDialect() : null,
+      },
+    };
+  }
+
+  private buildAugmentationInput(
+    req: LLMRequest,
+    ctx: CallContext,
+    data: AugmentationData
+  ): AugmentationInput {
+    return {
+      entity_id: this.config.entityId || '',
+      process_id: this.config.processId,
+      conversation_id: data.sessionId,
+      conversation_messages: data.messages,
+      llm_provider: ctx.metadata.provider as string | undefined,
+      llm_model: req.model,
+      llm_provider_sdk_version: ctx.metadata.sdkVersion as string | undefined,
+      platform_provider: ctx.metadata.platform as string | undefined,
+      sdk_version: (ctx.metadata.integrationSdkVersion as string | undefined) ?? SDK_VERSION,
+      session_id: data.sessionId,
+      storage_dialect: this.config.storage ? this.config.storage.getDialect() : null,
+      storage_cockroachdb: this.config.storage?.getDialect() === 'cockroachdb',
     };
   }
 }

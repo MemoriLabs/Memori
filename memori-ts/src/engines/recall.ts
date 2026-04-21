@@ -2,6 +2,7 @@ import { CallContext, LLMRequest, Message, Role } from '@memorilabs/axon';
 import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
+import { NativeEngine } from '../core/engine.js';
 import {
   extractFacts,
   extractHistory,
@@ -11,32 +12,48 @@ import {
 } from '../utils/utils.js';
 import { CloudRecallResponse, ParsedFact } from '../types/api.js';
 
+/**
+ * Retrieves relevant memories and injects them into the LLM system prompt before each call.
+ *
+ * Operates in two modes: local (BYODB — vector search via the Rust engine) or cloud
+ * (API call to Memori's recall endpoint). Also re-hydrates conversation history when
+ * available from the cloud.
+ */
 export class RecallEngine {
   constructor(
     private readonly api: Api,
+    private readonly engine: NativeEngine,
     private readonly config: Config,
     private readonly session: SessionManager
   ) {}
 
+  /**
+   * Manually triggers a memory retrieval.
+   * Routes to the local Rust engine if storage is active, otherwise hits the Cloud API.
+   */
   public async recall(query: string): Promise<ParsedFact[]> {
-    const payload = {
-      attribution: {
-        entity: { id: this.config.entityId },
-        process: { id: this.config.processId },
-      },
-      query,
-      session: { id: this.session.id },
-    };
+    if (this.engine.hasStorage) {
+      if (!this.config.entityId) return [];
+      try {
+        return await this.retrieveLocal(query);
+      } catch (e) {
+        console.warn('Local Manual Recall failed:', e);
+        return [];
+      }
+    }
 
     try {
-      const response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
-      return extractFacts(response);
+      const { facts } = await this.retrieveCloud(query);
+      return facts;
     } catch (e) {
       console.warn('Memori Manual Recall failed:', e);
       return [];
     }
   }
 
+  /**
+   * The Axon 'before' hook that injects memories into the LLM system prompt.
+   */
   public async handleRecall(req: LLMRequest, _ctx: CallContext): Promise<LLMRequest> {
     const sessionId = this.session.id;
     if (!sessionId) return req;
@@ -44,42 +61,33 @@ export class RecallEngine {
     const userQuery = extractLastUserMessage(req.messages);
     if (!userQuery) return req;
 
-    const payload = {
-      attribution: {
-        entity: { id: this.config.entityId },
-        process: { id: this.config.processId },
-      },
-      query: userQuery,
-      session: { id: sessionId },
-    };
+    let facts: ParsedFact[] = [];
+    let historyMessages: Message[] = [];
 
-    let response: CloudRecallResponse;
-    try {
-      response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
-    } catch (e) {
-      console.warn('Memori Recall failed:', e);
-      return req;
+    if (this.engine.hasStorage) {
+      if (!this.config.entityId) return req;
+      try {
+        facts = await this.retrieveLocal(userQuery);
+      } catch (e) {
+        console.warn('Local Recall Hook failed:', e);
+        return req;
+      }
+    } else {
+      try {
+        ({ facts, history: historyMessages } = await this.retrieveCloud(userQuery));
+      } catch (e) {
+        console.warn('Memori Recall failed:', e);
+        return req;
+      }
     }
 
-    const facts = extractFacts(response);
-    const historyRaw = extractHistory(response);
-
-    const historyMessages: Message[] = (
-      historyRaw as Array<{ role: Role; content?: unknown; text?: string }>
-    )
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role,
-        content: stringifyContent(m.content ?? m.text),
-      }));
-
     const relevantFacts = facts
-      // Filter out low-relevance memories to prevent hallucination or context pollution
       .filter((f) => f.score >= this.config.recallRelevanceThreshold)
       .map((f) => {
         const dateSuffix = f.dateCreated ? `. Stated at ${f.dateCreated}` : '';
         return `- ${f.content}${dateSuffix}`;
       });
+
     const relevantSummaries = formatSummariesFromFacts(
       facts.filter((f) => f.score >= this.config.recallRelevanceThreshold)
     );
@@ -110,5 +118,46 @@ export class RecallEngine {
     }
 
     return { ...req, messages };
+  }
+
+  private async retrieveLocal(query: string): Promise<ParsedFact[]> {
+    // engine.retrieve crosses the Rust/JS bridge asynchronously — must be awaited
+    const results = await this.engine.retrieve({
+      entity_id: this.config.entityId || '',
+      query_text: query,
+      dense_limit: 100, // candidate pool fetched from storage before re-ranking
+      limit: 10, // final number of facts returned to the caller
+    });
+    return results.map((r) => ({
+      content: r.content,
+      score: r.rank_score ?? r.similarity ?? 0,
+      dateCreated: r.date_created,
+      summaries: r.summaries?.map((s) => ({
+        content: s.content,
+        dateCreated: s.date_created,
+      })),
+    }));
+  }
+
+  private async retrieveCloud(query: string): Promise<{ facts: ParsedFact[]; history: Message[] }> {
+    const payload = {
+      attribution: {
+        entity: { id: this.config.entityId },
+        process: { id: this.config.processId },
+      },
+      query,
+      session: { id: this.session.id },
+    };
+    const response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
+    const facts = extractFacts(response);
+    const history = (
+      extractHistory(response) as Array<{ role: Role; content?: unknown; text?: string }>
+    )
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role,
+        content: stringifyContent(m.content ?? m.text),
+      }));
+    return { facts, history };
   }
 }

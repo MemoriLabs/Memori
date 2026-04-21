@@ -3,6 +3,11 @@ import { Memori } from '../src/memori.js';
 import { SessionManager } from '../src/core/session.js';
 import { Config } from '../src/core/config.js';
 
+// Mock the storage manager so we don't need real DB adapters in unit tests
+vi.mock('../src/storage/manager.js', () => ({
+  StorageManager: vi.fn().mockImplementation(() => ({ setEmbedder: vi.fn() })),
+}));
+
 describe('Memori SDK', () => {
   it('should instantiate with default components', () => {
     const memori = new Memori();
@@ -11,6 +16,14 @@ describe('Memori SDK', () => {
     expect(memori.session).toBeInstanceOf(SessionManager);
     expect(memori.axon).toBeDefined();
     expect(memori.llm).toBeDefined();
+    expect(memori.config.storage).toBeUndefined();
+  });
+
+  it('should instantiate StorageManager when a database connection is provided', () => {
+    const mockDbConnection = { dummyDb: true };
+    const memori = new Memori({ conn: mockDbConnection });
+
+    expect(memori.config.storage).toBeDefined();
   });
 
   it('should update attribution config correctly', () => {
@@ -42,8 +55,7 @@ describe('Memori SDK', () => {
 
   it('should register an LLM client via the llm helper', () => {
     const memori = new Memori();
-    // Spy on the internal axon.llm.register method and mock implementation
-    // to prevent the real registry from throwing validation errors on our mock object
+    // Spy on the internal axon.llm.register method
     const registerSpy = vi.spyOn(memori.axon.llm, 'register').mockImplementation(() => ({}) as any);
     const mockClient = { name: 'mock-client' };
 

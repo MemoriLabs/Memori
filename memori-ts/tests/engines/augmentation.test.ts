@@ -3,6 +3,7 @@ import { AugmentationEngine } from '../../src/engines/augmentation.js';
 import { Api } from '../../src/core/network.js';
 import { Config } from '../../src/core/config.js';
 import { SessionManager } from '../../src/core/session.js';
+import { NativeEngine } from '../../src/core/engine.js';
 import { LLMRequest, LLMResponse } from '@memorilabs/axon';
 
 describe('AugmentationEngine', () => {
@@ -10,6 +11,7 @@ describe('AugmentationEngine', () => {
   let mockApi: Api;
   let mockConfig: Config;
   let mockSession: SessionManager;
+  let mockNativeEngine: NativeEngine;
 
   beforeEach(() => {
     mockApi = { post: vi.fn().mockResolvedValue({}) } as unknown as Api;
@@ -19,8 +21,12 @@ describe('AugmentationEngine', () => {
       testMode: true,
     } as unknown as Config;
     mockSession = { id: 'sess-1' } as unknown as SessionManager;
+    mockNativeEngine = {
+      hasStorage: false,
+      submitAugmentation: vi.fn(),
+    } as unknown as NativeEngine;
 
-    engine = new AugmentationEngine(mockApi, mockConfig, mockSession);
+    engine = new AugmentationEngine(mockApi, mockNativeEngine, mockConfig, mockSession);
   });
 
   it('should trigger API post on handleAugmentation', async () => {
@@ -53,6 +59,26 @@ describe('AugmentationEngine', () => {
     );
   });
 
+  it('should trigger Rust local engine if storage is active', async () => {
+    (mockNativeEngine as any).hasStorage = true;
+
+    const req = { messages: [{ role: 'user', content: 'learn this' }] } as unknown as LLMRequest;
+    const res = { content: 'ok' } as LLMResponse;
+    const mockCtx = { metadata: {} } as any;
+
+    await engine.handleAugmentation(req, res, mockCtx);
+
+    expect(mockApi.post).not.toHaveBeenCalled();
+    expect(mockNativeEngine.submitAugmentation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation_messages: [
+          { role: 'user', content: 'learn this' },
+          { role: 'assistant', content: 'ok' },
+        ],
+      })
+    );
+  });
+
   it('should log warning in testMode if API fails', async () => {
     (mockApi.post as any).mockRejectedValue(new Error('Augment fail'));
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -63,17 +89,10 @@ describe('AugmentationEngine', () => {
     const mockCtx = {
       traceId: '123',
       startedAt: new Date(),
-      metadata: {
-        provider: 'openai',
-        sdkVersion: '4.28.0',
-        platform: null,
-        framework: null,
-      },
+      metadata: {},
     } as any;
 
     await engine.handleAugmentation(req, res, mockCtx);
-
-    // Wait for the fire-and-forget promise
     await new Promise(process.nextTick);
 
     expect(consoleSpy).toHaveBeenCalled();

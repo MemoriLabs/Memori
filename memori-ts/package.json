@@ -25,9 +25,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "prebuild": "rm -rf dist",
+    "prebuild": "node scripts/sync-native.js",
     "build": "tsc -p tsconfig.build.json",
-    "build:dev": "tsc -p tsconfig.json",
+    "build:dev": "npm run prebuild && tsc -p tsconfig.json",
     "memori": "node dist/bin/cli.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -39,6 +39,13 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "TEST_ENV=integration vitest run",
     "example": "npm run build:dev && node dist/examples/cloud/simple.js",
+    "sqlite": "npm run build:dev && node dist/examples/local/sqlite.js",
+    "mysql": "npm run build:dev && node dist/examples/local/mysql.js",
+    "postgresql": "npm run build:dev && node dist/examples/local/postgresql.js",
+    "drizzle": "npm run build:dev && node dist/examples/local/drizzle-pg.js",
+    "sequelize": "npm run build:dev && node dist/examples/local/sequelize-mysql.js",
+    "typeorm": "npm run build:dev && node dist/examples/local/typeorm-sqlite.js",
+    "mikro": "npm run build:dev && node dist/examples/local/mikro-sqlite.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -66,7 +73,15 @@
   "peerDependencies": {
     "@anthropic-ai/sdk": "*",
     "@google/genai": "*",
-    "openai": "*"
+    "better-sqlite3": "*",
+    "drizzle-orm": "*",
+    "mysql2": "*",
+    "openai": "*",
+    "pg": "*",
+    "sequelize": "*",
+    "typeorm": "*",
+    "@mikro-orm/core": "*",
+    "@mikro-orm/sqlite": "*"
   },
   "peerDependenciesMeta": {
     "openai": {
@@ -77,22 +92,56 @@
     },
     "@google/genai": {
       "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "better-sqlite3": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "drizzle-orm": {
+      "optional": true
+    },
+    "sequelize": {
+      "optional": true
+    },
+    "typeorm": {
+      "optional": true
+    },
+    "@mikro-orm/core": {
+      "optional": true
+    },
+    "@mikro-orm/sqlite": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "*",
     "@eslint/js": "^9.0.0",
     "@google/genai": "*",
+    "@mikro-orm/core": "^7.0.11",
+    "@mikro-orm/sqlite": "^7.0.11",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.0.0",
+    "@types/pg": "*",
     "@vitest/coverage-v8": "^2.1.9",
     "@vitest/ui": "^2.1.9",
+    "better-sqlite3": "^12.9.0",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.2",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-tsdoc": "^0.5.1",
     "lint-staged": "^15.0.0",
+    "mysql2": "*",
     "openai": "*",
+    "pg": "*",
     "prettier": "^3.0.0",
+    "sequelize": "^6.37.8",
+    "typeorm": "^0.3.28",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^2.1.9"
