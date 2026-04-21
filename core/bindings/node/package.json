@@ -10,6 +10,7 @@
   ],
   "napi": {
     "name": "memori_node",
+    "packageName": "@memori/native",
     "triples": {
       "defaults": true,
       "additional": [
@@ -22,7 +23,8 @@
     }
   },
   "scripts": {
-    "build": "napi build --platform --release"
+    "build": "napi build --platform --release",
+    "prepublish": "napi prepublish -t npm"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0"

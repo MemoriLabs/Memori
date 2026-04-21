@@ -1,15 +1,167 @@
 name: Publish to npm (TS)
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  build-native:
+    name: native / ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: linux-x64-gnu
+          - os: ubuntu-24.04-arm
+            artifact-name: linux-arm64-gnu
+          - os: macos-latest
+            artifact-name: darwin-arm64
+          - os: macos-13
+            artifact-name: darwin-x64
+          - os: windows-latest
+            artifact-name: win32-x64-msvc
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.artifact-name }}
+          path: core/bindings/node/memori_node.${{ matrix.artifact-name }}.node
+          if-no-files-found: error
+
+  build-and-test:
+    name: test / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build
+
+      - name: Sync native bindings to memori-ts
+        working-directory: ./memori-ts
+        run: node scripts/sync-native.js
+
+      - name: Install TypeScript dependencies
+        working-directory: ./memori-ts
+        run: npm ci
+
+      - name: Generate version.ts
+        working-directory: ./memori-ts
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
+
+      - name: Build project
+        working-directory: ./memori-ts
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./memori-ts
+        run: npm test --if-present
+
+  publish-native:
+    name: Publish platform packages
+    needs: [build-native, build-and-test]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Download all native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: native-downloads
+          merge-multiple: false
+
+      - name: Copy .node files into bindings directory
+        shell: bash
+        run: find native-downloads -name "*.node" -exec cp {} core/bindings/node/ \;
+
+      - name: Install NAPI CLI
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Create platform-specific npm packages
+        working-directory: ./core/bindings/node
+        run: npx napi prepublish -t npm
+
+      - name: Publish platform packages
+        working-directory: ./core/bindings/node
+        shell: bash
+        run: |
+          for dir in npm/*/; do
+            npm publish "$dir" --access public
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
   publish:
-    runs-on: ubuntu-latest  
+    name: Publish @memorilabs/memori
+    needs: [publish-native]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -46,6 +198,7 @@ jobs:
 
       - name: Generate version.ts
         working-directory: ./memori-ts
+        shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
@@ -53,11 +206,9 @@ jobs:
       - name: Build project
         working-directory: ./memori-ts
         run: npm run build
-        
-      - name: Run tests
-        working-directory: ./memori-ts
-        run: npm test --if-present
 
-      - name: Publish Package
+      - name: Publish @memorilabs/memori
         working-directory: ./memori-ts
         run: npm publish --access public --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -14,12 +14,13 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [18, 20, 22, 24]
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -52,6 +53,7 @@ jobs:
 
       - name: Generate version.ts
         working-directory: ./memori-ts
+        shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
