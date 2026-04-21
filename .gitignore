@@ -75,6 +75,7 @@ coverage
 !.prettierrc.json
 !openclaw.plugin.json
 docs/memori-cloud/mcp/use-cases.mdx
+memori-ts/src/native/
 
 # Rust / native build artifacts
 target/
