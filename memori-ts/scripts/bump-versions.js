@@ -20,14 +20,14 @@ function bumpVersions() {
   // 2. Update optionalDependencies in memori-ts
   let depsUpdated = 0;
   if (tsPkg.optionalDependencies) {
-    for (const [depName, depVersion] of Object.entries(tsPkg.optionalDependencies)) {
+    for (const depName of Object.keys(tsPkg.optionalDependencies)) {
       if (depName.startsWith('@memori/native-')) {
         tsPkg.optionalDependencies[depName] = masterVersion;
         depsUpdated++;
       }
     }
   }
-  
+
   fs.writeFileSync(tsPackagePath, JSON.stringify(tsPkg, null, 2) + '\n', 'utf-8');
   console.log(`[Memori Version Sync] Updated ${depsUpdated} optional dependencies in memori-ts.`);
 
@@ -38,7 +38,9 @@ function bumpVersions() {
     fs.writeFileSync(nativePackagePath, JSON.stringify(nativePkg, null, 2) + '\n', 'utf-8');
     console.log(`[Memori Version Sync] Updated @memori/native version to ${masterVersion}.`);
   } else {
-    console.warn(`[Memori Version Sync] Could not find native package.json at ${nativePackagePath}`);
+    console.warn(
+      `[Memori Version Sync] Could not find native package.json at ${nativePackagePath}`
+    );
   }
 
   console.log('[Memori Version Sync] Complete! \n');
