@@ -132,72 +132,9 @@ jobs:
         working-directory: ./memori-ts
         run: npm test --if-present
 
-  publish-native:
-    name: Publish platform packages
-    needs: [build-native, build-and-test]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Download all native artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: native-*
-          path: native-downloads
-          merge-multiple: false
-
-      - name: Install NAPI CLI
-        working-directory: ./core/bindings/node
-        run: npm install
-
-      - name: Create platform package scaffolding
-        working-directory: ./core/bindings/node
-        run: npx napi create-npm-dir -t .
-
-      - name: Copy .node files into platform package folders
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          artifacts=(native-downloads/*/*.node)
-          if [ "${#artifacts[@]}" -eq 0 ]; then
-            echo "No native artifacts were downloaded."
-            exit 1
-          fi
-
-          for artifact in "${artifacts[@]}"; do
-            filename="$(basename "$artifact")"
-            target="${filename#memori_node.}"
-            target="${target%.node}"
-            destination="core/bindings/node/npm/${target}/${filename}"
-
-            if [ ! -d "core/bindings/node/npm/${target}" ]; then
-              echo "Missing target package directory for ${target}"
-              exit 1
-            fi
-
-            cp "$artifact" "$destination"
-          done
-
-      - name: Publish platform packages
-        working-directory: ./core/bindings/node
-        shell: bash
-        run: |
-          for dir in npm/*/; do
-            npm publish "$dir" --access public --tag beta
-          done
-
   publish:
     name: Publish @memorilabs/memori
-    needs: [publish-native]
+    needs: [build-native, build-and-test]
     runs-on: ubuntu-latest
 
     steps:
@@ -223,6 +160,28 @@ jobs:
         working-directory: ./core/bindings/node
         run: npm install
 
+      - name: Download all native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: native-downloads
+          merge-multiple: false
+
+      - name: Copy native artifacts into bindings directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(native-downloads/*/*.node)
+          if [ "${#artifacts[@]}" -eq 0 ]; then
+            echo "No native artifacts were downloaded."
+            exit 1
+          fi
+
+          for artifact in "${artifacts[@]}"; do
+            cp "$artifact" core/bindings/node/
+          done
+
       - name: Install TypeScript dependencies
         working-directory: ./memori-ts
         run: npm ci
@@ -236,4 +195,14 @@ jobs:
 
       - name: Publish @memorilabs/memori
         working-directory: ./memori-ts
-        run: npm publish --access public --tag beta
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            TAG="${VERSION#*-}"
+            TAG="${TAG%%.*}"
+          else
+            TAG="latest"
+          fi
+
+          npm publish --access public --tag "$TAG"

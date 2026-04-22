@@ -53,7 +53,7 @@
     "sequelize": "npm run build:dev && node dist/examples/orm/sequelize-mysql.js",
     "typeorm": "npm run build:dev && node dist/examples/orm/typeorm-sqlite.js",
     "mikro": "npm run build:dev && node dist/examples/orm/mikro-sqlite.js",
-    "prepublishOnly": "node scripts/sync-native.js --publish && npm run build"
+    "prepublishOnly": "node scripts/sync-native.js && npm run build"
   },
   "keywords": [
     "memori",
@@ -158,11 +158,5 @@
   },
   "dependencies": {
     "@memorilabs/axon": "^0.1.3"
-  },
-  "optionalDependencies": {
-    "@memori/native-linux-x64-gnu": "0.1.5-beta",
-    "@memori/native-linux-arm64-gnu": "0.1.5-beta",
-    "@memori/native-darwin-arm64": "0.1.5-beta",
-    "@memori/native-win32-x64-msvc": "0.1.5-beta"
   }
 }

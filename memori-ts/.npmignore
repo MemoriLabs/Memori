@@ -15,6 +15,3 @@ examples/
 .env
 *.log
 .DS_Store
-
-# Exclude native binaries — users get these via optionalDependencies (@memori/native-*)
-**/*.node
