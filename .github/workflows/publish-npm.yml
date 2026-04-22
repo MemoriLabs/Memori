@@ -192,7 +192,7 @@ jobs:
         shell: bash
         run: |
           for dir in npm/*/; do
-            npm publish "$dir" --access public
+            npm publish "$dir" --access public --tag beta
           done
 
   publish:
