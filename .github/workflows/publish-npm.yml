@@ -162,8 +162,6 @@ jobs:
           for dir in npm/*/; do
             npm publish "$dir" --access public
           done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish:
     name: Publish @memorilabs/memori
