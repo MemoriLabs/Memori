@@ -31,6 +31,8 @@ export class NativeEngine {
                 id,
                 res.map((r) => ({
                   id: r.id,
+                  // Facts without embeddings resolve to a zero-length vector; they won't
+                  // appear in vector search results but are still stored and accessible.
                   contentEmbedding: r.content_embedding ?? new Float32Array(0),
                 }))
               ),
@@ -104,10 +106,19 @@ export class NativeEngine {
       const result = executeFn();
 
       if (result instanceof Promise) {
-        result.then(successCb).catch((err: unknown) => {
-          console.error(`[Memori] Bridge Error in ${operationName}:`, err);
-          fallbackCb();
-        });
+        result
+          .then((res) => {
+            try {
+              successCb(res);
+            } catch (e: unknown) {
+              console.error(`[Memori] Bridge Error in ${operationName} (success handler):`, e);
+              fallbackCb();
+            }
+          })
+          .catch((err: unknown) => {
+            console.error(`[Memori] Bridge Error in ${operationName}:`, err);
+            fallbackCb();
+          });
       } else {
         successCb(result);
       }

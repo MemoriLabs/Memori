@@ -116,12 +116,9 @@ impl MemoriEngine {
     #[napi]
     pub fn resolve_write_callback(&self, id: u32, result: NapiWriteAck) {
         if let Some((_, tx)) = self.pending_writes.remove(&id) {
-            let mut obj = serde_json::Map::new();
-            obj.insert(
-                "written_ops".to_string(),
-                serde_json::json!(result.written_ops),
-            );
-            let ack: WriteAck = serde_json::from_value(serde_json::Value::Object(obj)).unwrap();
+            let ack = WriteAck {
+                written_ops: result.written_ops as usize,
+            };
             let _ = tx.send(ack);
         }
     }

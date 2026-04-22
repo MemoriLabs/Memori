@@ -6,7 +6,11 @@ use engine_orchestrator::storage::{
 use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 use tokio::sync::oneshot;
+use tokio::time::timeout;
+
+const JS_CALLBACK_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub type PendingEmbeddingsMap = Arc<DashMap<u32, oneshot::Sender<Vec<EmbeddingRow>>>>;
 pub type PendingFactsMap = Arc<DashMap<u32, oneshot::Sender<Vec<CandidateFactRow>>>>;
@@ -49,8 +53,14 @@ impl StorageBridge for NodeStorageBridge {
 
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                rx.await
-                    .map_err(|_| HostStorageError::new("NAPI_ERR", "Channel dropped"))
+                match timeout(JS_CALLBACK_TIMEOUT, rx).await {
+                    Ok(Ok(rows)) => Ok(rows),
+                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "Channel dropped")),
+                    Err(_) => Err(HostStorageError::new(
+                        "TIMEOUT",
+                        "fetchEmbeddings JS callback did not respond within 30s",
+                    )),
+                }
             })
         })
     }
@@ -79,8 +89,14 @@ impl StorageBridge for NodeStorageBridge {
 
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                rx.await
-                    .map_err(|_| HostStorageError::new("NAPI_ERR", "Channel dropped"))
+                match timeout(JS_CALLBACK_TIMEOUT, rx).await {
+                    Ok(Ok(rows)) => Ok(rows),
+                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "Channel dropped")),
+                    Err(_) => Err(HostStorageError::new(
+                        "TIMEOUT",
+                        "fetchFactsByIds JS callback did not respond within 30s",
+                    )),
+                }
             })
         })
     }
@@ -107,8 +123,14 @@ impl StorageBridge for NodeStorageBridge {
 
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                rx.await
-                    .map_err(|_| HostStorageError::new("NAPI_ERR", "Channel dropped"))
+                match timeout(JS_CALLBACK_TIMEOUT, rx).await {
+                    Ok(Ok(ack)) => Ok(ack),
+                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "Channel dropped")),
+                    Err(_) => Err(HostStorageError::new(
+                        "TIMEOUT",
+                        "writeBatch JS callback did not respond within 30s",
+                    )),
+                }
             })
         })
     }

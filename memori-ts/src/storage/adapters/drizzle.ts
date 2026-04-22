@@ -27,6 +27,13 @@ export class DrizzleAdapter implements StorageAdapter {
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
+    const placeholders = operation.match(/\$\d+|\?/g) ?? [];
+    if (placeholders.length !== binds.length) {
+      throw new Error(
+        `[Memori] SQL placeholder count mismatch: expected ${placeholders.length}, got ${binds.length}`
+      );
+    }
+
     const parts = operation.split(/\$\d+|\?/);
     let query = sql.raw(parts[0] || '');
 
