@@ -8,6 +8,7 @@ from memori.storage._builder import Builder
 from memori.storage.drivers.mysql._driver import Driver as MysqlDriver
 from memori.storage.drivers.oceanbase._driver import Driver as OceanbaseDriver
 from memori.storage.drivers.postgresql._driver import Driver as PostgresqlDriver
+from memori.storage.drivers.tidb._driver import Driver as TidbDriver
 
 
 @pytest.fixture
@@ -32,6 +33,7 @@ def test_get_supported_dialects(builder):
 
     # Should contain at least mysql and postgresql
     assert "mysql" in supported
+    assert "tidb" in supported
     assert "oceanbase" in supported
     assert "postgresql" in supported
     assert isinstance(supported, list)
@@ -41,6 +43,7 @@ def test_get_dialect_family_exact_match(builder):
     """Test dialect family detection with exact matches."""
     # Test exact matches
     assert builder._get_dialect_family("mysql") == MysqlDriver.migrations
+    assert builder._get_dialect_family("tidb") == TidbDriver.migrations
     assert builder._get_dialect_family("postgresql") == PostgresqlDriver.migrations
     assert builder._get_dialect_family("cockroachdb") == PostgresqlDriver.migrations
 
@@ -71,6 +74,7 @@ def test_requires_rollback_oceanbase(builder):
 def test_requires_rollback_false(builder):
     """Test rollback requirement for dialects that don't need it."""
     assert builder._requires_rollback("mysql") is False
+    assert builder._requires_rollback("tidb") is False
 
 
 def test_requires_rollback_unknown_dialect(builder):

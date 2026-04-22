@@ -1,0 +1,14 @@
+[project]
+name = "memori-tidb-example"
+version = "0.1.0"
+description = "Memori SDK example with TiDB"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "certifi>=2024.0.0",
+    "memori>=3.0.0",
+    "openai>=2.6.1",
+    "pymysql>=1.1.2",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy>=2.0.44",
+]

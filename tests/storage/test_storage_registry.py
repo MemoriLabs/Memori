@@ -8,6 +8,7 @@ from memori.storage.adapters.sqlalchemy._adapter import (
 from memori.storage.drivers.mysql._driver import Driver as MysqlStorageDriver
 from memori.storage.drivers.oceanbase._driver import Driver as OceanbaseStorageDriver
 from memori.storage.drivers.postgresql._driver import Driver as PostgresqlStorageDriver
+from memori.storage.drivers.tidb._driver import Driver as TidbStorageDriver
 
 
 def test_storage_adapter_sqlalchemy(session):
@@ -56,6 +57,20 @@ def test_storage_driver_oceanbase(mocker):
     driver = Registry().driver(oceanbase_adapter)
 
     assert isinstance(driver, OceanbaseStorageDriver)
+
+
+def test_storage_driver_tidb(mocker):
+    tidb_session = mocker.Mock()
+    tidb_session.get_bind.return_value.dialect.name = "mysql"
+    tidb_session.connection.return_value.exec_driver_sql.return_value.scalar.return_value = (
+        "5.7.25-TiDB-v8.5.0"
+    )
+    type(tidb_session).__module__ = "sqlalchemy.orm.session"
+
+    adapter = Registry().adapter(lambda: tidb_session)
+    driver = Registry().driver(adapter)
+
+    assert isinstance(driver, TidbStorageDriver)
 
 
 def test_storage_adapter_raises_for_unsupported_connection():
