@@ -8,7 +8,7 @@ rust-version = "1.86"
 [dependencies]
 anyhow = "1.0"
 base64 = "0.22"
-fastembed = { version = "5", default-features = false, features = ["hf-hub-native-tls", "image-models", "ort-load-dynamic"] }
+fastembed = { version = "5", default-features = false, features = ["hf-hub-native-tls", "image-models", "ort-download-binaries"] }
 hf-hub = "0.5"
 log = "0.4"
 # Force a vendored build of OpenSSL so transitive dependencies (reqwest,
@@ -26,7 +26,7 @@ serde = "1.0.228"
 serde_json = "1.0"
 sha2 = "0.10"
 thiserror.workspace = true
-tokenizers = "0.19"
+tokenizers = "0.22"
 tokio.workspace = true
 
 [workspace]

@@ -120,6 +120,31 @@ export interface IntegrationMetadata {
 }
 
 /**
+ * The strict input payload expected by the Rust Core's Augmentation Engine.
+ */
+export interface AugmentationInput {
+  entity_id: string;
+  process_id?: string | null;
+  conversation_id?: string | null;
+  conversation_messages?: Array<{ role: string; content: string }>;
+  system_prompt?: string | null;
+  llm_provider?: string | null;
+  llm_model?: string | null;
+  llm_provider_sdk_version?: string | null;
+  framework?: string | null;
+  platform_provider?: string | null;
+  storage_dialect?: string | null;
+  storage_cockroachdb?: boolean;
+  sdk_version?: string | null;
+  use_mock_response?: boolean;
+  mock_response?: unknown;
+  session_id?: string | null;
+  fact_id?: string | null;
+  content?: string | null;
+  metadata?: unknown;
+}
+
+/**
  * A union type representing all officially supported framework integrations.
  * Used to strictly type the return value of the `memori.integrate()` method.
  */

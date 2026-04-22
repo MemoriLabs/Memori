@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/memori",
-  "version": "0.0.11",
+  "version": "0.1.5-beta",
   "description": "The official TypeScript SDK for Memori",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,9 +25,11 @@
     "LICENSE"
   ],
   "scripts": {
-    "prebuild": "rm -rf dist",
+    "preversion": "npm run sync-versions",
+    "sync-native": "node scripts/sync-native.js",
+    "sync-versions": "node scripts/bump-versions.js",
     "build": "tsc -p tsconfig.build.json",
-    "build:dev": "tsc -p tsconfig.json",
+    "build:dev": "npm run sync-native && tsc -p tsconfig.json",
     "memori": "node dist/bin/cli.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -38,8 +40,20 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "TEST_ENV=integration vitest run",
-    "example": "npm run build:dev && node dist/examples/cloud/simple.js",
-    "prepublishOnly": "npm run build"
+    "example": "npm run build:dev && node dist/examples/cloud/main.js",
+    "example:sqlite": "npm run build:dev && node dist/examples/sqlite/main.js",
+    "example:postgres": "npm run build:dev && node dist/examples/postgres/main.js",
+    "example:mysql": "npm run build:dev && node dist/examples/mysql/main.js",
+    "example:cockroachdb": "npm run build:dev && node dist/examples/cockroachdb/main.js",
+    "example:rust-core": "npm run build:dev && node dist/examples/sqlite/rust_core_main.js",
+    "sqlite": "npm run example:sqlite",
+    "postgresql": "npm run example:postgres",
+    "mysql": "npm run example:mysql",
+    "drizzle": "npm run build:dev && node dist/examples/orm/drizzle-pg.js",
+    "sequelize": "npm run build:dev && node dist/examples/orm/sequelize-mysql.js",
+    "typeorm": "npm run build:dev && node dist/examples/orm/typeorm-sqlite.js",
+    "mikro": "npm run build:dev && node dist/examples/orm/mikro-sqlite.js",
+    "prepublishOnly": "node scripts/sync-native.js && npm run build"
   },
   "keywords": [
     "memori",
@@ -66,7 +80,15 @@
   "peerDependencies": {
     "@anthropic-ai/sdk": "*",
     "@google/genai": "*",
-    "openai": "*"
+    "better-sqlite3": "*",
+    "drizzle-orm": "*",
+    "mysql2": "*",
+    "openai": "*",
+    "pg": "*",
+    "sequelize": "*",
+    "typeorm": "*",
+    "@mikro-orm/core": "*",
+    "@mikro-orm/sqlite": "*"
   },
   "peerDependenciesMeta": {
     "openai": {
@@ -77,22 +99,56 @@
     },
     "@google/genai": {
       "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "better-sqlite3": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "drizzle-orm": {
+      "optional": true
+    },
+    "sequelize": {
+      "optional": true
+    },
+    "typeorm": {
+      "optional": true
+    },
+    "@mikro-orm/core": {
+      "optional": true
+    },
+    "@mikro-orm/sqlite": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "*",
     "@eslint/js": "^9.0.0",
     "@google/genai": "*",
+    "@mikro-orm/core": "*",
+    "@mikro-orm/sqlite": "*",
+    "@types/better-sqlite3": "*",
     "@types/node": "^20.0.0",
+    "@types/pg": "*",
     "@vitest/coverage-v8": "^2.1.9",
     "@vitest/ui": "^2.1.9",
+    "better-sqlite3": "*",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "*",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-tsdoc": "^0.5.1",
     "lint-staged": "^15.0.0",
+    "mysql2": "*",
     "openai": "*",
+    "pg": "*",
     "prettier": "^3.0.0",
+    "sequelize": "*",
+    "typeorm": "*",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^2.1.9"

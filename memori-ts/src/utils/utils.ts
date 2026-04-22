@@ -12,6 +12,7 @@ export function formatDate(dateStr?: string): string | undefined {
   if (!dateStr) return undefined;
   try {
     const d = new Date(dateStr);
+    // If the string isn't a valid date, truncate it to 16 chars (YYYY-MM-DD HH:mm) as a best-effort
     if (isNaN(d.getTime())) return dateStr.substring(0, 16);
     return d.toISOString().replace('T', ' ').substring(0, 16);
   } catch {
@@ -19,6 +20,7 @@ export function formatDate(dateStr?: string): string | undefined {
   }
 }
 
+/** @internal Deduplicates summaries across facts using content+date as the key. */
 function collectSummariesFromFacts(facts: ParsedFact[]): ParsedSummary[] {
   const summaries: ParsedSummary[] = [];
   const seen = new Set<string>();
@@ -45,6 +47,7 @@ export function formatSummariesFromFacts(facts: ParsedFact[]): string[] {
   );
 }
 
+/** @internal Groups cloud-returned summaries by fact ID and merges them into the fact objects. */
 function attachRawSummariesToFacts(facts: RecallItem[], summaries: RecallSummary[]): RecallItem[] {
   if (summaries.length === 0) return facts;
 
@@ -72,6 +75,7 @@ function attachRawSummariesToFacts(facts: RecallItem[], summaries: RecallSummary
   });
 }
 
+/** @internal Converts a raw API summary to the public `ParsedSummary` shape, filtering out entries with unparseable dates. */
 function normalizeSummary(summary: RecallSummary): ParsedSummary | undefined {
   const dateCreated = formatDate(summary.date_created);
   if (!dateCreated) return undefined;
@@ -163,4 +167,16 @@ export function extractHistory(response: CloudRecallResponse): unknown[] {
 /** @internal */
 export function extractLastUserMessage(messages: Message[]): string | undefined {
   return messages.findLast((m) => m.role === 'user')?.content;
+}
+
+/**
+ * Safely converts a Node.js Buffer to a Float32Array using zero-copy memory sharing
+ * when perfectly aligned, or falls back to a fast slice copy if unaligned.
+ * @internal
+ */
+export function bufferToFloat32Array(buf: Buffer): Float32Array {
+  const isAligned = buf.byteOffset % 4 === 0;
+  return isAligned
+    ? new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4)
+    : new Float32Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 }

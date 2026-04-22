@@ -5,12 +5,13 @@ use crate::augmentation::models::{
     AugmentationLlmModel, AugmentationLlmSdk, AugmentationMeta, AugmentationPayload,
     AugmentationPlatform, AugmentationSdk, AugmentationStorage, ConversationMessage,
 };
-use crate::network::{ApiError, ApiSubdomain, MemoriClient};
+use crate::network::{ApiError, MemoriClient};
 use crate::storage::{WriteBatch, WriteOp};
 use sha2::{Digest, Sha256};
 
 pub async fn run_advanced_augmentation(
     input: &AugmentationInput,
+    client: &MemoriClient,
 ) -> Result<WriteBatch, OrchestratorError> {
     let payload = build_payload(input);
     if log::log_enabled!(log::Level::Trace) {
@@ -27,7 +28,6 @@ pub async fn run_advanced_augmentation(
             .unwrap_or_else(default_mock_augmentation_response)
     } else {
         log::debug!("augmentation calling Memori API: sdk/augmentation");
-        let client = MemoriClient::new(ApiSubdomain::Default)?;
         let raw_response = client.augmentation_raw_async(&payload).await?;
         log::trace!("augmentation raw response body: {raw_response}");
         serde_json::from_str::<serde_json::Value>(&raw_response).map_err(|e| {

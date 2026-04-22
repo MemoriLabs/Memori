@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { StorageManager } from '../storage/manager.js';
 
 /**
  * Utility to safely retrieve environment variables across Node.js and other runtimes.
@@ -56,6 +57,12 @@ export class Config {
    * Defaults to 5000ms (5 seconds).
    */
   public timeout: number;
+
+  /**
+   * The active storage manager handling local database operations.
+   * Only populated if a database connection is provided to Memori.
+   */
+  public storage?: StorageManager;
 
   constructor() {
     // 1. Environment and Base URL Logic

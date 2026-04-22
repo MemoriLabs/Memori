@@ -20,6 +20,7 @@ use std::time::Duration;
 use crate::augmentation::{AugmentationInput, run_advanced_augmentation};
 use crate::embeddings::{SentenceTransformersEmbedder, embed_texts};
 use crate::models::{AugmentationJob, PostprocessJob};
+use crate::network::{ApiSubdomain, MemoriClient};
 use crate::retrieval::RetrievalRequest;
 use crate::storage::{RankedFact, StorageBridge};
 
@@ -76,8 +77,10 @@ impl EngineOrchestrator {
         let embedder = SentenceTransformersEmbedder::new(model_name)
             .map_err(|e: anyhow::Error| OrchestratorError::ModelError(e.to_string()))?;
 
+        let api_client = Arc::new(MemoriClient::new(ApiSubdomain::Default)?);
         let postprocess_runtime = init_postprocess_runtime()?;
-        let augmentation_runtime = init_augmentation_runtime(storage_bridge.clone())?;
+        let augmentation_runtime =
+            init_augmentation_runtime(storage_bridge.clone(), api_client.clone())?;
 
         Ok(Self {
             embedder: Arc::new(embedder),
@@ -188,10 +191,11 @@ impl EngineOrchestrator {
                 .map_err(map_flush_error),
         }
     }
-}
 
-impl Drop for EngineOrchestrator {
-    fn drop(&mut self) {
+    /// Gracefully shuts down background worker runtimes.
+    ///
+    /// This is idempotent and safe to call multiple times.
+    pub fn shutdown(&self) {
         self.postprocess_runtime.shutdown();
         self.augmentation_runtime.shutdown();
     }
@@ -229,6 +233,7 @@ fn init_postprocess_runtime() -> Result<WorkerRuntime<PostprocessJob>, Orchestra
 
 fn init_augmentation_runtime(
     storage_bridge: Option<Arc<dyn StorageBridge>>,
+    api_client: Arc<MemoriClient>,
 ) -> Result<WorkerRuntime<AugmentationJob>, OrchestratorError> {
     let augmentation_runtime = WorkerRuntime::new(
         RuntimeConfig {
@@ -239,8 +244,9 @@ fn init_augmentation_runtime(
         },
         move |job: AugmentationJob| {
             let bridge = storage_bridge.clone();
+            let client = api_client.clone();
             async move {
-                match run_advanced_augmentation(&job.input).await {
+                match run_advanced_augmentation(&job.input, &client).await {
                     Ok(batch) => match bridge {
                         Some(storage) => {
                             if let Err(error) = storage.write_batch(&batch) {

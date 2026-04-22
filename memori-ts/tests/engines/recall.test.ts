@@ -3,6 +3,7 @@ import { RecallEngine } from '../../src/engines/recall.js';
 import { Api } from '../../src/core/network.js';
 import { Config } from '../../src/core/config.js';
 import { SessionManager } from '../../src/core/session.js';
+import { NativeEngine } from '../../src/core/engine.js';
 import { LLMRequest } from '@memorilabs/axon';
 
 describe('RecallEngine', () => {
@@ -10,6 +11,7 @@ describe('RecallEngine', () => {
   let mockApi: Api;
   let mockConfig: Config;
   let mockSession: SessionManager;
+  let mockNativeEngine: NativeEngine;
 
   beforeEach(() => {
     mockApi = { post: vi.fn() } as unknown as Api;
@@ -20,15 +22,37 @@ describe('RecallEngine', () => {
     } as unknown as Config;
     mockSession = { id: 'test-session-id' } as unknown as SessionManager;
 
-    recallEngine = new RecallEngine(mockApi, mockConfig, mockSession);
+    // 1. Create the mock native engine
+    mockNativeEngine = {
+      hasStorage: false,
+      retrieve: vi.fn().mockReturnValue([]),
+    } as unknown as NativeEngine;
+
+    // 2. Pass it in as the SECOND argument! (4 arguments total)
+    recallEngine = new RecallEngine(mockApi, mockNativeEngine, mockConfig, mockSession);
   });
 
   describe('recall()', () => {
-    it('should call API with correct payload', async () => {
+    it('should call API with correct payload when cloud is active', async () => {
       (mockApi.post as any).mockResolvedValue({ facts: ['fact1'] });
+
       const result = await recallEngine.recall('query');
+
       expect(result).toHaveLength(1);
       expect(mockApi.post).toHaveBeenCalled();
+    });
+
+    it('should call local Rust engine when storage is active', async () => {
+      (mockNativeEngine as any).hasStorage = true;
+      (mockNativeEngine.retrieve as any).mockReturnValue([
+        { content: 'Local Fact', rank_score: 0.99, date_created: null },
+      ]);
+
+      const result = await recallEngine.recall('query');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('Local Fact');
+      expect(mockApi.post).not.toHaveBeenCalled();
     });
   });
 
@@ -162,6 +186,26 @@ describe('RecallEngine', () => {
       const req = { messages: [] } as unknown as LLMRequest;
       const newReq = await recallEngine.handleRecall(req, {} as any);
       expect(newReq).toBe(req);
+    });
+
+    it('should fetch from local Rust engine if storage is active', async () => {
+      (mockNativeEngine as any).hasStorage = true;
+      (mockNativeEngine.retrieve as any).mockReturnValue([
+        { content: 'Local storage memory', rank_score: 0.95, date_created: null },
+      ]);
+
+      const req = {
+        messages: [
+          { role: 'system', content: 'You are helpful.' },
+          { role: 'user', content: 'What do I like?' },
+        ],
+      } as unknown as LLMRequest;
+
+      const newReq = await recallEngine.handleRecall(req, {} as any);
+
+      const systemMsg = newReq.messages.find((m) => m.role === 'system');
+      expect(systemMsg?.content).toContain('Local storage memory');
+      expect(mockApi.post).not.toHaveBeenCalled();
     });
   });
 });

@@ -3,6 +3,7 @@ import { PersistenceEngine } from '../../src/engines/persistence.js';
 import { Api } from '../../src/core/network.js';
 import { Config } from '../../src/core/config.js';
 import { SessionManager } from '../../src/core/session.js';
+import { NativeEngine } from '../../src/core/engine.js';
 import { LLMRequest, LLMResponse } from '@memorilabs/axon';
 
 describe('PersistenceEngine', () => {
@@ -10,19 +11,30 @@ describe('PersistenceEngine', () => {
   let mockApi: Api;
   let mockConfig: Config;
   let mockSession: SessionManager;
+  let mockNativeEngine: NativeEngine;
 
   beforeEach(() => {
     mockApi = { post: vi.fn().mockResolvedValue({}) } as unknown as Api;
     mockConfig = { entityId: 'u-1', processId: 'p-1' } as unknown as Config;
     mockSession = { id: 'sess-1' } as unknown as SessionManager;
+    mockNativeEngine = { hasStorage: false } as unknown as NativeEngine;
 
-    engine = new PersistenceEngine(mockApi, mockConfig, mockSession);
+    engine = new PersistenceEngine(mockApi, mockNativeEngine, mockConfig, mockSession);
   });
 
   it('should return response immediately if no session ID', async () => {
     (mockSession as any).id = undefined;
     const req = { messages: [] } as unknown as LLMRequest;
     const res = { content: 'response' } as LLMResponse;
+
+    await engine.handlePersistence(req, res, {} as any);
+    expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
+  it('should skip cloud API if local storage is active', async () => {
+    (mockNativeEngine as any).hasStorage = true;
+    const req = { messages: [{ role: 'user', content: 'hello' }] } as unknown as LLMRequest;
+    const res = { content: 'world' } as LLMResponse;
 
     await engine.handlePersistence(req, res, {} as any);
     expect(mockApi.post).not.toHaveBeenCalled();

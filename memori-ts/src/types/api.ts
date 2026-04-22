@@ -1,4 +1,14 @@
 /**
+ * Request payload for retrieving facts from the Rust core.
+ */
+export interface RetrievalRequest {
+  entity_id: string;
+  query_text: string;
+  dense_limit: number;
+  limit: number;
+}
+
+/**
  * Represents a single recalled item from the backend.
  * Can be a simple string or a structured object with scoring metadata.
  * @internal
@@ -10,6 +20,23 @@ export interface RecallObject {
   similarity?: number;
   date_created?: string;
   summaries?: RecallSummary[];
+}
+
+/**
+ * Single row from the native N-API `retrieve` response (camelCase before mapping to `RecallObject`).
+ */
+export interface NapiRecallRow {
+  id: number;
+  content: string;
+  rankScore?: number;
+  similarity?: number;
+  dateCreated?: string;
+  summaries?: Array<{
+    content: string;
+    dateCreated: string;
+    entityFactId?: number;
+    factId?: number;
+  }>;
 }
 
 /**

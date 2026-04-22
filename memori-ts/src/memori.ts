@@ -7,6 +7,13 @@ import { PersistenceEngine } from './engines/persistence.js';
 import { AugmentationEngine } from './engines/augmentation.js';
 import { ParsedFact } from './types/api.js';
 import { IntegrationConstructor, SupportedIntegration } from './types/integrations.js';
+import { NativeEngine } from './core/engine.js';
+import { StorageManager } from './storage/manager.js';
+
+export interface MemoriOptions {
+  conn?: unknown; // The raw database connection (pg Pool, mysql2 conn, better-sqlite3 DB, etc.)
+  embeddingModel?: string;
+}
 
 /**
  * The main entry point for the Memori SDK.
@@ -34,6 +41,11 @@ export class Memori {
    */
   public readonly axon: Axon;
 
+  /**
+   * The native Rust engine handling BYODB math and queueing.
+   */
+  public readonly engine: NativeEngine;
+
   private readonly api: Api;
   private readonly collectorApi: Api;
 
@@ -57,7 +69,17 @@ export class Memori {
     },
   };
 
-  constructor() {
+  /**
+   * Access augmentation lifecycle helpers.
+   *
+   * Mirrors the Python API (`mem.augmentation.wait()`), while delegating to the
+   * native engine's queue flush behavior in TypeScript BYODB mode.
+   */
+  public readonly augmentation = {
+    wait: (timeoutMs?: number): Promise<boolean> => this.engine.waitForAugmentation(timeoutMs),
+  };
+
+  constructor(options: MemoriOptions = {}) {
     // 1. Core State
     this.config = new Config();
     this.session = new SessionManager();
@@ -67,12 +89,36 @@ export class Memori {
     this.api = new Api(this.config, ApiSubdomain.DEFAULT);
     this.collectorApi = new Api(this.config, ApiSubdomain.COLLECTOR);
 
-    // 3. Engines
-    this.recallEngine = new RecallEngine(this.api, this.config, this.session);
-    this.persistenceEngine = new PersistenceEngine(this.api, this.config, this.session);
-    this.augmentationEngine = new AugmentationEngine(this.collectorApi, this.config, this.session);
+    // 3. Local Rust Layer & Storage Manager Init
+    if (options.conn) {
+      this.config.storage = new StorageManager(options.conn);
+      this.engine = new NativeEngine(this.config.storage, options.embeddingModel);
+      // Give the storage manager access to the engine's fastembed so it can
+      // embed facts that arrive without embeddings from the augmentation API.
+      this.config.storage.setEmbedder(this.engine.embedTexts.bind(this.engine));
+      // Ensure storage.close() tears down native worker runtimes so short-lived
+      // scripts can exit without lingering background handles.
+      this.config.storage.setEngineShutdown(this.engine.shutdown.bind(this.engine));
+    } else {
+      this.engine = new NativeEngine(undefined, options.embeddingModel);
+    }
 
-    // 4. Register Hooks
+    // 4. Engines (Now receiving both the Cloud API and Local Engine)
+    this.recallEngine = new RecallEngine(this.api, this.engine, this.config, this.session);
+    this.persistenceEngine = new PersistenceEngine(
+      this.api,
+      this.engine,
+      this.config,
+      this.session
+    );
+    this.augmentationEngine = new AugmentationEngine(
+      this.collectorApi,
+      this.engine,
+      this.config,
+      this.session
+    );
+
+    // 5. Register Hooks
     this.axon.hook.before(this.recallEngine.handleRecall.bind(this.recallEngine));
     this.axon.hook.after(this.persistenceEngine.handlePersistence.bind(this.persistenceEngine));
     this.axon.hook.after(this.augmentationEngine.handleAugmentation.bind(this.augmentationEngine));

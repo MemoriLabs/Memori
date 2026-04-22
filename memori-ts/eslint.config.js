@@ -43,6 +43,13 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '*.config.js', 'coverage'],
+    ignores: [
+      'dist/**',
+      'src/native/**',
+      'scripts/**',
+      'node_modules/**',
+      '*.config.js',
+      'coverage',
+    ],
   }
 );

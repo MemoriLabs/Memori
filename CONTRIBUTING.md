@@ -1,8 +1,13 @@
 [![Memori Labs](https://images.memorilabs.ai/banner.png)](https://memorilabs.ai/)
 
-# Contributing to Memori Python SDK
+# Contributing to Memori SDKs
 
 Thank you for your interest in contributing to Memori!
+
+This repository contains:
+
+- `memori/` - Python SDK
+- `memori-ts/` - TypeScript SDK (including BYODB via Rust native bindings)
 
 ## Development Setup
 
@@ -14,6 +19,20 @@ We use `uv` for fast dependency management and Docker for integration testing. Y
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer
 - Docker and Docker Compose (for integration tests)
 - Make
+- Node.js 18+
+- npm
+
+### Rust Toolchain (when needed)
+
+Both SDKs share the Rust core (`core/`).
+
+Install Rust (`rustup`, `cargo`) when you are:
+
+- changing code in `core/`
+- working on `core/bindings/python`
+- working on `core/bindings/node` or TypeScript BYODB native flows
+
+If you are only changing pure Python SDK code (outside Rust/bindings), Rust is not required.
 
 ### Quick Start (Local Development)
 
@@ -33,6 +52,24 @@ uv run pre-commit install
 
 # Run unit tests
 uv run pytest
+```
+
+### Quick Start (Full-stack: Python + TypeScript + Rust)
+
+```bash
+# Clone the repository
+git clone https://github.com/MemoriLabs/Memori.git
+cd Memori
+
+# Python deps
+uv sync
+uv run pre-commit install
+
+# TypeScript deps
+cd memori-ts && npm ci && cd ..
+
+# Node native-binding deps (needed for sync-native)
+cd core/bindings/node && npm ci && cd ../..
 ```
 
 ### Quick Start (Docker)
@@ -108,6 +145,41 @@ make dev-down
 # Clean up everything (containers, volumes, cache)
 make clean
 ```
+
+#### TypeScript Development (`memori-ts/`)
+
+```bash
+cd memori-ts
+
+# Install Node dependencies
+npm ci
+
+# Unit tests (native module is mocked; Rust not required)
+npm test
+
+# Lint + type/build checks
+npm run lint
+npm run build
+```
+
+##### Native BYODB Development
+
+```bash
+cd memori-ts
+
+# Build Rust N-API bindings and sync artifacts into memori-ts/src/native and dist/native
+npm run sync-native
+
+# Native + TypeScript build (used by examples)
+npm run build:dev
+```
+
+Notes:
+
+- `sync-native` is the explicit native step for TypeScript BYODB.
+- Rust is required for `sync-native` / `build:dev`, but not for regular unit tests.
+- For short-lived BYODB scripts, always call `await mem.config.storage.close()` to ensure the
+  native worker runtime shuts down cleanly before process exit.
 
 ## Testing
 
@@ -223,6 +295,15 @@ uv run pre-commit run --all-files
 4. **Update docs**: Update README or docs if adding features
 5. **Changelog**: Add entry to CHANGELOG.md under "Unreleased"
 6. **Atomic commits**: Keep commits focused and well-described
+
+If your PR touches `memori-ts/`, run and verify:
+
+```bash
+cd memori-ts
+npm test
+npm run lint
+npm run build
+```
 
 ## Supported Integrations
 

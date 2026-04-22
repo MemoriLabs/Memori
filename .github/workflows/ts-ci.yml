@@ -4,23 +4,22 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'memori-ts/**' 
+      - 'memori-ts/**'
+      - 'core/**'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'memori-ts/**'
+      - 'core/**'
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [18, 20, 22, 24]
-    
-    defaults:
-      run:
-        working-directory: ./memori-ts 
 
     steps:
       - name: Checkout repository
@@ -31,19 +30,49 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Set Windows C/C++ dynamic CRT flags
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "CFLAGS=/MD" >> $env:GITHUB_ENV
+          echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build
+
+      - name: Sync native bindings to memori-ts
+        working-directory: ./memori-ts
+        run: node scripts/sync-native.js
+
+      - name: Install TypeScript dependencies
+        working-directory: ./memori-ts
         run: npm ci
 
       - name: Generate version.ts
+        working-directory: ./memori-ts
+        shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
 
       - name: Run Linter
+        working-directory: ./memori-ts
         run: npm run lint
 
       - name: Run Tests
+        working-directory: ./memori-ts
         run: npm test
 
       - name: Verify Build
+        working-directory: ./memori-ts
         run: npm run build

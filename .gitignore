@@ -34,6 +34,8 @@ env/
 # SQLite databases
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
 # UV
 uv.lock
@@ -73,6 +75,7 @@ coverage
 !.prettierrc.json
 !openclaw.plugin.json
 docs/memori-cloud/mcp/use-cases.mdx
+# Keep lightweight TS-native bridge sources in repo; ignore only compiled *.node
 
 # Rust / native build artifacts
 target/
@@ -101,3 +104,14 @@ memori_python.abi3.so
 memori.egg-info/
 
 *.cache/
+
+# NAPI compiled native bindings and generated wrappers
+*.node
+src/native/index.js
+src/native/index.d.ts
+!memori-ts/src/native/
+!memori-ts/src/native/index.js
+!memori-ts/src/native/index.d.ts
+!memori-ts/src/native/package.json
+core/bindings/node/index.d.ts
+core/bindings/node/index.js

@@ -1,19 +1,29 @@
 name: Publish to npm (TS)
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest  
-    
-    defaults:
-      run:
-        working-directory: ./memori-ts
+  build-native:
+    name: native / ${{ matrix.artifact-name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: linux-x64-gnu
+          - os: ubuntu-24.04-arm
+            artifact-name: linux-arm64-gnu
+          - os: macos-latest
+            artifact-name: darwin-arm64
+          - os: windows-latest
+            artifact-name: win32-x64-msvc
 
     steps:
       - name: Checkout repository
@@ -25,19 +35,174 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install dependencies
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Set Windows C/C++ dynamic CRT flags
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "CFLAGS=/MD" >> $env:GITHUB_ENV
+          echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.artifact-name }}
+          path: core/bindings/node/memori_node.${{ matrix.artifact-name }}.node
+          if-no-files-found: error
+
+  build-and-test:
+    name: test / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Set Windows C/C++ dynamic CRT flags
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "CFLAGS=/MD" >> $env:GITHUB_ENV
+          echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build
+
+      - name: Sync native bindings to memori-ts
+        working-directory: ./memori-ts
+        run: node scripts/sync-native.js
+
+      - name: Install TypeScript dependencies
+        working-directory: ./memori-ts
         run: npm ci
 
       - name: Generate version.ts
+        working-directory: ./memori-ts
+        shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
 
       - name: Build project
-        run: npm run build --if-present
-        
+        working-directory: ./memori-ts
+        run: npm run build
+
       - name: Run tests
+        working-directory: ./memori-ts
         run: npm test --if-present
 
-      - name: Publish Package
-        run: npm publish --access public --tag latest
+  publish:
+    name: Publish @memorilabs/memori
+    needs: [build-native, build-and-test]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Download all native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: native-downloads
+          merge-multiple: false
+
+      - name: Copy native artifacts into bindings directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(native-downloads/*/*.node)
+          if [ "${#artifacts[@]}" -eq 0 ]; then
+            echo "No native artifacts were downloaded."
+            exit 1
+          fi
+
+          for artifact in "${artifacts[@]}"; do
+            cp "$artifact" core/bindings/node/
+          done
+
+      - name: Install TypeScript dependencies
+        working-directory: ./memori-ts
+        run: npm ci
+
+      - name: Generate version.ts
+        working-directory: ./memori-ts
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
+
+      - name: Publish @memorilabs/memori
+        working-directory: ./memori-ts
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            TAG="${VERSION#*-}"
+            TAG="${TAG%%.*}"
+          else
+            TAG="latest"
+          fi
+
+          npm publish --access public --tag "$TAG"
