@@ -9,13 +9,16 @@ const RUST_BINDINGS_DIR = path.resolve(ROOT, '../core/bindings/node');
 const SRC_NATIVE = path.resolve(ROOT, 'src/native');
 const DIST_NATIVE = path.resolve(ROOT, 'dist/native');
 
+// --publish: omit .node binaries from the copy (platform packages provide them via optionalDependencies)
+const publishMode = process.argv.includes('--publish');
+
 function copyFolderSync(from, to) {
   if (!fs.existsSync(from)) return;
   if (fs.existsSync(to)) fs.rmSync(to, { recursive: true, force: true });
   fs.mkdirSync(to, { recursive: true });
 
   const files = fs.readdirSync(from);
-  const extensions = ['.js', '.d.ts', '.node'];
+  const extensions = publishMode ? ['.js', '.d.ts'] : ['.js', '.d.ts', '.node'];
 
   for (const file of files) {
     if (extensions.some((ext) => file.endsWith(ext))) {

@@ -51,7 +51,7 @@
     "sequelize": "npm run build:dev && node dist/examples/orm/sequelize-mysql.js",
     "typeorm": "npm run build:dev && node dist/examples/orm/typeorm-sqlite.js",
     "mikro": "npm run build:dev && node dist/examples/orm/mikro-sqlite.js",
-    "prepublishOnly": "npm run sync-native && npm run build"
+    "prepublishOnly": "node scripts/sync-native.js --publish && npm run build"
   },
   "keywords": [
     "memori",
