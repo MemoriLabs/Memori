@@ -216,6 +216,4 @@ jobs:
 
       - name: Publish @memorilabs/memori
         working-directory: ./memori-ts
-        run: npm publish --access public --tag latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --tag beta
