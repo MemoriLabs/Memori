@@ -1,6 +1,6 @@
 {
   "name": "@memori/native",
-  "version": "0.0.1",
+  "version": "0.1.5-beta",
   "main": "index.js",
   "types": "index.d.ts",
   "files": [
@@ -12,9 +12,9 @@
     "name": "memori_node",
     "packageName": "@memori/native",
     "triples": {
-      "defaults": true,
+      "defaults": false,
       "additional": [
-        "x86_64-unknown-linux-musl",
+        "x86_64-unknown-linux-gnu",
         "aarch64-unknown-linux-gnu",
         "aarch64-apple-darwin",
         "x86_64-pc-windows-msvc"
