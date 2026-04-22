@@ -69,6 +69,16 @@ export class Memori {
     },
   };
 
+  /**
+   * Access augmentation lifecycle helpers.
+   *
+   * Mirrors the Python API (`mem.augmentation.wait()`), while delegating to the
+   * native engine's queue flush behavior in TypeScript BYODB mode.
+   */
+  public readonly augmentation = {
+    wait: (timeoutMs?: number): Promise<boolean> => this.engine.waitForAugmentation(timeoutMs),
+  };
+
   constructor(options: MemoriOptions = {}) {
     // 1. Core State
     this.config = new Config();

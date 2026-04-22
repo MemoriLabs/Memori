@@ -47,7 +47,7 @@ async function main(): Promise<void> {
     });
     console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
 
-    await mem.engine.waitForAugmentation();
+    await mem.augmentation.wait();
 
     console.log("You: What's my favorite color?");
     const response2 = await client.chat.completions.create({
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
     });
     console.log(`AI: ${response3.choices[0]?.message?.content}`);
 
-    await mem.engine.waitForAugmentation();
+    await mem.augmentation.wait();
   } finally {
     await mem.config.storage.close();
     await orm.close();

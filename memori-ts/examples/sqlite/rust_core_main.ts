@@ -58,7 +58,7 @@ async function main(): Promise<void> {
     });
     console.log('AI:', third.choices[0]?.message?.content);
 
-    await mem.engine.waitForAugmentation(10_000);
+    await mem.augmentation.wait(10_000);
     console.log('\nDone.');
   } finally {
     await mem.config.storage.close();

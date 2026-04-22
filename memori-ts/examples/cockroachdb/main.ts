@@ -35,7 +35,7 @@ try {
   });
   console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
 
-  await mem.engine.waitForAugmentation();
+  await mem.augmentation.wait();
 
   console.log("You: What's my favorite color?");
   const response2 = await client.chat.completions.create({
@@ -54,7 +54,7 @@ try {
   // Advanced Augmentation runs asynchronously to efficiently
   // create memories. For this example, a short lived command
   // line program, we need to wait for it to finish.
-  await mem.engine.waitForAugmentation();
+  await mem.augmentation.wait();
 } finally {
   await mem.config.storage.close();
   await pool.end();

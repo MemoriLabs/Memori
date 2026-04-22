@@ -66,4 +66,14 @@ describe('Memori SDK', () => {
     expect(registerSpy).toHaveBeenCalledWith(mockClient);
     expect(result).toBe(memori); // Check chaining
   });
+
+  it('should expose augmentation.wait() helper', async () => {
+    const memori = new Memori();
+    const waitSpy = vi.spyOn(memori.engine, 'waitForAugmentation').mockResolvedValue(true);
+
+    const ok = await memori.augmentation.wait(100);
+
+    expect(waitSpy).toHaveBeenCalledWith(100);
+    expect(ok).toBe(true);
+  });
 });
