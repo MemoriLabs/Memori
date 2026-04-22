@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -164,6 +164,8 @@ jobs:
 
       - name: Create platform-specific npm packages
         working-directory: ./core/bindings/node
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx napi prepublish -t npm
 
       - name: Publish platform packages
