@@ -195,7 +195,9 @@ export class NativeEngine {
 
   public shutdown(): void {
     if (!this.memoriEngine) return;
-    this.memoriEngine.shutdown();
+    if (typeof this.memoriEngine.shutdown === 'function') {
+      this.memoriEngine.shutdown();
+    }
     this.memoriEngine = undefined;
     this._hasStorage = false;
   }

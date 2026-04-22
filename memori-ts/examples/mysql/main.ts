@@ -28,24 +28,26 @@ if (!mem.config.storage) {
 try {
   await mem.config.storage.build();
 
-  console.log('You: My favorite color is blue and I live in Paris');
+  console.log('You: My favorite food is pizza and I lived in new york');
   const response1 = await client.chat.completions.create({
     model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: 'My favorite color is blue and I live in Paris' }],
+    messages: [{ role: 'user', content: 'My favorite food is pizza and I lived in new york' }],
   });
   console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
 
-  console.log("You: What's my favorite color?");
+  await mem.engine.waitForAugmentation();
+
+  console.log("You: What's my favorite food?");
   const response2 = await client.chat.completions.create({
     model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: "What's my favorite color?" }],
+    messages: [{ role: 'user', content: "What's my favorite food?" }],
   });
   console.log(`AI: ${response2.choices[0]?.message?.content}\n`);
 
-  console.log('You: What city do I live in?');
+  console.log('You: What city did I live in?');
   const response3 = await client.chat.completions.create({
     model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: 'What city do I live in?' }],
+    messages: [{ role: 'user', content: 'What city did I live in?' }],
   });
   console.log(`AI: ${response3.choices[0]?.message?.content}`);
 

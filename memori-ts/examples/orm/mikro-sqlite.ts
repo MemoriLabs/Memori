@@ -47,6 +47,8 @@ async function main(): Promise<void> {
     });
     console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
 
+    await mem.engine.waitForAugmentation();
+
     console.log("You: What's my favorite color?");
     const response2 = await client.chat.completions.create({
       model: 'gpt-4o-mini',

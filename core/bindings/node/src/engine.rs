@@ -1,15 +1,16 @@
 use crate::bridge::*;
 use crate::types::*;
+use dashmap::DashMap;
 use engine_orchestrator::EngineOrchestrator;
+use engine_orchestrator::search::FactId;
 use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, WriteAck};
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi::threadsafe_function::{ErrorStrategy, ThreadSafeCallContext};
 use napi_derive::napi;
-use std::collections::HashMap;
 use std::panic::catch_unwind;
+use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
-use std::sync::{Arc, Mutex};
 
 #[napi]
 pub struct MemoriEngine {
@@ -39,9 +40,9 @@ impl MemoriEngine {
             })
         };
 
-        let pending_embeddings = Arc::new(Mutex::new(HashMap::new()));
-        let pending_facts = Arc::new(Mutex::new(HashMap::new()));
-        let pending_writes = Arc::new(Mutex::new(HashMap::new()));
+        let pending_embeddings = Arc::new(DashMap::new());
+        let pending_facts = Arc::new(DashMap::new());
+        let pending_writes = Arc::new(DashMap::new());
 
         let bridge = Arc::new(NodeStorageBridge {
             fetch_embeddings_tsfn: build_tsfn(fetch_embeddings_cb)?,
@@ -68,20 +69,18 @@ impl MemoriEngine {
     pub fn resolve_embeddings_callback(&self, id: u32, result: Vec<NapiEmbeddingRow>) {
         let rows: Vec<EmbeddingRow> = result
             .into_iter()
-            .map(|r| {
-                let id_val = match r.id {
-                    Either::A(num) => serde_json::json!(num),
-                    Either::B(s) => serde_json::json!(s),
-                };
-                let floats = r.content_embedding.to_vec();
-                let mut obj = serde_json::Map::new();
-                obj.insert("id".to_string(), id_val);
-                obj.insert("content_embedding".to_string(), serde_json::json!(floats));
-                serde_json::from_value(serde_json::Value::Object(obj)).unwrap()
+            .map(|r| EmbeddingRow {
+                id: match r.id {
+                    Either::A(num) => FactId::Int(num),
+                    Either::B(s) => FactId::String(s),
+                },
+                content_embedding: r.content_embedding.to_vec(),
+                content_embedding_b64: None,
             })
             .collect();
 
-        if let Some(tx) = self.pending_embeddings.lock().unwrap().remove(&id) {
+        // DashMap returns an Option<(K, V)> tuple on removal
+        if let Some((_, tx)) = self.pending_embeddings.remove(&id) {
             let _ = tx.send(rows);
         }
     }
@@ -109,14 +108,14 @@ impl MemoriEngine {
             })
             .collect();
 
-        if let Some(tx) = self.pending_facts.lock().unwrap().remove(&id) {
+        if let Some((_, tx)) = self.pending_facts.remove(&id) {
             let _ = tx.send(rows);
         }
     }
 
     #[napi]
     pub fn resolve_write_callback(&self, id: u32, result: NapiWriteAck) {
-        if let Some(tx) = self.pending_writes.lock().unwrap().remove(&id) {
+        if let Some((_, tx)) = self.pending_writes.remove(&id) {
             let mut obj = serde_json::Map::new();
             obj.insert(
                 "written_ops".to_string(),

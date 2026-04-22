@@ -2,12 +2,12 @@
 
 Layout mirrors the Python examples under the repository root `examples/` directory:
 
-| Python (`examples/…`) | TypeScript (`memori-ts/examples/…`) |
-|------------------------|--------------------------------------|
-| `sqlite/main.py` | `sqlite/main.ts` |
-| `postgres/main.py` | `postgres/main.ts` |
-| `cockroachdb/main.py` | `cockroachdb/main.ts` |
-| `sqlite/rust_core_main.py` | `sqlite/rust_core_main.ts` |
+| Python (`examples/…`)      | TypeScript (`memori-ts/examples/…`) |
+| -------------------------- | ----------------------------------- |
+| `sqlite/main.py`           | `sqlite/main.ts`                    |
+| `postgres/main.py`         | `postgres/main.ts`                  |
+| `cockroachdb/main.py`      | `cockroachdb/main.ts`               |
+| `sqlite/rust_core_main.py` | `sqlite/rust_core_main.ts`          |
 
 MySQL uses the same three-turn quickstart as PostgreSQL (`mysql/main.ts`). MongoDB is not wired in the TS SDK yet.
 

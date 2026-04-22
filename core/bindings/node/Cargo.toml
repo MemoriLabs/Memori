@@ -9,6 +9,7 @@ rust-version.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+dashmap = "6.1.0"
 engine-orchestrator = { path = "../.." }
 napi = { workspace = true, features = ["napi4", "tokio_rt", "async"] }
 napi-derive.workspace = true
