@@ -154,19 +154,38 @@ jobs:
           path: native-downloads
           merge-multiple: false
 
-      - name: Copy .node files into bindings directory
-        shell: bash
-        run: find native-downloads -name "*.node" -exec cp {} core/bindings/node/ \;
-
       - name: Install NAPI CLI
         working-directory: ./core/bindings/node
         run: npm install
 
-      - name: Create platform-specific npm packages
+      - name: Create platform package scaffolding
         working-directory: ./core/bindings/node
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx napi prepublish -t npm
+        run: npx napi create-npm-dir -t .
+
+      - name: Copy .node files into platform package folders
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          artifacts=(native-downloads/*/*.node)
+          if [ "${#artifacts[@]}" -eq 0 ]; then
+            echo "No native artifacts were downloaded."
+            exit 1
+          fi
+
+          for artifact in "${artifacts[@]}"; do
+            filename="$(basename "$artifact")"
+            target="${filename#memori_node.}"
+            target="${target%.node}"
+            destination="core/bindings/node/npm/${target}/${filename}"
+
+            if [ ! -d "core/bindings/node/npm/${target}" ]; then
+              echo "Missing target package directory for ${target}"
+              exit 1
+            fi
+
+            cp "$artifact" "$destination"
+          done
 
       - name: Publish platform packages
         working-directory: ./core/bindings/node
