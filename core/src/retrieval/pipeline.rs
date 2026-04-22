@@ -135,6 +135,10 @@ fn row_to_embedding(row: EmbeddingRow) -> Result<(FactId, Vec<f32>), HostStorage
             "embedding row must include content_embedding or content_embedding_b64",
         ));
     };
+    log::warn!(
+        "embedding row '{}' fell back to base64 decoding; storage adapter should return Float32Array buffers directly",
+        row.id
+    );
 
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(b64.as_bytes())

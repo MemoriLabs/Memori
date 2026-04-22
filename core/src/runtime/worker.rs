@@ -296,12 +296,14 @@ fn default_worker_threads() -> usize {
 }
 
 fn wait_dispatcher_on_handle(handle: Handle, join: JoinHandle<()>) {
-    let (done_tx, done_rx) = std_mpsc::sync_channel::<()>(1);
-    handle.spawn(async move {
-        let _ = join.await;
-        let _ = done_tx.send(());
+    tokio::task::block_in_place(|| {
+        let (done_tx, done_rx) = std_mpsc::sync_channel::<()>(1);
+        handle.spawn(async move {
+            let _ = join.await;
+            let _ = done_tx.send(());
+        });
+        let _ = done_rx.recv();
     });
-    let _ = done_rx.recv();
 }
 
 async fn run_dispatcher<J: Send + 'static>(
