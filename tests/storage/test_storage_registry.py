@@ -62,9 +62,7 @@ def test_storage_driver_oceanbase(mocker):
 def test_storage_driver_tidb(mocker):
     tidb_session = mocker.Mock()
     tidb_session.get_bind.return_value.dialect.name = "mysql"
-    tidb_session.connection.return_value.exec_driver_sql.return_value.scalar.return_value = (
-        "5.7.25-TiDB-v8.5.0"
-    )
+    tidb_session.connection.return_value.exec_driver_sql.return_value.scalar.return_value = "5.7.25-TiDB-v8.5.0"
     type(tidb_session).__module__ = "sqlalchemy.orm.session"
 
     adapter = Registry().adapter(lambda: tidb_session)

@@ -50,7 +50,9 @@ class Adapter(BaseStorageAdapter):
 
     def _is_tidb_server(self) -> bool:
         try:
-            version = self.conn.connection().exec_driver_sql("SELECT VERSION()").scalar()
+            version = (
+                self.conn.connection().exec_driver_sql("SELECT VERSION()").scalar()
+            )
         except Exception:
             return False
 

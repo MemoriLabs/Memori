@@ -26,7 +26,9 @@ if not database_connection_string:
 
 engine = create_engine(
     database_connection_string,
-    connect_args={"ssl": {"ca": certifi.where()}} if os.getenv("DATABASE_USE_TLS") else {},
+    connect_args={"ssl": {"ca": certifi.where()}}
+    if os.getenv("DATABASE_USE_TLS")
+    else {},
     pool_pre_ping=True,
     pool_recycle=1800,
 )
