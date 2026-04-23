@@ -22,6 +22,8 @@ jobs:
             artifact-name: linux-arm64-gnu
           - os: macos-latest
             artifact-name: darwin-arm64
+          - os: macos-15-intel
+            artifact-name: darwin-x64
           - os: windows-latest
             artifact-name: win32-x64-msvc
 
