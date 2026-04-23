@@ -258,14 +258,15 @@ fn augmentation_pipeline_builds_write_batch() {
     assert_eq!(payload.meta.storage.dialect.as_deref(), Some("sqlite"));
 
     let batch = build_write_batch_from_response(&input, input.mock_response.clone().expect("mock"));
-    assert_eq!(batch.ops.len(), 4);
-    assert_eq!(batch.ops[0].op_type, "entity_fact.create");
-    assert_eq!(batch.ops[1].op_type, "knowledge_graph.create");
-    assert_eq!(batch.ops[2].op_type, "process_attribute.create");
-    assert_eq!(batch.ops[3].op_type, "conversation.update");
+    assert_eq!(batch.ops.len(), 5);
+    assert_eq!(batch.ops[0].op_type, "conversation_message.create");
+    assert_eq!(batch.ops[1].op_type, "entity_fact.create");
+    assert_eq!(batch.ops[2].op_type, "knowledge_graph.create");
+    assert_eq!(batch.ops[3].op_type, "process_attribute.create");
+    assert_eq!(batch.ops[4].op_type, "conversation.update");
 
     let ack = bridge.write_batch(&batch).expect("write should succeed");
-    assert_eq!(ack.written_ops, 4);
+    assert_eq!(ack.written_ops, 5);
 }
 
 #[test]

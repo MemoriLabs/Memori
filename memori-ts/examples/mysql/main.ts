@@ -8,15 +8,52 @@ import 'dotenv/config';
 import mysql from 'mysql2/promise';
 import { OpenAI } from 'openai';
 import { Memori } from '../../src/index.js';
+const dockerComposeConnectionString = 'mysql://memori:memori@localhost:3307/memori_test';
+const databaseConnectionString =
+  process.env.DATABASE_CONNECTION_STRING ?? dockerComposeConnectionString;
 
-const databaseConnectionString = process.env.DATABASE_CONNECTION_STRING;
-if (!databaseConnectionString) {
+function shouldTryDockerFallback(connectionString: string): boolean {
+  try {
+    const url = new URL(connectionString);
+    const hostname = url.hostname.toLowerCase();
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const port = url.port || '3306';
+    const dbName = url.pathname.replace(/^\//, '');
+    const user = decodeURIComponent(url.username || '');
+    return (
+      isLocalhost &&
+      port === '3306' &&
+      user === 'memori' &&
+      dbName === 'memori_test' &&
+      connectionString !== dockerComposeConnectionString
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function connectMySql(connectionString: string) {
+  try {
+    return await mysql.createConnection(connectionString);
+  } catch (error) {
+    const mysqlError = error as { code?: string; message?: string };
+    if (
+      mysqlError.code === 'ER_DBACCESS_DENIED_ERROR' &&
+      shouldTryDockerFallback(connectionString)
+    ) {
+      console.warn(
+        'MySQL access denied on localhost:3306; retrying docker-compose default localhost:3307.'
+      );
+      return await mysql.createConnection(dockerComposeConnectionString);
+    }
+    throw error;
+  }
   throw new Error('DATABASE_CONNECTION_STRING must be set in the environment');
 }
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const conn = await mysql.createConnection(databaseConnectionString);
+const conn = await connectMySql(databaseConnectionString);
 
 const mem = new Memori({ conn }).llm.register(client);
 mem.attribution('user-123', 'my-app');
@@ -34,8 +71,6 @@ try {
     messages: [{ role: 'user', content: 'My favorite food is pizza and I lived in new york' }],
   });
   console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
-
-  await mem.augmentation.wait();
 
   console.log("You: What's my favorite food?");
   const response2 = await client.chat.completions.create({

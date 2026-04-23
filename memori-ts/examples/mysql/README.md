@@ -14,7 +14,7 @@ Example showing how to use Memori with MySQL. The conversation script matches th
 
    ```bash
    export OPENAI_API_KEY=your_api_key_here
-   export DATABASE_CONNECTION_STRING=mysql://user:password@localhost:3306/dbname
+   export DATABASE_CONNECTION_STRING=mysql://memori:memori@localhost:3307/memori_test
    ```
 
 3. **Run**:
