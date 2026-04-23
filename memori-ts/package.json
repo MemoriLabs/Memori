@@ -80,15 +80,15 @@
   "peerDependencies": {
     "@anthropic-ai/sdk": "*",
     "@google/genai": "*",
-    "@mikro-orm/core": "*",
-    "@mikro-orm/sqlite": "*",
     "better-sqlite3": "*",
     "drizzle-orm": "*",
     "mysql2": "*",
     "openai": "*",
     "pg": "*",
     "sequelize": "*",
-    "typeorm": "*"
+    "typeorm": "*",
+    "@mikro-orm/core": "*",
+    "@mikro-orm/sqlite": "*"
   },
   "peerDependenciesMeta": {
     "openai": {
@@ -129,8 +129,8 @@
     "@anthropic-ai/sdk": "*",
     "@eslint/js": "^9.0.0",
     "@google/genai": "*",
-    "@mikro-orm/core": "^6.6.13",
-    "@mikro-orm/sqlite": "^6.6.13",
+    "@mikro-orm/core": "*",
+    "@mikro-orm/sqlite": "*",
     "@types/better-sqlite3": "*",
     "@types/node": "^20.0.0",
     "@types/pg": "*",
