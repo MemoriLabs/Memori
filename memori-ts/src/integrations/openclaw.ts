@@ -11,11 +11,13 @@ export class OpenClawIntegration extends BaseIntegration {
    *
    * @param entityId - Unique identifier for the entity (required)
    * @param processId - Optional identifier for the workflow/process/agent
+   * @param projectId - Optional identifier for the project
    * @returns This instance for method chaining
    */
-  public setAttribution(entityId: string, processId?: string): this {
+  public setAttribution(entityId: string, processId?: string, projectId?: string): this {
     this.core.config.entityId = entityId;
     if (processId) this.core.config.processId = processId;
+    if (projectId) this.core.config.projectId = projectId;
     return this;
   }
 

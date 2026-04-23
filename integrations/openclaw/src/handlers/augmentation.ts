@@ -224,7 +224,7 @@ export async function handleAugmentation(
       event
     );
 
-    const context = extractContext(event, ctx, config.entityId);
+    const context = extractContext(event, ctx, config.entityId, config.projectId);
     const memoriClient = initializeMemoriClient(config.apiKey, context);
 
     await memoriClient.augmentation(payload);

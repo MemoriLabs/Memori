@@ -98,18 +98,51 @@ export class AugmentationEngine {
       return Promise.resolve(res);
     }
 
-    const payload = {
+    const { attribution, ...metaFields } = data.meta;
+
+    const agentAugPayload = {
+      attribution,
       conversation: { messages: data.messages },
-      summary: summary || null,
-      trace: trace || null,
-      meta: data.meta,
+      meta: metaFields,
+      project: { id: this.config.projectId ?? null },
+      session: { id: data.sessionId, summary: summary ?? null },
+      trace: trace ?? null,
+    };
+
+    console.log('Agent Augmentation Payload:', JSON.stringify(agentAugPayload, null, 2));
+
+    // Fire-and-forget to the dedicated agent endpoint
+    // this.api
+    //   .post('agent/augmentation', agentAugPayload)
+    //   .catch((e: unknown) => {
+    //     if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
+    //   });
+
+    const [userMsg, assistantMsg] = data.messages;
+
+    const conversationTurnPayload = {
+      attribution,
+      messages: [
+        { role: userMsg.role, content: userMsg.content, type: userMsg.role, trace: null },
+        {
+          role: assistantMsg.role,
+          content: assistantMsg.content,
+          type: assistantMsg.role,
+          trace: trace ?? null,
+        },
+      ],
+      project: { id: this.config.projectId ?? null },
       session: { id: data.sessionId },
     };
 
-    // Fire-and-forget to the dedicated agent endpoint
-    this.api.post('agent/augmentation', payload).catch((e: unknown) => {
-      if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
-    });
+    console.log('Conversation Turn Payload:', JSON.stringify(conversationTurnPayload, null, 2));
+
+    // Fire-and-forget to persist raw turn messages for long-term storage
+    // this.api
+    //   .post('agent/conversation/turn', conversationTurnPayload)
+    //   .catch((e: unknown) => {
+    //     if (this.config.testMode) console.warn('Agent Turn failed:', e);
+    //   });
 
     return Promise.resolve(res);
   }

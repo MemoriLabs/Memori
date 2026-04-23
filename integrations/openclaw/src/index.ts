@@ -16,6 +16,7 @@ const memoriPlugin = {
     const config: MemoriPluginConfig = {
       apiKey: rawConfig?.apiKey as string,
       entityId: rawConfig?.entityId as string,
+      projectId: rawConfig?.projectId as string,
     };
 
     if (!config.apiKey || !config.entityId) {

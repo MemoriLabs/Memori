@@ -41,6 +41,11 @@ export class Config {
   public processId?: string;
 
   /**
+   * The unique identifier for the project.
+   */
+  public projectId?: string;
+
+  /**
    * The current conversation session ID.
    * Included in all requests to track conversation history.
    */
