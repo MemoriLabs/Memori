@@ -1,7 +1,7 @@
 export interface MemoriPluginConfig {
   apiKey: string;
   entityId: string;
-  projectId?: string;
+  projectId: string;
 }
 
 export interface OpenClawMessageBlock {

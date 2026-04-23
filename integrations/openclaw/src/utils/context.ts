@@ -7,7 +7,7 @@ export interface ExtractedContext {
   entityId: string;
   sessionId: string;
   provider: string;
-  projectId?: string;
+  projectId: string;
 }
 
 /**
@@ -17,15 +17,15 @@ export interface ExtractedContext {
  * @param event - OpenClaw event object
  * @param ctx - OpenClaw context object
  * @param configuredEntityId - Hardcoded entity ID from plugin config
- * @param configuredProjectId - Optional project ID from plugin config
- * @returns Normalized context with entityId, sessionId, provider, and optional projectId
+ * @param configuredProjectId - Project ID from plugin config
+ * @returns Normalized context with entityId, sessionId, provider, and projectId
  * @throws Error If entityId, sessionId, or provider cannot be determined
  */
 export function extractContext(
   event: OpenClawEvent,
   ctx: OpenClawContext,
   configuredEntityId: string,
-  configuredProjectId?: string
+  configuredProjectId: string
 ): ExtractedContext {
   const sessionId = ctx.sessionKey || event.sessionId;
   const provider = ctx.messageProvider || event.messageProvider;

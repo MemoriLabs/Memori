@@ -2,6 +2,7 @@ import { CallContext, LLMRequest, LLMResponse } from '@memorilabs/axon';
 import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
+import { ProjectManager } from '../core/project.js';
 import { extractLastUserMessage } from '../utils/utils.js';
 import { SDK_VERSION } from '../version.js';
 import { AugmentationInput, Trace } from '../types/integrations.js';
@@ -24,7 +25,8 @@ export class AugmentationEngine {
     private readonly api: Api,
     private readonly engine: NativeEngine,
     private readonly config: Config,
-    private readonly session: SessionManager
+    private readonly session: SessionManager,
+    private readonly project: ProjectManager
   ) {}
 
   private prepareAugmentationData(req: LLMRequest, res: LLMResponse, ctx: CallContext) {
@@ -104,45 +106,37 @@ export class AugmentationEngine {
       attribution,
       conversation: { messages: data.messages },
       meta: metaFields,
-      project: { id: this.config.projectId ?? null },
+      project: { id: this.project.id },
       session: { id: data.sessionId, summary: summary ?? null },
       trace: trace ?? null,
     };
 
-    console.log('Agent Augmentation Payload:', JSON.stringify(agentAugPayload, null, 2));
-
     // Fire-and-forget to the dedicated agent endpoint
-    // this.api
-    //   .post('agent/augmentation', agentAugPayload)
-    //   .catch((e: unknown) => {
-    //     if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
-    //   });
+    this.api.post('agent/augmentation', agentAugPayload).catch((e: unknown) => {
+      if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
+    });
 
     const [userMsg, assistantMsg] = data.messages;
 
-    const conversationTurnPayload = {
-      attribution,
-      messages: [
-        { role: userMsg.role, content: userMsg.content, type: userMsg.role, trace: null },
-        {
-          role: assistantMsg.role,
-          content: assistantMsg.content,
-          type: assistantMsg.role,
-          trace: trace ?? null,
-        },
-      ],
-      project: { id: this.config.projectId ?? null },
-      session: { id: data.sessionId },
-    };
-
-    console.log('Conversation Turn Payload:', JSON.stringify(conversationTurnPayload, null, 2));
-
     // Fire-and-forget to persist raw turn messages for long-term storage
-    // this.api
-    //   .post('agent/conversation/turn', conversationTurnPayload)
-    //   .catch((e: unknown) => {
-    //     if (this.config.testMode) console.warn('Agent Turn failed:', e);
-    //   });
+    this.api
+      .post('agent/conversation/turn', {
+        attribution,
+        messages: [
+          { role: userMsg.role, content: userMsg.content, type: userMsg.role, trace: null },
+          {
+            role: assistantMsg.role,
+            content: assistantMsg.content,
+            type: assistantMsg.role,
+            trace: trace ?? null,
+          },
+        ],
+        project: { id: this.project.id },
+        session: { id: data.sessionId },
+      })
+      .catch((e: unknown) => {
+        if (this.config.testMode) console.warn('Agent Turn failed:', e);
+      });
 
     return Promise.resolve(res);
   }

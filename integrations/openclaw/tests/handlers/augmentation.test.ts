@@ -22,6 +22,7 @@ vi.mock('../../src/utils/index.js', () => ({
     entityId: 'test-entity',
     sessionId: 'test-session',
     provider: 'test-provider',
+    projectId: 'test-project',
   })),
   initializeMemoriClient: vi.fn(() => ({
     augmentation: vi.fn(async () => {}),
@@ -44,7 +45,7 @@ describe('handlers/augmentation', () => {
       error: vi.fn(),
     } as unknown as MemoriLogger;
 
-    config = { apiKey: 'test-api-key', entityId: 'test-entity-id' };
+    config = { apiKey: 'test-api-key', entityId: 'test-entity-id', projectId: 'test-project-id' };
     ctx = { sessionKey: 'session-123', messageProvider: 'test-provider' };
     event = {
       success: true,

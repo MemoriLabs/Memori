@@ -4,8 +4,8 @@ import type { ExtractedContext } from '../../src/utils/context.js';
 
 vi.mock('@memorilabs/memori', () => {
   const mockOpenClawIntegration = {
-    setAttribution: vi.fn(),
-    setSession: vi.fn(),
+    scope: vi.fn().mockReturnThis(),
+    attribution: vi.fn().mockReturnThis(),
   };
 
   const mockMemori = {
@@ -37,6 +37,7 @@ describe('utils/memori-client', () => {
         entityId: 'entity-456',
         sessionId: 'session-789',
         provider: 'test-provider',
+        projectId: 'proj-123',
       };
 
       initializeMemoriClient(apiKey, context);
@@ -50,64 +51,64 @@ describe('utils/memori-client', () => {
       const { Memori } = await import('@memorilabs/memori');
       const { OpenClawIntegration } = await import('@memorilabs/memori/integrations');
 
-      const apiKey = 'test-api-key';
       const context: ExtractedContext = {
         entityId: 'entity-123',
         sessionId: 'session-456',
         provider: 'provider-789',
+        projectId: 'proj-456',
       };
 
-      initializeMemoriClient(apiKey, context);
+      initializeMemoriClient('test-api-key', context);
 
       const memoriInstance = vi.mocked(Memori).mock.results[0].value;
       expect(memoriInstance.integrate).toHaveBeenCalledWith(OpenClawIntegration);
     });
 
-    it('should set attribution with entityId and provider', async () => {
+    it('should call scope with sessionId and projectId', async () => {
       const { Memori } = await import('@memorilabs/memori');
 
-      const apiKey = 'test-api-key';
       const context: ExtractedContext = {
         entityId: 'user-abc',
         sessionId: 'session-xyz',
         provider: 'openai',
+        projectId: 'proj-xyz',
       };
 
-      initializeMemoriClient(apiKey, context);
+      initializeMemoriClient('test-api-key', context);
 
       const memoriInstance = vi.mocked(Memori).mock.results[0].value;
       const integration = memoriInstance.integrate.mock.results[0].value;
-      expect(integration.setAttribution).toHaveBeenCalledWith('user-abc', 'openai');
+      expect(integration.scope).toHaveBeenCalledWith('session-xyz', 'proj-xyz');
     });
 
-    it('should set session with sessionId', async () => {
+    it('should call attribution with entityId and provider', async () => {
       const { Memori } = await import('@memorilabs/memori');
 
-      const apiKey = 'test-api-key';
       const context: ExtractedContext = {
-        entityId: 'entity-123',
-        sessionId: 'my-session-id',
-        provider: 'anthropic',
+        entityId: 'user-abc',
+        sessionId: 'session-xyz',
+        provider: 'openai',
+        projectId: 'proj-xyz',
       };
 
-      initializeMemoriClient(apiKey, context);
+      initializeMemoriClient('test-api-key', context);
 
       const memoriInstance = vi.mocked(Memori).mock.results[0].value;
       const integration = memoriInstance.integrate.mock.results[0].value;
-      expect(integration.setSession).toHaveBeenCalledWith('my-session-id');
+      expect(integration.attribution).toHaveBeenCalledWith('user-abc', 'openai');
     });
 
     it('should return the OpenClawIntegration instance', async () => {
       const { Memori } = await import('@memorilabs/memori');
 
-      const apiKey = 'test-api-key';
       const context: ExtractedContext = {
         entityId: 'entity-123',
         sessionId: 'session-456',
         provider: 'provider-789',
+        projectId: 'proj-789',
       };
 
-      const result = initializeMemoriClient(apiKey, context);
+      const result = initializeMemoriClient('test-api-key', context);
 
       const memoriInstance = vi.mocked(Memori).mock.results[0].value;
       const expectedIntegration = memoriInstance.integrate.mock.results[0].value;
@@ -117,21 +118,21 @@ describe('utils/memori-client', () => {
     it('should configure client with correct sequence', async () => {
       const { Memori } = await import('@memorilabs/memori');
 
-      const apiKey = 'secret-key';
       const context: ExtractedContext = {
         entityId: 'user-999',
         sessionId: 'sess-888',
         provider: 'google',
+        projectId: 'proj-888',
       };
 
-      const result = initializeMemoriClient(apiKey, context);
+      const result = initializeMemoriClient('secret-key', context);
 
       expect(Memori).toHaveBeenCalled();
       const memoriInstance = vi.mocked(Memori).mock.results[0].value;
       expect(memoriInstance.config.apiKey).toBe('secret-key');
       expect(memoriInstance.integrate).toHaveBeenCalled();
-      expect(result.setAttribution).toHaveBeenCalledWith('user-999', 'google');
-      expect(result.setSession).toHaveBeenCalledWith('sess-888');
+      expect(result.scope).toHaveBeenCalledWith('sess-888', 'proj-888');
+      expect(result.attribution).toHaveBeenCalledWith('user-999', 'google');
     });
   });
 });

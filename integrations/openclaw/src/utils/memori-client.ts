@@ -17,8 +17,7 @@ export function initializeMemoriClient(
   memori.config.apiKey = apiKey;
 
   const openclaw = memori.integrate(OpenClawIntegration);
-  openclaw.setAttribution(context.entityId, context.provider, context.projectId);
-  openclaw.setSession(context.sessionId);
+  openclaw.scope(context.sessionId, context.projectId).attribution(context.entityId, context.provider);
 
   return openclaw;
 }

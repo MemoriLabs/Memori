@@ -1,6 +1,7 @@
 import { Axon } from '@memorilabs/axon';
 import { Config } from './core/config.js';
 import { SessionManager } from './core/session.js';
+import { ProjectManager } from './core/project.js';
 import { Api, ApiSubdomain } from './core/network.js';
 import { RecallEngine } from './engines/recall.js';
 import { PersistenceEngine } from './engines/persistence.js';
@@ -35,6 +36,8 @@ export class Memori {
    * Manages the current conversation session ID.
    */
   public readonly session: SessionManager;
+
+  private readonly projectManager: ProjectManager;
 
   /**
    * The underlying Axon instance used for LLM middleware hooks.
@@ -83,6 +86,7 @@ export class Memori {
     // 1. Core State
     this.config = new Config();
     this.session = new SessionManager();
+    this.projectManager = new ProjectManager();
     this.axon = new Axon();
 
     // 2. Network Layer
@@ -115,7 +119,8 @@ export class Memori {
       this.collectorApi,
       this.engine,
       this.config,
-      this.session
+      this.session,
+      this.projectManager
     );
 
     // 5. Register Hooks
@@ -182,6 +187,7 @@ export class Memori {
       augmentation: this.augmentationEngine,
       config: this.config,
       session: this.session,
+      project: this.projectManager,
     });
   }
 }

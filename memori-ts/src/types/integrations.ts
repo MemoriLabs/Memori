@@ -1,5 +1,6 @@
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
+import { ProjectManager } from '../core/project.js';
 import { RecallEngine } from '../engines/recall.js';
 import { PersistenceEngine } from '../engines/persistence.js';
 import { AugmentationEngine } from '../engines/augmentation.js';
@@ -16,6 +17,7 @@ export interface MemoriCore {
   augmentation: AugmentationEngine;
   config: Config;
   session: SessionManager;
+  project: ProjectManager;
 }
 
 /**

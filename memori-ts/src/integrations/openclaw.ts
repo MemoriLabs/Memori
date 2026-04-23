@@ -7,28 +7,28 @@ import { BaseIntegration } from './base.js';
  */
 export class OpenClawIntegration extends BaseIntegration {
   /**
-   * Sets the attribution context for memory operations.
+   * Sets the conversation scope for memory operations.
    *
-   * @param entityId - Unique identifier for the entity (required)
-   * @param processId - Optional identifier for the workflow/process/agent
-   * @param projectId - Optional identifier for the project
+   * @param sessionId - Unique session identifier
+   * @param projectId - Unique identifier for the project
    * @returns This instance for method chaining
    */
-  public setAttribution(entityId: string, processId?: string, projectId?: string): this {
-    this.core.config.entityId = entityId;
-    if (processId) this.core.config.processId = processId;
-    if (projectId) this.core.config.projectId = projectId;
+  public scope(sessionId: string, projectId: string): this {
+    this.core.session.set(sessionId);
+    this.core.project.set(projectId);
     return this;
   }
 
   /**
-   * Sets the current conversation session ID.
+   * Sets the attribution context for memory operations.
    *
-   * @param sessionId - Unique session identifier
+   * @param entityId - Unique identifier for the entity (required)
+   * @param processId - Optional identifier for the workflow/process/agent
    * @returns This instance for method chaining
    */
-  public setSession(sessionId: string): this {
-    this.core.session.set(sessionId);
+  public attribution(entityId: string, processId?: string): this {
+    this.core.config.entityId = entityId;
+    if (processId) this.core.config.processId = processId;
     return this;
   }
 

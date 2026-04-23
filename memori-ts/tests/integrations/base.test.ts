@@ -25,6 +25,7 @@ describe('BaseIntegration', () => {
       augmentation: { handleAugmentation: vi.fn() },
       config: { entityId: 'test-user', processId: 'test-process' },
       session: { id: 'test-session-id' },
+      project: { id: 'test-project-id', set: vi.fn() },
     } as unknown as MemoriCore;
 
     integration = new TestIntegration(mockCore);

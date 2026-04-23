@@ -5,6 +5,7 @@ import type { OpenClawEvent, OpenClawContext } from '../../src/types.js';
 describe('utils/context', () => {
   describe('extractContext', () => {
     const configuredEntityId = 'test-entity-123';
+    const configuredProjectId = 'test-project-456';
 
     it('should extract context successfully with all required fields', () => {
       const event: OpenClawEvent = {
@@ -16,12 +17,13 @@ describe('utils/context', () => {
         messageProvider: 'ctx-provider',
       };
 
-      const result = extractContext(event, ctx, configuredEntityId);
+      const result = extractContext(event, ctx, configuredEntityId, configuredProjectId);
 
       expect(result).toEqual({
         entityId: 'test-entity-123',
         sessionId: 'ctx-session-789',
         provider: 'ctx-provider',
+        projectId: 'test-project-456',
       });
     });
 
@@ -34,7 +36,7 @@ describe('utils/context', () => {
         messageProvider: 'ctx-provider',
       };
 
-      const result = extractContext(event, ctx, configuredEntityId);
+      const result = extractContext(event, ctx, configuredEntityId, configuredProjectId);
 
       expect(result.sessionId).toBe('event-session-456');
     });
@@ -48,9 +50,24 @@ describe('utils/context', () => {
         sessionKey: 'ctx-session-789',
       };
 
-      const result = extractContext(event, ctx, configuredEntityId);
+      const result = extractContext(event, ctx, configuredEntityId, configuredProjectId);
 
       expect(result.provider).toBe('event-provider');
+    });
+
+    it('should include projectId from config', () => {
+      const event: OpenClawEvent = {
+        sessionId: 'session-123',
+        messageProvider: 'provider',
+      };
+      const ctx: OpenClawContext = {
+        sessionKey: 'ctx-session',
+        messageProvider: 'ctx-provider',
+      };
+
+      const result = extractContext(event, ctx, configuredEntityId, 'my-proj-id');
+
+      expect(result.projectId).toBe('my-proj-id');
     });
 
     it('should throw error when sessionId cannot be determined', () => {
@@ -61,7 +78,7 @@ describe('utils/context', () => {
         messageProvider: 'ctx-provider',
       };
 
-      expect(() => extractContext(event, ctx, configuredEntityId)).toThrow(
+      expect(() => extractContext(event, ctx, configuredEntityId, configuredProjectId)).toThrow(
         'Failed to extract context: Missing sessionId in OpenClaw context and event.'
       );
     });
@@ -74,7 +91,7 @@ describe('utils/context', () => {
         sessionKey: 'ctx-session-789',
       };
 
-      expect(() => extractContext(event, ctx, configuredEntityId)).toThrow(
+      expect(() => extractContext(event, ctx, configuredEntityId, configuredProjectId)).toThrow(
         'Failed to extract context: Missing message provider in OpenClaw context and event.'
       );
     });
@@ -83,7 +100,7 @@ describe('utils/context', () => {
       const event: OpenClawEvent = {};
       const ctx: OpenClawContext = {};
 
-      expect(() => extractContext(event, ctx, configuredEntityId)).toThrow();
+      expect(() => extractContext(event, ctx, configuredEntityId, configuredProjectId)).toThrow();
     });
 
     it('should handle empty string sessionId as missing', () => {
@@ -95,7 +112,7 @@ describe('utils/context', () => {
         messageProvider: 'ctx-provider',
       };
 
-      expect(() => extractContext(event, ctx, configuredEntityId)).toThrow(
+      expect(() => extractContext(event, ctx, configuredEntityId, configuredProjectId)).toThrow(
         'Failed to extract context: Missing sessionId'
       );
     });
@@ -109,7 +126,7 @@ describe('utils/context', () => {
         messageProvider: '',
       };
 
-      expect(() => extractContext(event, ctx, configuredEntityId)).toThrow(
+      expect(() => extractContext(event, ctx, configuredEntityId, configuredProjectId)).toThrow(
         'Failed to extract context: Missing message provider'
       );
     });
@@ -126,7 +143,7 @@ describe('utils/context', () => {
         agentId: 'agent-id',
       };
 
-      const result = extractContext(event, ctx, 'my-configured-entity');
+      const result = extractContext(event, ctx, 'my-configured-entity', configuredProjectId);
 
       expect(result.entityId).toBe('my-configured-entity');
     });
