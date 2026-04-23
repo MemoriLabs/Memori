@@ -83,4 +83,7 @@ export interface StorageBridge {
   fetchEmbeddings(entityId: string, limit: number): Promise<EmbeddingRow[]> | EmbeddingRow[];
   fetchFactsByIds(ids: (number | string)[]): Promise<CandidateFactRow[]> | CandidateFactRow[];
   writeBatch(batch: WriteBatch): Promise<WriteAck> | WriteAck;
+  getConversationHistory(
+    sessionId: string
+  ): Promise<Array<{ role: string; content: string }>> | Array<{ role: string; content: string }>;
 }

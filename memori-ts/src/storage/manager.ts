@@ -87,6 +87,16 @@ export class StorageManager implements StorageBridge {
     return await this.driver.entityFact.getFactsByIds(ids);
   }
 
+  public async getConversationHistory(
+    sessionId: string
+  ): Promise<Array<{ role: string; content: string }>> {
+    const sId = await this.driver.session.create(sessionId, null, null);
+    const convId = await this.driver.conversation.create(sId || sessionId, 30);
+    const internalConvId = convId || sessionId;
+
+    return await this.driver.conversationMessages.read(internalConvId);
+  }
+
   public writeBatch(batch: WriteBatch): Promise<WriteAck> {
     return this.writeBatchAsync(batch);
   }

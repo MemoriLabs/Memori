@@ -103,19 +103,6 @@ pub fn build_write_batch_from_response(
 ) -> WriteBatch {
     let mut ops = Vec::new();
 
-    if let (Some(conversation_id), Some(messages)) = (
-        input.conversation_id.clone(),
-        extract_conversation_messages(input),
-    ) {
-        ops.push(WriteOp {
-            op_type: "conversation_message.create".to_string(),
-            payload: serde_json::json!({
-                "conversation_id": conversation_id,
-                "messages": messages,
-            }),
-        });
-    }
-
     if let Some(facts) = extract_facts(&response) {
         ops.push(WriteOp {
             op_type: "entity_fact.create".to_string(),
@@ -176,27 +163,6 @@ pub fn build_write_batch_from_response(
     }
 
     WriteBatch { ops }
-}
-
-fn extract_conversation_messages(
-    input: &AugmentationInput,
-) -> Option<Vec<serde_json::Value>> {
-    if input.conversation_messages.is_empty() {
-        return None;
-    }
-
-    Some(
-        input
-            .conversation_messages
-            .iter()
-            .map(|message| {
-                serde_json::json!({
-                    "role": message.role,
-                    "content": message.content,
-                })
-            })
-            .collect(),
-    )
 }
 
 fn extract_facts(response: &serde_json::Value) -> Option<Vec<String>> {
