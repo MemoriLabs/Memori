@@ -20,7 +20,7 @@ function isSequelizeConnection(conn: unknown): conn is SequelizeInstance {
     typeof conn === 'object' &&
     conn !== null &&
     'getQueryInterface' in conn &&
-    typeof (conn as { getQueryInterface: unknown }).getQueryInterface === 'function' &&
+    typeof conn.getQueryInterface === 'function' &&
     'transaction' in conn &&
     typeof (conn as { transaction: unknown }).transaction === 'function'
   );

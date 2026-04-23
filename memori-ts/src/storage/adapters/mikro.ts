@@ -18,7 +18,7 @@ function isMikroOrmConnection(conn: unknown): conn is MikroOrmLike {
     typeof conn === 'object' &&
     conn !== null &&
     'getConnection' in conn &&
-    typeof (conn as { getConnection: unknown }).getConnection === 'function' &&
+    typeof conn.getConnection === 'function' &&
     'getDriver' in conn &&
     typeof (conn as { getDriver: unknown }).getDriver === 'function'
   );
