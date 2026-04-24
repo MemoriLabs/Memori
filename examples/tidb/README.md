@@ -30,6 +30,6 @@ Example showing how to use Memori with TiDB / TiDB Cloud.
 
 - **TiDB integration**: Connect to TiDB or TiDB Cloud using a standard MySQL-compatible connection string
 - **Automatic TiDB detection**: Memori auto-detects TiDB from `SELECT VERSION()` and routes it through the dedicated TiDB integration path
-- **Automatic persistence**: Conversation messages are stored in TiDB tables
+- **Automatic persistence**: Memori persists memory and conversation context in TiDB
 - **Context preservation**: Memori injects relevant history into each LLM call
 - **Serverless-ready TLS**: `DATABASE_USE_TLS=1` adds a CA-backed TLS config for TiDB Cloud Serverless

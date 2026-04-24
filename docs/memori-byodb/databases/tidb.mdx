@@ -72,8 +72,8 @@ from memori import Memori
 from openai import OpenAI
 
 engine = create_engine(
-    os.getenv("TIDB_DATABASE_URL"),
-    connect_args={"ssl": {"ca": certifi.where()}} if os.getenv("TIDB_USE_TLS") else {},
+    os.getenv("DATABASE_CONNECTION_STRING"),
+    connect_args={"ssl": {"ca": certifi.where()}} if os.getenv("DATABASE_USE_TLS") else {},
     pool_pre_ping=True,
     pool_recycle=1800,
 )
