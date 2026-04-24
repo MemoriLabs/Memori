@@ -22,7 +22,6 @@ from memori._exceptions import (
     warn_if_legacy_memorisdk_installed,
 )
 from memori._rust_core import RustCoreAdapter
-from memori.embeddings import embed_texts
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -37,6 +36,12 @@ from memori.storage import Manager as StorageManager
 __all__ = ["Memori", "QuotaExceededError", "UnsupportedLLMProviderError"]
 
 warn_if_legacy_memorisdk_installed()
+
+
+def embed_texts(*args: Any, **kwargs: Any) -> Any:
+    from memori.embeddings import embed_texts as embed_texts_impl
+
+    return embed_texts_impl(*args, **kwargs)
 
 
 class LlmRegistry:
