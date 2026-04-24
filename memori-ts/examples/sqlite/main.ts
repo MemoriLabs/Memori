@@ -32,8 +32,6 @@ try {
   });
   console.log(`AI: ${response1.choices[0]?.message?.content}\n`);
 
-  await mem.augmentation.wait();
-
   console.log("You: What's my favorite color?");
   const response2 = await client.chat.completions.create({
     model: 'gpt-4o-mini',

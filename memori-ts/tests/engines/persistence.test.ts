@@ -33,11 +33,40 @@ describe('PersistenceEngine', () => {
 
   it('should skip cloud API if local storage is active', async () => {
     (mockNativeEngine as any).hasStorage = true;
+    (mockConfig as any).storage = { writeBatch: vi.fn().mockResolvedValue({ written_ops: 2 }) };
     const req = { messages: [{ role: 'user', content: 'hello' }] } as unknown as LLMRequest;
     const res = { content: 'world' } as LLMResponse;
 
     await engine.handlePersistence(req, res, {} as any);
     expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
+  it('should write a conversation_message.create batch to local storage', async () => {
+    const mockWriteBatch = vi.fn().mockResolvedValue({ written_ops: 2 });
+    (mockNativeEngine as any).hasStorage = true;
+    (mockConfig as any).storage = { writeBatch: mockWriteBatch };
+
+    const req = { messages: [{ role: 'user', content: 'hello' }] } as unknown as LLMRequest;
+    const res = { content: 'world' } as LLMResponse;
+
+    await engine.handlePersistence(req, res, {} as any);
+
+    expect(mockWriteBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ops: [
+          expect.objectContaining({
+            op_type: 'conversation_message.create',
+            payload: expect.objectContaining({
+              conversation_id: 'sess-1',
+              messages: [
+                { role: 'user', content: 'hello' },
+                { role: 'assistant', content: 'world' },
+              ],
+            }),
+          }),
+        ],
+      })
+    );
   });
 
   it('should post conversation to API if valid user message exists', async () => {
