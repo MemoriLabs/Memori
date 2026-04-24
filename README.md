@@ -45,13 +45,45 @@
   <strong>Choose memory that performs</strong>
 </p>
 
-
-
 [![Memori Labs](https://images.memorilabs.ai/stats.jpg)](https://memorilabs.ai/benchmark)
 
 ---
 
-## Getting Started
+## Table of Contents
+
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+  - [Quickstart](#quickstart)
+- [Features](#features)
+  - [Performance](#performance)
+  - [Memory Levels](#memory-levels)
+  - [Advanced Augmentation](#advanced-augmentation)
+- [Integrations](#integrations)
+  - [Supported LLMs](#supported-llms)
+  - [Supported Frameworks](#supported-frameworks)
+  - [Supported Platforms](#supported-platforms)
+- [Core Concepts](#core-concepts)
+  - [Attribution](#attribution)
+  - [Session Management](#session-management)
+- [Deployment Options](#deployment-options)
+  - [Memori Cloud](#memori-cloud)
+  - [OpenClaw Integration](#openclaw-persistent-memory-for-your-gateway)
+  - [MCP Integration](#mcp-connect-your-agent-in-one-command)
+- [Account Management](#account-management)
+  - [Managing Your Quota](#managing-your-quota)
+  - [Command Line Interface](#command-line-interface-cli)
+- [Resources](#resources)
+  - [Examples](#examples)
+  - [Documentation](#documentation)
+  - [Support](#support)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Quick Start
+
+### Getting Started
 
 ### Installation
 
@@ -141,7 +173,9 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 > Want to use your own database? Check out docs for Memori BYODB here:
 > [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
 
-## LoCoMo Benchmark
+## Features
+
+### Performance
 
 Memori was evaluated on the LoCoMo benchmark for long-conversation memory and achieved **81.95% overall accuracy** while using an average of **1,294 tokens per query**. That is just **4.97% of the full-context footprint**, showing that structured memory can preserve reasoning quality without forcing large prompts into every request.
 
@@ -151,7 +185,55 @@ Read the [benchmark overview](docs/memori-cloud/benchmark/overview.mdx), see the
 
 !["Memori's average accuracy along with the standard deviation"](https://images.memorilabs.ai/docs/memori-locomo-benchmark.webp)
 
-## OpenClaw (Persistent Memory for Your Gateway)
+### Memory Levels
+
+Memories are tracked at several different levels:
+
+- **entity**: think person, place, or thing; like a user
+- **process**: think your agent, LLM interaction or program
+- **session**: the current interactions between the entity, process and the LLM
+
+### Advanced Augmentation
+
+[Memori's Advanced Augmentation](docs/memori-cloud/concepts/advanced-augmentation.mdx) enhances memories at each of these levels with:
+
+- attributes
+- events
+- facts
+- people
+- preferences
+- relationships
+- rules
+- skills
+
+Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs in the background incurring no latency.
+
+By default, Memori Advanced Augmentation is available without an account but rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or use the Memori CLI:
+
+```bash
+# Install the CLI via pip to manage your account
+python -m memori sign-up <email_address>
+```
+
+Memori Advanced Augmentation is always free for developers!
+
+Once you've obtained an API key, set the following environment variable (used by both Python and TypeScript SDKs):
+
+```bash
+export MEMORI_API_KEY=[api_key]
+```
+
+## Deployment Options
+
+### Memori Cloud
+
+Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playground, and API Keys.
+
+> [!TIP]
+> Want to use your own database? Check out docs for Memori BYODB here:
+> [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
+
+### OpenClaw (Persistent Memory for Your Gateway)
 
 By default, OpenClaw agents forget everything between sessions. The Memori plugin fixes that. It captures durable facts and preferences after each conversation, then injects the most relevant context back into future prompts automatically.
 
@@ -186,7 +268,33 @@ claude mcp add --transport http memori https://api.memorilabs.ai/mcp/ \
 
 For Cursor, Codex, Warp, and other clients, see the [MCP client setup guide](docs/memori-cloud/mcp/client-setup.mdx).
 
-## Attribution
+## Integrations
+
+### Supported LLMs
+
+- Anthropic
+- Bedrock
+- DeepSeek
+- Gemini
+- Grok (xAI)
+- OpenAI (Chat Completions & Responses API)
+
+_(unstreamed, streamed, synchronous and asynchronous)_
+
+### Supported Frameworks
+
+- Agno
+- LangChain
+- Pydantic AI
+
+### Supported Platforms
+
+- DeepSeek
+- Nebius AI Studio
+
+## Core Concepts
+
+### Attribution
 
 To get the most out of Memori, you want to attribute your LLM interactions to an entity (think person, place or thing; like a user) and a process (think your agent, LLM interaction or program).
 
@@ -208,7 +316,7 @@ mem.attribution(entity_id="12345", process_id="my-ai-bot")
 ```
 </details>
 
-## Session Management
+### Session Management
 
 Memori uses sessions to group your LLM interactions together. For example, if you have an agent that executes multiple steps you want those to be recorded in a single session.
 
@@ -234,69 +342,9 @@ mem.set_session(session_id)
 ```
 </details>
 
-## Supported LLMs
+## Account Management
 
-- Anthropic
-- Bedrock
-- DeepSeek
-- Gemini
-- Grok (xAI)
-- OpenAI (Chat Completions & Responses API)
-
-_(unstreamed, streamed, synchronous and asynchronous)_
-
-## Supported Frameworks
-
-- Agno
-- LangChain
-- Pydantic AI
-
-## Supported Platforms
-
-- DeepSeek
-- Nebius AI Studio
-
-## Examples
-
-For more examples and demos, check out the [Memori Cookbook](https://github.com/MemoriLabs/memori-cookbook).
-
-## Memori Advanced Augmentation
-
-Memories are tracked at several different levels:
-
-- **entity**: think person, place, or thing; like a user
-- **process**: think your agent, LLM interaction or program
-- **session**: the current interactions between the entity, process and the LLM
-
-[Memori's Advanced Augmentation](docs/memori-cloud/concepts/advanced-augmentation.mdx) enhances memories at each of these levels with:
-
-- attributes
-- events
-- facts
-- people
-- preferences
-- relationships
-- rules
-- skills
-
-Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs in the background incurring no latency.
-
-By default, Memori Advanced Augmentation is available without an account but rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or use the Memori CLI:
-
-```bash
-# Install the CLI via pip to manage your account
-python -m memori sign-up <email_address>
-```
-
-Memori Advanced Augmentation is always free for developers!
-
-Once you've obtained an API key, set the following environment variable (used by both Python and TypeScript SDKs):
-
-```bash
-export MEMORI_API_KEY=[api_key]
-```
-
-## Managing Your Quota
+### Managing Your Quota
 
 At any time, you can check your quota using the Memori CLI (works for both SDKs):
 
@@ -308,7 +356,7 @@ Or by checking your account at [https://app.memorilabs.ai/](https://app.memorila
 
 If your API key exceeds its quota limits we will email you and let you know.
 
-## Command Line Interface (CLI)
+### Command Line Interface (CLI)
 
 The Memori CLI is the unified tool for managing your account, keys, and quotas across all SDKs. To use it, execute the following from the command line:
 
@@ -319,6 +367,33 @@ python -m memori
 
 This will display a menu of the available options. For more information about what you can do with the Memori CLI, please reference [Command Line Interface](docs/memori-byodb/concepts/cli-quickstart.mdx).
 
+## Resources
+
+### Getting Started
+
+- [**Quick Start Guide**](README.md#quick-start) — Installation and basic usage
+- [**Examples**](EXAMPLES.md) — 30+ practical code examples
+- [**Memori Cookbook**](https://github.com/MemoriLabs/memori-cookbook) — Community examples and demos
+
+### Documentation
+
+**Repository Documentation:**
+- [**Architecture Guide**](ARCHITECTURE.md) — System design and components
+- [**API Reference**](API_REFERENCE.md) — Complete Python and TypeScript API documentation
+- [**Deployment Guide**](DEPLOYMENT.md) — Production deployment strategies
+- [**Project Structure**](PROJECT_STRUCTURE.md) — Repository organization
+- [**Contributing Guide**](CONTRIBUTING.md) — Development setup and guidelines
+
+**Official Documentation:**
+- [**Memori Cloud Documentation**](https://memorilabs.ai/docs/memori-cloud) — Managed service docs
+- [**Memori BYODB Documentation**](https://memorilabs.ai/docs/memori-byodb) — Self-hosted docs
+
+### Support
+
+- [**Discord Community**](https://discord.gg/FpytKAxnFb) — Chat with the community
+- [**GitHub Issues**](https://github.com/MemoriLabs/Memori/issues) — Report bugs and request features
+- [**GitHub Discussions**](https://github.com/MemoriLabs/Memori/discussions) — Ask questions and discuss ideas
+
 ## Contributing
 
 We welcome contributions from the community! Please see our [Contributing Guidelines](https://github.com/MemoriLabs/Memori/blob/main/CONTRIBUTING.md) for details on:
@@ -328,14 +403,6 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 - Submitting pull requests
 - Reporting issues
 
----
-
-## Support
-
-- [**Memori Cloud Documentation**](https://memorilabs.ai/docs/memori-cloud)
-- [**Memori BYODB Documentation**](https://memorilabs.ai/docs/memori-byodb)
-- [**Discord**](https://discord.gg/FpytKAxnFb)
-- [**Issues**](https://github.com/MemoriLabs/Memori/issues)
 ---
 
 ## License
