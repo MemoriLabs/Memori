@@ -18,9 +18,43 @@ from memori.llm._utils import (
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_history_for_openai_compat(
+    messages: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Strip recalled messages that would produce malformed tool-call
+    sequences when replayed to an OpenAI-compatible Chat Completions
+    endpoint.
+
+    The conversation_message schema stores only (role, content); the
+    tool_calls and tool_call_id fields are not persisted. Recalled
+    history of a tool-using turn would therefore inject:
+
+      - assistant messages with empty content (the original
+        tool_calls-only turn — its tool_calls field is lost), followed by
+      - role="tool" messages whose tool_call_id is lost.
+
+    OpenAI-compatible providers reject both ("An assistant message with
+    'tool_calls' must be followed by tool messages responding to each
+    'tool_call_id'"). Drop them here. Also normalise the legacy
+    Gemini-era role "model" to "assistant" so older rows replay cleanly.
+    """
+    cleaned: list[dict[str, str]] = []
+    for m in messages:
+        role = m.get("role", "user")
+        content = m.get("content", "")
+        if role == "tool":
+            continue
+        if role == "assistant" and not (content or "").strip():
+            continue
+        if role == "model":
+            role = "assistant"
+        cleaned.append({"role": role, "content": content})
+    return cleaned
+
+
 def _normalize_input_history(kwargs: dict, messages: list[dict[str, str]]) -> dict:
     history_items: list[dict[str, str]] = []
-    for msg in messages:
+    for msg in _sanitize_history_for_openai_compat(messages):
         role = msg.get("role", "user")
         content = msg.get("content", "")
         if role == "system":
@@ -62,13 +96,19 @@ def _inject_messages_by_provider(
         or agno_is_openai(config.framework.provider, config.llm.provider)
         or agno_is_xai(config.framework.provider, config.llm.provider)
     ):
-        kwargs["messages"] = messages + kwargs["messages"]
+        kwargs["messages"] = (
+            _sanitize_history_for_openai_compat(messages) + kwargs["messages"]
+        )
     elif (
         llm_is_anthropic(config.framework.provider, config.llm.provider)
         or llm_is_bedrock(config.framework.provider, config.llm.provider)
         or agno_is_anthropic(config.framework.provider, config.llm.provider)
     ):
-        filtered_messages = [m for m in messages if m.get("role") != "system"]
+        filtered_messages = [
+            m
+            for m in _sanitize_history_for_openai_compat(messages)
+            if m.get("role") != "system"
+        ]
         kwargs["messages"] = filtered_messages + kwargs["messages"]
     elif llm_is_xai(config.framework.provider, config.llm.provider):
         from xai_sdk.chat import assistant, user
