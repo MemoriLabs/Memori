@@ -5,10 +5,15 @@ edition = "2024"
 license = "Apache-2.0"
 rust-version = "1.86"
 
+[features]
+default = ["ort-download-binaries"]
+ort-download-binaries = ["fastembed/ort-download-binaries"]
+ort-load-dynamic = ["fastembed/ort-load-dynamic"]
+
 [dependencies]
 anyhow = "1.0"
 base64 = "0.22"
-fastembed = { version = "5", default-features = false, features = ["hf-hub-native-tls", "image-models", "ort-download-binaries"] }
+fastembed = { version = "5", default-features = false, features = ["hf-hub-native-tls", "image-models"] }
 hf-hub = "0.5"
 log = "0.4"
 # Force a vendored build of OpenSSL so transitive dependencies (reqwest,
@@ -45,7 +50,7 @@ rust-version = "1.86"
 [workspace.dependencies]
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
-pyo3 = "0.27"
+pyo3 = "0.28"
 napi = "2"
 napi-derive = "2"
 napi-build = "2"

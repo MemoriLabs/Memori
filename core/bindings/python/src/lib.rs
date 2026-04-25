@@ -245,7 +245,7 @@ fn orchestrator_error_to_py_err(error: OrchestratorError) -> PyErr {
     }
 }
 
-#[pymodule]
+#[pymodule(gil_used = true)]
 fn memori_python(_py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<MemoriEngine>()?;
     module.add_class::<EngineHandle>()?;
