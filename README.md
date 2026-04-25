@@ -319,6 +319,16 @@ python -m memori
 
 This will display a menu of the available options. For more information about what you can do with the Memori CLI, please reference [Command Line Interface](docs/memori-byodb/concepts/cli-quickstart.mdx).
 
+## Delete User Memories
+
+Currently, Memori does not support deleting user memories at the driver level.
+
+A planned API for this feature:
+
+```ts
+await storageManager.deleteUserMemories("user_123");
+```
+
 ## Contributing
 
 We welcome contributions from the community! Please see our [Contributing Guidelines](https://github.com/MemoriLabs/Memori/blob/main/CONTRIBUTING.md) for details on:
