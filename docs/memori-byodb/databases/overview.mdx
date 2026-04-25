@@ -1,6 +1,6 @@
 ---
 title: Databases Overview
-description: Memori supports SQLite, PostgreSQL, MySQL, MariaDB, Oracle, MongoDB, CockroachDB, and OceanBase, plus providers like Neon, Supabase, and AWS RDS/Aurora.
+description: Memori supports SQLite, PostgreSQL, MySQL, MariaDB, TiDB, Oracle, MongoDB, CockroachDB, and OceanBase, plus providers like Neon, Supabase, and AWS RDS/Aurora.
 ---
 
 # Databases Overview
@@ -20,6 +20,7 @@ Memori is database-agnostic. With the BYODB (Bring Your Own Database) approach, 
 | **[PostgreSQL](/docs/memori-byodb/databases/postgres)**     | Production, high concurrency       | `psycopg2-binary`          | `postgresql://user:pass@host/db`                    |
 | **[MySQL](/docs/memori-byodb/databases/mysql)**             | Existing MySQL infrastructure      | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
 | **MariaDB**                                                 | MySQL-compatible alternative       | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
+| **[TiDB](/docs/memori-byodb/databases/tidb)**               | Distributed MySQL-compatible SQL   | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host:4000/db`            |
 | **[Oracle](/docs/memori-byodb/databases/oracle)**           | Enterprise environments            | `oracledb` or `cx_Oracle`  | `oracle+oracledb://user:pass@host/service`          |
 | **[MongoDB](/docs/memori-byodb/databases/mongodb)**         | Document-oriented, flexible schema | `pymongo`                  | `mongodb://host:27017`                              |
 | **[CockroachDB](/docs/memori-byodb/databases/cockroachdb)** | Distributed SQL, global scale      | `psycopg2-binary`          | `cockroachdb+psycopg2://user:pass@host/db`          |
@@ -27,7 +28,7 @@ Memori is database-agnostic. With the BYODB (Bring Your Own Database) approach, 
 | **Neon**                                                    | Serverless PostgreSQL              | `psycopg2-binary`          | `postgresql://user:pass@ep-xxx.neon.tech/db`        |
 | **Supabase**                                                | Hosted PostgreSQL with extras      | `psycopg2-binary`          | `postgresql://user:pass@db.xxx.supabase.co:5432/db` |
 
-MariaDB uses the same drivers and connection strings as MySQL. Neon and Supabase are PostgreSQL-compatible — see the [PostgreSQL](/docs/memori-byodb/databases/postgres) page for full setup details.
+MariaDB uses the same drivers and connection strings as MySQL. TiDB is also MySQL-compatible, but Memori will auto-detect it and route it through a dedicated TiDB integration path. Neon and Supabase are PostgreSQL-compatible — see the [PostgreSQL](/docs/memori-byodb/databases/postgres) page for full setup details.
 
 ## Managed Providers
 
@@ -39,6 +40,7 @@ Memori also works with hosted services that expose standard PostgreSQL/MySQL end
 | **Supabase**   | PostgreSQL           | `*.supabase.co`       |
 | **AWS RDS**    | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
 | **AWS Aurora** | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
+| **TiDB Cloud** | TiDB / MySQL         | `*.tidbcloud.com`     |
 
 ## Quick Start Code
 
@@ -77,6 +79,21 @@ from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
     "mysql+pymysql://user:password@localhost:3306/memori_db",
+    pool_pre_ping=True
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'TiDB' }}
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "mysql+pymysql://user:password@host:4000/memori_db?charset=utf8mb4",
     pool_pre_ping=True
 )
 SessionLocal = sessionmaker(bind=engine)
@@ -156,7 +173,7 @@ Memori supports four connection methods depending on your stack:
 
 Memori accepts a `conn` parameter — a callable that returns a new connection each time it is called.
 
-- **SQLAlchemy databases** (SQLite, PostgreSQL, MySQL, MariaDB, Oracle, CockroachDB, OceanBase, plus providers like Neon/Supabase/RDS/Aurora): pass a `sessionmaker`
+- **SQLAlchemy databases** (SQLite, PostgreSQL, MySQL, MariaDB, TiDB, Oracle, CockroachDB, OceanBase, plus providers like Neon/Supabase/RDS/Aurora/TiDB Cloud): pass a `sessionmaker`
 - **DB API 2.0**: pass a function that returns a PEP 249 connection object
 - **Django ORM**: use Django's native ORM integration
 - **MongoDB**: pass a function returning a database instance
