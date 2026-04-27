@@ -6,7 +6,6 @@ use engine_orchestrator::search::FactId;
 use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, WriteAck};
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
-use napi::threadsafe_function::{ErrorStrategy, ThreadSafeCallContext};
 use napi_derive::napi;
 use std::panic::catch_unwind;
 use std::sync::Arc;
@@ -25,29 +24,19 @@ impl MemoriEngine {
     #[napi(constructor)]
     pub fn new(
         model_name: Option<String>,
-        #[napi(ts_arg_type = "(id: number, reqJson: string) => void")]
-        fetch_embeddings_cb: JsFunction,
-        #[napi(ts_arg_type = "(id: number, reqJson: string) => void")]
-        fetch_facts_by_ids_cb: JsFunction,
-        #[napi(ts_arg_type = "(id: number, reqJson: string) => void")] write_batch_cb: JsFunction,
+        fetch_embeddings_cb: ThreadsafeFunction<(u32, String)>,
+        fetch_facts_by_ids_cb: ThreadsafeFunction<(u32, String)>,
+        write_batch_cb: ThreadsafeFunction<(u32, String)>,
     ) -> Result<Self> {
-        let build_tsfn = |js_func: JsFunction| -> Result<ThreadsafeFunction<(u32, String), ErrorStrategy::Fatal>> {
-            js_func.create_threadsafe_function(0, |ctx: ThreadSafeCallContext<(u32, String)>| {
-                let env = ctx.env;
-                let arg1 = env.create_uint32(ctx.value.0)?;
-                let arg2 = env.create_string(&ctx.value.1)?;
-                Ok(vec![arg1.into_unknown(), arg2.into_unknown()])
-            })
-        };
-
         let pending_embeddings = Arc::new(DashMap::new());
         let pending_facts = Arc::new(DashMap::new());
         let pending_writes = Arc::new(DashMap::new());
 
+        // We can pass the threadsafe functions directly to the bridge now!
         let bridge = Arc::new(NodeStorageBridge {
-            fetch_embeddings_tsfn: build_tsfn(fetch_embeddings_cb)?,
-            fetch_facts_by_ids_tsfn: build_tsfn(fetch_facts_by_ids_cb)?,
-            write_batch_tsfn: build_tsfn(write_batch_cb)?,
+            fetch_embeddings_tsfn: fetch_embeddings_cb,
+            fetch_facts_by_ids_tsfn: fetch_facts_by_ids_cb,
+            write_batch_tsfn: write_batch_cb,
             pending_embeddings: pending_embeddings.clone(),
             pending_facts: pending_facts.clone(),
             pending_writes: pending_writes.clone(),

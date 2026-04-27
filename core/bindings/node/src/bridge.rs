@@ -3,7 +3,7 @@ use engine_orchestrator::search::FactId;
 use engine_orchestrator::storage::{
     CandidateFactRow, EmbeddingRow, HostStorageError, StorageBridge, WriteAck, WriteBatch,
 };
-use napi::threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode};
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -17,9 +17,9 @@ pub type PendingFactsMap = Arc<DashMap<u32, oneshot::Sender<Vec<CandidateFactRow
 pub type PendingWritesMap = Arc<DashMap<u32, oneshot::Sender<WriteAck>>>;
 
 pub struct NodeStorageBridge {
-    pub fetch_embeddings_tsfn: ThreadsafeFunction<(u32, String), ErrorStrategy::Fatal>,
-    pub fetch_facts_by_ids_tsfn: ThreadsafeFunction<(u32, String), ErrorStrategy::Fatal>,
-    pub write_batch_tsfn: ThreadsafeFunction<(u32, String), ErrorStrategy::Fatal>,
+    pub fetch_embeddings_tsfn: ThreadsafeFunction<(u32, String)>,
+    pub fetch_facts_by_ids_tsfn: ThreadsafeFunction<(u32, String)>,
+    pub write_batch_tsfn: ThreadsafeFunction<(u32, String)>,
     pub pending_embeddings: PendingEmbeddingsMap,
     pub pending_facts: PendingFactsMap,
     pub pending_writes: PendingWritesMap,
@@ -40,7 +40,7 @@ impl StorageBridge for NodeStorageBridge {
 
         let status = self
             .fetch_embeddings_tsfn
-            .call((id, payload), ThreadsafeFunctionCallMode::NonBlocking);
+            .call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking);
 
         // Fail gracefully if the TS function queue fails, preventing thread lockup
         if status != napi::Status::Ok {
@@ -77,7 +77,7 @@ impl StorageBridge for NodeStorageBridge {
 
         let status = self
             .fetch_facts_by_ids_tsfn
-            .call((id, payload), ThreadsafeFunctionCallMode::NonBlocking);
+            .call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking);
 
         if status != napi::Status::Ok {
             self.pending_facts.remove(&id);
@@ -111,7 +111,7 @@ impl StorageBridge for NodeStorageBridge {
 
         let status = self
             .write_batch_tsfn
-            .call((id, payload), ThreadsafeFunctionCallMode::NonBlocking);
+            .call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking);
 
         if status != napi::Status::Ok {
             self.pending_writes.remove(&id);

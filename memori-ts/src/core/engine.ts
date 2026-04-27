@@ -18,7 +18,13 @@ export class NativeEngine {
       this._hasStorage = true;
       this.memoriEngine = new MemoriEngine(
         modelName || null,
-        (id: number, reqJson: string) => {
+        (err: Error | null, _id: number, _reqJson: string) => {
+          if (err) {
+            console.error('[Memori] Bridge error in fetchEmbeddings:', err);
+            return;
+          }
+          const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+
           this.handleBridgeCall<EmbeddingRow[]>(
             id,
             'fetchEmbeddings',
@@ -31,15 +37,19 @@ export class NativeEngine {
                 id,
                 res.map((r) => ({
                   id: r.id,
-                  // Facts without embeddings resolve to a zero-length vector; they won't
-                  // appear in vector search results but are still stored and accessible.
                   contentEmbedding: r.content_embedding ?? new Float32Array(0),
                 }))
               ),
             () => this.memoriEngine?.resolveEmbeddingsCallback(id, [])
           );
         },
-        (id: number, reqJson: string) => {
+        (err: Error | null, _id: number, _reqJson: string) => {
+          if (err) {
+            console.error('[Memori] Bridge error in fetchFactsByIds:', err);
+            return;
+          }
+          const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+
           this.handleBridgeCall<CandidateFactRow[]>(
             id,
             'fetchFactsByIds',
@@ -63,7 +73,13 @@ export class NativeEngine {
             () => this.memoriEngine?.resolveFactsCallback(id, [])
           );
         },
-        (id: number, reqJson: string) => {
+        (err: Error | null, _id: number, _reqJson: string) => {
+          if (err) {
+            console.error('[Memori] Bridge error in writeBatch:', err);
+            return;
+          }
+          const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+
           this.handleBridgeCall<WriteAck>(
             id,
             'writeBatch',
@@ -76,15 +92,26 @@ export class NativeEngine {
           );
         }
       );
-    } else {
-      // Fallback Engine without Storage
-      this.memoriEngine = new MemoriEngine(
-        modelName || null,
-        (id: number) => this.memoriEngine?.resolveEmbeddingsCallback(id, []),
-        (id: number) => this.memoriEngine?.resolveFactsCallback(id, []),
-        (id: number) => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 })
-      );
+
+      return;
     }
+
+    // Fallback Engine without Storage
+    this.memoriEngine = new MemoriEngine(
+      modelName || null,
+      (err: Error | null, _id: number, _reqJson: string) => {
+        const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+        if (!err) this.memoriEngine?.resolveEmbeddingsCallback(id, []);
+      },
+      (err: Error | null, _id: number, _reqJson: string) => {
+        const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+        if (!err) this.memoriEngine?.resolveFactsCallback(id, []);
+      },
+      (err: Error | null, _id: number, _reqJson: string) => {
+        const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+        if (!err) this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 });
+      }
+    );
   }
 
   public get hasStorage(): boolean {

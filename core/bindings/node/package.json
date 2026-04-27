@@ -1,6 +1,6 @@
 {
   "name": "@memori/native",
-  "version": "0.1.5-beta",
+  "version": "0.1.7-beta",
   "main": "index.js",
   "types": "index.d.ts",
   "files": [
@@ -9,22 +9,19 @@
     "*.node"
   ],
   "napi": {
-    "name": "memori_node",
+    "binaryName": "memori_node",
     "packageName": "@memori/native",
-    "triples": {
-      "defaults": false,
-      "additional": [
-        "x86_64-unknown-linux-gnu",
-        "aarch64-unknown-linux-gnu",
-        "aarch64-apple-darwin",
-        "x86_64-pc-windows-msvc"
-      ]
-    }
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc"
+    ]
   },
   "scripts": {
     "build": "node build.js"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.0"
+    "@napi-rs/cli": "^3.0.0"
   }
 }
