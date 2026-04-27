@@ -1,9 +1,12 @@
 from types import SimpleNamespace
 
+from memori._config import Config
+from memori.llm._base import BaseInvoke
 from memori.llm._constants import OPENAI_LLM_PROVIDER
 from memori.llm.pipelines.conversation_injection import (
     _inject_messages_by_provider,
     _sanitize_history_for_openai_compat,
+    inject_conversation_messages,
 )
 
 
@@ -146,3 +149,28 @@ def test_sanitize_handles_missing_role_and_content():
         {"role": "user", "content": "no role defaults to user"},
         {"role": "user", "content": ""},
     ]
+
+
+def test_injected_count_uses_sanitized_message_count(mocker):
+    config = Config()
+    config.cache.conversation_id = 123
+    config.llm.provider = OPENAI_LLM_PROVIDER
+    config.storage = mocker.Mock()
+    config.storage.driver = mocker.Mock()
+    config.storage.driver.conversation.messages.read.return_value = [
+        {"role": "user", "content": "Weather in Tokyo?"},
+        {"role": "assistant", "content": ""},
+        {"role": "tool", "content": '{"temp": "21C"}'},
+        {"role": "assistant", "content": "It is 21C."},
+    ]
+    invoke = BaseInvoke(config, "test_method")
+    kwargs = {"messages": [{"role": "user", "content": "What should I pack?"}]}
+
+    result = inject_conversation_messages(invoke, kwargs)
+
+    assert result["messages"] == [
+        {"role": "user", "content": "Weather in Tokyo?"},
+        {"role": "assistant", "content": "It is 21C."},
+        {"role": "user", "content": "What should I pack?"},
+    ]
+    assert invoke._injected_message_count == 2
