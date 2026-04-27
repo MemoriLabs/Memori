@@ -20,7 +20,7 @@ type RawHistoryMessage = {
 
 function sanitizeHistoryMessages(
   messages: RawHistoryMessage[],
-  options: { dropSystem?: boolean } = {}
+  dropSystem = false
 ): Message[] {
   const sanitized: Message[] = [];
 
@@ -29,7 +29,7 @@ function sanitizeHistoryMessages(
     const role = typeof roleValue === 'string' ? roleValue : 'user';
     const content = stringifyContent(message.content ?? message.text);
 
-    if (options.dropSystem && role === 'system') continue;
+    if (dropSystem && role === 'system') continue;
     if (role === 'tool') continue;
     if (role === 'assistant' && !content.trim()) continue;
 
@@ -185,9 +185,10 @@ export class RecallEngine {
     };
     const response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
     const facts = extractFacts(response);
-    const history = sanitizeHistoryMessages(extractHistory(response) as RawHistoryMessage[], {
-      dropSystem: true,
-    });
+    const history = sanitizeHistoryMessages(
+      extractHistory(response) as RawHistoryMessage[],
+      true
+    );
     return { facts, history };
   }
 }
