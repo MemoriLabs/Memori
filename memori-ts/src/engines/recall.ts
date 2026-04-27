@@ -17,7 +17,7 @@ import { CloudRecallResponse, ParsedFact } from '../types/api.js';
  *
  * Operates in two modes: local (BYODB — vector search via the Rust engine) or cloud
  * (API call to Memori's recall endpoint). Also re-hydrates conversation history when
- * available from the cloud.
+ * available.
  */
 export class RecallEngine {
   constructor(
@@ -67,7 +67,17 @@ export class RecallEngine {
     if (this.engine.hasStorage) {
       if (!this.config.entityId) return req;
       try {
+        // Fetch long-term vector facts from the Rust core
         facts = await this.retrieveLocal(userQuery);
+
+        if (this.config.storage) {
+          const rawHistory = await this.config.storage.getConversationHistory(sessionId);
+
+          historyMessages = rawHistory.map((m) => ({
+            role: m.role as Role,
+            content: m.content,
+          }));
+        }
       } catch (e) {
         console.warn('Local Recall Hook failed:', e);
         return req;
@@ -94,10 +104,12 @@ export class RecallEngine {
 
     let messages = [...req.messages];
 
+    // Prepend the short-term conversation history to the prompt
     if (historyMessages.length > 0) {
       messages = [...historyMessages, ...messages];
     }
 
+    // Inject the relevant long-term semantic facts into the system prompt
     if (relevantFacts.length > 0) {
       let contextBody = `Relevant context about the user:\n${relevantFacts.join('\n')}`;
       if (relevantSummaries.length > 0) {
@@ -121,12 +133,11 @@ export class RecallEngine {
   }
 
   private async retrieveLocal(query: string): Promise<ParsedFact[]> {
-    // engine.retrieve crosses the Rust/JS bridge asynchronously — must be awaited
     const results = await this.engine.retrieve({
       entity_id: this.config.entityId || '',
       query_text: query,
-      dense_limit: 100, // candidate pool fetched from storage before re-ranking
-      limit: 10, // final number of facts returned to the caller
+      dense_limit: 100,
+      limit: 10,
     });
     return results.map((r) => ({
       content: r.content,

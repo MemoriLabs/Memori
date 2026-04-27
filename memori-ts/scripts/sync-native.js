@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const RUST_BINDINGS_DIR = path.resolve(ROOT, '../core/bindings/node');
 const SRC_NATIVE = path.resolve(ROOT, 'src/native');
-const DIST_NATIVE = path.resolve(ROOT, 'dist/native');
+const DIST_NATIVE = path.resolve(ROOT, 'dist/src/native');
 
 function copyFolderSync(from, to) {
   if (!fs.existsSync(from)) return;
@@ -38,7 +38,7 @@ function sync() {
   console.log('Syncing to src/native...');
   copyFolderSync(RUST_BINDINGS_DIR, SRC_NATIVE);
 
-  console.log('Syncing to dist/native...');
+  console.log('Syncing to dist/src/native...');
   copyFolderSync(SRC_NATIVE, DIST_NATIVE);
 
   console.log('Native sync complete.');

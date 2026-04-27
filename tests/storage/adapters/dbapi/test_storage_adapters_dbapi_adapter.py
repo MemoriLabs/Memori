@@ -141,6 +141,16 @@ def test_get_dialect_pymysql(mock_pymysql_conn):
     assert adapter.get_dialect() == "mysql"
 
 
+def test_get_dialect_tidb_from_pymysql_version_string(mock_pymysql_conn):
+    mock_cursor = mock_pymysql_conn.cursor.return_value
+    mock_cursor.fetchone.return_value = ("5.7.25-TiDB-v8.5.0",)
+
+    adapter = DBAPIAdapter(lambda: mock_pymysql_conn)
+
+    assert adapter.get_dialect() == "tidb"
+    mock_cursor.execute.assert_called_with("SELECT VERSION()")
+
+
 def test_get_dialect_pyobvector(mock_pyobvector_conn):
     adapter = DBAPIAdapter(lambda: mock_pyobvector_conn)
     assert adapter.get_dialect() == "oceanbase"

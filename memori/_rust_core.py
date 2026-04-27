@@ -18,7 +18,6 @@ from typing import Any
 
 import requests
 
-from memori.embeddings import embed_texts
 from memori.memory._struct import SemanticTriple
 from memori.storage._connection import connection_context
 
@@ -91,6 +90,12 @@ _ORT_ASSET_BY_PLATFORM: dict[tuple[str, str], tuple[str, str]] = {
         "1cfe88b6435df3b5fb0e9f6bd7d6f5df1e887b6174de7f6e2a47bab956f3f168",
     ),
 }
+
+
+def embed_texts(*args: Any, **kwargs: Any) -> Any:
+    from memori.embeddings import embed_texts as embed_texts_impl
+
+    return embed_texts_impl(*args, **kwargs)
 
 
 def _onnxruntime_asset_for_current_platform() -> tuple[str, str] | None:

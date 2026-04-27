@@ -23,6 +23,13 @@ export interface SemanticTriplePayload {
  */
 export type WriteOp =
   | {
+      op_type: 'conversation_message.create';
+      payload: {
+        conversation_id: string | number;
+        messages: Array<{ role: string; content: string }>;
+      };
+    }
+  | {
       op_type: 'entity_fact.create';
       payload: {
         entity_id: string | number;
@@ -76,4 +83,7 @@ export interface StorageBridge {
   fetchEmbeddings(entityId: string, limit: number): Promise<EmbeddingRow[]> | EmbeddingRow[];
   fetchFactsByIds(ids: (number | string)[]): Promise<CandidateFactRow[]> | CandidateFactRow[];
   writeBatch(batch: WriteBatch): Promise<WriteAck> | WriteAck;
+  getConversationHistory(
+    sessionId: string
+  ): Promise<Array<{ role: string; content: string }>> | Array<{ role: string; content: string }>;
 }

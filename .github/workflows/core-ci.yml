@@ -51,12 +51,22 @@ jobs:
         run: cargo test --workspace
 
   wheel-build:
-    name: cibuildwheel smoke (${{ matrix.os }})
+    name: cibuildwheel smoke (${{ matrix.os }} / ${{ matrix.archs }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            archs: x86_64
+          - os: ubuntu-24.04-arm
+            archs: aarch64
+          - os: macos-15-intel
+            archs: x86_64
+          - os: macos-14
+            archs: arm64
+          - os: windows-latest
+            archs: AMD64
     steps:
       - uses: actions/checkout@v5
 
@@ -77,10 +87,9 @@ jobs:
         env:
           CIBW_BUILD: "cp310-*"
           CIBW_SKIP: "*-musllinux_* *-manylinux_i686 *-win32"
-          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS: ${{ matrix.archs }}
           CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
-          CIBW_ARCHS_MACOS: "${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}"
-          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
           # manylinux_2_28 (AlmaLinux 8) needs perl for vendored OpenSSL builds,
           # and openssl-devel/pkgconf for non-vendored host/build-script paths.
           CIBW_BEFORE_ALL_LINUX: "dnf install -y perl-core openssl-devel pkgconf-pkg-config"
@@ -100,6 +109,51 @@ jobs:
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memori-wheel-${{ matrix.os }}
+          name: memori-wheel-${{ matrix.os }}-${{ matrix.archs }}
           path: wheelhouse/*.whl
           if-no-files-found: error
+
+  node-native-build:
+    name: node native smoke (${{ matrix.os }} / ${{ matrix.artifact-name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: linux-x64-gnu
+          - os: ubuntu-24.04-arm
+            artifact-name: linux-arm64-gnu
+          - os: macos-latest
+            artifact-name: darwin-arm64
+          - os: windows-latest
+            artifact-name: win32-x64-msvc
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Install NAPI build dependencies
+        working-directory: ./core/bindings/node
+        run: npm install
+
+      - name: Set Windows C/C++ dynamic CRT flags
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "CFLAGS=/MD" >> $env:GITHUB_ENV
+          echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
+
+      - name: Build Rust bindings
+        working-directory: ./core/bindings/node
+        run: npm run build

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Conversation injection no longer corrupts OpenAI-compatible message
+  sequences for tool-using conversations. Recalled history previously
+  replayed `role="tool"` rows (with no `tool_call_id`) and empty
+  assistant rows (whose `tool_calls` were never persisted), causing
+  upstream providers to reject the request with `400: An assistant
+  message with 'tool_calls' must be followed by tool messages
+  responding to each 'tool_call_id'`. The OpenAI/Anthropic/Bedrock
+  injection paths now sanitise recalled history before prepending it.
+  Legacy Gemini-era `role="model"` rows are normalised to
+  `role="assistant"` for the same reason. The injected-message counter
+  now tracks the post-sanitisation count so the post-response payload
+  does not slice into the current user message before persistence and
+  augmentation. (#434)
+
 ## [3.3.0rc1] - 2026-04-16
 
 ### Added

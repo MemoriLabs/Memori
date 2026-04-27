@@ -20,7 +20,7 @@ function isTypeOrmConnection(conn: unknown): conn is TypeOrmDataSource {
     typeof conn === 'object' &&
     conn !== null &&
     'createQueryRunner' in conn &&
-    typeof (conn as { createQueryRunner: unknown }).createQueryRunner === 'function' &&
+    typeof conn.createQueryRunner === 'function' &&
     'options' in conn &&
     typeof (conn as { options: unknown }).options === 'object'
   );

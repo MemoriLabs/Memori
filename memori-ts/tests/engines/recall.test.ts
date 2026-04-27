@@ -207,5 +207,27 @@ describe('RecallEngine', () => {
       expect(systemMsg?.content).toContain('Local storage memory');
       expect(mockApi.post).not.toHaveBeenCalled();
     });
+
+    it('should prepend conversation history from local storage when storage is active', async () => {
+      const mockGetHistory = vi.fn().mockResolvedValue([
+        { role: 'user', content: 'prior question' },
+        { role: 'assistant', content: 'prior answer' },
+      ]);
+      (mockNativeEngine as any).hasStorage = true;
+      (mockConfig as any).storage = { getConversationHistory: mockGetHistory };
+      (mockNativeEngine.retrieve as any).mockReturnValue([]);
+
+      const req = {
+        messages: [{ role: 'user', content: 'current question' }],
+      } as unknown as LLMRequest;
+
+      const newReq = await recallEngine.handleRecall(req, {} as any);
+
+      expect(mockGetHistory).toHaveBeenCalledWith('test-session-id');
+      expect(newReq.messages).toHaveLength(3);
+      expect(newReq.messages[0]).toEqual({ role: 'user', content: 'prior question' });
+      expect(newReq.messages[1]).toEqual({ role: 'assistant', content: 'prior answer' });
+      expect(mockApi.post).not.toHaveBeenCalled();
+    });
   });
 });

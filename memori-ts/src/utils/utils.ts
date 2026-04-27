@@ -115,7 +115,10 @@ export function stringifyContent(content: unknown): string {
     return typeof text === 'string' ? text : JSON.stringify(content);
   }
 
-  return String(content as string | number | boolean);
+  if (typeof content === 'number' || typeof content === 'boolean' || typeof content === 'bigint') {
+    return String(content);
+  }
+  return '';
 }
 
 /** @internal */

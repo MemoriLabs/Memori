@@ -11,7 +11,7 @@ function isDrizzleConnection(conn: unknown): conn is DrizzleInstance {
     typeof conn === 'object' &&
     conn !== null &&
     'execute' in conn &&
-    typeof (conn as { execute: unknown }).execute === 'function' &&
+    typeof conn.execute === 'function' &&
     'select' in conn
   );
 }
@@ -90,11 +90,7 @@ export class DrizzleAdapter implements StorageAdapter {
   private normalizeResult<T>(res: unknown): T[] {
     if (!res) return [];
 
-    if (
-      typeof res === 'object' &&
-      'rows' in res &&
-      Array.isArray((res as { rows: unknown }).rows)
-    ) {
+    if (typeof res === 'object' && 'rows' in res && Array.isArray(res.rows)) {
       return (res as { rows: unknown[] }).rows as T[];
     }
 

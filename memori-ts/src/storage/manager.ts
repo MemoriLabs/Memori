@@ -87,6 +87,16 @@ export class StorageManager implements StorageBridge {
     return await this.driver.entityFact.getFactsByIds(ids);
   }
 
+  public async getConversationHistory(
+    sessionId: string
+  ): Promise<Array<{ role: string; content: string }>> {
+    const sId = await this.driver.session.create(sessionId, null, null);
+    const convId = await this.driver.conversation.create(sId || sessionId, 30);
+    const internalConvId = convId || sessionId;
+
+    return await this.driver.conversationMessages.read(internalConvId);
+  }
+
   public writeBatch(batch: WriteBatch): Promise<WriteAck> {
     return this.writeBatchAsync(batch);
   }
@@ -107,6 +117,23 @@ export class StorageManager implements StorageBridge {
 
       for (const op of batch.ops) {
         switch (op.op_type) {
+          case 'conversation_message.create': {
+            const sId = await this.driver.session.create(op.payload.conversation_id, null, null);
+            const convId = await this.driver.conversation.create(
+              sId || op.payload.conversation_id,
+              30
+            );
+            const internalConvId = convId || op.payload.conversation_id;
+            for (const message of op.payload.messages) {
+              await this.driver.conversationMessage.create(
+                internalConvId,
+                message.role,
+                'text',
+                message.content
+              );
+            }
+            break;
+          }
           case 'entity_fact.create': {
             const eId = await this.driver.entity.create(op.payload.entity_id);
             // driver.entity.create uses INSERT OR IGNORE and returns the internal row ID;
@@ -179,6 +206,9 @@ export class StorageManager implements StorageBridge {
                 op.payload.content
               );
             break;
+          }
+          default: {
+            throw new Error(`Unsupported write op type: ${(op as { op_type: string }).op_type}`);
           }
         }
         written++;

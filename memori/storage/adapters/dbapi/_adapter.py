@@ -66,6 +66,10 @@ def is_dbapi_connection(conn):
 
 @Registry.register_adapter(is_dbapi_connection)
 class Adapter(BaseStorageAdapter):
+    def __init__(self, conn):
+        super().__init__(conn)
+        self._detected_dialect = None
+
     def commit(self):
         self.conn.commit()
         return self
@@ -83,6 +87,9 @@ class Adapter(BaseStorageAdapter):
         return self
 
     def get_dialect(self):
+        if self._detected_dialect is not None:
+            return self._detected_dialect
+
         module_name = type(self.conn).__module__
         dialect_mapping = {
             "postgresql": ["psycopg"],
@@ -93,10 +100,27 @@ class Adapter(BaseStorageAdapter):
         }
         for dialect, identifiers in dialect_mapping.items():
             if any(identifier in module_name for identifier in identifiers):
-                return dialect
+                detected = dialect
+                if detected in {"mysql", "mariadb"} and self._is_tidb_server():
+                    detected = "tidb"
+                self._detected_dialect = detected
+                return detected
         raise ValueError(
             f"Unable to determine dialect from connection module: {module_name}"
         )
+
+    def _is_tidb_server(self) -> bool:
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("SELECT VERSION()")
+            row = cursor.fetchone()
+        except Exception:
+            return False
+        finally:
+            cursor.close()
+
+        version = row[0] if row else None
+        return isinstance(version, str) and "tidb" in version.lower()
 
     def rollback(self):
         self.conn.rollback()
