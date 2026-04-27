@@ -12,6 +12,33 @@ import {
 } from '../utils/utils.js';
 import { CloudRecallResponse, ParsedFact } from '../types/api.js';
 
+type RawHistoryMessage = {
+  role?: unknown;
+  content?: unknown;
+  text?: unknown;
+};
+
+function sanitizeHistoryMessages(
+  messages: RawHistoryMessage[],
+  options: { dropSystem?: boolean } = {}
+): Message[] {
+  const sanitized: Message[] = [];
+
+  for (const message of messages) {
+    const roleValue = message.role === 'model' ? 'assistant' : message.role;
+    const role = typeof roleValue === 'string' ? roleValue : 'user';
+    const content = stringifyContent(message.content ?? message.text);
+
+    if (options.dropSystem && role === 'system') continue;
+    if (role === 'tool') continue;
+    if (role === 'assistant' && !content.trim()) continue;
+
+    sanitized.push({ role: role as Role, content });
+  }
+
+  return sanitized;
+}
+
 /**
  * Retrieves relevant memories and injects them into the LLM system prompt before each call.
  *
@@ -73,10 +100,7 @@ export class RecallEngine {
         if (this.config.storage) {
           const rawHistory = await this.config.storage.getConversationHistory(sessionId);
 
-          historyMessages = rawHistory.map((m) => ({
-            role: m.role as Role,
-            content: m.content,
-          }));
+          historyMessages = sanitizeHistoryMessages(rawHistory);
         }
       } catch (e) {
         console.warn('Local Recall Hook failed:', e);
@@ -161,14 +185,9 @@ export class RecallEngine {
     };
     const response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
     const facts = extractFacts(response);
-    const history = (
-      extractHistory(response) as Array<{ role: Role; content?: unknown; text?: string }>
-    )
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role,
-        content: stringifyContent(m.content ?? m.text),
-      }));
+    const history = sanitizeHistoryMessages(extractHistory(response) as RawHistoryMessage[], {
+      dropSystem: true,
+    });
     return { facts, history };
   }
 }

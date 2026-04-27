@@ -95,6 +95,32 @@ describe('RecallEngine', () => {
       expect(newReq.messages[0].content).toBe('past msg');
     });
 
+    it('should sanitize malformed tool-call history returned by the API', async () => {
+      (mockApi.post as any).mockResolvedValue({
+        facts: [],
+        messages: [
+          { role: 'user', content: 'Weather in Tokyo?' },
+          { role: 'assistant', content: '' },
+          { role: 'tool', content: '{"temp": "21C"}' },
+          { role: 'assistant', content: 'It is 21C.' },
+          { role: 'model', content: 'Legacy model response.' },
+        ],
+      });
+
+      const req = {
+        messages: [{ role: 'user', content: 'What should I pack?' }],
+      } as unknown as LLMRequest;
+
+      const newReq = await recallEngine.handleRecall(req, {} as any);
+
+      expect(newReq.messages).toEqual([
+        { role: 'user', content: 'Weather in Tokyo?' },
+        { role: 'assistant', content: 'It is 21C.' },
+        { role: 'assistant', content: 'Legacy model response.' },
+        { role: 'user', content: 'What should I pack?' },
+      ]);
+    });
+
     it('should fail silently and return original request on API error', async () => {
       (mockApi.post as any).mockRejectedValue(new Error('Network fail'));
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -228,6 +254,30 @@ describe('RecallEngine', () => {
       expect(newReq.messages[0]).toEqual({ role: 'user', content: 'prior question' });
       expect(newReq.messages[1]).toEqual({ role: 'assistant', content: 'prior answer' });
       expect(mockApi.post).not.toHaveBeenCalled();
+    });
+
+    it('should sanitize malformed tool-call history from local storage', async () => {
+      const mockGetHistory = vi.fn().mockResolvedValue([
+        { role: 'user', content: 'Weather in Tokyo?' },
+        { role: 'assistant', content: '' },
+        { role: 'tool', content: '{"temp": "21C"}' },
+        { role: 'assistant', content: 'It is 21C.' },
+      ]);
+      (mockNativeEngine as any).hasStorage = true;
+      (mockConfig as any).storage = { getConversationHistory: mockGetHistory };
+      (mockNativeEngine.retrieve as any).mockReturnValue([]);
+
+      const req = {
+        messages: [{ role: 'user', content: 'What should I pack?' }],
+      } as unknown as LLMRequest;
+
+      const newReq = await recallEngine.handleRecall(req, {} as any);
+
+      expect(newReq.messages).toEqual([
+        { role: 'user', content: 'Weather in Tokyo?' },
+        { role: 'assistant', content: 'It is 21C.' },
+        { role: 'user', content: 'What should I pack?' },
+      ]);
     });
   });
 });
