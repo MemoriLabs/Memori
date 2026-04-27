@@ -52,7 +52,9 @@ def _sanitize_history_for_openai_compat(
     return cleaned
 
 
-def _normalize_input_history(kwargs: dict, messages: list[dict[str, str]]) -> dict:
+def _normalize_input_history(
+    kwargs: dict, messages: list[dict[str, str]]
+) -> tuple[dict, int]:
     history_items: list[dict[str, str]] = []
     for msg in _sanitize_history_for_openai_compat(messages):
         role = msg.get("role", "user")
@@ -68,7 +70,7 @@ def _normalize_input_history(kwargs: dict, messages: list[dict[str, str]]) -> di
         existing_input = [{"role": "user", "content": existing_input}]
 
     kwargs["input"] = history_items + existing_input
-    return kwargs
+    return kwargs, len(history_items)
 
 
 def _normalize_google_contents(existing_contents):
@@ -87,7 +89,7 @@ def _normalize_google_contents(existing_contents):
 
 def _inject_messages_by_provider(
     config, kwargs: dict, messages: list[dict[str, str]]
-) -> dict:
+) -> tuple[dict, int]:
     if ("input" in kwargs or "instructions" in kwargs) and "messages" not in kwargs:
         return _normalize_input_history(kwargs, messages)
 
@@ -96,9 +98,9 @@ def _inject_messages_by_provider(
         or agno_is_openai(config.framework.provider, config.llm.provider)
         or agno_is_xai(config.framework.provider, config.llm.provider)
     ):
-        kwargs["messages"] = (
-            _sanitize_history_for_openai_compat(messages) + kwargs["messages"]
-        )
+        sanitized = _sanitize_history_for_openai_compat(messages)
+        kwargs["messages"] = sanitized + kwargs["messages"]
+        return kwargs, len(sanitized)
     elif (
         llm_is_anthropic(config.framework.provider, config.llm.provider)
         or llm_is_bedrock(config.framework.provider, config.llm.provider)
@@ -110,6 +112,7 @@ def _inject_messages_by_provider(
             if m.get("role") != "system"
         ]
         kwargs["messages"] = filtered_messages + kwargs["messages"]
+        return kwargs, len(filtered_messages)
     elif llm_is_xai(config.framework.provider, config.llm.provider):
         from xai_sdk.chat import assistant, user
 
@@ -123,6 +126,7 @@ def _inject_messages_by_provider(
                 xai_messages.append(assistant(content))
 
         kwargs["messages"] = xai_messages + kwargs["messages"]
+        return kwargs, len(xai_messages)
     elif llm_is_google(
         config.framework.provider, config.llm.provider
     ) or agno_is_google(config.framework.provider, config.llm.provider):
@@ -142,25 +146,28 @@ def _inject_messages_by_provider(
         else:
             existing_contents = _normalize_google_contents(kwargs.get("contents", []))
             kwargs["contents"] = contents + existing_contents
+        return kwargs, len(contents)
     else:
         raise NotImplementedError
-
-    return kwargs
 
 
 def inject_conversation_messages(invoke, kwargs: dict) -> dict:
     if invoke.config.cloud is True:
         messages = invoke._cloud_conversation_messages
-        invoke._injected_message_count = len(messages)
 
         if not messages:
+            invoke._injected_message_count = 0
             return kwargs
 
         logger.debug(
             "Injecting %d cloud conversation messages from history",
             len(messages),
         )
-        return _inject_messages_by_provider(invoke.config, kwargs, messages)
+        kwargs, injected_count = _inject_messages_by_provider(
+            invoke.config, kwargs, messages
+        )
+        invoke._injected_message_count = injected_count
+        return kwargs
 
     if invoke.config.storage is None or invoke.config.storage.driver is None:
         return kwargs
@@ -209,6 +216,9 @@ def inject_conversation_messages(invoke, kwargs: dict) -> dict:
     if not messages:
         return kwargs
 
-    invoke._injected_message_count = len(messages)
     logger.debug("Injecting %d conversation messages from history", len(messages))
-    return _inject_messages_by_provider(invoke.config, kwargs, messages)
+    kwargs, injected_count = _inject_messages_by_provider(
+        invoke.config, kwargs, messages
+    )
+    invoke._injected_message_count = injected_count
+    return kwargs
