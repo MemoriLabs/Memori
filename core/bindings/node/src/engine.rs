@@ -32,7 +32,6 @@ impl MemoriEngine {
         let pending_facts = Arc::new(DashMap::new());
         let pending_writes = Arc::new(DashMap::new());
 
-        // We can pass the threadsafe functions directly to the bridge now!
         let bridge = Arc::new(NodeStorageBridge {
             fetch_embeddings_tsfn: fetch_embeddings_cb,
             fetch_facts_by_ids_tsfn: fetch_facts_by_ids_cb,
