@@ -25,10 +25,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      # Temporarily force Node 24 to run the modern NAPI CLI build tools
+      - name: Setup Node.js (Build Environment)
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
 
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -53,6 +54,11 @@ jobs:
       - name: Sync native bindings to memori-ts
         working-directory: ./memori-ts
         run: node scripts/sync-native.js
+
+      - name: Setup Node.js ${{ matrix.node-version }} (Test Environment)
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
 
       - name: Install TypeScript dependencies
         working-directory: ./memori-ts
