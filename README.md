@@ -240,8 +240,8 @@ mem.set_session(session_id)
 - Bedrock
 - DeepSeek
 - Gemini
-- Grok (xAI)
-- OpenAI (Chat Completions & Responses API)
+- Grok
+- OpenAI
 
 _(unstreamed, streamed, synchronous and asynchronous)_
 
