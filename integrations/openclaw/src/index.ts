@@ -13,6 +13,8 @@ const memoriPlugin = {
   description: 'Hosted memory backend',
 
   register(api: OpenClawPluginApi) {
+    registerCliCommands(api);
+
     const rawConfig = api.pluginConfig;
 
     const config: MemoriPluginConfig = {
@@ -47,7 +49,6 @@ const memoriPlugin = {
     );
 
     registerAllTools({ api, config, logger });
-    registerCliCommands(api);
   },
 };
 

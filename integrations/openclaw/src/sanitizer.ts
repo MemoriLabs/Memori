@@ -25,7 +25,7 @@ export function isSystemMessage(text: string): boolean {
  *
  * OpenClaw wraps metadata in markdown code fences (triple tick).
  * The actual message is always after the LAST closing fence.
- * The message might aslo contain a timestamp prefix like: [Day YYYY-MM-DD HH:MM TZ], that will need to be removed
+ * The message might also contain a timestamp prefix like: [Day YYYY-MM-DD HH:MM TZ], that will need to be removed
  */
 function extractRawUserMessage(content: string): string {
   let message = content;
