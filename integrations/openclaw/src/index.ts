@@ -3,7 +3,7 @@ import { handleRecall } from './handlers/recall.js';
 import { handleAugmentation } from './handlers/augmentation.js';
 import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from './types.js';
 import { PLUGIN_CONFIG } from './constants.js';
-import { MemoriLogger } from './utils/index.js';
+import { MemoriLogger, loadSkillsContent } from './utils/index.js';
 import { registerAllTools } from './tools/index.js';
 
 const memoriPlugin = {
@@ -28,9 +28,14 @@ const memoriPlugin = {
     }
 
     const logger = new MemoriLogger(api);
+    const skillsContent = loadSkillsContent(api.resolvePath.bind(api));
 
     logger.info(`\n=== ${PLUGIN_CONFIG.LOG_PREFIX} INITIALIZING PLUGIN ===`);
     logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}`);
+
+    if (skillsContent) {
+      api.on('before_prompt_build', () => ({ appendSystemContext: skillsContent }));
+    }
 
     api.on('before_prompt_build', (event: unknown, ctx: unknown) =>
       handleRecall(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
