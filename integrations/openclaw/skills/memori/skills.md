@@ -14,22 +14,22 @@ Use these when automatic recall is not enough — for example, when the user ask
 
 **`memori_recall`** — Fetch raw memory facts with optional filters:
 
-| Parameter   | Type   | Description |
-|-------------|--------|-------------|
-| `dateStart` | string | ISO 8601 — memories on or after this time |
-| `dateEnd`   | string | ISO 8601 — memories on or before this time |
-| `projectId` | string | Override the configured project (defaults to current) |
+| Parameter   | Type   | Description                                            |
+| ----------- | ------ | ------------------------------------------------------ |
+| `dateStart` | string | ISO 8601 — memories on or after this time              |
+| `dateEnd`   | string | ISO 8601 — memories on or before this time             |
+| `projectId` | string | Override the configured project (defaults to current)  |
 | `sessionId` | string | Scope to a specific session — **requires `projectId`** |
-| `signal`    | string | Filter by signal type: `system`, `user`, `derived` |
-| `source`    | string | Filter by source origin |
+| `signal`    | string | Filter by signal type: `system`, `user`, `derived`     |
+| `source`    | string | Filter by source origin                                |
 
 **`memori_recall_summary`** — Fetch summarized views of stored memories:
 
-| Parameter   | Type   | Description |
-|-------------|--------|-------------|
-| `dateStart` | string | ISO 8601 — summaries on or after this time |
-| `dateEnd`   | string | ISO 8601 — summaries on or before this time |
-| `projectId` | string | Override the configured project (defaults to current) |
+| Parameter   | Type   | Description                                            |
+| ----------- | ------ | ------------------------------------------------------ |
+| `dateStart` | string | ISO 8601 — summaries on or after this time             |
+| `dateEnd`   | string | ISO 8601 — summaries on or before this time            |
+| `projectId` | string | Override the configured project (defaults to current)  |
 | `sessionId` | string | Scope to a specific session — **requires `projectId`** |
 
 > `sessionId` cannot be used without `projectId`. The backend will reject it.
@@ -55,11 +55,11 @@ All memories are scoped to the configured `entityId` and `projectId`. The curren
 
 Memori works alongside `MEMORY.md`/`memory/*.md` — it does not replace them:
 
-| Layer | Scope | Lifetime |
-|-------|-------|----------|
-| Session context | Current conversation | Dies with session |
-| File memory (`MEMORY.md`) | Curated strategic facts | Persistent on disk |
-| Memori | Auto-extracted facts, knowledge graph | Cloud — survives compaction |
+| Layer                     | Scope                                 | Lifetime                    |
+| ------------------------- | ------------------------------------- | --------------------------- |
+| Session context           | Current conversation                  | Dies with session           |
+| File memory (`MEMORY.md`) | Curated strategic facts               | Persistent on disk          |
+| Memori                    | Auto-extracted facts, knowledge graph | Cloud — survives compaction |
 
 Use `MEMORY.md` for strategic context you curate intentionally. Memori catches the granular facts automatically.
 

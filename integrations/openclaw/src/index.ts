@@ -5,6 +5,7 @@ import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from './types.js';
 import { PLUGIN_CONFIG } from './constants.js';
 import { MemoriLogger, loadSkillsContent } from './utils/index.js';
 import { registerAllTools } from './tools/index.js';
+import { registerCliCommands } from './cli/commands.js';
 
 const memoriPlugin = {
   id: PLUGIN_CONFIG.ID,
@@ -46,6 +47,7 @@ const memoriPlugin = {
     );
 
     registerAllTools({ api, config, logger });
+    registerCliCommands(api);
   },
 };
 

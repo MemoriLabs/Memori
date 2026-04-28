@@ -33,6 +33,10 @@ describe('plugin index', () => {
       },
       on: mockOn,
       registerTool: mockRegisterTool,
+      resolvePath: vi.fn(
+        (relativePath: string) => `/tmp/memori-openclaw-test-missing/${relativePath}`
+      ),
+      registerCli: vi.fn(),
     } as unknown as OpenClawPluginApi;
   });
 
