@@ -1,5 +1,4 @@
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
-import { handleRecall } from './handlers/recall.js';
 import { handleAugmentation } from './handlers/augmentation.js';
 import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from './types.js';
 import { PLUGIN_CONFIG } from './constants.js';
@@ -13,6 +12,7 @@ const memoriPlugin = {
   description: 'Hosted memory backend',
 
   register(api: OpenClawPluginApi) {
+    // 1. Always register CLI commands
     registerCliCommands(api);
 
     const rawConfig = api.pluginConfig;
@@ -23,6 +23,7 @@ const memoriPlugin = {
       projectId: rawConfig?.projectId as string,
     };
 
+    // 2. Validate configuration
     if (!config.apiKey || !config.entityId) {
       api.logger.warn(
         `${PLUGIN_CONFIG.LOG_PREFIX} Missing apiKey or entityId in config. Plugin disabled.`
@@ -36,18 +37,17 @@ const memoriPlugin = {
     logger.info(`\n=== ${PLUGIN_CONFIG.LOG_PREFIX} INITIALIZING PLUGIN ===`);
     logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}`);
 
+    // Inject tool usage instructions into the system prompt
     if (skillsContent) {
       api.on('before_prompt_build', () => ({ appendSystemContext: skillsContent }));
     }
 
-    api.on('before_prompt_build', (event: unknown, ctx: unknown) =>
-      handleRecall(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
-    );
-
+    // Augmentation remains automatic
     api.on('agent_end', (event: unknown, ctx: unknown) =>
       handleAugmentation(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
     );
 
+    // Register explicit recall tools
     registerAllTools({ api, config, logger });
   },
 };

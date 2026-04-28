@@ -69,7 +69,5 @@ export function cleanText(rawContent: unknown): string {
 
   text = extractRawUserMessage(text);
 
-  text = text.replace(/<memori_context>[\s\S]*?<\/memori_context>\s*/g, '');
-
   return text.trim();
 }

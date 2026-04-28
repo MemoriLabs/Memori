@@ -23,7 +23,7 @@ export function createMemoriRecallSummaryTool(deps: ToolDeps) {
         projectId: {
           type: 'string',
           description:
-            'Override the configured project ID. Defaults to the project set in plugin config.',
+            'CRITICAL: Leave this EMPTY to use the configured default project. ONLY provide a value if the user explicitly asks to search a different project by name.',
         },
         sessionId: {
           type: 'string',

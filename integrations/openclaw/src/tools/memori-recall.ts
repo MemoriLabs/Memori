@@ -12,6 +12,15 @@ export function createMemoriRecallTool(deps: ToolDeps) {
     parameters: {
       type: 'object',
       properties: {
+        query: {
+          type: 'string',
+          description:
+            'REQUIRED: The natural language search query to find specific facts (e.g., "What database did we decide to use?", "Ryan\'s dogs"). DO NOT use wildcards like "*" or regex. This is a semantic search, so use real words.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of memories to return (default: 10)',
+        },
         dateStart: {
           type: 'string',
           description: 'ISO 8601 date string to filter memories created on or after this time',
@@ -23,7 +32,7 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         projectId: {
           type: 'string',
           description:
-            'Override the configured project ID. Defaults to the project set in plugin config.',
+            'CRITICAL: Leave this EMPTY to use the configured default project. ONLY provide a value if the user explicitly asks to search a different project by name.',
         },
         sessionId: {
           type: 'string',
@@ -38,11 +47,15 @@ export function createMemoriRecallTool(deps: ToolDeps) {
           description: 'Filter to a specific source origin',
         },
       },
+      // Force the LLM to ALWAYS provide a search query
+      required: ['query'],
     },
 
     async execute(
       _toolCallId: string,
       params: {
+        query: string;
+        limit?: number;
         dateStart?: string;
         dateEnd?: string;
         projectId?: string;
@@ -52,6 +65,8 @@ export function createMemoriRecallTool(deps: ToolDeps) {
       }
     ) {
       try {
+        // If params.projectId is undefined, it falls back to config.projectId.
+        // If the LLM intentionally provides one, it overwrites the config.
         const finalParams = { projectId: config.projectId, ...params };
 
         if (finalParams.sessionId && !finalParams.projectId) {

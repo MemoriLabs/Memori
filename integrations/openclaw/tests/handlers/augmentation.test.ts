@@ -215,12 +215,180 @@ describe('handlers/augmentation', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('unsuccessful event'));
     });
 
+    it('should skip when messages array is undefined', async () => {
+      event.messages = undefined;
+      await handleAugmentation(event, ctx, config, mockLogger);
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('No messages'));
+    });
+
+    it('should skip when messages has fewer than 2 entries', async () => {
+      event.messages = [{ role: 'user', content: 'hello' }];
+      await handleAugmentation(event, ctx, config, mockLogger);
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('No messages'));
+    });
+
+    it('should skip when no user message is found in the turn', async () => {
+      event.messages = [
+        { role: 'assistant', content: 'first response' },
+        { role: 'assistant', content: 'second response' },
+      ];
+      await handleAugmentation(event, ctx, config, mockLogger);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Missing user or assistant')
+      );
+    });
+
+    it('should skip when no assistant message is found in the turn', async () => {
+      event.messages = [
+        { role: 'user', content: 'question one' },
+        { role: 'user', content: 'question two' },
+      ];
+      await handleAugmentation(event, ctx, config, mockLogger);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Missing user or assistant')
+      );
+    });
+
     it('should skip when user message is a system message', async () => {
       const { isSystemMessage } = await import('../../src/sanitizer.js');
       vi.mocked(isSystemMessage).mockReturnValueOnce(true);
 
       await handleAugmentation(event, ctx, config, mockLogger);
       expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('system message'));
+    });
+  });
+
+  describe('message content edge cases', () => {
+    it('should strip [[...]] prefix from assistant response', async () => {
+      const { initializeMemoriClient } = await import('../../src/utils/index.js');
+
+      event.messages = [
+        { role: 'user', content: 'What is 2+2?' },
+        { role: 'assistant', content: '[[INTERNAL_FLAG]] Four' },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
+      expect(client.augmentation).toHaveBeenCalledWith(
+        expect.objectContaining({ agentResponse: 'Four' })
+      );
+    });
+
+    it('should use synthetic response for NO_REPLY assistant content', async () => {
+      const { initializeMemoriClient } = await import('../../src/utils/index.js');
+      const { cleanText } = await import('../../src/sanitizer.js');
+      vi.mocked(cleanText).mockImplementation((c) => (typeof c === 'string' ? c : ''));
+
+      event.messages = [
+        { role: 'user', content: 'Update the state' },
+        { role: 'assistant', content: MESSAGE_CONSTANTS.NO_REPLY },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
+      expect(client.augmentation).toHaveBeenCalledWith(
+        expect.objectContaining({ agentResponse: MESSAGE_CONSTANTS.SYNTHETIC_RESPONSE })
+      );
+    });
+  });
+
+  describe('Anthropic tool_use format', () => {
+    it('should extract tool calls in tool_use format (block.input)', async () => {
+      const { initializeMemoriClient } = await import('../../src/utils/index.js');
+      const { cleanText } = await import('../../src/sanitizer.js');
+      vi.mocked(cleanText).mockImplementation((c) => (typeof c === 'string' ? c : ''));
+
+      event.messages = [
+        { role: 'user', content: 'Search for something' },
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_1',
+              name: 'web_search',
+              input: { query: 'hello world' },
+            },
+          ],
+        },
+        { role: 'toolResult', toolCallId: 'toolu_1', content: 'search result' },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
+      expect(client.augmentation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trace: {
+            tools: [
+              { name: 'web_search', args: { query: 'hello world' }, result: 'search result' },
+            ],
+          },
+        })
+      );
+    });
+  });
+
+  describe('multi-step agent turns', () => {
+    it('should collect tool calls across multiple assistant messages in one turn', async () => {
+      const { initializeMemoriClient } = await import('../../src/utils/index.js');
+      const { cleanText } = await import('../../src/sanitizer.js');
+      vi.mocked(cleanText).mockImplementation((c) => (typeof c === 'string' ? c : ''));
+
+      event.messages = [
+        { role: 'user', content: 'Do multiple things' },
+        {
+          role: 'assistant',
+          content: [{ type: 'toolCall', id: 'step1', name: 'action_one', arguments: { x: 1 } }],
+        },
+        { role: 'toolResult', toolCallId: 'step1', content: 'result one' },
+        {
+          role: 'assistant',
+          content: [{ type: 'toolCall', id: 'step2', name: 'action_two', arguments: { y: 2 } }],
+        },
+        { role: 'toolResult', toolCallId: 'step2', content: 'result two' },
+        { role: 'assistant', content: 'All done!' },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
+      const tools = vi.mocked(client.augmentation).mock.calls[0][0].trace?.tools;
+
+      // Both tool calls should be captured in chronological order
+      expect(tools).toHaveLength(2);
+      expect(tools[0]).toEqual({ name: 'action_one', args: { x: 1 }, result: 'result one' });
+      expect(tools[1]).toEqual({ name: 'action_two', args: { y: 2 }, result: 'result two' });
+    });
+  });
+
+  describe('max context messages', () => {
+    it('should only consider the last 20 messages when parsing the turn', async () => {
+      const { initializeMemoriClient } = await import('../../src/utils/index.js');
+
+      // 22 messages total: the first pair (indices 0-1) falls outside the 20-message window
+      const messages = [
+        { role: 'user', content: 'excluded user message' },
+        { role: 'assistant', content: 'excluded assistant response' },
+        // 18 padding assistant messages to push the first pair out of the window
+        ...Array.from({ length: 18 }, (_, i) => ({ role: 'assistant', content: `pad ${i}` })),
+        { role: 'user', content: 'included user message' },
+        { role: 'assistant', content: 'included assistant response' },
+      ];
+
+      event.messages = messages;
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
+      expect(client.augmentation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userMessage: 'included user message',
+          agentResponse: 'included assistant response',
+        })
+      );
     });
   });
 });

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import memoriPlugin from '../src/index.js';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk';
 
-vi.mock('../src/handlers/recall.js', () => ({
-  handleRecall: vi.fn(),
+vi.mock('../src/utils/skills-loader.js', () => ({
+  loadSkillsContent: vi.fn(() => 'mock skills content'),
 }));
 
 vi.mock('../src/handlers/augmentation.js', () => ({
@@ -141,28 +141,13 @@ describe('plugin index', () => {
   });
 
   describe('hook handlers', () => {
-    it('should call handleRecall for before_prompt_build event', async () => {
-      const { handleRecall } = await import('../src/handlers/recall.js');
-
+    it('should inject skills content via before_prompt_build handler', () => {
       memoriPlugin.register(mockApi);
 
-      const beforePromptBuildHandler = mockOn.mock.calls.find(
-        (call) => call[0] === 'before_prompt_build'
-      )?.[1];
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
 
-      expect(beforePromptBuildHandler).toBeDefined();
-
-      const mockEvent = { prompt: 'test' } as any;
-      const mockCtx = { sessionKey: 'session-123' } as any;
-
-      await beforePromptBuildHandler?.(mockEvent, mockCtx);
-
-      expect(handleRecall).toHaveBeenCalledWith(
-        mockEvent,
-        mockCtx,
-        { apiKey: 'test-api-key', entityId: 'test-entity-id' },
-        expect.any(Object)
-      );
+      expect(handler).toBeDefined();
+      expect(handler?.()).toEqual({ appendSystemContext: 'mock skills content' });
     });
 
     it('should call handleAugmentation for agent_end event', async () => {

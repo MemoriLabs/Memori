@@ -55,23 +55,11 @@ describe('sanitizer', () => {
         expect(cleanText(input)).toBe('Good morning');
       });
 
-      it('should remove memori_context tags', () => {
-        const input = '<memori_context>Previous facts</memori_context>\nNew message';
-        expect(cleanText(input)).toBe('New message');
-      });
-
-      it('should handle multiple memori_context blocks', () => {
-        const input =
-          '<memori_context>Block 1</memori_context>\nText\n<memori_context>Block 2</memori_context>';
-        expect(cleanText(input)).toBe('Text');
-      });
-
       it('should handle complex combination of formatting', () => {
         const input = `\`\`\`metadata
 sessionId: abc-123
 \`\`\`
-[Wed 2024-03-11 16:45 UTC] <memori_context>Previous context</memori_context>
-What is the capital of France?`;
+[Wed 2024-03-11 16:45 UTC] What is the capital of France?`;
         expect(cleanText(input)).toBe('What is the capital of France?');
       });
 
