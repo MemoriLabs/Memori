@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { initializeMemoriClient } from '../../src/utils/memori-client.js';
+import { initializeMemoriClient, createRecallClient } from '../../src/utils/memori-client.js';
 import type { ExtractedContext } from '../../src/utils/context.js';
 
 vi.mock('@memorilabs/memori', () => {
@@ -133,6 +133,57 @@ describe('utils/memori-client', () => {
       expect(memoriInstance.integrate).toHaveBeenCalled();
       expect(result.scope).toHaveBeenCalledWith('sess-888', 'proj-888');
       expect(result.attribution).toHaveBeenCalledWith('user-999', 'google');
+    });
+  });
+
+  describe('createRecallClient', () => {
+    it('should set the API key on the Memori instance', async () => {
+      const { Memori } = await import('@memorilabs/memori');
+
+      createRecallClient('recall-api-key', 'recall-entity');
+
+      const memoriInstance = vi.mocked(Memori).mock.results[0].value;
+      expect(memoriInstance.config.apiKey).toBe('recall-api-key');
+    });
+
+    it('should integrate with OpenClawIntegration', async () => {
+      const { Memori } = await import('@memorilabs/memori');
+      const { OpenClawIntegration } = await import('@memorilabs/memori/integrations');
+
+      createRecallClient('key', 'entity');
+
+      const memoriInstance = vi.mocked(Memori).mock.results[0].value;
+      expect(memoriInstance.integrate).toHaveBeenCalledWith(OpenClawIntegration);
+    });
+
+    it('should call attribution with entityId only (no provider)', async () => {
+      const { Memori } = await import('@memorilabs/memori');
+
+      createRecallClient('key', 'my-entity');
+
+      const memoriInstance = vi.mocked(Memori).mock.results[0].value;
+      const integration = memoriInstance.integrate.mock.results[0].value;
+      expect(integration.attribution).toHaveBeenCalledWith('my-entity');
+      expect(integration.attribution).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT call scope (no session or project pre-set)', async () => {
+      const { Memori } = await import('@memorilabs/memori');
+
+      createRecallClient('key', 'entity');
+
+      const memoriInstance = vi.mocked(Memori).mock.results[0].value;
+      const integration = memoriInstance.integrate.mock.results[0].value;
+      expect(integration.scope).not.toHaveBeenCalled();
+    });
+
+    it('should return the integration instance', async () => {
+      const { Memori } = await import('@memorilabs/memori');
+
+      const result = createRecallClient('key', 'entity');
+
+      const memoriInstance = vi.mocked(Memori).mock.results[0].value;
+      expect(result).toBe(memoriInstance.integrate.mock.results[0].value);
     });
   });
 });

@@ -364,6 +364,72 @@ describe('handlers/augmentation', () => {
     });
   });
 
+  describe('branch coverage', () => {
+    it('should skip non-tool blocks when iterating mixed assistant content', async () => {
+      const { initializeMemoriClient } = await import('../../src/utils/index.js');
+      const { cleanText } = await import('../../src/sanitizer.js');
+      vi.mocked(cleanText).mockImplementation((c) => (typeof c === 'string' ? c : ''));
+
+      event.messages = [
+        { role: 'user', content: 'question' },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'thinking...' }, // non-tool block — covers line 82 false branch
+            { type: 'toolCall', id: 'c1', name: 'search', arguments: { q: 'test' } },
+          ],
+        },
+        { role: 'toolResult', toolCallId: 'c1', content: 'result' },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
+      const tools = vi.mocked(client.augmentation).mock.calls[0][0].trace?.tools;
+      expect(tools).toHaveLength(1);
+      expect(tools[0].name).toBe('search');
+    });
+
+    it('should skip when user message content cleans to empty', async () => {
+      // Covers line 102 false branch: parseUserMessage returns null.
+      // The default mock returns strings as-is, so '' content → cleanText('') = '' → null.
+      event.messages = [
+        { role: 'user', content: '' },
+        { role: 'assistant', content: 'answer' },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Missing user or assistant'));
+    });
+
+    it('should skip when assistant has empty content and no tool calls', async () => {
+      // Covers line 137 else-if false branch: cleanedContent empty AND no tools
+      event.messages = [
+        { role: 'user', content: 'question' },
+        { role: 'assistant', content: [] },
+      ];
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Missing user or assistant'));
+    });
+
+    it('should log stringified non-Error values thrown in catch block', async () => {
+      // Covers line 234 String(err) branch
+      const { extractContext } = await import('../../src/utils/index.js');
+      vi.mocked(extractContext).mockImplementationOnce(() => {
+        throw 'plain string error';
+      });
+
+      await handleAugmentation(event, ctx, config, mockLogger);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Augmentation failed: plain string error')
+      );
+    });
+  });
+
   describe('max context messages', () => {
     it('should only consider the last 20 messages when parsing the turn', async () => {
       const { initializeMemoriClient } = await import('../../src/utils/index.js');
