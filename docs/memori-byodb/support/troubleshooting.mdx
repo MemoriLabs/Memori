@@ -40,9 +40,10 @@ engine = create_engine("postgresql+psycopg2://user:pass@host/db", pool_pre_ping=
 
 | Database   | Format                                         |
 | ---------- | ---------------------------------------------- |
-| SQLite     | `sqlite:///memori.db`                          |
-| PostgreSQL | `postgresql+psycopg2://user:pass@host:5432/db` |
-| MySQL      | `mysql+pymysql://user:pass@host:3306/db`       |
+| SQLite     | `sqlite:///memori.db`                                        |
+| PostgreSQL | `postgresql+psycopg2://user:pass@host:5432/db`               |
+| MySQL      | `mysql+pymysql://user:pass@host:3306/db`                     |
+| TiDB       | `mysql+pymysql://user:pass@host:4000/db?charset=utf8mb4`     |
 
 ## No Memories Being Created
 
