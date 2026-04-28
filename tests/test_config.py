@@ -52,7 +52,26 @@ def test_recall_env_overrides(monkeypatch):
     assert config.embeddings.model == "google/embeddinggemma-300m"
 
 
-def test_rust_core_env_override(monkeypatch):
-    monkeypatch.setenv("MEMORI_USE_RUST_CORE", "true")
+def test_rust_core_defaults_enabled(monkeypatch):
+    monkeypatch.delenv("MEMORI_DISABLE_RUST_CORE", raising=False)
+    monkeypatch.delenv("MEMORI_USE_RUST_CORE", raising=False)
     config = Config()
     assert config.use_rust_core is True
+
+
+def test_rust_core_disable_env(monkeypatch):
+    monkeypatch.setenv("MEMORI_DISABLE_RUST_CORE", "1")
+    monkeypatch.delenv("MEMORI_USE_RUST_CORE", raising=False)
+    assert Config().use_rust_core is False
+
+
+def test_rust_core_legacy_env_opt_out(monkeypatch):
+    monkeypatch.delenv("MEMORI_DISABLE_RUST_CORE", raising=False)
+    monkeypatch.setenv("MEMORI_USE_RUST_CORE", "0")
+    assert Config().use_rust_core is False
+
+
+def test_rust_core_disable_env_wins_over_legacy_on(monkeypatch):
+    monkeypatch.setenv("MEMORI_DISABLE_RUST_CORE", "1")
+    monkeypatch.setenv("MEMORI_USE_RUST_CORE", "1")
+    assert Config().use_rust_core is False

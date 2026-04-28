@@ -417,12 +417,9 @@ class RustCoreAdapter:
 
     @classmethod
     def maybe_create(cls, config: Any) -> "RustCoreAdapter | None":
-        if not getattr(config, "use_rust_core", False):
-            return None
         if not getattr(config, "byodb", False):
-            logger.warning(
-                "MEMORI_USE_RUST_CORE is enabled, but BYODB mode is not active."
-            )
+            return None
+        if not getattr(config, "use_rust_core", True):
             return None
         _try_import_memori_python()
         try:
@@ -438,7 +435,9 @@ class RustCoreAdapter:
 
         storage = getattr(config, "storage", None)
         if storage is None or getattr(storage, "conn_factory", None) is None:
-            logger.warning("Rust core requested but storage connection is not ready.")
+            logger.warning(
+                "Rust core enabled but storage connection factory is not ready."
+            )
             return None
 
         engine = EngineHandle(

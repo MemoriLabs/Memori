@@ -90,8 +90,16 @@ class Memori:
         self,
         conn: Callable[[], Any] | Any | None = None,
         debug_truncate: bool = True,
+        *,
+        use_rust_core: bool | None = None,
     ) -> None:
-        """Initialize Memori with cloud mode or a user-provided connection."""
+        """Initialize Memori with cloud mode or a user-provided connection.
+
+        Args:
+            conn: Database connection factory or managed connection instance.
+            debug_truncate: When True, truncate long content in debug logging.
+            use_rust_core: When not None, overrides env for BYODB Rust engine use.
+        """
         from memori._logging import set_truncate_enabled
 
         self.config = Config()
@@ -105,6 +113,9 @@ class Memori:
         else:
             self.config.cloud = False
             self.config.byodb = True
+
+        if use_rust_core is not None:
+            self.config.use_rust_core = use_rust_core
 
         self.config.storage = StorageManager(self.config).start(conn)
         self.config.augmentation = AugmentationManager(self.config).start(conn)
