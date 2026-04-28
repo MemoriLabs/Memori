@@ -27,10 +27,6 @@ export function extractContext(
   configuredEntityId: string,
   configuredProjectId: string
 ): ExtractedContext {
-  if (!configuredProjectId) {
-    throw new Error('Failed to extract context: Missing projectId in plugin config.');
-  }
-
   const sessionId = ctx.sessionKey || event.sessionId;
   const provider = ctx.messageProvider || event.messageProvider;
 

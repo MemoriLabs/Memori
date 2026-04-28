@@ -26,10 +26,7 @@ type RawHistoryMessage = {
   text?: unknown;
 };
 
-function sanitizeHistoryMessages(
-  messages: RawHistoryMessage[],
-  dropSystem = false
-): Message[] {
+function sanitizeHistoryMessages(messages: RawHistoryMessage[], dropSystem = false): Message[] {
   const sanitized: Message[] = [];
 
   for (const message of messages) {
@@ -265,10 +262,7 @@ export class RecallEngine {
     };
     const response = await this.api.post<CloudRecallResponse>('cloud/recall', payload);
     const facts = extractFacts(response);
-    const history = sanitizeHistoryMessages(
-      extractHistory(response) as RawHistoryMessage[],
-      true
-    );
+    const history = sanitizeHistoryMessages(extractHistory(response) as RawHistoryMessage[], true);
     return { facts, history };
   }
 }

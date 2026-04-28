@@ -96,15 +96,6 @@ describe('utils/context', () => {
       );
     });
 
-    it('should throw error when configuredProjectId is missing', () => {
-      const event: OpenClawEvent = { sessionId: 'session-123', messageProvider: 'provider' };
-      const ctx: OpenClawContext = { sessionKey: 'ctx-session', messageProvider: 'ctx-provider' };
-
-      expect(() => extractContext(event, ctx, configuredEntityId, '')).toThrow(
-        'Failed to extract context: Missing projectId in plugin config.'
-      );
-    });
-
     it('should throw error when both sessionId and provider are missing', () => {
       const event: OpenClawEvent = {};
       const ctx: OpenClawContext = {};

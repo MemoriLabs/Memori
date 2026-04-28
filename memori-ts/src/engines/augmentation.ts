@@ -129,7 +129,8 @@ export class AugmentationEngine {
       session: { id: data.sessionId },
     };
 
-    // Send the conversation turn asynchronously and then send everything off for augmentation
+    // Wait for the conversation turn to save successfully,
+    // then dispatch the augmentation payload in the background.
     try {
       await this.defaultApi.post('agent/conversation/turn', turnPayload);
     } catch (e: unknown) {
