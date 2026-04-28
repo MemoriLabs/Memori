@@ -22,11 +22,11 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         },
         projectId: {
           type: 'string',
-          description: 'Filter to a specific project. Defaults to the current project.',
+          description: 'Override the configured project ID. Defaults to the project set in plugin config.',
         },
         sessionId: {
           type: 'string',
-          description: 'Filter to a specific session. Requires projectId to also be provided.',
+          description: 'Filter to a specific session. Cannot be used without projectId.',
         },
         signal: {
           type: 'string',
@@ -51,9 +51,18 @@ export function createMemoriRecallTool(deps: ToolDeps) {
       }
     ) {
       try {
-        logger.info(`memori_recall params: ${JSON.stringify(params)}`);
+        const finalParams = { projectId: config.projectId, ...params };
+
+        if (finalParams.sessionId && !finalParams.projectId) {
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify({ error: 'sessionId cannot be provided without projectId' }) }],
+            details: null,
+          };
+        }
+
+        logger.info(`memori_recall params: ${JSON.stringify(finalParams)}`);
         const client = createRecallClient(config.apiKey, config.entityId);
-        const result = await client.agentRecall(params);
+        const result = await client.agentRecall(finalParams);
         return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], details: null };
       } catch (e) {
         logger.warn(`memori_recall failed: ${String(e)}`);

@@ -19,6 +19,11 @@
       "label": "Entity ID",
       "placeholder": "e.g., your-app-user-id",
       "help": "Required. The unique identifier to attribute these memories to."
+    },
+    "projectId": {
+      "label": "Project ID",
+      "placeholder": "e.g., my-project",
+      "help": "Required. Scopes all memories to this project."
     }
   },
   "configSchema": {
@@ -32,7 +37,12 @@
       "entityId": {
         "type": "string",
         "title": "Entity ID",
-        "description": "Required. Hardcode a specific Entity ID for memories."
+        "description": "Required. The unique identifier to attribute these memories to."
+      },
+      "projectId": {
+        "type": "string",
+        "title": "Project ID",
+        "description": "Required. Scopes all memories to this project."
       }
     },
     "required": []
