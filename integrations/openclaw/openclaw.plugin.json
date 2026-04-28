@@ -5,6 +5,9 @@
   "description": "Hosted memory backend",
   "kind": "memory",
   "main": "dist/index.js",
+  "contracts": {
+    "tools": ["memori_recall", "memori_recall_summary"]
+  },
   "uiHints": {
     "apiKey": {
       "label": "Memori API Key",

@@ -22,7 +22,8 @@ type AugmentationData = {
  */
 export class AugmentationEngine {
   constructor(
-    private readonly api: Api,
+    private readonly defaultApi: Api,
+    private readonly collectorApi: Api,
     private readonly engine: NativeEngine,
     private readonly config: Config,
     private readonly session: SessionManager,
@@ -73,14 +74,14 @@ export class AugmentationEngine {
     };
 
     // Fire-and-forget to cloud
-    this.api.post('cloud/augmentation', payload).catch((e: unknown) => {
+    this.defaultApi.post('cloud/augmentation', payload).catch((e: unknown) => {
       if (this.config.testMode) console.warn('Augmentation failed:', e);
     });
 
     return Promise.resolve(res);
   }
 
-  public handleAgentAugmentation(
+  public async handleAgentAugmentation(
     req: LLMRequest,
     res: LLMResponse,
     ctx: CallContext,
@@ -111,32 +112,34 @@ export class AugmentationEngine {
       trace: trace ?? null,
     };
 
-    // Fire-and-forget to the dedicated agent endpoint
-    this.api.post('agent/augmentation', agentAugPayload).catch((e: unknown) => {
-      if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
-    });
-
     const [userMsg, assistantMsg] = data.messages;
 
-    // Fire-and-forget to persist raw turn messages for long-term storage
-    this.api
-      .post('agent/conversation/turn', {
-        attribution,
-        messages: [
-          { role: userMsg.role, content: userMsg.content, type: userMsg.role, trace: null },
-          {
-            role: assistantMsg.role,
-            content: assistantMsg.content,
-            type: assistantMsg.role,
-            trace: trace ?? null,
-          },
-        ],
-        project: { id: this.project.id },
-        session: { id: data.sessionId },
-      })
-      .catch((e: unknown) => {
-        if (this.config.testMode) console.warn('Agent Turn failed:', e);
-      });
+    const turnPayload = {
+      attribution,
+      messages: [
+        { role: userMsg.role, content: userMsg.content, type: userMsg.role, trace: null },
+        {
+          role: assistantMsg.role,
+          content: assistantMsg.content,
+          type: assistantMsg.role,
+          trace: trace ?? null,
+        },
+      ],
+      project: { id: this.project.id },
+      session: { id: data.sessionId },
+    };
+
+    // Send the conversation turn asynchronously and then send everything off for augmentation
+    try {
+      await this.defaultApi.post('agent/conversation/turn', turnPayload);
+    } catch (e: unknown) {
+      if (this.config.testMode) console.warn('Agent Conversation Turn failed:', e);
+      return res; // Stop execution if the DB write fails!
+    }
+
+    this.collectorApi.post('agent/augmentation', agentAugPayload).catch((e: unknown) => {
+      if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
+    });
 
     return Promise.resolve(res);
   }

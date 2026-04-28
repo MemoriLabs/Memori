@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleAugmentation } from '../../src/handlers/augmentation.js';
-import type {
-  OpenClawEvent,
-  OpenClawContext,
-  MemoriPluginConfig,
-} from '../../src/types.js';
+import type { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from '../../src/types.js';
 import type { MemoriLogger } from '../../src/utils/logger.js';
 import { SDK_VERSION } from '../../src/version.js';
 import { MESSAGE_CONSTANTS } from '../../src/constants.js';
@@ -12,7 +8,7 @@ import { MESSAGE_CONSTANTS } from '../../src/constants.js';
 vi.mock('../../src/sanitizer.js', () => ({
   cleanText: vi.fn((content) => {
     if (typeof content === 'string') return content;
-    return ''; 
+    return '';
   }),
   isSystemMessage: vi.fn(() => false),
 }));
@@ -51,7 +47,7 @@ describe('handlers/augmentation', () => {
       success: true,
       messages: [
         { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: "Hi" },
+        { role: 'assistant', content: 'Hi' },
       ],
     };
   });
@@ -63,7 +59,7 @@ describe('handlers/augmentation', () => {
      */
     it('should handle malformed JSON and unexpected argument types in tool calls', async () => {
       const { initializeMemoriClient } = await import('../../src/utils/index.js');
-      
+
       event.messages = [
         { role: 'user', content: 'run tool' },
         {
@@ -72,16 +68,16 @@ describe('handlers/augmentation', () => {
             // Line 51-54: String that is NOT valid JSON
             { type: 'toolCall', id: '1', name: 'bad_json', arguments: '{malformed' },
             // Line 62: Unexpected type (null or non-object)
-            { type: 'toolCall', id: '2', name: 'null_args', arguments: null }
-          ]
-        }
+            { type: 'toolCall', id: '2', name: 'null_args', arguments: null },
+          ],
+        },
       ];
 
       await handleAugmentation(event, ctx, config, mockLogger);
 
       const client = vi.mocked(initializeMemoriClient).mock.results[0].value;
       const tools = vi.mocked(client.augmentation).mock.calls[0][0].trace?.tools;
-      
+
       // Both should fall back to empty objects {}
       expect(tools?.[0].args).toEqual({});
       expect(tools?.[1].args).toEqual({});
@@ -110,7 +106,7 @@ describe('handlers/augmentation', () => {
     it('should call augmentation without a trace object', async () => {
       const { initializeMemoriClient } = await import('../../src/utils/index.js');
       const { cleanText } = await import('../../src/sanitizer.js');
-      vi.mocked(cleanText).mockImplementation((c) => typeof c === 'string' ? c : 'response text');
+      vi.mocked(cleanText).mockImplementation((c) => (typeof c === 'string' ? c : 'response text'));
 
       await handleAugmentation(event, ctx, config, mockLogger);
 
@@ -118,7 +114,7 @@ describe('handlers/augmentation', () => {
       expect(client.augmentation).toHaveBeenCalledWith(
         expect.objectContaining({
           userMessage: 'Hello',
-          agentResponse: "Hi",
+          agentResponse: 'Hi',
         })
       );
 
@@ -129,8 +125,8 @@ describe('handlers/augmentation', () => {
     it('should include LLM metadata in request', async () => {
       const { initializeMemoriClient } = await import('../../src/utils/index.js');
       const { cleanText } = await import('../../src/sanitizer.js');
-      vi.mocked(cleanText).mockImplementation((c) => typeof c === 'string' ? c : 'text');
-      
+      vi.mocked(cleanText).mockImplementation((c) => (typeof c === 'string' ? c : 'text'));
+
       event.messages![1].provider = 'anthropic';
       event.messages![1].model = 'claude-3-5-sonnet';
 
@@ -179,7 +175,9 @@ describe('handlers/augmentation', () => {
       expect(client.augmentation).toHaveBeenCalledWith(
         expect.objectContaining({
           trace: {
-            tools: [{ name: 'get_time', args: { timezone: 'UTC' }, result: '2024-03-21T10:00:00Z' }],
+            tools: [
+              { name: 'get_time', args: { timezone: 'UTC' }, result: '2024-03-21T10:00:00Z' },
+            ],
           },
         })
       );

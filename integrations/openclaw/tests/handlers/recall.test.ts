@@ -38,6 +38,7 @@ describe('handlers/recall', () => {
     config = {
       apiKey: 'test-api-key',
       entityId: 'test-entity-id',
+      projectId: 'test-project-id',
     };
 
     event = {
@@ -63,7 +64,7 @@ describe('handlers/recall', () => {
       const { extractContext } = await import('../../src/utils/index.js');
       await handleRecall(event, ctx, config, mockLogger);
 
-      expect(extractContext).toHaveBeenCalledWith(event, ctx, 'test-entity-id');
+      expect(extractContext).toHaveBeenCalledWith(event, ctx, 'test-entity-id', 'test-project-id');
     });
 
     it('should call initializeMemoriClient with correct parameters', async () => {

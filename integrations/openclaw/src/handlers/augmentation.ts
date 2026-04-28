@@ -20,8 +20,8 @@ function extractLLMMetadata(event: OpenClawEvent): IntegrationMetadata {
   const lastAssistant = messages.findLast((m) => m.role === ROLE.ASSISTANT);
 
   return {
-    provider: (lastAssistant?.provider as string) || null,
-    model: (lastAssistant?.model as string) || null,
+    provider: lastAssistant?.provider || null,
+    model: lastAssistant?.model || null,
     sdkVersion: null,
     integrationSdkVersion: SDK_VERSION,
     platform: 'openclaw',

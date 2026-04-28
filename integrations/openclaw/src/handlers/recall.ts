@@ -12,7 +12,7 @@ export async function handleRecall(
   logger.section('RECALL HOOK START');
 
   try {
-    const context = extractContext(event, ctx, config.entityId);
+    const context = extractContext(event, ctx, config.entityId, config.projectId);
     const promptText = cleanText(event.prompt);
 
     if (

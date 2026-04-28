@@ -12,9 +12,14 @@ vi.mock('../src/handlers/augmentation.js', () => ({
 
 describe('plugin index', () => {
   let mockApi: OpenClawPluginApi;
+  let mockOn: ReturnType<typeof vi.fn>;
+  let mockRegisterTool: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockOn = vi.fn();
+    mockRegisterTool = vi.fn();
 
     mockApi = {
       pluginConfig: {
@@ -26,7 +31,8 @@ describe('plugin index', () => {
         warn: vi.fn(),
         error: vi.fn(),
       },
-      on: vi.fn(),
+      on: mockOn,
+      registerTool: mockRegisterTool,
     } as unknown as OpenClawPluginApi;
   });
 
@@ -48,9 +54,9 @@ describe('plugin index', () => {
     it('should register hooks when config is valid', () => {
       memoriPlugin.register(mockApi);
 
-      expect(mockApi.on).toHaveBeenCalledWith('before_prompt_build', expect.any(Function));
-      expect(mockApi.on).toHaveBeenCalledWith('agent_end', expect.any(Function));
-      expect(mockApi.on).toHaveBeenCalledTimes(2);
+      expect(mockOn).toHaveBeenCalledWith('before_prompt_build', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('agent_end', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledTimes(2);
     });
 
     it('should not register when apiKey is missing', () => {
@@ -63,7 +69,7 @@ describe('plugin index', () => {
       expect(mockApi.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Missing apiKey or entityId')
       );
-      expect(mockApi.on).not.toHaveBeenCalled();
+      expect(mockOn.mock.calls).toHaveLength(0);
     });
 
     it('should not register when entityId is missing', () => {
@@ -76,7 +82,7 @@ describe('plugin index', () => {
       expect(mockApi.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Missing apiKey or entityId')
       );
-      expect(mockApi.on).not.toHaveBeenCalled();
+      expect(mockOn.mock.calls).toHaveLength(0);
     });
 
     it('should not register when both apiKey and entityId are missing', () => {
@@ -87,7 +93,7 @@ describe('plugin index', () => {
       expect(mockApi.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Missing apiKey or entityId')
       );
-      expect(mockApi.on).not.toHaveBeenCalled();
+      expect(mockOn.mock.calls).toHaveLength(0);
     });
 
     it('should not register when pluginConfig is undefined', () => {
@@ -98,7 +104,7 @@ describe('plugin index', () => {
       expect(mockApi.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Missing apiKey or entityId')
       );
-      expect(mockApi.on).not.toHaveBeenCalled();
+      expect(mockOn.mock.calls).toHaveLength(0);
     });
 
     it('should not register when apiKey is empty string', () => {
@@ -112,7 +118,7 @@ describe('plugin index', () => {
       expect(mockApi.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Missing apiKey or entityId')
       );
-      expect(mockApi.on).not.toHaveBeenCalled();
+      expect(mockOn.mock.calls).toHaveLength(0);
     });
 
     it('should not register when entityId is empty string', () => {
@@ -126,7 +132,7 @@ describe('plugin index', () => {
       expect(mockApi.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Missing apiKey or entityId')
       );
-      expect(mockApi.on).not.toHaveBeenCalled();
+      expect(mockOn.mock.calls).toHaveLength(0);
     });
   });
 
@@ -136,9 +142,9 @@ describe('plugin index', () => {
 
       memoriPlugin.register(mockApi);
 
-      const beforePromptBuildHandler = vi
-        .mocked(mockApi.on)
-        .mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const beforePromptBuildHandler = mockOn.mock.calls.find(
+        (call) => call[0] === 'before_prompt_build'
+      )?.[1];
 
       expect(beforePromptBuildHandler).toBeDefined();
 
@@ -160,9 +166,7 @@ describe('plugin index', () => {
 
       memoriPlugin.register(mockApi);
 
-      const agentEndHandler = vi
-        .mocked(mockApi.on)
-        .mock.calls.find((call) => call[0] === 'agent_end')?.[1];
+      const agentEndHandler = mockOn.mock.calls.find((call) => call[0] === 'agent_end')?.[1];
 
       expect(agentEndHandler).toBeDefined();
 
@@ -189,7 +193,7 @@ describe('plugin index', () => {
 
       memoriPlugin.register(mockApi);
 
-      expect(mockApi.on).toHaveBeenCalled();
+      expect(mockOn.mock.calls.length).toBeGreaterThan(0);
     });
 
     it('should handle additional config properties gracefully', () => {
@@ -202,7 +206,7 @@ describe('plugin index', () => {
 
       memoriPlugin.register(mockApi);
 
-      expect(mockApi.on).toHaveBeenCalledTimes(2);
+      expect(mockOn.mock.calls).toHaveLength(2);
     });
   });
 

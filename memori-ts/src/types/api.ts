@@ -116,3 +116,60 @@ export interface ParsedSummary {
    */
   dateCreated: string;
 }
+
+/**
+ * Filter parameters for the agent recall endpoint (GET /v1/agent/recall).
+ * If sessionId is provided, projectId must also be provided.
+ */
+export interface AgentRecallParams {
+  /** Filter results to memories created on or after this date/time (ISO 8601). */
+  dateStart?: string;
+  /** Filter results to memories created on or before this date/time (ISO 8601). */
+  dateEnd?: string;
+  /** Filter results to a specific project. */
+  projectId?: string;
+  /**
+   * Filter results to a specific session.
+   * Cannot be provided without projectId.
+   */
+  sessionId?: string;
+  /** Filter results to a specific fact signal (e.g. system, user, derived). */
+  signal?: string;
+  /** Filter results to a specific source origin. */
+  source?: string;
+}
+
+/**
+ * Filter parameters for the agent recall summary endpoint (GET /v1/agent/recall/summary).
+ * If sessionId is provided, projectId must also be provided.
+ */
+export interface AgentRecallSummaryParams {
+  /** Filter summaries to memories created on or after this date/time (ISO 8601). */
+  dateStart?: string;
+  /** Filter summaries to memories created on or before this date/time (ISO 8601). */
+  dateEnd?: string;
+  /** Filter results to a specific project. */
+  projectId?: string;
+  /**
+   * Filter results to a specific session.
+   * Cannot be provided without projectId.
+   */
+  sessionId?: string;
+}
+
+/**
+ * Raw response shape from the agent recall endpoint.
+ */
+export interface AgentRecallResponse {
+  facts?: RecallItem[];
+  results?: RecallItem[];
+  memories?: RecallItem[];
+  data?: RecallItem[];
+}
+
+/**
+ * Raw response shape from the agent recall summary endpoint.
+ */
+export interface AgentRecallSummaryResponse {
+  summaries?: RecallSummary[];
+}

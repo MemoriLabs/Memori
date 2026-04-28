@@ -3,6 +3,7 @@ import { RecallEngine } from '../../src/engines/recall.js';
 import { Api } from '../../src/core/network.js';
 import { Config } from '../../src/core/config.js';
 import { SessionManager } from '../../src/core/session.js';
+import { ProjectManager } from '../../src/core/project.js';
 import { NativeEngine } from '../../src/core/engine.js';
 import { LLMRequest } from '@memorilabs/axon';
 
@@ -11,16 +12,18 @@ describe('RecallEngine', () => {
   let mockApi: Api;
   let mockConfig: Config;
   let mockSession: SessionManager;
+  let mockProject: ProjectManager;
   let mockNativeEngine: NativeEngine;
 
   beforeEach(() => {
-    mockApi = { post: vi.fn() } as unknown as Api;
+    mockApi = { post: vi.fn(), get: vi.fn() } as unknown as Api;
     mockConfig = {
       entityId: 'test-entity',
       processId: 'test-process',
       recallRelevanceThreshold: 0.5,
     } as unknown as Config;
     mockSession = { id: 'test-session-id' } as unknown as SessionManager;
+    mockProject = { id: 'test-project-id' } as unknown as ProjectManager;
 
     // 1. Create the mock native engine
     mockNativeEngine = {
@@ -28,8 +31,14 @@ describe('RecallEngine', () => {
       retrieve: vi.fn().mockReturnValue([]),
     } as unknown as NativeEngine;
 
-    // 2. Pass it in as the SECOND argument! (4 arguments total)
-    recallEngine = new RecallEngine(mockApi, mockNativeEngine, mockConfig, mockSession);
+    // 2. Pass it in as the SECOND argument!
+    recallEngine = new RecallEngine(
+      mockApi,
+      mockNativeEngine,
+      mockConfig,
+      mockSession,
+      mockProject
+    );
   });
 
   describe('recall()', () => {

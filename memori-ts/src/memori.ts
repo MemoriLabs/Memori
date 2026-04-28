@@ -108,7 +108,13 @@ export class Memori {
     }
 
     // 4. Engines (Now receiving both the Cloud API and Local Engine)
-    this.recallEngine = new RecallEngine(this.api, this.engine, this.config, this.session);
+    this.recallEngine = new RecallEngine(
+      this.api,
+      this.engine,
+      this.config,
+      this.session,
+      this.projectManager
+    );
     this.persistenceEngine = new PersistenceEngine(
       this.api,
       this.engine,
@@ -116,6 +122,7 @@ export class Memori {
       this.session
     );
     this.augmentationEngine = new AugmentationEngine(
+      this.api,
       this.collectorApi,
       this.engine,
       this.config,

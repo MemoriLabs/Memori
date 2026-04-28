@@ -1,4 +1,10 @@
 import { IntegrationRequest } from 'src/types/integrations.js';
+import {
+  AgentRecallParams,
+  AgentRecallResponse,
+  AgentRecallSummaryParams,
+  AgentRecallSummaryResponse,
+} from '../types/api.js';
 import { BaseIntegration } from './base.js';
 
 /**
@@ -53,6 +59,39 @@ export class OpenClawIntegration extends BaseIntegration {
    * @throws Does not throw - errors are logged but swallowed, returns undefined on failure
    */
   public async recall(promptText: string): Promise<string | undefined> {
+    console.log('agent recall promptText', promptText);
     return this.executeRecall(promptText);
+  }
+
+  /**
+   * Manually fetches memories from the agent recall endpoint.
+   * Project ID defaults to the current project context. Session ID must be explicitly
+   * provided and cannot be used without a project ID.
+   *
+   * @param params - Optional filters: dateStart, dateEnd, projectId, sessionId, signal, source
+   * @returns Raw recall response, or empty object on failure
+   *
+   * @throws Does not throw - errors are logged but swallowed to prevent disrupting the agent
+   */
+  public async agentRecall(params?: AgentRecallParams): Promise<AgentRecallResponse> {
+    console.log('agent recall params', JSON.stringify(params, null, 2));
+    return this.executeAgentRecall(params);
+  }
+
+  /**
+   * Fetches memory summaries from the agent recall summary endpoint.
+   * Project ID defaults to the current project context. Session ID must be explicitly
+   * provided and cannot be used without a project ID.
+   *
+   * @param params - Optional filters: dateStart, dateEnd, projectId, sessionId
+   * @returns Raw recall summary response, or empty object on failure
+   *
+   * @throws Does not throw - errors are logged but swallowed to prevent disrupting the agent
+   */
+  public async agentRecallSummary(
+    params?: AgentRecallSummaryParams
+  ): Promise<AgentRecallSummaryResponse> {
+    console.log('agent recall summary params', JSON.stringify(params, null, 2));
+    return this.executeAgentRecallSummary(params);
   }
 }
