@@ -21,25 +21,22 @@ export function createMemoryAddTool(deps: ToolDeps) {
       source: Type.Optional(Type.String({ description: "Filter to a specific source origin" })),
     }),
 
-    async execute(_toolCallId: string, params: Record<string, unknown>) {
+    async execute(_toolCallId: string, params: {
+      dateStart?: string;
+      dateEnd?: string;
+      projectId?: string;
+      sessionId?: string;
+      signal?: string;
+      source?: string;
+    }) {
       const p = params as {
-        text?: string; facts?: string[]; category?: string; importance?: number;
-        userId?: string; agentId?: string; metadata?: Record<string, unknown>; longTerm?: boolean;
+        dateStart?: string;
+        dateEnd?: string;
+        projectId?: string;
+        sessionId?: string;
+        signal?: string;
+        source?: string;
       };
-
-      const rawFacts: string[] = p.facts?.length ? p.facts : (p.text ? [p.text] : []);
-      if (rawFacts.length === 0) {
-        return { content: [{ type: "text", text: "No facts provided. Pass 'text' or 'facts' array." }], details: { error: "missing_facts" } };
-      }
-
-      // Filter out noise and clean the facts before storing
-      const allFacts = rawFacts
-        .map((f) => stripNoiseFromContent(f))
-        .filter((f) => f.length > 0 && !isNoiseMessage(f));
-
-      if (allFacts.length === 0) {
-        return { content: [{ type: "text", text: "All provided facts were filtered as noise. Nothing stored." }], details: { error: "all_noise" } };
-      }
 
       const start = Date.now();
       try {
