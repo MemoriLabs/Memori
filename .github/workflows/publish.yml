@@ -141,6 +141,9 @@ jobs:
         with:
           workspaces: core
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Android NDK
         run: sdkmanager "ndk;27.2.12479018"
 
