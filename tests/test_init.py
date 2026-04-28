@@ -16,7 +16,6 @@ def test_cloud_false_when_conn_provided(mocker):
 
 
 def test_memori_initializes_rust_core_adapter_in_byodb(mocker, monkeypatch):
-    monkeypatch.setenv("MEMORI_USE_RUST_CORE", "true")
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
     type(mock_conn).__module__ = "psycopg"
@@ -33,6 +32,24 @@ def test_memori_initializes_rust_core_adapter_in_byodb(mocker, monkeypatch):
     assert mem.config.byodb is True
     assert mem.config.cloud is False
     assert mem.config.rust_core is not None
+
+
+def test_memori_use_rust_core_kwarg_false(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    maybe_create = mocker.patch(
+        "memori._rust_core.RustCoreAdapter.maybe_create",
+        return_value=None,
+    )
+
+    mem = Memori(conn=lambda: mock_conn, use_rust_core=False)
+
+    maybe_create.assert_called_once_with(mem.config)
+    assert mem.config.use_rust_core is False
 
 
 def test_cloud_true_when_no_conn(monkeypatch):

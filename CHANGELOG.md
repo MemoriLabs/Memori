@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.2] - 2026-04-28
+
+### Changed
+
+- Rust-backed retrieval and augmentation are now enabled by default for BYODB
+  mode when `memori_python` loads successfully. The Python SDK still
+  orchestrates provider wrapping, storage adapters, conversation persistence,
+  and fallbacks. Override with `use_rust_core=False` on `Memori(...)`,
+  `MEMORI_DISABLE_RUST_CORE=1`, or legacy `MEMORI_USE_RUST_CORE=0`;
+  unsuccessful Rust core loads still fall back to the pure-Python path with a
+  warning.
+
 ### Fixed
 
 - Conversation injection no longer corrupts OpenAI-compatible message
@@ -69,4 +81,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Fixes #83)
 
 [3.3.0rc1]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.0rc1
+[3.3.2]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.2
 [3.0.0]: https://github.com/MemoriLabs/Memori/releases/tag/v3.0.0

@@ -1,8 +1,9 @@
 """
 SQLite BYODB + Rust core smoke test.
 
-This mirrors examples/sqlite/main.py but forces MEMORI_USE_RUST_CORE=1
-and fails fast if the Rust core extension is not active.
+This mirrors examples/sqlite/main.py but fails fast if the Rust core
+extension is not active (BYODB loads the Rust engine by default when
+available).
 """
 
 import os
@@ -20,7 +21,6 @@ def main() -> None:
     if not openai_api_key:
         raise RuntimeError("Set OPENAI_API_KEY before running this example.")
 
-    os.environ["MEMORI_USE_RUST_CORE"] = "1"
     os.environ["MEMORI_TEST_MODE"] = "1"
 
     client = OpenAI(api_key=openai_api_key, timeout=30.0)

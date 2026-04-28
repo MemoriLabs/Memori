@@ -86,7 +86,12 @@ class Config:
         self.storage = None
         self.storage_config = Storage()
         self.thread_pool_executor = ThreadPoolExecutor(max_workers=15)
-        self.use_rust_core = _env_bool("MEMORI_USE_RUST_CORE", False)
+        if _env_bool("MEMORI_DISABLE_RUST_CORE", False):
+            self.use_rust_core = False
+        elif os.environ.get("MEMORI_USE_RUST_CORE") is not None:
+            self.use_rust_core = _env_bool("MEMORI_USE_RUST_CORE", False)
+        else:
+            self.use_rust_core = True
         self.rust_core = None
         self.version = version("memori")
 
