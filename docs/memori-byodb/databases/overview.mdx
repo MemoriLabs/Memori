@@ -16,17 +16,17 @@ Memori is database-agnostic. With the BYODB (Bring Your Own Database) approach, 
 
 | Database                                                    | Best For                           | Driver                     | Connection String                                   |
 | ----------------------------------------------------------- | ---------------------------------- | -------------------------- | --------------------------------------------------- |
-| **[SQLite](/docs/memori-byodb/databases/sqlite)**           | Development, prototyping           | Built-in (`sqlite3`)       | `sqlite:///memori.db`                               |
-| **[PostgreSQL](/docs/memori-byodb/databases/postgres)**     | Production, high concurrency       | `psycopg2-binary`          | `postgresql://user:pass@host/db`                    |
-| **[MySQL](/docs/memori-byodb/databases/mysql)**             | Existing MySQL infrastructure      | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
-| **MariaDB**                                                 | MySQL-compatible alternative       | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
-| **[TiDB](/docs/memori-byodb/databases/tidb)**               | Distributed MySQL-compatible SQL   | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host:4000/db`            |
-| **[Oracle](/docs/memori-byodb/databases/oracle)**           | Enterprise environments            | `oracledb` or `cx_Oracle`  | `oracle+oracledb://user:pass@host/service`          |
-| **[MongoDB](/docs/memori-byodb/databases/mongodb)**         | Document-oriented, flexible schema | `pymongo`                  | `mongodb://host:27017`                              |
 | **[CockroachDB](/docs/memori-byodb/databases/cockroachdb)** | Distributed SQL, global scale      | `psycopg2-binary`          | `cockroachdb+psycopg2://user:pass@host/db`          |
-| **OceanBase**                                               | Distributed HTAP workloads         | `pyobvector`               | `mysql+pyobvector://user:pass@host:2881/db`         |
+| **MariaDB**                                                 | MySQL-compatible alternative       | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
+| **[MongoDB](/docs/memori-byodb/databases/mongodb)**         | Document-oriented, flexible schema | `pymongo`                  | `mongodb://host:27017`                              |
+| **[MySQL](/docs/memori-byodb/databases/mysql)**             | Existing MySQL infrastructure      | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host/db`                 |
 | **Neon**                                                    | Serverless PostgreSQL              | `psycopg2-binary`          | `postgresql://user:pass@ep-xxx.neon.tech/db`        |
+| **OceanBase**                                               | Distributed HTAP workloads         | `pyobvector`               | `mysql+pyobvector://user:pass@host:2881/db`         |
+| **[Oracle](/docs/memori-byodb/databases/oracle)**           | Enterprise environments            | `oracledb` or `cx_Oracle`  | `oracle+oracledb://user:pass@host/service`          |
+| **[PostgreSQL](/docs/memori-byodb/databases/postgres)**     | Production, high concurrency       | `psycopg`                  | `postgresql+psycopg://user:pass@host/db`            |
+| **[SQLite](/docs/memori-byodb/databases/sqlite)**           | Development, prototyping           | Built-in (`sqlite3`)       | `sqlite:///memori.db`                               |
 | **Supabase**                                                | Hosted PostgreSQL with extras      | `psycopg2-binary`          | `postgresql://user:pass@db.xxx.supabase.co:5432/db` |
+| **[TiDB](/docs/memori-byodb/databases/tidb)**               | Distributed MySQL-compatible SQL   | `pymysql` or `mysqlclient` | `mysql+pymysql://user:pass@host:4000/db`            |
 
 MariaDB uses the same drivers and connection strings as MySQL. TiDB is also MySQL-compatible, but Memori will auto-detect it and route it through a dedicated TiDB integration path. Neon and Supabase are PostgreSQL-compatible — see the [PostgreSQL](/docs/memori-byodb/databases/postgres) page for full setup details.
 
@@ -36,39 +36,41 @@ Memori also works with hosted services that expose standard PostgreSQL/MySQL end
 
 | Provider       | Engine Compatibility | Typical Host Pattern  |
 | -------------- | -------------------- | --------------------- |
+| **AWS Aurora** | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
+| **AWS RDS**    | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
 | **Neon**       | PostgreSQL           | `*.neon.tech`         |
 | **Supabase**   | PostgreSQL           | `*.supabase.co`       |
-| **AWS RDS**    | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
-| **AWS Aurora** | PostgreSQL/MySQL     | `*.rds.amazonaws.com` |
 | **TiDB Cloud** | TiDB / MySQL         | `*.tidbcloud.com`     |
 
 ## Quick Start Code
 
 <CodeGroup title="Database Setup">
 
-```python {{ title: 'SQLite (DB API 2.0)' }}
-import sqlite3
-from memori import Memori
-
-def get_connection():
-    return sqlite3.connect("memori.db")
-
-mem = Memori(conn=get_connection)
-mem.config.storage.build()
-```
-
-```python {{ title: 'PostgreSQL' }}
+```python {{ title: 'CockroachDB' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
-    "postgresql+psycopg://user:password@localhost:5432/memori_db",
+    "cockroachdb+psycopg2://user:password@localhost:26257/memori_db",
     pool_pre_ping=True
 )
 SessionLocal = sessionmaker(bind=engine)
 
 mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+```python {{ title: 'MongoDB' }}
+from memori import Memori
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017")
+
+def get_db():
+    return client["memori_db"]
+
+mem = Memori(conn=get_db)
 mem.config.storage.build()
 ```
 
@@ -87,14 +89,13 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'TiDB' }}
+```python {{ title: 'OceanBase' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
-    "mysql+pymysql://user:password@host:4000/memori_db?charset=utf8mb4",
-    pool_pre_ping=True
+    "mysql+pyobvector://user:password@localhost:2881/memori_db"
 )
 SessionLocal = sessionmaker(bind=engine)
 
@@ -116,26 +117,13 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'MongoDB' }}
-from memori import Memori
-from pymongo import MongoClient
-
-client = MongoClient("mongodb://localhost:27017")
-
-def get_db():
-    return client["memori_db"]
-
-mem = Memori(conn=get_db)
-mem.config.storage.build()
-```
-
-```python {{ title: 'CockroachDB' }}
+```python {{ title: 'PostgreSQL' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
-    "cockroachdb+psycopg2://user:password@localhost:26257/memori_db",
+    "postgresql+psycopg://user:password@localhost:5432/memori_db",
     pool_pre_ping=True
 )
 SessionLocal = sessionmaker(bind=engine)
@@ -144,13 +132,25 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'OceanBase' }}
+```python {{ title: 'SQLite (DB API 2.0)' }}
+import sqlite3
+from memori import Memori
+
+def get_connection():
+    return sqlite3.connect("memori.db")
+
+mem = Memori(conn=get_connection)
+mem.config.storage.build()
+```
+
+```python {{ title: 'TiDB' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
-    "mysql+pyobvector://user:password@localhost:2881/memori_db"
+    "mysql+pymysql://user:password@host:4000/memori_db?charset=utf8mb4",
+    pool_pre_ping=True
 )
 SessionLocal = sessionmaker(bind=engine)
 

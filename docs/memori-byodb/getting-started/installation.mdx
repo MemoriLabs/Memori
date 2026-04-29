@@ -32,7 +32,7 @@ uv add memori
 
 ## Install Your Database Driver
 
-Memori supports SQLite, PostgreSQL, MySQL, MariaDB, Oracle, MongoDB, CockroachDB, and OceanBase. Managed services like Neon, Supabase, and AWS RDS/Aurora work through their compatible PostgreSQL/MySQL engines. Install the driver for your preferred database:
+Memori supports SQLite, PostgreSQL, MySQL, MariaDB, TiDB, Oracle, MongoDB, CockroachDB, and OceanBase. Managed services like Neon, Supabase, and AWS RDS/Aurora work through their compatible PostgreSQL/MySQL engines. Install the driver for your preferred database:
 
 <CodeGroup title="Database Drivers">
 
@@ -54,6 +54,10 @@ pip install pymysql
 ```bash {{ title: 'MariaDB' }}
 pip install pymysql
 # Or: pip install mysqlclient
+```
+
+```bash {{ title: 'TiDB' }}
+pip install pymysql sqlalchemy certifi
 ```
 
 ```bash {{ title: 'Oracle' }}
@@ -80,7 +84,7 @@ Neon, Supabase, and AWS RDS/Aurora use standard PostgreSQL drivers (`psycopg2-bi
 
 | Pattern    | What to pass to `conn`                          | Works With                                                            |
 | ---------- | ----------------------------------------------- | --------------------------------------------------------------------- |
-| SQLAlchemy | `sessionmaker`                                  | SQLite, PostgreSQL, MySQL, MariaDB, Oracle, CockroachDB, OceanBase    |
+| SQLAlchemy | `sessionmaker`                                  | SQLite, PostgreSQL, MySQL, MariaDB, TiDB, Oracle, CockroachDB, OceanBase |
 | DB API 2.0 | Function that returns a PEP 249 connection      | SQLite and SQL drivers (`sqlite3`, `psycopg2`, `pymysql`, `oracledb`) |
 | Django ORM | Django connection callable                      | Django applications                                                   |
 | MongoDB    | Function that returns a MongoDB database object | MongoDB via `pymongo`                                                 |
@@ -132,6 +136,23 @@ from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
     "mysql+pymysql://user:password@localhost:3306/mydb"
+)
+SessionLocal = sessionmaker(bind=engine)
+
+from memori import Memori
+mem = Memori(conn=SessionLocal)
+```
+
+```python {{ title: 'TiDB (SQLAlchemy)' }}
+import certifi
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "mysql+pymysql://user:password@host:4000/mydb?charset=utf8mb4",
+    connect_args={"ssl": {"ca": certifi.where()}},
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 SessionLocal = sessionmaker(bind=engine)
 
