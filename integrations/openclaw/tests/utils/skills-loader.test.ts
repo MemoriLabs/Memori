@@ -26,7 +26,9 @@ describe('utils/skills-loader', () => {
 
   it('should return the file contents when the file exists', async () => {
     const { readFileSync } = await import('fs');
-    vi.mocked(readFileSync).mockReturnValue('# Memori Skills\n\nUse memori_recall to fetch memories.');
+    vi.mocked(readFileSync).mockReturnValue(
+      '# Memori Skills\n\nUse memori_recall to fetch memories.'
+    );
 
     const result = loadSkillsContent(mockResolvePath);
 

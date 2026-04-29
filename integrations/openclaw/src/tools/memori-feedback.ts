@@ -28,18 +28,25 @@ export function createMemoriFeedbackTool(deps: ToolDeps) {
     ) {
       try {
         logger.info(`memori_feedback sending: ${params.content}`);
-        
+
         const client = createRecallClient(config.apiKey, config.entityId);
         await client.agentFeedback(params.content);
-        
+
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ success: true, message: 'Feedback sent successfully.' }) }],
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({ success: true, message: 'Feedback sent successfully.' }),
+            },
+          ],
           details: null,
         };
       } catch (e) {
         logger.warn(`memori_feedback failed: ${String(e)}`);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Feedback failed to send.' }) }],
+          content: [
+            { type: 'text' as const, text: JSON.stringify({ error: 'Feedback failed to send.' }) },
+          ],
           details: null,
         };
       }

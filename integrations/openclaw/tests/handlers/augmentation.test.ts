@@ -400,7 +400,9 @@ describe('handlers/augmentation', () => {
 
       await handleAugmentation(event, ctx, config, mockLogger);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Missing user or assistant'));
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Missing user or assistant')
+      );
     });
 
     it('should skip when assistant has empty content and no tool calls', async () => {
@@ -412,7 +414,9 @@ describe('handlers/augmentation', () => {
 
       await handleAugmentation(event, ctx, config, mockLogger);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Missing user or assistant'));
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Missing user or assistant')
+      );
     });
 
     it('should log stringified non-Error values thrown in catch block', async () => {

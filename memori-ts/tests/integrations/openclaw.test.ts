@@ -86,9 +86,7 @@ describe('OpenClawIntegration', () => {
 
   describe('agentFeedback()', () => {
     it('should delegate to executeAgentFeedback with the provided content', async () => {
-      const spy = vi
-        .spyOn(openclaw as any, 'executeAgentFeedback')
-        .mockResolvedValue(undefined);
+      const spy = vi.spyOn(openclaw as any, 'executeAgentFeedback').mockResolvedValue(undefined);
 
       await openclaw.agentFeedback('this is great');
 

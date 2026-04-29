@@ -100,10 +100,9 @@ describe('cli/config-file', () => {
 
       writePluginConfig({ apiKey: 'new-key', entityId: 'new-entity', projectId: 'new-project' });
 
-      expect(mkdirSync).toHaveBeenCalledWith(
-        expect.stringContaining('.openclaw'),
-        { recursive: true }
-      );
+      expect(mkdirSync).toHaveBeenCalledWith(expect.stringContaining('.openclaw'), {
+        recursive: true,
+      });
       const written = JSON.parse(vi.mocked(writeFileSync).mock.calls[0][1] as string);
       expect(written.plugins.entries[PLUGIN_ID].config).toEqual({
         apiKey: 'new-key',
