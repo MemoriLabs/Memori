@@ -1,6 +1,8 @@
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const env = { ...process.env };
+const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const args = ['napi', 'build', '--platform', '--release', ...process.argv.slice(2)];
 
 // NAPI-RS forces static C-Runtime on Windows by default.
 // We must override it to dynamic (-crt-static) so that ort-sys and tokenizers
@@ -14,7 +16,7 @@ if (process.platform === 'win32') {
 
 try {
   // Execute the standard NAPI build command with our modified environment
-  execSync('npx napi build --platform --release', { env, stdio: 'inherit' });
+  execFileSync(npx, args, { env, stdio: 'inherit' });
 } catch (error) {
   process.exit(1);
 }
