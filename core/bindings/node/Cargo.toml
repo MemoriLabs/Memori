@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 dashmap = "6.1.0"
-engine-orchestrator = { path = "../.." }
+engine-orchestrator = { path = "../..", default-features = false, features = ["ort-load-dynamic"] }
 napi = { workspace = true, features = ["napi8", "tokio_rt", "async"] }
 napi-derive.workspace = true
 serde = { version = "1.0.228", features = ["derive"] }

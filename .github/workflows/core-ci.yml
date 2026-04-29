@@ -126,6 +126,8 @@ jobs:
         include:
           - arch: arm64_v8a
             rust-target: aarch64-linux-android
+          - arch: x86_64
+            rust-target: x86_64-linux-android
     steps:
       - uses: actions/checkout@v5
 
@@ -171,6 +173,7 @@ jobs:
           fi
           echo "ANDROID_NDK_HOME=$ndk_dir" >> "$GITHUB_ENV"
           echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang" >> "$GITHUB_ENV"
 
       - name: Build Android abi3 wheel via cibuildwheel
         uses: pypa/cibuildwheel@v3.4.0
@@ -183,6 +186,7 @@ jobs:
             PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
             CARGO_BUILD_TARGET=${{ matrix.rust-target }}
             CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"
+            CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER"
           # Android pip cannot resolve all memori runtime dependencies as
           # android-tagged wheels yet, so keep this job focused on wheel build.
           CIBW_TEST_SKIP: "*-android_*"
