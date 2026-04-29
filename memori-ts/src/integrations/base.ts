@@ -150,4 +150,18 @@ export abstract class BaseIntegration {
       return undefined;
     }
   }
+
+  /**
+   * Internal helper: Sends feedback directly to the Memori team.
+   *
+   * @param content - The feedback text
+   * @internal
+   */
+  protected async executeAgentFeedback(content: string): Promise<void> {
+    try {
+      return await this.core.defaultApi.post('agent/feedback', { content });
+    } catch (e) {
+      console.warn('Memori Agent Feedback failed:', e);
+    }
+  }
 }

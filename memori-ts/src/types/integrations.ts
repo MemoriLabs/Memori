@@ -5,6 +5,7 @@ import { RecallEngine } from '../engines/recall.js';
 import { PersistenceEngine } from '../engines/persistence.js';
 import { AugmentationEngine } from '../engines/augmentation.js';
 import type { OpenClawIntegration } from '../integrations/openclaw.js';
+import { Api } from '../core/network.js';
 
 /**
  * Internal dependency injection container passed to framework integrations.
@@ -18,6 +19,8 @@ export interface MemoriCore {
   config: Config;
   session: SessionManager;
   project: ProjectManager;
+  defaultApi: Api;
+  collectorApi: Api;
 }
 
 /**

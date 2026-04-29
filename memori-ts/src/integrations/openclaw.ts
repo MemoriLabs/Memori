@@ -59,7 +59,6 @@ export class OpenClawIntegration extends BaseIntegration {
    * @throws Does not throw - errors are logged but swallowed, returns undefined on failure
    */
   public async recall(promptText: string): Promise<string | undefined> {
-    console.log('agent recall promptText', promptText);
     return this.executeRecall(promptText);
   }
 
@@ -74,7 +73,6 @@ export class OpenClawIntegration extends BaseIntegration {
    * @throws Does not throw - errors are logged but swallowed to prevent disrupting the agent
    */
   public async agentRecall(params?: AgentRecallParams): Promise<AgentRecallResponse> {
-    console.log('agent recall params', JSON.stringify(params, null, 2));
     return this.executeAgentRecall(params);
   }
 
@@ -91,7 +89,16 @@ export class OpenClawIntegration extends BaseIntegration {
   public async agentRecallSummary(
     params?: AgentRecallSummaryParams
   ): Promise<AgentRecallSummaryResponse> {
-    console.log('agent recall summary params', JSON.stringify(params, null, 2));
     return this.executeAgentRecallSummary(params);
+  }
+
+  /**
+   * Sends feedback directly to the Memori team.
+   *
+   * @param content - The feedback text
+   * @returns Promise that resolves when feedback is sent
+   */
+  public async agentFeedback(content: string): Promise<void> {
+    await this.executeAgentFeedback(content);
   }
 }

@@ -38,6 +38,16 @@ Use these to search your memory explicitly:
 
 ---
 
+### Feedback Tool
+
+You can send feedback directly to the Memori team on behalf of yourself or the user! We encourage you to share both positive and negative feedback—tell us about bugs, suggest things to fix, feature requests, or just tell us you love us. If you encounter an error when interacting with Memori or notice the user struggling, proactively use this tool to report it.
+
+**`memori_feedback`** — Send feedback, suggestions, or issues directly to the Memori team.
+
+| Parameter | Type   | Description                                                              |
+| --------- | ------ | ------------------------------------------------------------------------ |
+| `content` | string | **Required.** The feedback text to send (positive, negative, bugs, etc.) |
+
 ### Memory Scoping
 
 All memories are scoped to the current `entityId` and `projectId`. The current project is applied by default — you only need to pass `projectId` when explicitly overriding it for a cross-project lookup.

@@ -20,6 +20,8 @@ describe('OpenClawIntegration', () => {
         id: null,
         set: vi.fn().mockReturnThis(),
       },
+      defaultApi: { post: vi.fn().mockResolvedValue(undefined) },
+      collectorApi: { post: vi.fn().mockResolvedValue(undefined) },
     } as unknown as MemoriCore;
 
     openclaw = new OpenClawIntegration(mockCore);
@@ -79,6 +81,28 @@ describe('OpenClawIntegration', () => {
 
       expect(spy).toHaveBeenCalledWith('prompt text');
       expect(result).toBe(mockMemoryContext);
+    });
+  });
+
+  describe('agentFeedback()', () => {
+    it('should delegate to executeAgentFeedback with the provided content', async () => {
+      const spy = vi
+        .spyOn(openclaw as any, 'executeAgentFeedback')
+        .mockResolvedValue(undefined);
+
+      await openclaw.agentFeedback('this is great');
+
+      expect(spy).toHaveBeenCalledWith('this is great');
+    });
+
+    it('should log the feedback content before sending', async () => {
+      vi.spyOn(openclaw as any, 'executeAgentFeedback').mockResolvedValue(undefined);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await openclaw.agentFeedback('please add feature X');
+
+      expect(logSpy).toHaveBeenCalledWith('agent feedback', 'please add feature X');
+      logSpy.mockRestore();
     });
   });
 });

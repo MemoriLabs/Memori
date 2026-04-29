@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { Memori } from '../src/memori.js';
 import { SessionManager } from '../src/core/session.js';
 import { Config } from '../src/core/config.js';
+import { BaseIntegration } from '../src/integrations/base.js';
+import type { MemoriCore } from '../src/types/integrations.js';
+import { Api } from '../src/core/network.js';
 
 // Mock the storage manager so we don't need real DB adapters in unit tests
 vi.mock('../src/storage/manager.js', () => ({
@@ -75,5 +78,22 @@ describe('Memori SDK', () => {
 
     expect(waitSpy).toHaveBeenCalledWith(100);
     expect(ok).toBe(true);
+  });
+
+  it('should pass defaultApi and collectorApi to the integration core', () => {
+    let capturedCore: MemoriCore | undefined;
+
+    class SpyIntegration extends BaseIntegration {
+      constructor(core: MemoriCore) {
+        super(core);
+        capturedCore = core;
+      }
+    }
+
+    const memori = new Memori();
+    memori.integrate(SpyIntegration as any);
+
+    expect(capturedCore!.defaultApi).toBeInstanceOf(Api);
+    expect(capturedCore!.collectorApi).toBeInstanceOf(Api);
   });
 });

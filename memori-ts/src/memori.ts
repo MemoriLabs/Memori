@@ -195,6 +195,8 @@ export class Memori {
       config: this.config,
       session: this.session,
       project: this.projectManager,
+      defaultApi: this.api,
+      collectorApi: this.collectorApi,
     });
   }
 }

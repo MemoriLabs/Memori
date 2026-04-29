@@ -10,6 +10,7 @@ import { LLMRequest, LLMResponse } from '@memorilabs/axon';
 describe('AugmentationEngine', () => {
   let engine: AugmentationEngine;
   let mockApi: Api;
+  let mockCollectorApi: Api;
   let mockConfig: Config;
   let mockSession: SessionManager;
   let mockProject: ProjectManager;
@@ -17,6 +18,7 @@ describe('AugmentationEngine', () => {
 
   beforeEach(() => {
     mockApi = { post: vi.fn().mockResolvedValue({}) } as unknown as Api;
+    mockCollectorApi = { post: vi.fn().mockResolvedValue({}) } as unknown as Api;
     mockConfig = {
       entityId: 'u-1',
       processId: 'p-1',
@@ -31,6 +33,7 @@ describe('AugmentationEngine', () => {
 
     engine = new AugmentationEngine(
       mockApi,
+      mockCollectorApi,
       mockNativeEngine,
       mockConfig,
       mockSession,
@@ -131,7 +134,7 @@ describe('AugmentationEngine', () => {
       await engine.handleAgentAugmentation(req, res, mockCtx);
       await new Promise(process.nextTick);
 
-      const augCall = (mockApi.post as any).mock.calls.find(
+      const augCall = (mockCollectorApi.post as any).mock.calls.find(
         (c: any) => c[0] === 'agent/augmentation'
       );
       expect(augCall[1].attribution).toEqual({
@@ -144,7 +147,7 @@ describe('AugmentationEngine', () => {
       await engine.handleAgentAugmentation(req, res, mockCtx);
       await new Promise(process.nextTick);
 
-      const augCall = (mockApi.post as any).mock.calls.find(
+      const augCall = (mockCollectorApi.post as any).mock.calls.find(
         (c: any) => c[0] === 'agent/augmentation'
       );
       expect(augCall[1].meta).not.toHaveProperty('attribution');
@@ -154,7 +157,7 @@ describe('AugmentationEngine', () => {
       await engine.handleAgentAugmentation(req, res, mockCtx);
       await new Promise(process.nextTick);
 
-      const augCall = (mockApi.post as any).mock.calls.find(
+      const augCall = (mockCollectorApi.post as any).mock.calls.find(
         (c: any) => c[0] === 'agent/augmentation'
       );
       expect(augCall[1].project).toEqual({ id: 'proj-1' });
@@ -164,7 +167,7 @@ describe('AugmentationEngine', () => {
       await engine.handleAgentAugmentation(req, res, mockCtx, null, 'turn summary');
       await new Promise(process.nextTick);
 
-      const augCall = (mockApi.post as any).mock.calls.find(
+      const augCall = (mockCollectorApi.post as any).mock.calls.find(
         (c: any) => c[0] === 'agent/augmentation'
       );
       expect(augCall[1].session).toEqual({ id: 'sess-1', summary: 'turn summary' });
@@ -174,7 +177,7 @@ describe('AugmentationEngine', () => {
       await engine.handleAgentAugmentation(req, res, mockCtx);
       await new Promise(process.nextTick);
 
-      const augCall = (mockApi.post as any).mock.calls.find(
+      const augCall = (mockCollectorApi.post as any).mock.calls.find(
         (c: any) => c[0] === 'agent/augmentation'
       );
       expect(augCall[1].session.summary).toBeNull();

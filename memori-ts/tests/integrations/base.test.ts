@@ -11,6 +11,9 @@ class TestIntegration extends BaseIntegration {
   public testRecall(userMessage: string) {
     return this.executeRecall(userMessage);
   }
+  public testAgentFeedback(content: string) {
+    return this.executeAgentFeedback(content);
+  }
 }
 
 describe('BaseIntegration', () => {
@@ -26,6 +29,8 @@ describe('BaseIntegration', () => {
       config: { entityId: 'test-user', processId: 'test-process' },
       session: { id: 'test-session-id' },
       project: { id: 'test-project-id', set: vi.fn() },
+      defaultApi: { post: vi.fn().mockResolvedValue(undefined) },
+      collectorApi: { post: vi.fn().mockResolvedValue(undefined) },
     } as unknown as MemoriCore;
 
     integration = new TestIntegration(mockCore);
@@ -156,6 +161,27 @@ describe('BaseIntegration', () => {
       expect(result).toBeUndefined();
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Memori Integration Recall failed:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('executeAgentFeedback()', () => {
+    it('should POST to agent/feedback with the provided content', async () => {
+      await integration.testAgentFeedback('great product!');
+
+      expect(mockCore.defaultApi.post).toHaveBeenCalledWith('agent/feedback', {
+        content: 'great product!',
+      });
+    });
+
+    it('should swallow errors and log a warning on failure', async () => {
+      (mockCore.defaultApi.post as any).mockRejectedValue(new Error('Network error'));
+
+      await expect(integration.testAgentFeedback('oops')).resolves.toBeUndefined();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Memori Agent Feedback failed:',
         expect.any(Error)
       );
     });
