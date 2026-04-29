@@ -17,7 +17,6 @@
       "aarch64-apple-darwin",
       "x86_64-apple-darwin",
       "aarch64-linux-android",
-      "armv7-linux-androideabi",
       "x86_64-pc-windows-msvc"
     ]
   },

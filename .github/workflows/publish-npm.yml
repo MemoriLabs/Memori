@@ -34,9 +34,6 @@ jobs:
           - os: ubuntu-latest
             artifact-name: android-arm64
             rust-target: aarch64-linux-android
-          - os: ubuntu-latest
-            artifact-name: android-arm-eabi
-            rust-target: armv7-linux-androideabi
 
     steps:
       - name: Checkout repository
@@ -88,7 +85,6 @@ jobs:
           fi
           echo "ANDROID_NDK_HOME=$ndk_dir" >> "$GITHUB_ENV"
           echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang" >> "$GITHUB_ENV"
-          echo "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang" >> "$GITHUB_ENV"
 
       - name: Set Windows C/C++ dynamic CRT flags
         if: runner.os == 'Windows'
