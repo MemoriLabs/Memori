@@ -11,6 +11,7 @@ vi.mock('../../src/sanitizer.js', () => ({
     return '';
   }),
   isSystemMessage: vi.fn(() => false),
+  extractContentType: vi.fn(() => 'text'),
 }));
 
 vi.mock('../../src/utils/index.js', () => ({
@@ -113,8 +114,8 @@ describe('handlers/augmentation', () => {
       const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
       expect(client.augmentation).toHaveBeenCalledWith(
         expect.objectContaining({
-          userMessage: 'Hello',
-          agentResponse: 'Hi',
+          userMessage: expect.objectContaining({ content: 'Hello' }),
+          agentResponse: expect.objectContaining({ content: 'Hi' }),
         })
       );
 
@@ -202,7 +203,7 @@ describe('handlers/augmentation', () => {
       const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
       expect(client.augmentation).toHaveBeenCalledWith(
         expect.objectContaining({
-          agentResponse: MESSAGE_CONSTANTS.SYNTHETIC_RESPONSE,
+          agentResponse: expect.objectContaining({ content: MESSAGE_CONSTANTS.SYNTHETIC_RESPONSE }),
         })
       );
     });
@@ -271,7 +272,7 @@ describe('handlers/augmentation', () => {
 
       const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
       expect(client.augmentation).toHaveBeenCalledWith(
-        expect.objectContaining({ agentResponse: 'Four' })
+        expect.objectContaining({ agentResponse: expect.objectContaining({ content: 'Four' }) })
       );
     });
 
@@ -289,7 +290,9 @@ describe('handlers/augmentation', () => {
 
       const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
       expect(client.augmentation).toHaveBeenCalledWith(
-        expect.objectContaining({ agentResponse: MESSAGE_CONSTANTS.SYNTHETIC_RESPONSE })
+        expect.objectContaining({
+          agentResponse: expect.objectContaining({ content: MESSAGE_CONSTANTS.SYNTHETIC_RESPONSE }),
+        })
       );
     });
   });
@@ -455,8 +458,8 @@ describe('handlers/augmentation', () => {
       const client = vi.mocked(initializeMemoriClient).mock.results[0].value as any;
       expect(client.augmentation).toHaveBeenCalledWith(
         expect.objectContaining({
-          userMessage: 'included user message',
-          agentResponse: 'included assistant response',
+          userMessage: expect.objectContaining({ content: 'included user message' }),
+          agentResponse: expect.objectContaining({ content: 'included assistant response' }),
         })
       );
     });
