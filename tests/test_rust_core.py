@@ -156,6 +156,51 @@ def test_normalize_model_name_default_alias():
     )
 
 
+def test_maybe_create_defers_engine_import(mocker):
+    config = Config()
+    config.byodb = True
+    config.use_rust_core = True
+    config.storage = SimpleNamespace(conn_factory=object)
+    import_memori_python = mocker.patch("memori._rust_core._try_import_memori_python")
+
+    adapter = _rust_core.RustCoreAdapter.maybe_create(config)
+
+    assert adapter is not None
+    assert adapter._engine is None
+    import_memori_python.assert_not_called()
+
+
+def test_retrieve_facts_initializes_engine_on_first_use(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    engine = mocker.Mock()
+    engine.retrieve.return_value = "[]"
+    adapter = _rust_core.RustCoreAdapter(config=config)
+    create_engine = mocker.patch.object(adapter, "_create_engine", return_value=engine)
+
+    assert (
+        adapter.retrieve_facts(
+            query="hello",
+            entity_id="entity-1",
+            limit=5,
+            dense_limit=10,
+        )
+        == []
+    )
+
+    create_engine.assert_called_once_with()
+    engine.retrieve.assert_called_once()
+
+
+def test_wait_for_augmentation_does_not_initialize_idle_engine(mocker):
+    config = Config()
+    adapter = _rust_core.RustCoreAdapter(config=config)
+    create_engine = mocker.patch.object(adapter, "_create_engine")
+
+    assert adapter.wait_for_augmentation(timeout=1.25) is True
+    create_engine.assert_not_called()
+
+
 def test_submit_augmentation_sends_live_request_payload(mocker):
     config = Config()
     config.framework.provider = "langchain"
