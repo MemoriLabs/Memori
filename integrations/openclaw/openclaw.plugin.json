@@ -1,12 +1,12 @@
 {
   "id": "openclaw-memori",
   "name": "Memori System",
-  "version": "0.0.2",
+  "version": "0.0.8",
   "description": "Hosted memory backend",
   "kind": "memory",
   "main": "dist/index.js",
   "contracts": {
-    "tools": ["memori_recall", "memori_recall_summary"]
+    "tools": ["memori_recall", "memori_recall_summary", "memori_feedback"]
   },
   "uiHints": {
     "apiKey": {
