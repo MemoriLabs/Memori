@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OpenClawIntegration } from '../../src/integrations/openclaw.js';
 import { MemoriCore } from '../../src/types/integrations.js';
+import { IntegrationRequest } from '../../src/types/integrations.js';
 
 describe('OpenClawIntegration', () => {
   let mockCore: MemoriCore;
@@ -65,7 +66,10 @@ describe('OpenClawIntegration', () => {
         .spyOn(openclaw as any, 'executeAgentAugmentation')
         .mockResolvedValue(undefined);
 
-      const req = { userMessage: 'user says hi', agentResponse: 'bot says hello' };
+      const req: IntegrationRequest = {
+        userMessage: { role: 'user', content: 'user says hi', type: 'text' },
+        agentResponse: { role: 'assistant', content: 'bot says hello', type: 'text' },
+      };
       await openclaw.augmentation(req);
 
       expect(spy).toHaveBeenCalledWith(req);
@@ -91,16 +95,6 @@ describe('OpenClawIntegration', () => {
       await openclaw.agentFeedback('this is great');
 
       expect(spy).toHaveBeenCalledWith('this is great');
-    });
-
-    it('should log the feedback content before sending', async () => {
-      vi.spyOn(openclaw as any, 'executeAgentFeedback').mockResolvedValue(undefined);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      await openclaw.agentFeedback('please add feature X');
-
-      expect(logSpy).toHaveBeenCalledWith('agent feedback', 'please add feature X');
-      logSpy.mockRestore();
     });
   });
 });

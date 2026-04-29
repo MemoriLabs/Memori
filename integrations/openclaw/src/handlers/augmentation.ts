@@ -1,4 +1,8 @@
-import { IntegrationRequest, IntegrationMetadata } from '@memorilabs/memori/integrations';
+import {
+  IntegrationRequest,
+  IntegrationMetadata,
+  IntegrationMessage,
+} from '@memorilabs/memori/integrations';
 import {
   OpenClawEvent,
   OpenClawContext,
@@ -8,9 +12,10 @@ import {
   ParsedTurn,
 } from '../types.js';
 import { extractContext, MemoriLogger, initializeMemoriClient } from '../utils/index.js';
-import { cleanText, isSystemMessage } from '../sanitizer.js';
+import { cleanText, extractContentType, isSystemMessage } from '../sanitizer.js';
 import { AUGMENTATION_CONFIG, MESSAGE_CONSTANTS, ROLE } from '../constants.js';
 import { SDK_VERSION } from '../version.js';
+import { Role } from '@memorilabs/axon';
 
 /**
  * Extracts metadata about the LLM provider and model used during the turn.
@@ -97,9 +102,11 @@ function extractToolCalls(
 /**
  * Parses a user message, extracting the cleaned content.
  */
-function parseUserMessage(msg: OpenClawMessage): { role: string; content: string } | null {
+function parseUserMessage(msg: OpenClawMessage): IntegrationMessage | null {
   const cleanedContent = cleanText(msg.content);
-  return cleanedContent ? { role: msg.role, content: cleanedContent } : null;
+  return cleanedContent
+    ? { role: msg.role as Role, content: cleanedContent, type: extractContentType(msg.content) }
+    : null;
 }
 
 /**
@@ -111,8 +118,8 @@ function parseTurnFromMessages(messages: OpenClawMessage[]): ParsedTurn {
   const tools: ExtractedToolCall[] = [];
   const toolResults = extractToolResults(messages);
 
-  let userMessage = null;
-  let assistantMessage = null;
+  let userMessage: IntegrationMessage | null = null;
+  let assistantMessage: IntegrationMessage | null = null;
 
   // Walk backwards to find the last complete turn
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -133,9 +140,14 @@ function parseTurnFromMessages(messages: OpenClawMessage[]): ParsedTurn {
           assistantMessage = {
             role: msg.role,
             content: cleanedContent.replace(/^\[\[.*?\]\]\s*/, ''),
+            type: extractContentType(msg.content),
           };
         } else if (extractedTools.length > 0) {
-          assistantMessage = { role: msg.role, content: MESSAGE_CONSTANTS.SILENT_REPLY };
+          assistantMessage = {
+            role: msg.role,
+            content: MESSAGE_CONSTANTS.SILENT_REPLY,
+            type: extractContentType(msg.content),
+          };
         }
       }
     } else if (msg.role === ROLE.USER) {
@@ -151,8 +163,8 @@ function parseTurnFromMessages(messages: OpenClawMessage[]): ParsedTurn {
  * Builds the augmentation payload to send to Memori backend.
  */
 function buildAugmentationPayload(
-  userMessage: string,
-  agentResponse: string,
+  userMessage: IntegrationMessage,
+  agentResponse: IntegrationMessage,
   tools: ExtractedToolCall[],
   event: OpenClawEvent
 ): IntegrationRequest {
@@ -218,8 +230,8 @@ export async function handleAugmentation(
     }
 
     const payload = buildAugmentationPayload(
-      turn.userMessage.content,
-      turn.assistantMessage.content,
+      turn.userMessage,
+      turn.assistantMessage,
       turn.tools,
       event
     );

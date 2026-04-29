@@ -23,11 +23,13 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         },
         dateStart: {
           type: 'string',
-          description: 'ISO 8601 date string to filter memories created on or after this time',
+          description:
+            'ISO 8601 (MUST be UTC) date string to filter memories created on or after this time',
         },
         dateEnd: {
           type: 'string',
-          description: 'ISO 8601 date string to filter memories created on or before this time',
+          description:
+            'ISO 8601 (MUST be UTC) date string to filter memories created on or before this time',
         },
         projectId: {
           type: 'string',
@@ -69,6 +71,7 @@ export function createMemoriRecallTool(deps: ToolDeps) {
           ],
         },
       },
+      // Force the LLM to ALWAYS provide a search query
       required: ['query'],
     },
 
@@ -76,7 +79,6 @@ export function createMemoriRecallTool(deps: ToolDeps) {
       _toolCallId: string,
       params: {
         query: string;
-        limit?: number;
         dateStart?: string;
         dateEnd?: string;
         projectId?: string;
@@ -91,13 +93,10 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         const finalParams = { projectId: config.projectId, ...params };
 
         if (finalParams.sessionId && !finalParams.projectId) {
+          const errorResult = { error: 'sessionId cannot be provided without projectId' };
+          logger.warn(`memori_recall rejected: ${JSON.stringify(errorResult)}`);
           return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: 'sessionId cannot be provided without projectId' }),
-              },
-            ],
+            content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
             details: null,
           };
         }
@@ -105,14 +104,16 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         logger.info(`memori_recall params: ${JSON.stringify(finalParams)}`);
         const client = createRecallClient(config.apiKey, config.entityId);
         const result = await client.agentRecall(finalParams);
+
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result) }],
           details: null,
         };
       } catch (e) {
         logger.warn(`memori_recall failed: ${String(e)}`);
+        const errorResult = { error: 'Recall failed' };
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Recall failed' }) }],
+          content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
           details: null,
         };
       }

@@ -14,11 +14,13 @@ export function createMemoriRecallSummaryTool(deps: ToolDeps) {
       properties: {
         dateStart: {
           type: 'string',
-          description: 'ISO 8601 date string to filter summaries created on or after this time',
+          description:
+            'ISO 8601 (MUST be UTC) date string to filter summaries created on or after this time',
         },
         dateEnd: {
           type: 'string',
-          description: 'ISO 8601 date string to filter summaries created on or before this time',
+          description:
+            'ISO 8601 (MUST be UTC) date string to filter summaries created on or before this time',
         },
         projectId: {
           type: 'string',
@@ -45,13 +47,10 @@ export function createMemoriRecallSummaryTool(deps: ToolDeps) {
         const finalParams = { projectId: config.projectId, ...params };
 
         if (finalParams.sessionId && !finalParams.projectId) {
+          const errorResult = { error: 'sessionId cannot be provided without projectId' };
+          logger.warn(`memori_recall_summary rejected: ${JSON.stringify(errorResult)}`);
           return {
-            content: [
-              {
-                type: 'text' as const,
-                text: JSON.stringify({ error: 'sessionId cannot be provided without projectId' }),
-              },
-            ],
+            content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
             details: null,
           };
         }
@@ -59,16 +58,16 @@ export function createMemoriRecallSummaryTool(deps: ToolDeps) {
         logger.info(`memori_recall_summary params: ${JSON.stringify(finalParams)}`);
         const client = createRecallClient(config.apiKey, config.entityId);
         const result = await client.agentRecallSummary(finalParams);
+
         return {
           content: [{ type: 'text' as const, text: JSON.stringify(result) }],
           details: null,
         };
       } catch (e) {
         logger.warn(`memori_recall_summary failed: ${String(e)}`);
+        const errorResult = { error: 'Recall summary failed' };
         return {
-          content: [
-            { type: 'text' as const, text: JSON.stringify({ error: 'Recall summary failed' }) },
-          ],
+          content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
           details: null,
         };
       }

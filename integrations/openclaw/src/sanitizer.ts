@@ -62,6 +62,19 @@ function extractMessageText(content: unknown): string {
   return '';
 }
 
+export function extractContentType(rawContent: unknown): string {
+  if (typeof rawContent === 'string' || !rawContent) return 'text';
+
+  if (isMessageBlockArray(rawContent)) {
+    const primary = rawContent.find(
+      (block) => (block.type === 'text' || typeof block.text === 'string') && block.text
+    );
+    return primary?.type ?? 'text';
+  }
+
+  return 'text';
+}
+
 export function cleanText(rawContent: unknown): string {
   let text = extractMessageText(rawContent);
 

@@ -45,7 +45,10 @@ describe('BaseIntegration', () => {
     it('should silently abort if no session ID is present', async () => {
       (mockCore.session as any).id = undefined;
 
-      const req = { userMessage: 'user msg', agentResponse: 'ai msg' };
+      const req: IntegrationRequest = {
+        userMessage: { role: 'user', content: 'user msg', type: 'text' },
+        agentResponse: { role: 'assistant', content: 'ai msg', type: 'text' },
+      };
 
       await integration.testCapture(req);
 
@@ -55,8 +58,8 @@ describe('BaseIntegration', () => {
 
     it('should format requests and invoke engines, properly passing metadata', async () => {
       const req: IntegrationRequest = {
-        userMessage: 'hello bot',
-        agentResponse: 'hello human',
+        userMessage: { role: 'user', content: 'hello bot', type: 'text' },
+        agentResponse: { role: 'assistant', content: 'hello human', type: 'text' },
         metadata: {
           provider: 'openclaw',
           model: 'gpt-4o',
@@ -69,11 +72,12 @@ describe('BaseIntegration', () => {
       await integration.testCapture(req);
 
       const expectedReq = expect.objectContaining({
-        messages: [{ role: 'user', content: 'hello bot' }],
+        messages: [{ role: 'user', content: 'hello bot', type: 'text' }],
         model: 'gpt-4o',
       });
       const expectedRes = expect.objectContaining({
         content: 'hello human',
+        type: 'text',
       });
       const expectedCtx = expect.objectContaining({
         traceId: expect.stringContaining('integration-trace-'),
@@ -97,7 +101,10 @@ describe('BaseIntegration', () => {
         new Error('Persistence failed')
       );
 
-      const req = { userMessage: 'msg', agentResponse: 'resp' };
+      const req: IntegrationRequest = {
+        userMessage: { role: 'user', content: 'msg', type: 'text' },
+        agentResponse: { role: 'assistant', content: 'resp', type: 'text' },
+      };
 
       // Should not throw
       await expect(integration.testCapture(req)).resolves.toBeUndefined();

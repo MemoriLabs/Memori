@@ -32,21 +32,20 @@ export function createMemoriFeedbackTool(deps: ToolDeps) {
         const client = createRecallClient(config.apiKey, config.entityId);
         await client.agentFeedback(params.content);
 
+        const result = { success: true, message: 'Feedback sent successfully.' };
+
         return {
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({ success: true, message: 'Feedback sent successfully.' }),
-            },
-          ],
+          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
           details: null,
         };
       } catch (e) {
         logger.warn(`memori_feedback failed: ${String(e)}`);
+        const errorResult = { error: 'Feedback failed to send.' };
+
+        logger.info(`memori_feedback error result: ${JSON.stringify(errorResult)}`);
+
         return {
-          content: [
-            { type: 'text' as const, text: JSON.stringify({ error: 'Feedback failed to send.' }) },
-          ],
+          content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
           details: null,
         };
       }

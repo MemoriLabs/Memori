@@ -44,9 +44,9 @@ describe('AugmentationEngine', () => {
   describe('handleAugmentation()', () => {
     it('should trigger API post on handleAugmentation', async () => {
       const req = {
-        messages: [{ role: 'user', content: 'learn this' }],
+        messages: [{ role: 'user', content: 'learn this', type: 'text' }],
       } as unknown as LLMRequest;
-      const res = { content: 'ok' } as LLMResponse;
+      const res = { content: 'ok', type: 'text' } as LLMResponse;
 
       const mockCtx = {
         traceId: '123',
@@ -66,8 +66,8 @@ describe('AugmentationEngine', () => {
         expect.objectContaining({
           conversation: expect.objectContaining({
             messages: [
-              { role: 'user', content: 'learn this' },
-              { role: 'assistant', content: 'ok' },
+              { role: 'user', content: 'learn this', type: 'text' },
+              { role: 'assistant', content: 'ok', type: 'text' },
             ],
           }),
         })
@@ -78,9 +78,9 @@ describe('AugmentationEngine', () => {
       (mockNativeEngine as any).hasStorage = true;
 
       const req = {
-        messages: [{ role: 'user', content: 'learn this' }],
+        messages: [{ role: 'user', content: 'learn this', type: 'text' }],
       } as unknown as LLMRequest;
-      const res = { content: 'ok' } as LLMResponse;
+      const res = { content: 'ok', type: 'text' } as LLMResponse;
       const mockCtx = { metadata: {} } as any;
 
       await engine.handleAugmentation(req, res, mockCtx);
@@ -89,8 +89,8 @@ describe('AugmentationEngine', () => {
       expect(mockNativeEngine.submitAugmentation).toHaveBeenCalledWith(
         expect.objectContaining({
           conversation_messages: [
-            { role: 'user', content: 'learn this' },
-            { role: 'assistant', content: 'ok' },
+            { role: 'user', content: 'learn this', type: 'text' },
+            { role: 'assistant', content: 'ok', type: 'text' },
           ],
         })
       );
@@ -101,9 +101,9 @@ describe('AugmentationEngine', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const req = {
-        messages: [{ role: 'user', content: 'hi' }],
+        messages: [{ role: 'user', content: 'hi', type: 'text' }],
       } as unknown as LLMRequest;
-      const res = { content: 'ho' } as LLMResponse;
+      const res = { content: 'ho', type: 'text' } as LLMResponse;
 
       const mockCtx = {
         traceId: '123',
@@ -121,9 +121,9 @@ describe('AugmentationEngine', () => {
 
   describe('handleAgentAugmentation()', () => {
     const req = {
-      messages: [{ role: 'user', content: 'hello' }],
+      messages: [{ role: 'user', content: 'hello', type: 'text' }],
     } as unknown as LLMRequest;
-    const res = { content: 'world' } as LLMResponse;
+    const res = { content: 'world', type: 'text' } as LLMResponse;
     const mockCtx = {
       traceId: '123',
       startedAt: new Date(),
@@ -208,8 +208,8 @@ describe('AugmentationEngine', () => {
         (c: any) => c[0] === 'agent/conversation/turn'
       );
       expect(turnCall[1].messages).toEqual([
-        { role: 'user', content: 'hello', type: 'user', trace: null },
-        { role: 'assistant', content: 'world', type: 'assistant', trace },
+        { role: 'user', content: 'hello', type: 'text', trace: null },
+        { role: 'assistant', content: 'world', type: 'text', trace },
       ]);
     });
 

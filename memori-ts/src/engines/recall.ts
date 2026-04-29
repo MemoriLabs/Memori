@@ -7,7 +7,7 @@ import { NativeEngine } from '../core/engine.js';
 import {
   extractFacts,
   extractHistory,
-  extractLastUserMessage,
+  extractLastUserMessageString,
   formatSummariesFromFacts,
   stringifyContent,
 } from '../utils/utils.js';
@@ -162,7 +162,7 @@ export class RecallEngine {
     const sessionId = this.session.id;
     if (!sessionId) return req;
 
-    const userQuery = extractLastUserMessage(req.messages);
+    const userQuery = extractLastUserMessageString(req.messages);
     if (!userQuery) return req;
 
     let facts: ParsedFact[] = [];

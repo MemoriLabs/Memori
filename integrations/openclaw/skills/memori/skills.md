@@ -17,7 +17,6 @@ Use these to search your memory explicitly:
 | Parameter   | Type   | Description                                                                                                                                     |
 | ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `query`     | string | **Required.** A natural language semantic search query (e.g. "dogs"). **DO NOT use wildcards like `*`.**                                        |
-| `limit`     | number | Maximum number of memories to return (default: 10)                                                                                              |
 | `dateStart` | string | ISO 8601 (MUST be UTC) — memories on or after this time                                                                                         |
 | `dateEnd`   | string | ISO 8601 (MUST be UTC) — memories on or before this time                                                                                        |
 | `projectId` | string | CRITICAL: Leave EMPTY to use the current project. ONLY provide a value if the user explicitly names a different project.                        |

@@ -23,12 +23,19 @@ export abstract class BaseIntegration {
    */
   private buildSyntheticPayload(req: IntegrationRequest) {
     const syntheticReq: LLMRequest = {
-      messages: [{ role: 'user', content: req.userMessage }],
+      messages: [
+        {
+          role: req.userMessage.role,
+          content: req.userMessage.content,
+          type: req.userMessage.type ?? 'text',
+        },
+      ],
       model: req.metadata?.model || '',
     };
 
     const syntheticRes: LLMResponse = {
-      content: req.agentResponse,
+      content: req.agentResponse.content,
+      type: req.agentResponse.type ?? 'text',
     };
 
     const syntheticCtx: CallContext = {

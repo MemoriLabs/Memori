@@ -3,7 +3,7 @@ import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { ProjectManager } from '../core/project.js';
-import { extractLastUserMessage } from '../utils/utils.js';
+import { extractLastUserMessageObject } from '../utils/utils.js';
 import { SDK_VERSION } from '../version.js';
 import { AugmentationInput, Trace } from '../types/integrations.js';
 import { NativeEngine } from '../core/engine.js';
@@ -34,12 +34,12 @@ export class AugmentationEngine {
     const sessionId = this.session.id;
     if (!sessionId) return null;
 
-    const lastUserMessage = extractLastUserMessage(req.messages);
+    const lastUserMessage = extractLastUserMessageObject(req.messages);
     if (!lastUserMessage) return null;
 
     const messages = [
-      { role: 'user', content: lastUserMessage },
-      { role: 'assistant', content: res.content },
+      { role: 'user', content: lastUserMessage.content, type: lastUserMessage.type ?? 'text' },
+      { role: 'assistant', content: res.content, type: res.type ?? 'text' },
     ];
 
     return {
@@ -89,48 +89,51 @@ export class AugmentationEngine {
     summary?: string | null
   ): Promise<LLMResponse> {
     const data = this.prepareAugmentationData(req, res, ctx);
-    if (!data) return Promise.resolve(res);
+    if (!data) return res;
 
-    // Route to Rust engine for BYODB processing
     if (this.engine.hasStorage) {
       try {
         this.engine.submitAugmentation(this.buildAugmentationInput(req, ctx, data));
       } catch (e: unknown) {
         if (this.config.testMode) console.warn('Local Agent Augmentation failed:', e);
       }
-      return Promise.resolve(res);
+      return res;
     }
 
     const { attribution, ...metaFields } = data.meta;
+    const [userMsg, assistantMsg] = data.messages;
+
+    const formattedMessages = [
+      {
+        role: userMsg?.role ?? '',
+        content: userMsg?.content ?? '',
+        type: userMsg?.type ?? 'text',
+        trace: null,
+      },
+      {
+        role: assistantMsg?.role ?? '',
+        content: assistantMsg?.content ?? '',
+        type: assistantMsg?.type ?? 'text',
+        trace: trace ?? null,
+      },
+    ];
+
+    const turnPayload = {
+      attribution,
+      messages: formattedMessages,
+      project: { id: this.project.id },
+      session: { id: data.sessionId },
+    };
 
     const agentAugPayload = {
       attribution,
-      conversation: { messages: data.messages },
+      conversation: { messages: formattedMessages },
       meta: metaFields,
       project: { id: this.project.id },
       session: { id: data.sessionId, summary: summary ?? null },
       trace: trace ?? null,
     };
 
-    const [userMsg, assistantMsg] = data.messages;
-
-    const turnPayload = {
-      attribution,
-      messages: [
-        { role: userMsg.role, content: userMsg.content, type: userMsg.role, trace: null },
-        {
-          role: assistantMsg.role,
-          content: assistantMsg.content,
-          type: assistantMsg.role,
-          trace: trace ?? null,
-        },
-      ],
-      project: { id: this.project.id },
-      session: { id: data.sessionId },
-    };
-
-    // Wait for the conversation turn to save successfully,
-    // then dispatch the augmentation payload in the background.
     try {
       await this.defaultApi.post('agent/conversation/turn', turnPayload);
     } catch (e: unknown) {
@@ -142,7 +145,7 @@ export class AugmentationEngine {
       if (this.config.testMode) console.warn('Agent Augmentation failed:', e);
     });
 
-    return Promise.resolve(res);
+    return res;
   }
 
   private buildMeta(req: LLMRequest, ctx: CallContext): Record<string, unknown> {

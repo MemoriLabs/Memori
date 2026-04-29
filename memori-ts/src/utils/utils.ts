@@ -168,8 +168,13 @@ export function extractHistory(response: CloudRecallResponse): unknown[] {
 }
 
 /** @internal */
-export function extractLastUserMessage(messages: Message[]): string | undefined {
+export function extractLastUserMessageString(messages: Message[]): string | undefined {
   return messages.findLast((m) => m.role === 'user')?.content;
+}
+
+/** @internal */
+export function extractLastUserMessageObject(messages: Message[]): Message | undefined {
+  return messages.findLast((m) => m.role === 'user');
 }
 
 /**

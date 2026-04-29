@@ -3,7 +3,7 @@ import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { NativeEngine } from '../core/engine.js';
-import { extractLastUserMessage } from '../utils/utils.js';
+import { extractLastUserMessageString } from '../utils/utils.js';
 import { WriteBatch } from 'src/types/storage.js';
 
 /**
@@ -28,7 +28,7 @@ export class PersistenceEngine {
     const sessionId = this.session.id;
     if (!sessionId) return res;
 
-    const lastUserMessage = extractLastUserMessage(req.messages);
+    const lastUserMessage = extractLastUserMessageString(req.messages);
     if (!lastUserMessage) return res;
 
     if (this.engine.hasStorage && this.config.storage) {

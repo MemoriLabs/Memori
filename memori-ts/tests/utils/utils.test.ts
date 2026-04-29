@@ -4,7 +4,7 @@ import {
   formatDate,
   extractFacts,
   extractHistory,
-  extractLastUserMessage,
+  extractLastUserMessageString,
   formatSummariesFromFacts,
 } from '../../src/utils/utils.js';
 import { Message } from '@memorilabs/axon';
@@ -227,7 +227,7 @@ describe('Utils', () => {
     });
   });
 
-  describe('extractLastUserMessage', () => {
+  describe('extractLastUserMessageString', () => {
     it('should extract the content of the last user message', () => {
       const messages: Message[] = [
         { role: 'user', content: 'first user message' },
@@ -235,7 +235,7 @@ describe('Utils', () => {
         { role: 'user', content: 'second user message' },
         { role: 'system', content: 'system message' },
       ];
-      expect(extractLastUserMessage(messages)).toBe('second user message');
+      expect(extractLastUserMessageString(messages)).toBe('second user message');
     });
 
     it('should return undefined if there are no user messages', () => {
@@ -243,11 +243,11 @@ describe('Utils', () => {
         { role: 'assistant', content: 'assistant reply' },
         { role: 'system', content: 'system message' },
       ];
-      expect(extractLastUserMessage(messages)).toBeUndefined();
+      expect(extractLastUserMessageString(messages)).toBeUndefined();
     });
 
     it('should return undefined for an empty messages array', () => {
-      expect(extractLastUserMessage([])).toBeUndefined();
+      expect(extractLastUserMessageString([])).toBeUndefined();
     });
   });
 });
