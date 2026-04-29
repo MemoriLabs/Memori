@@ -27,7 +27,7 @@ export abstract class BaseIntegration {
         {
           role: req.userMessage.role,
           content: req.userMessage.content,
-          type: req.userMessage.type ?? 'text',
+          type: req.userMessage.type,
         },
       ],
       model: req.metadata?.model || '',
@@ -35,7 +35,7 @@ export abstract class BaseIntegration {
 
     const syntheticRes: LLMResponse = {
       content: req.agentResponse.content,
-      type: req.agentResponse.type ?? 'text',
+      type: req.agentResponse.type,
     };
 
     const syntheticCtx: CallContext = {

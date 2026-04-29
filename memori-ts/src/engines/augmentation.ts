@@ -105,15 +105,15 @@ export class AugmentationEngine {
 
     const formattedMessages = [
       {
-        role: userMsg?.role ?? '',
-        content: userMsg?.content ?? '',
-        type: userMsg?.type ?? 'text',
+        role: userMsg.role,
+        content: userMsg.content,
+        type: userMsg.type,
         trace: null,
       },
       {
-        role: assistantMsg?.role ?? '',
-        content: assistantMsg?.content ?? '',
-        type: assistantMsg?.type ?? 'text',
+        role: assistantMsg.role,
+        content: assistantMsg.content,
+        type: assistantMsg.type,
         trace: trace ?? null,
       },
     ];
