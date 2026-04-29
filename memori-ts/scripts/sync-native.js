@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const RUST_BINDINGS_DIR = path.resolve(ROOT, '../core/bindings/node');
 const SRC_NATIVE = path.resolve(ROOT, 'src/native');
-const DIST_NATIVE = path.resolve(ROOT, 'dist/src/native');
+const DIST_NATIVE = path.resolve(ROOT, 'dist/native');
 
 function copyFolderSync(from, to) {
   if (!fs.existsSync(from)) return;
