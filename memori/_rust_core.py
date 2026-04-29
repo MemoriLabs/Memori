@@ -9,9 +9,10 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import threading
 import time
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.machinery import ExtensionFileLoader
 from pathlib import Path
 from typing import Any
@@ -478,24 +479,17 @@ def _normalize_model_name(model_name: str | None) -> str | None:
 @dataclass
 class RustCoreAdapter:
     config: Any
-    _engine: Any
+    _engine: Any | None = None
+    _engine_error: Exception | None = field(default=None, init=False, repr=False)
+    _engine_lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
 
     @classmethod
     def maybe_create(cls, config: Any) -> "RustCoreAdapter | None":
         if not getattr(config, "byodb", False):
             return None
         if not getattr(config, "use_rust_core", True):
-            return None
-        _try_import_memori_python()
-        try:
-            from memori_python import EngineHandle  # ty: ignore[unresolved-import]
-        except ImportError as exc:
-            logger.warning(
-                "Rust core unavailable, falling back to Python path: %s", exc
-            )
-            return None
-        except Exception:  # noqa: BLE001
-            logger.exception("Unexpected error importing memori_python EngineHandle")
             return None
 
         storage = getattr(config, "storage", None)
@@ -505,15 +499,50 @@ class RustCoreAdapter:
             )
             return None
 
+        return cls(config=config)
+
+    def _create_engine(self) -> Any:
+        _try_import_memori_python()
+        try:
+            from memori_python import EngineHandle  # ty: ignore[unresolved-import]
+        except ImportError as exc:
+            logger.warning(
+                "Rust core unavailable, falling back to Python path: %s", exc
+            )
+            raise RustCoreAdapterError("Rust core is unavailable") from exc
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Unexpected error importing memori_python EngineHandle")
+            raise RustCoreAdapterError("Rust core import failed") from exc
+
         engine = EngineHandle(
             _normalize_model_name(
-                getattr(getattr(config, "embeddings", None), "model", None)
+                getattr(getattr(self.config, "embeddings", None), "model", None)
             ),
-            cls._fetch_embeddings_cb(config),
-            cls._fetch_facts_by_ids_cb(config),
-            cls._write_batch_cb(config),
+            self._fetch_embeddings_cb(self.config),
+            self._fetch_facts_by_ids_cb(self.config),
+            self._write_batch_cb(self.config),
         )
-        return cls(config=config, _engine=engine)
+        return engine
+
+    @property
+    def _active_engine(self) -> Any:
+        if self._engine is not None:
+            return self._engine
+        if self._engine_error is not None:
+            raise self._engine_error
+
+        with self._engine_lock:
+            if self._engine is not None:
+                return self._engine
+            if self._engine_error is not None:
+                raise self._engine_error
+
+            try:
+                self._engine = self._create_engine()
+            except Exception as exc:  # noqa: BLE001
+                self._engine_error = exc
+                raise
+            return self._engine
 
     def retrieve_facts(
         self,
@@ -529,7 +558,7 @@ class RustCoreAdapter:
             "dense_limit": dense_limit,
             "limit": limit,
         }
-        data = self._engine.retrieve(json.dumps(payload))
+        data = self._active_engine.retrieve(json.dumps(payload))
         parsed = _parse_json(data, "retrieve response")
         if not isinstance(parsed, list):
             raise RustCoreAdapterError("retrieve response must be a JSON list")
@@ -549,7 +578,7 @@ class RustCoreAdapter:
             "dense_limit": dense_limit,
             "limit": limit,
         }
-        return self._engine.recall(json.dumps(payload))
+        return self._active_engine.recall(json.dumps(payload))
 
     def submit_augmentation(
         self,
@@ -591,7 +620,7 @@ class RustCoreAdapter:
             logger.debug(
                 "submit_augmentation payload: %s", json.dumps(payload, indent=2)
             )
-        result = self._engine.submit_augmentation(json.dumps(payload))
+        result = self._active_engine.submit_augmentation(json.dumps(payload))
         try:
             return int(result)
         except (TypeError, ValueError) as exc:
@@ -600,6 +629,8 @@ class RustCoreAdapter:
             ) from exc
 
     def wait_for_augmentation(self, timeout: float | None = None) -> bool:
+        if self._engine is None:
+            return True
         timeout_ms: int | None = None
         if timeout is not None:
             timeout_ms = max(0, int(timeout * 1000))
