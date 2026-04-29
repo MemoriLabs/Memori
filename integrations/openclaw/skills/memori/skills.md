@@ -14,16 +14,16 @@ Use these to search your memory explicitly:
 
 **`memori_recall`** — Fetch granular memory facts using a search query and optional filters. Use this when you need specific details (e.g., "what database did we choose?").
 
-| Parameter   | Type   | Description                                                                                                              |
-| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `query`     | string | **Required.** A natural language semantic search query (e.g. "dogs"). **DO NOT use wildcards like `*`.**                 |
-| `limit`     | number | Maximum number of memories to return (default: 10)                                                                       |
-| `dateStart` | string | ISO 8601 (MUST be UTC) — memories on or after this time                                                                  |
-| `dateEnd`   | string | ISO 8601 (MUST be UTC) — memories on or before this time                                                                 |
-| `projectId` | string | CRITICAL: Leave EMPTY to use the current project. ONLY provide a value if the user explicitly names a different project. |
-| `sessionId` | string | Scope to a specific session — **requires `projectId`**                                                                   |
-| `signal`    | string | Filter by signal type: `system`, `user`, `derived`                                                                       |
-| `source`    | string | Filter by source origin                                                                                                  |
+| Parameter   | Type   | Description                                                                                                                                     |
+| ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `query`     | string | **Required.** A natural language semantic search query (e.g. "dogs"). **DO NOT use wildcards like `*`.**                                        |
+| `limit`     | number | Maximum number of memories to return (default: 10)                                                                                              |
+| `dateStart` | string | ISO 8601 (MUST be UTC) — memories on or after this time                                                                                         |
+| `dateEnd`   | string | ISO 8601 (MUST be UTC) — memories on or before this time                                                                                        |
+| `projectId` | string | CRITICAL: Leave EMPTY to use the current project. ONLY provide a value if the user explicitly names a different project.                        |
+| `sessionId` | string | Scope to a specific session — **requires `projectId`**                                                                                          |
+| `signal`    | string | Filter by signal type. Allowed values: `commit`, `discovery`, `failure`, `inference`, `pattern`, `result`, `update`, `verification`.            |
+| `source`    | string | Filter by source origin. Allowed values: `constraint`, `decision`, `execution`, `fact`, `insight`, `instruction`, `status`, `strategy`, `task`. |
 
 **`memori_recall_summary`** — Fetch summarized views of stored memories. Use this when you need high-level context (e.g., "what is this project about?").
 

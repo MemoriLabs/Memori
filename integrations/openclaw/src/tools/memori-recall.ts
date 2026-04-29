@@ -40,14 +40,35 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         },
         signal: {
           type: 'string',
-          description: 'Filter to a specific fact signal (e.g., system, user, derived)',
+          description: 'Filter to a specific fact signal. MUST be one of the allowed enum values.',
+          enum: [
+            'commit',
+            'discovery',
+            'failure',
+            'inference',
+            'pattern',
+            'result',
+            'update',
+            'verification',
+          ],
         },
         source: {
           type: 'string',
-          description: 'Filter to a specific source origin',
+          description:
+            'Filter to a specific source origin. MUST be one of the allowed enum values.',
+          enum: [
+            'constraint',
+            'decision',
+            'execution',
+            'fact',
+            'insight',
+            'instruction',
+            'status',
+            'strategy',
+            'task',
+          ],
         },
       },
-      // Force the LLM to ALWAYS provide a search query
       required: ['query'],
     },
 
