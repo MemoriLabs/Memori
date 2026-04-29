@@ -159,7 +159,8 @@ export abstract class BaseIntegration {
    */
   protected async executeAgentFeedback(content: string): Promise<void> {
     try {
-      await this.core.defaultApi.post('agent/feedback', { content }); return;
+      await this.core.defaultApi.post('agent/feedback', { content });
+      return;
     } catch (e) {
       console.warn('Memori Agent Feedback failed:', e);
     }
