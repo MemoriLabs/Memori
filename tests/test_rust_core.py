@@ -1,6 +1,8 @@
 import base64
 import json
 import os
+import shutil
+import zipfile
 from contextlib import contextmanager
 from types import SimpleNamespace
 
@@ -254,6 +256,35 @@ def test_onnxruntime_asset_mapping_for_supported_platforms(mocker):
         "b4d513ab2b26f088c66891dbbc1408166708773d7cc4163de7bdca0e9bbb7856",
     )
 
+    mocker.patch("memori._rust_core.sys.platform", "android")
+    mocker.patch("memori._rust_core.platform.machine", return_value="aarch64")
+    assert _rust_core._onnxruntime_asset_for_current_platform() == (
+        "onnxruntime-android-1.23.2.aar",
+        "82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827",
+    )
+
+
+def test_resolve_onnxruntime_lib_path_selects_android_abi(mocker, tmp_path):
+    mocker.patch("memori._rust_core.sys.platform", "android")
+    mocker.patch("memori._rust_core.platform.machine", return_value="aarch64")
+    selected = tmp_path / "jni" / "arm64-v8a" / "libonnxruntime.so"
+    other = tmp_path / "jni" / "x86_64" / "libonnxruntime.so"
+    selected.parent.mkdir(parents=True)
+    other.parent.mkdir(parents=True)
+    selected.write_text("arm64")
+    other.write_text("x64")
+
+    assert _rust_core._resolve_onnxruntime_lib_path(tmp_path) == selected
+
+
+def test_download_urls_for_android_asset_use_maven_central():
+    assert _rust_core._download_urls_for_asset("onnxruntime-android-1.23.2.aar") == (
+        "https://repo1.maven.org/maven2/com/microsoft/onnxruntime/"
+        "onnxruntime-android/1.23.2/onnxruntime-android-1.23.2.aar",
+        "https://repo1.maven.org/maven2/com/microsoft/onnxruntime/"
+        "onnxruntime-android/1.23.2/onnxruntime-android-1.23.2.aar",
+    )
+
 
 def test_ensure_onnxruntime_dylib_uses_cached_binary(mocker, tmp_path):
     cache_root = tmp_path / ".cache" / "memori" / "onnxruntime" / "1.23.2"
@@ -294,6 +325,68 @@ def test_ensure_onnxruntime_dylib_uses_versioned_cached_binary(mocker, tmp_path)
 
     assert os.environ["ORT_DYLIB_PATH"] == str(lib_path)
     mock_get.assert_not_called()
+
+
+def test_ensure_onnxruntime_dylib_uses_cached_android_aar_binary(mocker, tmp_path):
+    cache_root = tmp_path / ".cache" / "memori" / "onnxruntime" / "1.23.2"
+    lib_path = (
+        cache_root
+        / "onnxruntime-android-1.23.2"
+        / "jni"
+        / "arm64-v8a"
+        / "libonnxruntime.so"
+    )
+    lib_path.parent.mkdir(parents=True)
+    lib_path.write_text("placeholder")
+
+    mocker.patch("memori._rust_core.sys.platform", "android")
+    mocker.patch("memori._rust_core.platform.machine", return_value="aarch64")
+    mocker.patch("memori._rust_core.Path.home", return_value=tmp_path)
+    mock_get = mocker.patch("memori._rust_core.requests.get")
+
+    os.environ.pop("ORT_DYLIB_PATH", None)
+    _rust_core._ensure_onnxruntime_dylib()
+
+    assert os.environ["ORT_DYLIB_PATH"] == str(lib_path)
+    mock_get.assert_not_called()
+
+
+def test_ensure_onnxruntime_dylib_extracts_android_aar_without_root(mocker, tmp_path):
+    archive_path = tmp_path / "onnxruntime-android-test.aar"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("jni/arm64-v8a/libonnxruntime.so", "placeholder")
+    expected_sha = _rust_core._compute_sha256(archive_path)
+
+    def _copy_archive(_asset_name, destination):
+        shutil.copyfile(archive_path, destination)
+        return True
+
+    mocker.patch.dict(
+        "memori._rust_core._ORT_ASSET_BY_PLATFORM",
+        {("android", "aarch64"): ("onnxruntime-android-test.aar", expected_sha)},
+    )
+    mocker.patch("memori._rust_core.sys.platform", "android")
+    mocker.patch("memori._rust_core.platform.machine", return_value="aarch64")
+    mocker.patch("memori._rust_core.Path.home", return_value=tmp_path)
+    mocker.patch(
+        "memori._rust_core._download_asset_with_retries", side_effect=_copy_archive
+    )
+
+    os.environ.pop("ORT_DYLIB_PATH", None)
+    _rust_core._ensure_onnxruntime_dylib()
+
+    expected_lib_path = (
+        tmp_path
+        / ".cache"
+        / "memori"
+        / "onnxruntime"
+        / "1.23.2"
+        / "onnxruntime-android-test"
+        / "jni"
+        / "arm64-v8a"
+        / "libonnxruntime.so"
+    )
+    assert os.environ["ORT_DYLIB_PATH"] == str(expected_lib_path)
 
 
 def test_compute_sha256_produces_expected_digest(tmp_path):

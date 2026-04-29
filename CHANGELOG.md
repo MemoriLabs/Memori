@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.3.2] - 2026-04-28
 
+### Added
+
+- Android wheel build coverage for the Rust-backed Python extension, targeting
+  `android_24_arm64_v8a` and `android_24_x86_64` via cibuildwheel. The Rust
+  core ONNX Runtime bootstrap can now download and select the matching
+  `libonnxruntime.so` from Microsoft's Android AAR at runtime.
+
 ### Changed
 
 - Rust-backed retrieval and augmentation are now enabled by default for BYODB

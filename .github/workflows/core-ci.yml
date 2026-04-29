@@ -8,6 +8,8 @@ on:
       - 'setup.py'
       - 'pyproject.toml'
       - 'MANIFEST.in'
+      - 'memori/_rust_core.py'
+      - 'tests/test_rust_core.py'
       - '.github/workflows/core-ci.yml'
   pull_request:
     branches: [main]
@@ -16,6 +18,8 @@ on:
       - 'setup.py'
       - 'pyproject.toml'
       - 'MANIFEST.in'
+      - 'memori/_rust_core.py'
+      - 'tests/test_rust_core.py'
       - '.github/workflows/core-ci.yml'
 
 env:
@@ -110,6 +114,89 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: memori-wheel-${{ matrix.os }}-${{ matrix.archs }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  android-wheel-build:
+    name: android wheel smoke (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64_v8a
+            rust-target: aarch64-linux-android
+          - arch: x86_64
+            rust-target: x86_64-linux-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.2.12479018"
+
+      - name: Configure Android Rust linkers
+        run: |
+          set -euo pipefail
+          ndk_dir="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
+          if [ -z "$ndk_dir" ] || [ ! -d "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin" ]; then
+            ndk_dir=""
+            if [ -d "$ANDROID_HOME/ndk" ]; then
+              ndk_dir="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+            fi
+          fi
+          if [ -z "$ndk_dir" ] || [ ! -d "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin" ]; then
+            echo "Unable to locate Android NDK" >&2
+            exit 1
+          fi
+          echo "ANDROID_NDK_HOME=$ndk_dir" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang" >> "$GITHUB_ENV"
+
+      - name: Build Android abi3 wheel via cibuildwheel
+        uses: pypa/cibuildwheel@v3.4.0
+        env:
+          CIBW_PLATFORM: android
+          CIBW_BUILD: "cp314-android_${{ matrix.arch }}"
+          CIBW_ARCHS_ANDROID: ${{ matrix.arch }}
+          ANDROID_API_LEVEL: "24"
+          CIBW_ENVIRONMENT_ANDROID: >-
+            PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+            CARGO_BUILD_TARGET=${{ matrix.rust-target }}
+            CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"
+            CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER"
+          # Android pip cannot resolve all memori runtime dependencies as
+          # android-tagged wheels yet, so keep this job focused on wheel build.
+          CIBW_TEST_SKIP: "*-android_*"
+        with:
+          output-dir: wheelhouse
+
+      - name: Upload Android wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-wheel-android-${{ matrix.arch }}
           path: wheelhouse/*.whl
           if-no-files-found: error
 

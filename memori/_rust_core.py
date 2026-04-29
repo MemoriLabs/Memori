@@ -55,6 +55,34 @@ _ORT_ASSET_BY_PLATFORM: dict[tuple[str, str], tuple[str, str]] = {
         "7c63c73560ed76b1fac6cff8204ffe34fe180e70d6582b5332ec094810241e5c",
     ),
     (
+        "android",
+        "aarch64",
+    ): (
+        "onnxruntime-android-1.23.2.aar",
+        "82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827",
+    ),
+    (
+        "android",
+        "arm64",
+    ): (
+        "onnxruntime-android-1.23.2.aar",
+        "82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827",
+    ),
+    (
+        "android",
+        "x86_64",
+    ): (
+        "onnxruntime-android-1.23.2.aar",
+        "82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827",
+    ),
+    (
+        "android",
+        "amd64",
+    ): (
+        "onnxruntime-android-1.23.2.aar",
+        "82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827",
+    ),
+    (
         "darwin",
         "x86_64",
     ): (
@@ -98,14 +126,20 @@ def embed_texts(*args: Any, **kwargs: Any) -> Any:
     return embed_texts_impl(*args, **kwargs)
 
 
+def _current_platform_system() -> str:
+    if sys.platform == "android":
+        return "android"
+    return platform.system().lower()
+
+
 def _onnxruntime_asset_for_current_platform() -> tuple[str, str] | None:
     return _ORT_ASSET_BY_PLATFORM.get(
-        (platform.system().lower(), platform.machine().lower())
+        (_current_platform_system(), platform.machine().lower())
     )
 
 
 def _onnxruntime_lib_filename() -> str:
-    system = platform.system().lower()
+    system = _current_platform_system()
     if system == "windows":
         return "onnxruntime.dll"
     if system == "darwin":
@@ -113,12 +147,28 @@ def _onnxruntime_lib_filename() -> str:
     return "libonnxruntime.so"
 
 
+def _android_abi_for_machine(machine: str) -> str | None:
+    normalized = machine.lower()
+    if normalized in {"aarch64", "arm64"}:
+        return "arm64-v8a"
+    if normalized in {"x86_64", "amd64"}:
+        return "x86_64"
+    return None
+
+
 def _resolve_onnxruntime_lib_path(lib_dir: Path) -> Path | None:
     direct_path = lib_dir / _onnxruntime_lib_filename()
     if direct_path.exists():
         return direct_path
 
-    system = platform.system().lower()
+    system = _current_platform_system()
+    if system == "android":
+        abi = _android_abi_for_machine(platform.machine())
+        if abi is not None:
+            abi_path = lib_dir / "jni" / abi / _onnxruntime_lib_filename()
+            if abi_path.exists():
+                return abi_path
+
     if system == "darwin":
         fallback_pattern = "libonnxruntime.*.dylib"
     elif system == "windows":
@@ -127,6 +177,12 @@ def _resolve_onnxruntime_lib_path(lib_dir: Path) -> Path | None:
         fallback_pattern = "libonnxruntime.so.*"
 
     for candidate in sorted(lib_dir.glob(fallback_pattern)):
+        if candidate.is_file():
+            return candidate
+    for candidate in sorted(lib_dir.rglob(fallback_pattern)):
+        if candidate.is_file():
+            return candidate
+    for candidate in sorted(lib_dir.rglob(_onnxruntime_lib_filename())):
         if candidate.is_file():
             return candidate
     return None
@@ -139,7 +195,7 @@ def _is_within_directory(directory: Path, candidate: Path) -> bool:
 
 
 def _extract_onnxruntime_archive(archive_path: Path, destination: Path) -> None:
-    if archive_path.suffix == ".zip":
+    if archive_path.suffix in {".zip", ".aar"}:
         with zipfile.ZipFile(archive_path, "r") as archive:
             for member in archive.infolist():
                 if not member.filename:
@@ -186,6 +242,13 @@ def _compute_sha256(path: Path) -> str:
 
 
 def _download_urls_for_asset(asset_name: str) -> tuple[str, str]:
+    if asset_name.endswith(".aar"):
+        maven = (
+            "https://repo1.maven.org/maven2/com/microsoft/onnxruntime/"
+            f"onnxruntime-android/{_ORT_VERSION}/{asset_name}"
+        )
+        return (maven, maven)
+
     github = (
         "https://github.com/microsoft/onnxruntime/releases/download/"
         f"v{_ORT_VERSION}/{asset_name}"
@@ -244,7 +307,7 @@ def _release_cache_lock(lock_path: Path) -> None:
 
 def _configure_onnxruntime_env(lib_path: Path) -> None:
     os.environ["ORT_DYLIB_PATH"] = str(lib_path)
-    if platform.system().lower() == "windows":
+    if _current_platform_system() == "windows":
         try:
             os.add_dll_directory(str(lib_path.parent))
         except Exception:  # noqa: BLE001
@@ -265,9 +328,11 @@ def _ensure_onnxruntime_dylib() -> None:
     asset_name, expected_sha = asset_info
 
     cache_root = Path.home() / ".cache" / "memori" / "onnxruntime" / _ORT_VERSION
-    asset_root = asset_name.removesuffix(".tgz").removesuffix(".zip")
-    lib_dir = cache_root / asset_root / "lib"
-    lib_path = _resolve_onnxruntime_lib_path(lib_dir)
+    asset_root = (
+        asset_name.removesuffix(".tgz").removesuffix(".zip").removesuffix(".aar")
+    )
+    install_dir = cache_root / asset_root
+    lib_path = _resolve_onnxruntime_lib_path(install_dir)
     if lib_path is not None:
         _configure_onnxruntime_env(lib_path)
         return
@@ -278,7 +343,7 @@ def _ensure_onnxruntime_dylib() -> None:
         logger.warning("Timed out waiting for ONNX Runtime cache lock")
         return
     try:
-        existing_lib_path = _resolve_onnxruntime_lib_path(lib_dir)
+        existing_lib_path = _resolve_onnxruntime_lib_path(install_dir)
         if existing_lib_path is not None:
             _configure_onnxruntime_env(existing_lib_path)
             return
@@ -306,13 +371,13 @@ def _ensure_onnxruntime_dylib() -> None:
             try:
                 _extract_onnxruntime_archive(archive_path, extract_root)
                 extracted_dir = extract_root / asset_root
-                if not extracted_dir.exists():
-                    raise RuntimeError(
-                        f"Expected extracted directory missing: {extracted_dir}"
-                    )
-                final_dir = cache_root / asset_root
+                source_dir = extracted_dir if extracted_dir.exists() else extract_root
+                final_dir = install_dir
                 if not final_dir.exists():
-                    os.replace(extracted_dir, final_dir)
+                    if source_dir == extract_root:
+                        shutil.copytree(source_dir, final_dir)
+                    else:
+                        os.replace(source_dir, final_dir)
             finally:
                 shutil.rmtree(extract_root, ignore_errors=True)
         except Exception:  # noqa: BLE001
@@ -321,7 +386,7 @@ def _ensure_onnxruntime_dylib() -> None:
         finally:
             archive_path.unlink(missing_ok=True)
 
-        resolved_lib_path = _resolve_onnxruntime_lib_path(lib_dir)
+        resolved_lib_path = _resolve_onnxruntime_lib_path(install_dir)
         if resolved_lib_path is not None:
             _configure_onnxruntime_env(resolved_lib_path)
     finally:

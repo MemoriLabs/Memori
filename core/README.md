@@ -57,6 +57,11 @@ The `memori_python` extension is built and bundled into the `memori` Python
 wheel by `setup.py` (via `setuptools-rust`) when you run `python -m build` at
 the repository root.
 
+CI builds abi3 Android wheels with cibuildwheel for `arm64_v8a` and `x86_64`
+using Android API level 24. Runtime ONNX support uses Microsoft's
+`onnxruntime-android` AAR and selects the matching `jni/<abi>/libonnxruntime.so`
+for the device architecture.
+
 For local iteration you can build in-place with maturin:
 
 ```
