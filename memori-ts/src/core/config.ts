@@ -83,6 +83,6 @@ export class Config {
     // 3. Session and Defaults
     this.sessionId = randomUUID();
     this.recallRelevanceThreshold = 0.1;
-    this.timeout = 5000;
+    this.timeout = 30000;
   }
 }

@@ -61,7 +61,7 @@ describe('AugmentationEngine', () => {
 
       await engine.handleAugmentation(req, res, mockCtx);
 
-      expect(mockApi.post).toHaveBeenCalledWith(
+      expect(mockCollectorApi.post).toHaveBeenCalledWith(
         'cloud/augmentation',
         expect.objectContaining({
           conversation: expect.objectContaining({
@@ -97,7 +97,7 @@ describe('AugmentationEngine', () => {
     });
 
     it('should log warning in testMode if API fails', async () => {
-      (mockApi.post as any).mockRejectedValue(new Error('Augment fail'));
+      (mockCollectorApi.post as any).mockRejectedValue(new Error('Augment fail'));
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const req = {

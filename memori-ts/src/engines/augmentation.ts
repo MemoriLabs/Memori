@@ -74,7 +74,7 @@ export class AugmentationEngine {
     };
 
     // Fire-and-forget to cloud
-    this.defaultApi.post('cloud/augmentation', payload).catch((e: unknown) => {
+    this.collectorApi.post('cloud/augmentation', payload).catch((e: unknown) => {
       if (this.config.testMode) console.warn('Augmentation failed:', e);
     });
 
