@@ -5,85 +5,26 @@ description: How Memori captures tool calls, decisions, workflow steps, and outc
 
 # Agent Trace & Execution
 
-Agent trace & execution is the capability that turns raw agent execution history into structured, searchable memory. It runs asynchronously in the background to minimize impact on your response path.
+Memori doesn't just extract memory from conversations, it can learn from agent execution itself. By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, Memori turns raw execution history into structured memory primitives that agents can recall and reuse across sessions.
 
-Instead of replaying transcripts or relying on lossy summaries, Memori builds a persistent **experience layer** that agents can query when it matters.
+This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
 
 ## What It Does
 
-Memori doesn't just extract memory from conversations — it can learn from agent execution itself. When your agent reviews your workflow, the trace engine:
-
-1. Reads the full execution trace (tool calls, decisions, workflow steps, and outcomes)
-2. Identifies actions, results, patterns, and failures
-3. Generates vector embeddings for semantic search
-4. Stores everything in your managed memory space
-
-No extra code required — instrument your agent once and execution memory is captured automatically.
-
-### Grounded in actions, not just text
-
-Memori incorporates tool calls and execution traces alongside conversation data. Memory reflects what actually happened — not just what was discussed.
-
-By grounding memory in actions and outcomes, the system produces more reliable, verifiable, and actionable context.
+As your agent works, Memori captures the full conversation including tool calls, decisions, and outcomes. Advanced Augmentation then extracts structured facts, preferences, and attributes in the background.
 
 ### Dual memory model
 
 Memori stores execution knowledge in two complementary forms:
 
-- **Structured, typed memory** — precise, queryable records (facts, decisions, constraints, and more) used for targeted retrieval and reasoning
+- **Structured memory** — facts, decisions, and constraints used for targeted retrieval and reasoning
 - **Rolling summaries** — continuously updated context used for grounding and situational awareness
 
-## How It Works
+### Grounded in actions, not just text
 
-The trace flow is fully asynchronous and designed to avoid blocking your main agent path.
+Memori captures tool calls and execution traces alongside conversation data. Memory reflects what actually happened — not just what was discussed.
 
-1. Your agent calls a tool or makes a decision
-2. Memori captures the trace event immediately
-3. In the background, the trace is queued for processing
-4. The augmentation engine extracts structured memories from the execution
-5. Memories are stored in Memori Cloud for future recall
-
-## Extraction Types
-
-| Type               | What it captures                                          | Scope                                |
-| ------------------ | --------------------------------------------------------- | ------------------------------------ |
-| **Tool Calls**     | Tools invoked, inputs, outputs, and success/failure state | Per process                          |
-| **Decisions**      | Branching logic, conditions evaluated, paths chosen       | Per entity — shared across processes |
-| **Workflow Steps** | Sequential or parallel execution steps and outcomes       | Per process                          |
-| **Outcomes**       | Final results, errors, and resolved states                | Per entity                           |
-
-## Memory Classification
-
-Execution memories are classified along two dimensions when stored and recalled.
-
-**Source** — the type of memory being captured:
-
-| Value         | Description                                  |
-| ------------- | -------------------------------------------- |
-| `constraint`  | Non-negotiable rules or limits               |
-| `decision`    | Choices made and their rationale             |
-| `execution`   | Tool calls, steps taken, and actions run     |
-| `fact`        | Objective information observed or confirmed  |
-| `insight`     | Inferences or conclusions drawn              |
-| `instruction` | Directives given to the agent                |
-| `status`      | Current state of a task or system            |
-| `strategy`    | Approaches and plans being followed          |
-| `task`        | Units of work tracked across sessions        |
-
-**Signal** — how the memory was derived:
-
-| Value          | Description                                      |
-| -------------- | ------------------------------------------------ |
-| `commit`       | An action or decision that was finalized         |
-| `discovery`    | Something new learned during execution           |
-| `failure`      | An attempt that did not succeed                  |
-| `inference`    | A conclusion drawn from indirect evidence        |
-| `pattern`      | A recurring behavior or outcome observed         |
-| `result`       | The outcome of a completed action                |
-| `update`       | A change to existing state or knowledge          |
-| `verification` | A fact or assumption that was explicitly checked |
-
-Use `source` and `signal` to prioritize high-signal memory during recall — for example, filtering for `source: decision` and `signal: commit` to retrieve only finalized decisions.
+By grounding memory in actions and outcomes, the system produces more reliable, verifiable, and actionable context.
 
 ## Context Recall
 
