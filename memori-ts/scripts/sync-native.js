@@ -7,7 +7,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const RUST_BINDINGS_DIR = path.resolve(ROOT, '../core/bindings/node');
 const SRC_NATIVE = path.resolve(ROOT, 'src/native');
-const DIST_NATIVE = path.resolve(ROOT, 'dist/native');
+
+// CHECK FOR FLAG: Did we run this with "node scripts/sync-native.js --dev"?
+const isDev = process.argv.includes('--dev');
+
+// Set target dynamically based on the flag
+const DIST_NATIVE = path.resolve(ROOT, isDev ? 'dist/src/native' : 'dist/native');
 
 function copyFolderSync(from, to) {
   if (!fs.existsSync(from)) return;
@@ -38,7 +43,8 @@ function sync() {
   console.log('Syncing to src/native...');
   copyFolderSync(RUST_BINDINGS_DIR, SRC_NATIVE);
 
-  console.log('Syncing to dist/src/native...');
+  // Copy to the single correct distribution folder
+  console.log(`Syncing to ${isDev ? 'dist/src/native (Dev)' : 'dist/native (Prd)'}...`);
   copyFolderSync(SRC_NATIVE, DIST_NATIVE);
 
   console.log('Native sync complete.');

@@ -9,109 +9,120 @@ import {
 import { RetrievalRequest, RecallObject, NapiRecallRow } from '../types/api.js';
 import { AugmentationInput } from '../types/integrations.js';
 
+type BridgeCb = (err: Error | null, _id: number, _reqJson: string) => void;
+
 export class NativeEngine {
   private memoriEngine?: MemoriEngine;
   private _hasStorage: boolean = false;
+  private readonly modelName: string | null;
+  private readonly fetchEmbeddingsCb: BridgeCb;
+  private readonly fetchFactsCb: BridgeCb;
+  private readonly writeBatchCb: BridgeCb;
 
   constructor(storageBridge?: StorageBridge, modelName?: string) {
+    this.modelName = modelName ?? null;
+
     if (storageBridge) {
       this._hasStorage = true;
-      this.memoriEngine = new MemoriEngine(
-        modelName || null,
-        (err: Error | null, _id: number, _reqJson: string) => {
-          if (err) {
-            console.error('[Memori] Bridge error in fetchEmbeddings:', err);
-            return;
-          }
-          const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
 
-          this.handleBridgeCall<EmbeddingRow[]>(
-            id,
-            'fetchEmbeddings',
-            () => {
-              const req = JSON.parse(reqJson) as { entity_id: string; limit: number };
-              return storageBridge.fetchEmbeddings(req.entity_id, req.limit);
-            },
-            (res) =>
-              this.memoriEngine?.resolveEmbeddingsCallback(
-                id,
-                res.map((r) => ({
-                  id: r.id,
-                  contentEmbedding: r.content_embedding ?? new Float32Array(0),
-                }))
-              ),
-            () => this.memoriEngine?.resolveEmbeddingsCallback(id, [])
-          );
-        },
-        (err: Error | null, _id: number, _reqJson: string) => {
-          if (err) {
-            console.error('[Memori] Bridge error in fetchFactsByIds:', err);
-            return;
-          }
-          const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-
-          this.handleBridgeCall<CandidateFactRow[]>(
-            id,
-            'fetchFactsByIds',
-            () => {
-              const req = JSON.parse(reqJson) as { ids: (number | string)[] };
-              return storageBridge.fetchFactsByIds(req.ids);
-            },
-            (res) =>
-              this.memoriEngine?.resolveFactsCallback(
-                id,
-                res.map((r) => ({
-                  id: r.id,
-                  content: r.content,
-                  dateCreated: r.date_created,
-                  summaries: r.summaries?.map((s) => ({
-                    content: s.content,
-                    dateCreated: s.date_created,
-                  })),
-                }))
-              ),
-            () => this.memoriEngine?.resolveFactsCallback(id, [])
-          );
-        },
-        (err: Error | null, _id: number, _reqJson: string) => {
-          if (err) {
-            console.error('[Memori] Bridge error in writeBatch:', err);
-            return;
-          }
-          const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-
-          this.handleBridgeCall<WriteAck>(
-            id,
-            'writeBatch',
-            () => {
-              const req = JSON.parse(reqJson) as WriteBatch;
-              return storageBridge.writeBatch(req);
-            },
-            (res) => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: res.written_ops }),
-            () => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 })
-          );
+      this.fetchEmbeddingsCb = (err, _id, _reqJson) => {
+        if (err) {
+          console.error('[Memori] Bridge error in fetchEmbeddings:', err);
+          return;
         }
-      );
+        const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+        this.handleBridgeCall<EmbeddingRow[]>(
+          id,
+          'fetchEmbeddings',
+          () => {
+            const req = JSON.parse(reqJson) as { entity_id: string; limit: number };
+            return storageBridge.fetchEmbeddings(req.entity_id, req.limit);
+          },
+          (res) =>
+            this.memoriEngine?.resolveEmbeddingsCallback(
+              id,
+              res.map((r) => ({
+                id: r.id,
+                contentEmbedding: r.content_embedding ?? new Float32Array(0),
+              }))
+            ),
+          () => this.memoriEngine?.resolveEmbeddingsCallback(id, [])
+        );
+      };
 
-      return;
-    }
+      this.fetchFactsCb = (err, _id, _reqJson) => {
+        if (err) {
+          console.error('[Memori] Bridge error in fetchFactsByIds:', err);
+          return;
+        }
+        const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+        this.handleBridgeCall<CandidateFactRow[]>(
+          id,
+          'fetchFactsByIds',
+          () => {
+            const req = JSON.parse(reqJson) as { ids: (number | string)[] };
+            return storageBridge.fetchFactsByIds(req.ids);
+          },
+          (res) =>
+            this.memoriEngine?.resolveFactsCallback(
+              id,
+              res.map((r) => ({
+                id: r.id,
+                content: r.content,
+                dateCreated: r.date_created,
+                summaries: r.summaries?.map((s) => ({
+                  content: s.content,
+                  dateCreated: s.date_created,
+                })),
+              }))
+            ),
+          () => this.memoriEngine?.resolveFactsCallback(id, [])
+        );
+      };
 
-    // Fallback Engine without Storage
-    this.memoriEngine = new MemoriEngine(
-      modelName || null,
-      (err: Error | null, _id: number, _reqJson: string) => {
+      this.writeBatchCb = (err, _id, _reqJson) => {
+        if (err) {
+          console.error('[Memori] Bridge error in writeBatch:', err);
+          return;
+        }
+        const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
+        this.handleBridgeCall<WriteAck>(
+          id,
+          'writeBatch',
+          () => {
+            const req = JSON.parse(reqJson) as WriteBatch;
+            return storageBridge.writeBatch(req);
+          },
+          (res) => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: res.written_ops }),
+          () => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 })
+        );
+      };
+    } else {
+      this.fetchEmbeddingsCb = (err, _id, _reqJson) => {
         const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
         if (!err) this.memoriEngine?.resolveEmbeddingsCallback(id, []);
-      },
-      (err: Error | null, _id: number, _reqJson: string) => {
+      };
+      this.fetchFactsCb = (err, _id, _reqJson) => {
         const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
         if (!err) this.memoriEngine?.resolveFactsCallback(id, []);
-      },
-      (err: Error | null, _id: number, _reqJson: string) => {
+      };
+      this.writeBatchCb = (err, _id, _reqJson) => {
         const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
         if (!err) this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 });
-      }
-    );
+      };
+    }
+  }
+
+  private getEngine(): MemoriEngine {
+    if (!this.memoriEngine) {
+      this.memoriEngine = new MemoriEngine(
+        this.modelName,
+        this.fetchEmbeddingsCb,
+        this.fetchFactsCb,
+        this.writeBatchCb
+      );
+    }
+    return this.memoriEngine;
   }
 
   public get hasStorage(): boolean {
@@ -156,9 +167,7 @@ export class NativeEngine {
   }
 
   public async retrieve(request: RetrievalRequest): Promise<RecallObject[]> {
-    if (!this.memoriEngine) throw new Error('Native engine not initialized.');
-
-    const napiResults: NapiRecallRow[] = await this.memoriEngine.retrieve({
+    const napiResults: NapiRecallRow[] = await this.getEngine().retrieve({
       entityId: request.entity_id,
       queryText: request.query_text,
       denseLimit: request.dense_limit,
@@ -182,9 +191,7 @@ export class NativeEngine {
   }
 
   public async recall(request: RetrievalRequest): Promise<string> {
-    if (!this.memoriEngine) throw new Error('Native engine not initialized.');
-
-    return await this.memoriEngine.recall({
+    return await this.getEngine().recall({
       entityId: request.entity_id,
       queryText: request.query_text,
       denseLimit: request.dense_limit,
@@ -193,9 +200,9 @@ export class NativeEngine {
   }
 
   public embedTexts(texts: string[]): Float32Array[] {
-    if (!this.memoriEngine || texts.length === 0) return [];
+    if (texts.length === 0) return [];
     try {
-      return this.memoriEngine.embedTexts(texts);
+      return this.getEngine().embedTexts(texts);
     } catch (e: unknown) {
       console.error('[Memori] Bridge Sync Error (embedTexts):', e);
       return [];
@@ -203,9 +210,7 @@ export class NativeEngine {
   }
 
   public submitAugmentation(input: AugmentationInput): string {
-    if (!this.memoriEngine) throw new Error('Native engine not initialized.');
-
-    return this.memoriEngine.submitAugmentation({
+    return this.getEngine().submitAugmentation({
       entityId: input.entity_id,
       processId: input.process_id ?? undefined,
       conversationId: input.conversation_id ?? undefined,

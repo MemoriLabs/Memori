@@ -1,4 +1,4 @@
-import { sql, type SQL } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { StorageAdapter, SqlBindValue } from '../base.js';
 import { Registry } from '../registry.js';
 
@@ -34,6 +34,7 @@ export class DrizzleAdapter implements StorageAdapter {
       );
     }
 
+    const { sql } = await import('drizzle-orm');
     const parts = operation.split(/\$\d+|\?/);
     let query = sql.raw(parts[0] || '');
 
@@ -49,14 +50,17 @@ export class DrizzleAdapter implements StorageAdapter {
   }
 
   public async begin(): Promise<void> {
+    const { sql } = await import('drizzle-orm');
     await this.db.execute(sql`BEGIN`);
   }
 
   public async commit(): Promise<void> {
+    const { sql } = await import('drizzle-orm');
     await this.db.execute(sql`COMMIT`);
   }
 
   public async rollback(): Promise<void> {
+    const { sql } = await import('drizzle-orm');
     await this.db.execute(sql`ROLLBACK`);
   }
 
