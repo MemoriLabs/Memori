@@ -28,15 +28,15 @@ OpenClaw ships with a basic memory layer, but it has fundamental limitations tha
 
 ## What Changes When You Add Memori?
 
-The Memori plugin replaces OpenClaw’s flat-file memory workflow with structured, scoped memory.
+The Memori plugin replaces OpenClaw's flat-file memory workflow with structured, scoped memory.
 
 ### Memory scoping model
 
 Memories are organized using four core identifiers:
 
-- **Project (`project_id`)** → The broader domain (e.g., “sales prospecting”)
-- **Process (`process_id`)** → The agent itself (e.g., “bob_the_sales_prospector”)
-- **Session (`session_id`)** → A specific run (e.g., “prospecting_2026-04-29”)
+- **Project (`project_id`)** → The broader domain (e.g., "sales prospecting")
+- **Process (`process_id`)** → The agent itself (e.g., "bob_the_sales_prospector")
+- **Session (`session_id`)** → A specific run (e.g., "prospecting_2026-04-29")
 - **Entity (`entity_id`)** → The subject of memory (e.g., the user, customer, or system being tracked)
 
 > Note: If a `session_id` is provided, a `project_id` must also be provided.
@@ -157,11 +157,11 @@ Supported parameters:
 
 ### 4. Summaries and daily briefs
 
-Memori provides structured summaries that go beyond OpenClaw’s default daily brief.
+Memori provides structured summaries that go beyond OpenClaw's default daily brief.
 
 These summaries are generated from structured memory and execution traces — not just compressed conversation history.
 
-They represent the agent’s **working state**, not just a recap.
+They represent the agent's **working state**, not just a recap.
 
 #### Daily brief structure
 
@@ -228,7 +228,7 @@ Memori separates memory into two systems:
    - Deduplicates and updates memory
    - Updates structured memory and the knowledge graph
 
-This runs in the background and **never blocks the agent’s response**.
+This runs in the background and **never blocks the agent's response**.
 
 ---
 
@@ -277,6 +277,6 @@ Memori provides agents with a set of tools to interact with memory in real time.
 - **Quota awareness**
   Memori enforces usage limits. When limits are reached, agents can adjust recall behavior and inform the user if needed.
 
-These interactions make Memori a two-way system: agents don’t just retrieve memory — they help improve and shape it over time.
+These interactions make Memori a two-way system: agents don't just retrieve memory — they help improve and shape it over time.
 
 See skills.md for detailed agent behavior.

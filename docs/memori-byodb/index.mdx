@@ -7,21 +7,18 @@ description: Memori is an open-source, structured memory layer for AI agents —
 
 __Memori__ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
 
-<Note>
-  Memori BYODB supports the Python SDK only. For TypeScript, use
-  [Memori Cloud](/docs/memori-cloud).
-</Note>
-Memori uses [Advanced
-Augmentation](/docs/memori-byodb/concepts/advanced-augmentation) to turn raw
-conversations into structured, searchable memories. It runs asynchronously in
-the background to minimize impact on your response path
+Memori uses [Advanced Augmentation](/docs/memori-byodb/concepts/advanced-augmentation) to turn raw conversations into structured, searchable memories.
+
+By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, [Agent Trace & Execution](/docs/memori-byodb/concepts/agent-trace-execution) turns raw execution history into structured memory primitives that agents can recall and reuse across sessions. This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
+
+It runs asynchronously in the background to minimize impact on your response path.
 
 ## Why Memori BYODB?
 
 ### Database Freedom
 
-Use SQLite, PostgreSQL, MySQL, MariaDB, TiDB, Oracle, MongoDB, CockroachDB, or
-OceanBase. Managed providers like Neon, Supabase, and AWS RDS/Aurora are also
+Use CockroachDB, MariaDB, MongoDB, MySQL, OceanBase, Oracle, PostgreSQL, SQLite, or
+TiDB. Managed providers like AWS RDS/Aurora, Neon, and Supabase are also
 supported through their compatible engines.
 
 ### Full Data Ownership

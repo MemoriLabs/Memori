@@ -1,0 +1,128 @@
+---
+title: Agent Trace & Execution
+description: How Memori captures tool calls, decisions, workflow steps, and outcomes to build persistent memory from agent execution history — all stored in your own database.
+---
+
+# Agent Trace & Execution
+
+Agent trace & execution is the capability that turns raw agent execution history into structured, searchable memory. It runs asynchronously in the background to minimize impact on your response path. All extracted data is stored directly in your database.
+
+Instead of replaying transcripts or relying on lossy summaries, Memori builds a persistent **experience layer** that agents can query when it matters.
+
+## What It Does
+
+Memori doesn't just extract memory from conversations — it can learn from agent execution itself. When your agent reviews your workflow, the trace engine:
+
+1. Reads the full execution trace (tool calls, decisions, workflow steps, and outcomes)
+2. Identifies actions, results, patterns, and failures
+3. Generates vector embeddings for semantic search
+4. Stores everything in your database
+
+No extra code required — instrument your agent once and execution memory is captured automatically.
+
+In short-lived scripts, call `mem.augmentation.wait()` to ensure processing completes before exit.
+
+### Grounded in actions, not just text
+
+Memori incorporates tool calls and execution traces alongside conversation data. Memory reflects what actually happened — not just what was discussed.
+
+By grounding memory in actions and outcomes, the system produces more reliable, verifiable, and actionable context.
+
+### Dual memory model
+
+Memori stores execution knowledge in two complementary forms:
+
+- **Structured, typed memory** — precise, queryable records (facts, decisions, constraints, and more) used for targeted retrieval and reasoning
+- **Rolling summaries** — continuously updated context used for grounding and situational awareness
+
+## How It Works
+
+The trace flow is fully asynchronous and designed to avoid blocking your main agent path.
+
+1. Your agent calls a tool or makes a decision
+2. Memori captures the trace event immediately
+3. In the background, the trace is queued for processing
+4. The augmentation engine extracts structured memories from the execution
+5. Memories are stored in your database for future recall
+
+## Extraction Types
+
+| Type               | What it captures                                          | Scope                                |
+| ------------------ | --------------------------------------------------------- | ------------------------------------ |
+| **Tool Calls**     | Tools invoked, inputs, outputs, and success/failure state | Per process                          |
+| **Decisions**      | Branching logic, conditions evaluated, paths chosen       | Per entity — shared across processes |
+| **Workflow Steps** | Sequential or parallel execution steps and outcomes       | Per process                          |
+| **Outcomes**       | Final results, errors, and resolved states                | Per entity                           |
+
+**Database tables:**
+
+| Table                         | Purpose                                      |
+| ----------------------------- | -------------------------------------------- |
+| `memori_conversation`         | Stores conversations                         |
+| `memori_conversation_message` | Individual messages within conversations     |
+| `memori_session`              | Groups related LLM interactions              |
+| `memori_entity`               | Entities (users, organizations, etc.)        |
+| `memori_process`              | Processes (agents, bots, workflows)          |
+| `memori_entity_fact`          | Extracted facts with vector embeddings       |
+| `memori_process_attribute`    | Process-level attributes and characteristics |
+
+## Memory Classification
+
+Execution memories are classified along two dimensions when stored and recalled.
+
+**Source** — the type of memory being captured:
+
+| Value         | Description                                  |
+| ------------- | -------------------------------------------- |
+| `constraint`  | Non-negotiable rules or limits               |
+| `decision`    | Choices made and their rationale             |
+| `execution`   | Tool calls, steps taken, and actions run     |
+| `fact`        | Objective information observed or confirmed  |
+| `insight`     | Inferences or conclusions drawn              |
+| `instruction` | Directives given to the agent                |
+| `status`      | Current state of a task or system            |
+| `strategy`    | Approaches and plans being followed          |
+| `task`        | Units of work tracked across sessions        |
+
+**Signal** — how the memory was derived:
+
+| Value          | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `commit`       | An action or decision that was finalized         |
+| `discovery`    | Something new learned during execution           |
+| `failure`      | An attempt that did not succeed                  |
+| `inference`    | A conclusion drawn from indirect evidence        |
+| `pattern`      | A recurring behavior or outcome observed         |
+| `result`       | The outcome of a completed action                |
+| `update`       | A change to existing state or knowledge          |
+| `verification` | A fact or assumption that was explicitly checked |
+
+Use `source` and `signal` to prioritize high-signal memory during recall — for example, filtering for `source: decision` and `signal: commit` to retrieve only finalized decisions.
+
+## Embeddings
+
+Vector embeddings are created using the **all-mpnet-base-v2** sentence transformer with **768 dimensions**. These embeddings power the semantic search used for context recall via cosine similarity.
+
+## Context Recall
+
+When a query is sent to an LLM through a wrapped client, Memori automatically:
+
+1. Intercepts the outbound LLM call
+2. Uses semantic search to find execution facts matching the query
+3. Passes vector embeddings to FAISS for similarity ranking
+4. Injects the top-N most relevant facts into the system prompt
+5. Forwards the enriched request to the LLM provider
+
+## When to Use It
+
+- Agentic workflows that call external tools or APIs
+- Multi-step pipelines where outcomes should inform future runs
+- Use cases where agent behavior should improve over time
+- Debugging and auditing agent decisions across sessions
+- Building relationships between actions, tools, and outcomes
+
+<Admonition type="important" title="Attribution is Required">
+  For Memori to capture and recall agent execution memory, attribution must be
+  set before recording trace events. Without attribution, Memori cannot scope or
+  retrieve execution memories.
+</Admonition>

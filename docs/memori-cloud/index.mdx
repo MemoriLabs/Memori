@@ -7,11 +7,17 @@ description: Memori gives your AI agents structured, persistent memory — no da
 
 __Memori__ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
 
+Memori uses [Advanced Augmentation](/docs/memori-cloud/concepts/advanced-augmentation) to turn raw conversations into structured, searchable memories.
+
+By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, [Agent Trace & Execution](/docs/memori-cloud/concepts/agent-trace-execution) turns raw execution history into structured memory primitives that agents can recall and reuse across sessions. This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
+
+It runs asynchronously in the background to minimize impact on your response path.
+
 ## Why Memori Cloud?
 
 With the Memori Cloud platform: [app.memorilabs.ai](https://app.memorilabs.ai), you skip all database configuration. Sign up, get a Memori API key, and start building AI agents with memory in minutes.
 
-### LLM Provider Support
+### LLM Provider & Framework Support
 
 OpenAI, Anthropic, Gemini, and Grok (xAI) via direct SDK wrappers. Bedrock is
 supported via LangChain `ChatBedrock`. OpenAI-compatible providers (Nebius,
@@ -28,6 +34,10 @@ building memories immediately.
 
 Native support for LangChain, Agno, and Pydantic AI with seamless integration
 into your existing workflows.
+
+### Agent Trace & Execution
+
+Memori doesn't just extract memory from conversations — it can learn from agent execution itself. By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, Memori turns raw execution history into structured memory primitives that agents can recall and reuse across sessions. This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
 
 ### Advanced Augmentation
 
@@ -92,6 +102,7 @@ const response = await client.chat.completions.create({
 | **Process**      | Your agent, LLM interaction, or program               | `process_id="support_agent"`             |
 | **Session**      | Groups LLM interactions together                      | Auto-generated UUID, manually manageable |
 | **Augmentation** | Background AI enhancement of memories                 | Auto-runs after wrapped LLM calls        |
+| **Agent trace & execution** | Memory extracted from tool calls, decisions, and workflow outcomes | Captured from agent execution history |
 | **Recall**       | Retrieve relevant memories from previous interactions | Auto-injects recalled memories           |
 
 ## Architecture Overview
