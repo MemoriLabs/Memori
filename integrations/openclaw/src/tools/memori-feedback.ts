@@ -8,7 +8,7 @@ export function createMemoriFeedbackTool(deps: ToolDeps) {
     name: 'memori_feedback',
     label: 'Memori Feedback',
     description:
-      'Send feedback directly to the Memori team. Please use this to send us positive and negative feedback - things to fix, feature requests, or just to tell us you love us!',
+      'CRITICAL: You MUST use this tool immediately whenever the user asks you to send feedback, report a bug, suggest a feature, or complain about Memori. Send feedback directly to the Memori team (positive or negative).',
     parameters: {
       type: 'object',
       properties: {

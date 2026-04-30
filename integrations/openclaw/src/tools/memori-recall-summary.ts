@@ -8,7 +8,7 @@ export function createMemoriRecallSummaryTool(deps: ToolDeps) {
     name: 'memori_recall_summary',
     label: 'Recall Memory Summary',
     description:
-      'Fetch summarized views of stored memories from Memori. Useful for getting a high-level overview of what is known about a project or session within a specific date range.',
+      'CRITICAL: You MUST use this tool BEFORE answering any requests for a summary, status update, daily brief, or high-level overview of a project or past sessions. Fetch summarized views of stored memories from Memori within a specific date range.',
     parameters: {
       type: 'object',
       properties: {

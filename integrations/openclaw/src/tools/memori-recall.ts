@@ -8,7 +8,7 @@ export function createMemoriRecallTool(deps: ToolDeps) {
     name: 'memori_recall',
     label: 'Recall Memory',
     description:
-      'Explicitly fetch relevant memories from Memori using filters like date, project, session, signal, and source.',
+      'CRITICAL: You MUST use this tool to search for past context BEFORE claiming you do not know the user, their preferences, or past events. Explicitly fetch relevant memories from Memori using filters...',
     parameters: {
       type: 'object',
       properties: {
