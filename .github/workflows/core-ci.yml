@@ -209,12 +209,22 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact-name: linux-x64-gnu
+            rust-target: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-gnu
+            rust-target: aarch64-unknown-linux-gnu
           - os: macos-latest
             artifact-name: darwin-arm64
+            rust-target: aarch64-apple-darwin
+          - os: macos-15-intel
+            artifact-name: darwin-x64
+            rust-target: x86_64-apple-darwin
           - os: windows-latest
             artifact-name: win32-x64-msvc
+            rust-target: x86_64-pc-windows-msvc
+          - os: ubuntu-latest
+            artifact-name: android-arm64
+            rust-target: aarch64-linux-android
     steps:
       - uses: actions/checkout@v5
 
@@ -225,6 +235,8 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -233,6 +245,33 @@ jobs:
       - name: Install NAPI build dependencies
         working-directory: ./core/bindings/node
         run: npm install
+
+      - name: Set up Android SDK
+        if: startsWith(matrix.artifact-name, 'android-')
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        if: startsWith(matrix.artifact-name, 'android-')
+        run: sdkmanager "ndk;27.2.12479018"
+
+      - name: Configure Android Rust linkers
+        if: startsWith(matrix.artifact-name, 'android-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          ndk_dir="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
+          if [ -z "$ndk_dir" ] || [ ! -d "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin" ]; then
+            ndk_dir=""
+            if [ -d "$ANDROID_HOME/ndk" ]; then
+              ndk_dir="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+            fi
+          fi
+          if [ -z "$ndk_dir" ] || [ ! -d "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin" ]; then
+            echo "Unable to locate Android NDK" >&2
+            exit 1
+          fi
+          echo "ANDROID_NDK_HOME=$ndk_dir" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang" >> "$GITHUB_ENV"
 
       - name: Set Windows C/C++ dynamic CRT flags
         if: runner.os == 'Windows'
@@ -243,4 +282,4 @@ jobs:
 
       - name: Build Rust bindings
         working-directory: ./core/bindings/node
-        run: npm run build
+        run: npm run build -- --target ${{ matrix.rust-target }}
