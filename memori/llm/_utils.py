@@ -8,6 +8,8 @@ r"""
                        memorilabs.ai
 """
 
+import types
+
 from memori.llm._constants import (
     AGNO_ANTHROPIC_LLM_PROVIDER,
     AGNO_FRAMEWORK_PROVIDER,
@@ -52,6 +54,20 @@ def client_is_xai(client) -> bool:
     return "xai" in _client_module(client).lower()
 
 
+def client_is_litellm(client) -> bool:
+    """Match the LiteLLM module itself.
+
+    LiteLLM is functional rather than client-class-based: users don't
+    instantiate `litellm.LiteLLM()`. Instead they import the module and call
+    `litellm.completion(...)` directly. The integration matcher therefore
+    accepts the module object passed via `memori.llm.register(litellm)`.
+    """
+    if isinstance(client, types.ModuleType):
+        name = getattr(client, "__name__", "")
+        return name == "litellm" or name.startswith("litellm.")
+    return _client_module(client).startswith("litellm")
+
+
 def client_is_bedrock(provider, title):
     return (
         provider_is_langchain(provider) and title == LANGCHAIN_CHATBEDROCK_LLM_PROVIDER
@@ -86,6 +102,17 @@ def llm_is_openai(provider, title):
 
 def llm_is_xai(provider, title):
     return title == XAI_LLM_PROVIDER
+
+
+def llm_is_litellm(provider, title):
+    """LiteLLM normalizes every backing's response to OpenAI shape, so the
+    OpenAI adapter handles the parsed payload correctly. This matcher routes
+    `llm.provider == "litellm"` payloads through the existing OpenAI adapter
+    rather than duplicating the parser.
+    """
+    from memori.llm._constants import LITELLM_LLM_PROVIDER
+
+    return title == LITELLM_LLM_PROVIDER
 
 
 def agno_is_anthropic(provider, title):

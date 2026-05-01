@@ -4,6 +4,7 @@ from memori.llm._constants import (
     AGNO_GOOGLE_LLM_PROVIDER,
     ANTHROPIC_LLM_PROVIDER,
     GOOGLE_LLM_PROVIDER,
+    LITELLM_LLM_PROVIDER,
     OPENAI_LLM_PROVIDER,
     PYDANTIC_AI_FRAMEWORK_PROVIDER,
     PYDANTIC_AI_OPENAI_LLM_PROVIDER,
@@ -12,6 +13,7 @@ from memori.llm._registry import Registry
 from memori.llm._utils import (
     client_is_anthropic,
     client_is_google,
+    client_is_litellm,
     client_is_openai,
     client_is_pydantic_ai,
     client_is_xai,
@@ -300,3 +302,82 @@ class XAi(BaseClient):
             client._memori_installed = True
 
         return self
+
+
+@Registry.register_client(client_is_litellm)
+class LiteLLM(BaseClient):
+    """Memori integration for the LiteLLM SDK.
+
+    LiteLLM is functional rather than client-class-based: users invoke
+    `litellm.completion(...)` / `litellm.acompletion(...)` directly. This
+    wrapper installs Memori's invoke pipeline at the *module* level, so any
+    call into either function (regardless of which of LiteLLM's 100+ backing
+    providers the model spec routes to) flows through Memori's conversation
+    capture and recall injection.
+
+    Usage:
+        import litellm
+        from memori import Memori
+
+        memori = Memori(...)
+        memori.llm.register(litellm)   # patches litellm.completion + litellm.acompletion
+
+        # Any subsequent call routes via Memori
+        response = litellm.completion(
+            model="anthropic/claude-sonnet-4-6",
+            messages=[{"role": "user", "content": "hello"}],
+        )
+    """
+
+    def register(self, client, _provider=None):
+        # `client` is the litellm module (caller passed `import litellm`).
+        if not hasattr(client, "completion"):
+            raise RuntimeError(
+                "client provided is not the litellm module "
+                "(expected `litellm.completion` to be present)"
+            )
+
+        if not hasattr(client, "_memori_installed"):
+            client_version = (
+                getattr(client, "__version__", None) or _resolve_litellm_version()
+            )
+
+            self.config.framework.provider = _provider
+            self.config.llm.provider = LITELLM_LLM_PROVIDER
+            self.config.llm.provider_sdk_version = client_version
+
+            client._completion = client.completion
+            self._wrap_method(
+                client,
+                "completion",
+                client,
+                "_completion",
+                _provider,
+                LITELLM_LLM_PROVIDER,
+                client_version,
+            )
+
+            if hasattr(client, "acompletion"):
+                client._acompletion = client.acompletion
+                self._wrap_method(
+                    client,
+                    "acompletion",
+                    client,
+                    "_acompletion",
+                    _provider,
+                    LITELLM_LLM_PROVIDER,
+                    client_version,
+                )
+
+            client._memori_installed = True
+
+        return self
+
+
+def _resolve_litellm_version() -> str | None:
+    try:
+        from importlib.metadata import version
+
+        return version("litellm")
+    except Exception:
+        return None
