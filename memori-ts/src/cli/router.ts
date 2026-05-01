@@ -1,7 +1,9 @@
 import { quotaCommand } from './commands/quota.js';
 import { helpCommand } from './commands/help.js';
+import { signupCommand } from './commands/signup.js';
 
 const commands: Record<string, ((args: string[]) => Promise<void>) | undefined> = {
+  'sign-up': signupCommand,
   quota: quotaCommand,
   help: helpCommand,
 };

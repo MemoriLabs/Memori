@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { main } from '../../../src/cli/router.js';
 import { quotaCommand } from '../../../src/cli/commands/quota.js';
 import { helpCommand } from '../../../src/cli/commands/help.js';
+import { signupCommand } from '../../../src/cli/commands/signup.js';
 
 vi.mock('../../../src/cli/commands/quota.js', () => ({
   quotaCommand: vi.fn(),
 }));
 vi.mock('../../../src/cli/commands/help.js', () => ({
   helpCommand: vi.fn(),
+}));
+vi.mock('../../../src/cli/commands/signup.js', () => ({
+  signupCommand: vi.fn(),
 }));
 
 describe('CLI Router', () => {
@@ -34,6 +38,13 @@ describe('CLI Router', () => {
     await main();
 
     expect(quotaCommand).toHaveBeenCalledWith([]);
+  });
+
+  it('should route to the sign-up command and pass arguments successfully', async () => {
+    process.argv = ['node', 'cli.js', 'sign-up', 'test@example.com'];
+    await main();
+
+    expect(signupCommand).toHaveBeenCalledWith(['test@example.com']);
   });
 
   it('should route to the help command when no arguments are provided', async () => {
