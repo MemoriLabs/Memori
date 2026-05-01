@@ -17,14 +17,14 @@ As your agent works, Memori captures the full conversation including tool calls,
 
 Memori stores execution knowledge in two complementary forms:
 
-- **Structured memory** — facts, decisions, and constraints used for targeted retrieval and reasoning
+- **Structured memory primitives** — precise, queryable records of facts, decisions, constraints, actions, tool results, and outcomes used for targeted retrieval and reasoning
 - **Rolling summaries** — continuously updated context used for grounding and situational awareness
 
-### Grounded in actions, not just text
+### Grounded in agent execution, not just text
 
-Memori captures tool calls and execution traces alongside conversation data. Memory reflects what actually happened — not just what was discussed.
+Memori incorporates tool calls and execution traces alongside conversation data. This means memory reflects not just what was discussed, but what the agent actually did and what results those actions produced.
 
-By grounding memory in actions and outcomes, the system produces more reliable, verifiable, and actionable context.
+By structuring memory from actions, tool results, decisions, and outcomes, the system gives the agent a fuller understanding of prior task execution so the next time it acts, it can be more accurate and efficient.
 
 ## Context Recall
 
@@ -43,9 +43,3 @@ When a query is sent to an LLM through a wrapped client, Memori automatically in
 - Use cases where agent behavior should improve over time
 - Debugging and auditing agent decisions across sessions
 - Building relationships between actions, tools, and outcomes
-
-<Admonition type="important" title="Attribution is Required">
-  For Memori to capture and recall agent execution memory, attribution must be
-  set before recording trace events. Without attribution, Memori cannot scope or
-  retrieve execution memories.
-</Admonition>
