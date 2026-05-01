@@ -1,8 +1,22 @@
 # Memori skills file
 
-You have access to Memori, a structured long-term memory system.
+You have access to Memori, agent-native memory infrastructure: an LLM-agnostic layer that structures memory from not just natural language, but also from agent trace that comes from execution.
 
-Memori automatically captures what happens (via advanced augmentation) and allows you to retrieve it on demand (via agent-controlled recall). Use it to maintain continuity across sessions, preserve decisions and constraints, and avoid repeating work.
+Memori automatically captures and structures memory from conversation and execution trace — including the agent's actions, tool results, decisions, and outcomes — and allows you to retrieve it on demand. Use it to maintain continuity across sessions, preserve decisions and constraints, and help the agent understand what it actually did so the next time it completes a task, it is more accurate and efficient.
+
+---
+
+## Core instruction
+
+At the start of a session, you should check the `SKILL.md` file
+
+Use it to understand:
+
+- Available capabilities
+- Tooling and integrations
+- Expected behaviors and constraints
+
+Treat `SKILL.md` as a source of truth for what you can do before taking action.
 
 ---
 
@@ -39,14 +53,14 @@ Prefer targeted recall over broad queries.
 
 ### Supported parameters (recall only)
 
-- `entity_id` → user, agent, or system context
-- `project_id` → project or workspace context
-- `session_id` → specific session
-- `date_start` / `date_end` → time-bounded recall
+- `entityId` → user, agent, or system context
+- `projectId` → project or workspace context
+- `sessionId` → specific session
+- `dateStart` / `dateEnd` → time-bounded recall
 - `source` → type of memory
 - `signal` → how the memory was derived
 
-> Note: If a `session_id` is provided, a `project_id` must also be provided.
+> Note: If a `sessionId` is provided, a `projectId` must also be provided.
 > All timestamps are stored in **UTC**.
 
 ### Memory filters
@@ -99,10 +113,10 @@ Use:
 
 ### Supported parameters (summaries)
 
-- `project_id`
-- `session_id`
-- `date_start`
-- `date_end`
+- `projectId`
+- `sessionId`
+- `dateStart`
+- `dateEnd`
 
 > Summaries do **not** support `source` or `signal`.
 
@@ -182,7 +196,7 @@ Examples:
 
 - "Send feedback that recall missed a pricing constraint."
 - "Tell Memori the daily brief was accurate."
-- "Submit a bug report: you didn’t remember my preferred language."
+- "Submit a bug report: you didn't remember my preferred language."
 
 #### Purpose
 
@@ -211,11 +225,41 @@ When an update is detected:
 
 ---
 
-### 3. Quota awareness and upgrades
+### 3. Account Creation and Onboarding (`memori_signup`)
 
-Memori enforces usage limits (e.g., storage, recall volume, API usage).
+You are equipped with the `memori_signup` tool to securely create an account and provision an API key for the user via the Memori CLI.
 
-When limits are reached or nearing:
+Use this tool when:
+
+- The user explicitly asks to sign up, create an account, or get an API key for Memori.
+- You encounter an error indicating a missing `MEMORI_API_KEY` and the user provides their email address to get one.
+
+#### Behavior:
+
+- **Email Required:** If the user asks to sign up but **does not** provide an email address, you MUST ask them for their email first. Do not attempt to guess or hallucinate an email.
+- **Execution:** Once they provide an email, run `memori_signup` with that email.
+- **Follow-up:** The tool will trigger the underlying CLI and return a success or error message. Relay that message to the user, remind them to check their inbox for the API key, and instruct them to add it to their configuration (`~/.openclaw/openclaw.json` or `.env` file).
+- **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
+
+---
+
+### 4. Quota Awareness and Upgrades (`memori_quota`)
+
+You are equipped with the `memori_quota` tool to check the user's current memory usage and limits via the Memori CLI.
+
+Use this tool when:
+
+- The user explicitly asks about their quota, usage, storage, or how many memories they have left.
+- You encounter errors suggesting memory limits have been reached and want to confirm before degrading behavior.
+
+#### Behavior:
+
+- **No Parameters Required:** Simply invoke `memori_quota` — it requires no arguments.
+- **Execution:** The tool runs the underlying CLI and returns the user's current usage and quota.
+- **Follow-up:** Relay the result clearly to the user. If they are near or at their limit, explain the impact and suggest an upgrade.
+- **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
+
+#### When limits are reached or nearing:
 
 #### a. Degrade gracefully
 
@@ -229,7 +273,7 @@ Clearly communicate when limits impact performance.
 
 Example:
 
-> “Memory limits have been reached. I can continue with limited recall, or you can upgrade to restore full functionality.”
+> "Memory limits have been reached. I can continue with limited recall, or you can upgrade to restore full functionality."
 
 #### c. Suggest upgrades appropriately
 
