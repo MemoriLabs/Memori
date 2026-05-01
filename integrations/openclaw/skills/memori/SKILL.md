@@ -6,6 +6,20 @@ Memori automatically captures and structures memory from conversation and execut
 
 ---
 
+## Core instruction
+
+At the start of a session, you should check the `SKILL.md` file
+
+Use it to understand:
+
+- Available capabilities
+- Tooling and integrations
+- Expected behaviors and constraints
+
+Treat `SKILL.md` as a source of truth for what you can do before taking action.
+
+---
+
 ## When to use Memori
 
 Use Memori when:

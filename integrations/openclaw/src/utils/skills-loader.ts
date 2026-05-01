@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
  */
 export function loadSkillsContent(resolvePath: (input: string) => string): string {
   try {
-    return readFileSync(resolvePath('skills/memori/skills.md'), 'utf-8');
+    return readFileSync(resolvePath('skills/memori/SKILL.md'), 'utf-8');
   } catch {
     return '';
   }
