@@ -7,7 +7,7 @@ description: Give your OpenClaw agents structured, persistent memory with the Me
 
 Memori gives OpenClaw agents a structured, long-term memory system. It automatically captures what happens and lets agents recall it on demand — so context survives across sessions without bloating the prompt.
 
-Instead of replaying transcripts or relying on lossy summaries, Memori builds a persistent **experience layer** that agents can query when it matters.
+Instead of relying solely on natural-language memory, Memori structures persistent memory from both conversation and agent trace — the agent's actions, tool results, decisions, and outcomes — so it can recall what actually happened when it matters.
 
 ---
 
@@ -46,11 +46,11 @@ Memories are organized using four core identifiers:
 
 ## Core Capabilities
 
-### 1. Memory generation and experience layer
+### 1. Structured memory from conversation and agent trace
 
-Memori transforms raw agent sessions (messages + traces) into structured memory and a continuously updated summary.
+Memori transforms raw agent sessions (messages + traces) into structured memory primitives and continuously updated summaries.
 
-Instead of replaying full transcripts, it builds a compact, reusable **experience layer** that allows agents to maintain continuity across long-running interactions.
+Instead of replaying full transcripts, Memori turns conversation and agent execution into structured memory that preserves what the agent did, what happened, and what it learned across long-running interactions.
 
 The system focuses on extracting what matters:
 
@@ -65,29 +65,30 @@ Rather than preserving every detail, Memori prioritizes signal over noise — ke
 
 Memori stores knowledge in two complementary forms:
 
-- **Structured, typed memory** — precise, queryable records (facts, decisions, constraints, etc.) used for targeted retrieval and reasoning
+- **Structured memory primitives** — precise, queryable records of facts, decisions, constraints, actions, tool results, and outcomes used for targeted retrieval and reasoning
 - **Rolling summaries** — continuously updated context used for grounding and situational awareness
 
 Structured memory is stored in a knowledge graph, enabling relationships, deduplication, and precise retrieval.
 
-#### Grounded in actions, not just text
+#### Grounded in agent execution, not just text
 
-Memori incorporates tool calls and execution traces alongside conversation data. This means memory reflects what actually happened — not just what was discussed.
+Memori incorporates tool calls and execution traces alongside conversation data. This means memory reflects not just what was discussed, but what the agent actually did and what results those actions produced.
 
-By grounding memory in actions and outcomes, the system produces more reliable, verifiable, and actionable context.
+By structuring memory from actions, tool results, decisions, and outcomes, the system gives the agent a fuller understanding of prior task execution so the next time it acts, it can be more accurate and efficient.
 
 ---
 
 ### 2. Advanced Augmentation (automatic)
 
-After each interaction, Memori processes the conversation asynchronously.
+After each interaction, Memori converts raw session data into structured, reusable memories asynchronously.
 
-- Extracts facts, preferences, and attributes
-- Classifies memory types
+- Transforms raw agent sessions into structured memory units
+- Captures the agent's actions, reasoning, tool usage, responses, corrections, and failures
+- Organizes into classes to enable efficient retrieval
 - Generates embeddings for semantic retrieval
 - Updates structured memory and the knowledge graph
 
-This is how the experience layer is continuously built and updated over time.
+This is how structured memory is continuously built and updated over time.
 
 It runs **after the agent responds** and does not impact latency.
 
@@ -97,9 +98,9 @@ It runs **after the agent responds** and does not impact latency.
 
 Recall is **explicit and initiated by the agent**.
 
-Memori separates memory capture from memory usage:
+Memori separates memory creation from memory recall:
 
-- Capture is automatic (advanced augmentation)
+- Creation is automatic (advanced augmentation)
 - Recall is intentional (agent-controlled)
 
 Agents decide:
