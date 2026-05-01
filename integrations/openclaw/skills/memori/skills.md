@@ -1,65 +1,267 @@
-## Memori — Your Persistent Memory Layer
+# Memori skills file
 
-You have access to Memori, a structured long-term memory backend.
+You have access to Memori, a structured long-term memory system.
 
-**Automatic augmentation** (`agent_end`): After you respond, the conversation turn is automatically sent to Memori to extract and store facts, preferences, decisions, and relationships for future sessions. You do not need to do this manually.
-
-**Manual Recall (IMPORTANT)**: You do NOT automatically receive context from past sessions.
-**RULE:** You must NEVER say "I don't know" about the user, their preferences, or past events without FIRST running a `memori_recall` search to check if you remember it. If a user asks a question about themselves, you MUST search Memori before responding.
+Memori automatically captures what happens (via advanced augmentation) and allows you to retrieve it on demand (via agent-controlled recall). Use it to maintain continuity across sessions, preserve decisions and constraints, and avoid repeating work.
 
 ---
 
-### Memory Retrieval Tools
+## When to use Memori
 
-Use these to search your memory explicitly:
+Use Memori when:
 
-**`memori_recall`** — Fetch granular memory facts using a search query and optional filters. Use this when you need specific details (e.g., "what database did we choose?").
-
-| Parameter   | Type   | Description                                                                                                                                     |
-| ----------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `query`     | string | **Required.** A natural language semantic search query (e.g. "dogs"). **DO NOT use wildcards like `*`.**                                        |
-| `dateStart` | string | ISO 8601 (MUST be UTC) — memories on or after this time                                                                                         |
-| `dateEnd`   | string | ISO 8601 (MUST be UTC) — memories on or before this time                                                                                        |
-| `projectId` | string | CRITICAL: Leave EMPTY to use the current project. ONLY provide a value if the user explicitly names a different project.                        |
-| `sessionId` | string | Scope to a specific session — **requires `projectId`**                                                                                          |
-| `signal`    | string | Filter by signal type. Allowed values: `commit`, `discovery`, `failure`, `inference`, `pattern`, `result`, `update`, `verification`.            |
-| `source`    | string | Filter by source origin. Allowed values: `constraint`, `decision`, `execution`, `fact`, `insight`, `instruction`, `status`, `strategy`, `task`. |
-
-**`memori_recall_summary`** — Fetch summarized views of stored memories. **RULE:** You must NEVER guess or make up a status update, daily brief, or project overview. If the user asks "what did we do last time" or "give me a summary", you MUST use this tool before answering.
-
-| Parameter   | Type   | Description                                                                                                              |
-| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `dateStart` | string | ISO 8601 (MUST be UTC) — summaries on or after this time                                                                 |
-| `dateEnd`   | string | ISO 8601 (MUST be UTC) — summaries on or before this time                                                                |
-| `projectId` | string | CRITICAL: Leave EMPTY to use the current project. ONLY provide a value if the user explicitly names a different project. |
-| `sessionId` | string | Scope to a specific session — **requires `projectId`**                                                                   |
-
-> `sessionId` cannot be used without `projectId`. The backend will reject it.
+- The task depends on prior context
+- The user refers to previous sessions or decisions
+- You need known constraints, preferences, or patterns
+- You are starting a session and need current state
+- You want to understand what has already been done
 
 ---
 
-### Feedback Tool
+## When not to use Memori
 
-**RULE:** You must ALWAYS use this tool immediately if the user asks you to send feedback, report a bug, suggest a feature, or complains about the system. Do NOT just say "I will let the developers know"—you must actually execute the tool to send the message.
+Do not use Memori when:
 
-**`memori_feedback`** — Send feedback, suggestions, or issues directly to the Memori team.
+- The task is fully self-contained
+- The answer depends only on the current prompt
+- No historical context is required
+- The query is simple or one-off
 
-| Parameter | Type   | Description                                                              |
-| --------- | ------ | ------------------------------------------------------------------------ |
-| `content` | string | **Required.** The feedback text to send (positive, negative, bugs, etc.) |
-
-### Memory Scoping
-
-All memories are scoped to the current `entityId` and `projectId`. The current project is applied by default — you only need to pass `projectId` when explicitly overriding it for a cross-project lookup.
+Avoid unnecessary recall.
 
 ---
 
-### Coexistence With File Memory
+## Recall behavior
 
-Memori works alongside local file memory (e.g., `MEMORY.md`), it does not replace it:
+Recall is **agent-controlled and intentional**.
 
-| Layer                     | Scope                                 | Lifetime                    |
-| ------------------------- | ------------------------------------- | --------------------------- |
-| Session context           | Current conversation                  | Dies with session           |
-| File memory (`MEMORY.md`) | Curated strategic facts               | Persistent on disk          |
-| Memori                    | Auto-extracted facts, knowledge graph | Cloud — survives compaction |
+Prefer targeted recall over broad queries.
+
+### Supported parameters (recall only)
+
+- `entity_id` → user, agent, or system context
+- `project_id` → project or workspace context
+- `session_id` → specific session
+- `date_start` / `date_end` → time-bounded recall
+- `source` → type of memory
+- `signal` → how the memory was derived
+
+### Memory filters
+
+- `source`:
+  - constraint
+  - decision
+  - execution
+  - fact
+  - insight
+  - instruction
+  - status
+  - strategy
+  - task
+
+- `signal`:
+  - commit
+  - discovery
+  - failure
+  - inference
+  - pattern
+  - result
+  - update
+  - verification
+
+Use `source` and `signal` to prioritize high-signal memory when possible.
+
+### Default behavior (recall)
+
+- No date range → **all-time memory**
+- Use time bounds when narrowing results is necessary
+
+### Best practices
+
+- Start narrow (entity + project)
+- Add time bounds only when needed
+- Use `source` and `signal` to refine results
+- Expand scope only if needed
+- Do not recall on every turn
+
+---
+
+## Summary behavior
+
+Summaries are used for **state awareness**, not precise retrieval.
+
+Use:
+
+- `memori_recall_summary`
+
+### Supported parameters (summaries)
+
+- `project_id`
+- `session_id`
+- `date_start`
+- `date_end`
+
+> Summaries do **not** support `source` or `signal`.
+
+### Default behavior (summaries)
+
+- No date range → **last 24 hours**
+
+---
+
+## Daily brief behavior
+
+At the start of a meaningful session, retrieve a structured summary.
+
+Use the daily brief to understand:
+
+- Current state
+- Prior decisions
+- Constraints
+- Open work
+
+### Expected daily brief structure
+
+- Today at a glance
+- Top 3 next actions
+- Top 3 risks
+- Verify before acting
+- Recent decisions
+- Mission stack
+- Hard constraints
+- Current status
+- Open loops
+- Known failures and anti-patterns
+- Staleness warnings
+
+Treat this as the working state of the system.
+
+---
+
+## Typical workflow
+
+1. Start of session → retrieve summary
+2. During task → use targeted recall
+3. When memory is missing or incorrect → send feedback
+4. When limits are reached → degrade gracefully
+
+---
+
+## Safety and correctness
+
+- Do not invent memory
+- Do not assume memory is correct if it conflicts with the user
+- Verify before acting when needed
+- Treat recent instructions as higher priority than recalled memory
+
+---
+
+## Memori system guidance
+
+This section defines how you should interact with Memori beyond basic recall.
+
+---
+
+### 1. Feedback (`memori_feedback`)
+
+You are equipped with the `memori_feedback` tool to improve memory quality over time.
+
+You may send feedback at any time, and should do so at the end of a session when appropriate.
+
+Feedback should be sent when:
+
+- Recall results are irrelevant or missing key context
+- Important decisions or constraints were not captured
+- Memory quality degrades across sessions
+- Something works particularly well and should be reinforced
+
+Examples:
+
+- "Send feedback that recall missed a pricing constraint."
+- "Tell Memori the daily brief was accurate."
+- "Submit a bug report: you didn’t remember my preferred language."
+
+#### Purpose
+
+Feedback improves:
+
+- Memory extraction quality
+- Recall relevance
+- Summary accuracy
+
+---
+
+### 2. Updates
+
+Memori evolves over time (new features, improved recall, better summaries).
+
+When updates are exposed:
+
+- Check for updates via system message or tool
+- Adapt behavior to use new capabilities
+
+When an update is detected:
+
+- Prefer newer recall patterns when available
+- Use improved summaries or classification outputs
+- Continue operating normally if no changes are required
+
+---
+
+### 3. Account Creation and Onboarding (`memori_signup`)
+
+You are equipped with the `memori_signup` tool to securely create an account and provision an API key for the user via the Memori CLI.
+
+Use this tool when:
+
+- The user explicitly asks to sign up, create an account, or get an API key for Memori.
+- You encounter an error indicating a missing `MEMORI_API_KEY` and the user provides their email address to get one.
+
+#### Behavior:
+
+- **Email Required:** If the user asks to sign up but **does not** provide an email address, you MUST ask them for their email first. Do not attempt to guess or hallucinate an email.
+- **Execution:** Once they provide an email, run `memori_signup` with that email.
+- **Follow-up:** The tool will trigger the underlying CLI and return a success or error message. Relay that message to the user, remind them to check their inbox for the API key, and instruct them to add it to their configuration (`~/.openclaw/openclaw.json` or `.env` file).
+- **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
+
+---
+
+### 4. Quota Awareness and Upgrades (`memori_quota`)
+
+You are equipped with the `memori_quota` tool to check the user's current memory usage and limits via the Memori CLI.
+
+Use this tool when:
+
+- The user explicitly asks about their quota, usage, storage, or how many memories they have left.
+- You encounter errors suggesting memory limits have been reached and want to confirm before degrading behavior.
+
+#### Behavior:
+
+- **No Parameters Required:** Simply invoke `memori_quota` — it requires no arguments.
+- **Execution:** The tool runs the underlying CLI and returns the user's current usage and quota.
+- **Follow-up:** Relay the result clearly to the user. If they are near or at their limit, explain the impact and suggest an upgrade.
+- **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
+
+#### When limits are reached or nearing:
+
+#### a. Degrade gracefully
+
+- Reduce recall scope (shorter time ranges)
+- Prioritize high-signal memory (decisions, constraints, key facts)
+- Avoid unnecessary or repeated recall calls
+
+#### b. Inform the human/operator
+
+Clearly communicate when limits impact performance.
+
+Example:
+
+> “Memory limits have been reached. I can continue with limited recall, or you can upgrade to restore full functionality.”
+
+#### c. Suggest upgrades appropriately
+
+- Only prompt when performance is affected
+- Avoid repetitive or disruptive messaging
+- Keep messaging neutral and helpful
+
+---
