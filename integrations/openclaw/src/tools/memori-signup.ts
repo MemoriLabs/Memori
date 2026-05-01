@@ -13,7 +13,7 @@ export function createMemoriSignupTool(deps: ToolDeps) {
     name: 'memori_signup',
     label: 'Memori Sign Up',
     description:
-      'Signs up a user for a Memori API key. Safely downloads and runs the CLI in an isolated temporary sandbox.',
+      'CRITICAL: You MUST use this tool when the user asks to sign up, create an account, or get an API key for Memori — or when you encounter a missing MEMORI_API_KEY error and the user provides their email. If the user has not provided an email address, ask for it first. Do not guess or hallucinate an email.',
     parameters: {
       type: 'object',
       properties: {

@@ -1,7 +1,7 @@
 ---
 name: memori
 id: '@memorilabs/openclaw-memori'
-description: Long-term memory for OpenClaw agents using the Memori SDK. Automatically captures conversations and equips the agent with explicit tools to recall context across sessions.
+description: Long-term memory for OpenClaw agents using the Memori SDK. Automatically captures conversations and execution trace, and equips the agent with explicit tools to recall context, manage its account, and monitor usage across sessions.
 license: MIT
 compatibility:
   - openclaw
@@ -43,6 +43,8 @@ Memori does **not** blindly stuff the context window. Instead, it equips the age
 1. **`memori_recall`**: Searches the structured memory graph for specific facts, constraints, and prior decisions.
 2. **`memori_recall_summary`**: Retrieves structured daily briefs and rolling summaries of prior sessions.
 3. **`memori_feedback`**: Reports on memory quality to improve extraction accuracy.
+4. **`memori_signup`**: Creates a Memori account and provisions an API key directly from the agent.
+5. **`memori_quota`**: Checks current memory usage and limits so the agent can degrade gracefully when approaching quota.
 
 ## Installation
 
@@ -93,7 +95,9 @@ When this plugin is active, the OpenClaw agent is bound by the following strict 
 - **Manual Recall (IMPORTANT)**: The agent does NOT automatically receive context from past sessions. It is explicitly instructed: **"You must NEVER say 'I don't know' about the user, their preferences, or past events without FIRST running a `memori_recall` search to check if you remember it."**
 - **Summaries**: If a user asks "what did we do last time" or "give me a summary", the agent MUST use `memori_recall_summary` before answering. It is forbidden from guessing project status.
 - **Feedback**: The agent MUST use the `memori_feedback` tool immediately if the user asks to send feedback, report a bug, or suggests a feature.
-- **Date Defaults**: If the agent searches memory but omits start/end dates, the search defaults to **all-time memory**.
+- **Sign Up**: The agent MUST use `memori_signup` when the user asks to create an account or get an API key. It will ask for an email address if one is not provided.
+- **Quota**: The agent uses `memori_quota` when the user asks about usage limits, or proactively when it encounters errors suggesting limits have been reached.
+- **Date Defaults**: If the agent searches memory but omits start/end dates, recall defaults to **all-time memory** and summaries default to the **last 24 hours**.
 
 ## Verification
 
@@ -111,8 +115,9 @@ openclaw gateway logs --filter "[Memori]"
 
 If you don't already have a Memori API key, you can sign up directly from the command line using the SDK's CLI:
 
-````bash
+```bash
 memori sign-up <your-email@example.com>
+```
 
 ## Quota Management
 
@@ -120,7 +125,7 @@ Check your current API quota:
 
 ```bash
 memori quota
-````
+```
 
 **Example output:**
 

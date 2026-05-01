@@ -13,7 +13,7 @@ export function createMemoriQuotaTool(deps: ToolDeps) {
     name: 'memori_quota',
     label: 'Memori Quota',
     description:
-      'Retrieves the current memory usage and maximum allowed quota for the user. Use this when the user asks about their limits, storage, or how many memories they have left.',
+      'Retrieves the current memory usage and maximum allowed quota for the user. Use this when the user asks about their limits, storage, or how many memories they have left — or when you encounter errors suggesting memory limits have been reached and want to confirm before degrading behavior.',
     parameters: {
       type: 'object',
       properties: {},
