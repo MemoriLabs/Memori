@@ -123,11 +123,11 @@ The Memori plugin operates on two parallel tracks:
 | Track | Mechanism | What it does |
 | --- | --- | --- |
 | **Agent-Controlled Recall** | Plugin Tools | Equips the agent with `memori_recall`, `memori_recall_summary`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
-| **Advanced Augmentation** | `agent_end` Hook | After the agent responds, the exchange is sanitized and sent to Memori in the background to update structured memory and the knowledge graph. |
+| **Advanced Augmentation** | `agent_end` Hook | After the agent responds, the exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
 
-Together, these systems continuously build and maintain an **experience layer** — a structured, reusable representation of what has happened over time that agents can query on demand.
+Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient.
 
-Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy while avoiding unnecessary token usage.
+Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy and efficiency while avoiding unnecessary token usage.
 
 <Admonition type="tip" title="Multi-Agent Gateways">
   The plugin is fully stateless and thread-safe. You can run it across multiple agents in the same gateway without any shared state or concurrency issues.
