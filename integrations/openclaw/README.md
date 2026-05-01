@@ -141,9 +141,11 @@ Status: Ready
 ### 4. Test the memory loop
 
 1. Tell the agent something durable:
+
    > "I always use TypeScript and prefer functional patterns."
 
 2. Start a new session and ask:
+
    > "Write a hello world script in my preferred language."
 
 3. Confirm the agent used `memori_recall` to fetch your preferences:
