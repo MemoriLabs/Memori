@@ -7,7 +7,7 @@ vi.mock('fs', () => ({
 import { loadSkillsContent } from '../../src/utils/skills-loader.js';
 
 describe('utils/skills-loader', () => {
-  let mockResolvePath: ReturnType<typeof vi.fn>;
+  let mockResolvePath: (input: string) => string;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -20,8 +20,8 @@ describe('utils/skills-loader', () => {
 
     loadSkillsContent(mockResolvePath);
 
-    expect(mockResolvePath).toHaveBeenCalledWith('skills/memori/skills.md');
-    expect(readFileSync).toHaveBeenCalledWith('/resolved/skills/memori/skills.md', 'utf-8');
+    expect(mockResolvePath).toHaveBeenCalledWith('skills/memori/SKILL.md');
+    expect(readFileSync).toHaveBeenCalledWith('/resolved/skills/memori/SKILL.md', 'utf-8');
   });
 
   it('should return the file contents when the file exists', async () => {
