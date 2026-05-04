@@ -1,0 +1,23 @@
+---
+title: Hermes Overview
+description: Give Hermes Agent structured, persistent memory with the Memori memory provider.
+---
+
+# Hermes Overview
+
+Memori gives Hermes Agent a structured long-term memory provider. It plugs into Hermes' memory-provider interface, recalls relevant memories before each turn, captures completed turns after responses, and exposes explicit tools for memory search, summaries, quota checks, signup, and feedback.
+
+## How It Works
+
+The Hermes integration is a Python memory provider named `memori`.
+
+- **Automatic recall** runs before each turn and injects relevant Memori facts as context.
+- **Advanced augmentation** captures completed turns in the background after responses.
+- **Agent-controlled recall** is available through `memori_recall` and `memori_recall_summary`.
+- **Account helpers** are available through `memori_signup`, `memori_quota`, and `memori_feedback`.
+
+Hermes' built-in `MEMORY.md` and `USER.md` files remain active. Memori is additive and provides durable, structured, cross-session memory in Memori Cloud. It does not mirror edit, replace, or remove operations from those built-in files.
+
+## Package
+
+The integration lives in `integrations/hermes` and is distributed as `memori-hermes`.

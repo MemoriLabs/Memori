@@ -1,0 +1,346 @@
+"""Memori memory provider plugin for Hermes Agent."""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import threading
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from .client import MemoriAgentClient, MemoriApiError
+from .tools import TOOL_SCHEMAS
+
+try:  # pragma: no cover - exercised inside Hermes, absent in local unit tests.
+    from agent.memory_provider import MemoryProvider
+except Exception:  # noqa: BLE001
+
+    class MemoryProvider:  # type: ignore[no-redef]
+        """Small fallback so the package can be unit-tested without Hermes."""
+
+
+logger = logging.getLogger(__name__)
+
+PLUGIN_NAME = "memori"
+DEFAULT_PROJECT_ID = "hermes"
+SYNC_JOIN_TIMEOUT_SECS = 5.0
+
+
+@dataclass
+class MemoriConfig:
+    api_key: str
+    entity_id: str
+    project_id: str = DEFAULT_PROJECT_ID
+    process_id: str | None = None
+    base_url: str | None = None
+    recall_limit: int = 10
+
+
+def _env(name: str) -> str | None:
+    value = os.environ.get(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _hermes_home_from_env() -> Path:
+    return Path(_env("HERMES_HOME") or "~/.hermes").expanduser()
+
+
+def _config_path(hermes_home: str | Path | None = None) -> Path:
+    base = Path(hermes_home).expanduser() if hermes_home else _hermes_home_from_env()
+    return base / "memori.json"
+
+
+def _read_file_config(hermes_home: str | Path | None = None) -> dict[str, Any]:
+    path = _config_path(hermes_home)
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("Failed to read Memori config at %s: %s", path, exc)
+        return {}
+    return raw if isinstance(raw, dict) else {}
+
+
+def _load_config(hermes_home: str | Path | None = None) -> MemoriConfig | None:
+    file_config = _read_file_config(hermes_home)
+
+    api_key = _env("MEMORI_API_KEY") or str(file_config.get("apiKey") or "")
+    entity_id = _env("MEMORI_ENTITY_ID") or str(file_config.get("entityId") or "")
+    project_id = (
+        _env("MEMORI_PROJECT_ID")
+        or str(file_config.get("projectId") or "")
+        or DEFAULT_PROJECT_ID
+    )
+    process_id = _env("MEMORI_PROCESS_ID") or file_config.get("processId")
+    base_url = _env("MEMORI_API_URL_BASE") or file_config.get("baseUrl")
+
+    try:
+        recall_limit = int(
+            _env("MEMORI_RECALL_LIMIT") or file_config.get("recallLimit") or 10
+        )
+    except (TypeError, ValueError):
+        recall_limit = 10
+
+    if not api_key or not entity_id:
+        return None
+
+    return MemoriConfig(
+        api_key=api_key,
+        entity_id=entity_id,
+        project_id=project_id,
+        process_id=str(process_id) if process_id else None,
+        base_url=str(base_url) if base_url else None,
+        recall_limit=max(1, min(recall_limit, 50)),
+    )
+
+
+def _stringify(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False)
+    except TypeError:
+        return str(value)
+
+
+class MemoriMemoryProvider(MemoryProvider):
+    """Hermes MemoryProvider implementation backed by Memori Cloud."""
+
+    def __init__(self, client: MemoriAgentClient | None = None) -> None:
+        self._client = client
+        self._config: MemoriConfig | None = None
+        self._session_id = ""
+        self._platform = ""
+        self._agent_identity = ""
+        self._sync_thread: threading.Thread | None = None
+
+    @property
+    def name(self) -> str:
+        return PLUGIN_NAME
+
+    def is_available(self) -> bool:
+        return _load_config() is not None
+
+    def initialize(self, session_id: str, **kwargs: Any) -> None:
+        hermes_home = kwargs.get("hermes_home")
+        config = _load_config(hermes_home)
+        if config is None:
+            raise RuntimeError(
+                "Memori is not configured. Set MEMORI_API_KEY and MEMORI_ENTITY_ID, "
+                "or run `hermes memory setup` and select memori."
+            )
+
+        self._config = config
+        self._session_id = str(session_id)
+        self._platform = str(kwargs.get("platform") or "hermes")
+        self._agent_identity = str(kwargs.get("agent_identity") or "")
+
+        process_id = config.process_id or self._agent_identity or self._platform or None
+        self._client = self._client or MemoriAgentClient(
+            api_key=config.api_key,
+            entity_id=config.entity_id,
+            project_id=config.project_id,
+            process_id=process_id,
+            base_url=config.base_url,
+        )
+
+    def system_prompt_block(self) -> str:
+        return (
+            "Memori is active as this Hermes profile's long-term memory provider. "
+            "Use memori_recall before claiming that past user preferences, decisions, "
+            "project context, or prior session details are unknown."
+        )
+
+    def prefetch(self, query: str, *, session_id: str = "") -> str:
+        if not query.strip() or self._client is None or self._config is None:
+            return ""
+        active_session = session_id or self._session_id
+        try:
+            response = self._client.cloud_recall(
+                query=query,
+                session_id=active_session,
+                limit=self._config.recall_limit,
+            )
+        except MemoriApiError as exc:
+            logger.debug("Memori prefetch failed: %s", exc)
+            return ""
+
+        facts = self._extract_facts(response)
+        if not facts:
+            return ""
+
+        lines = ["Relevant context from Memori:"]
+        for fact in facts[: self._config.recall_limit]:
+            content = fact.get("content") if isinstance(fact, dict) else fact
+            content_text = _stringify(content).strip()
+            if content_text:
+                lines.append(f"- {content_text}")
+
+        return "\n".join(lines) if len(lines) > 1 else ""
+
+    def sync_turn(
+        self,
+        user_content: str,
+        assistant_content: str,
+        *,
+        session_id: str = "",
+    ) -> None:
+        if self._client is None:
+            return
+
+        if self._sync_thread and self._sync_thread.is_alive():
+            self._sync_thread.join(timeout=SYNC_JOIN_TIMEOUT_SECS)
+
+        active_session = session_id or self._session_id
+        self._sync_thread = threading.Thread(
+            target=self._sync_turn_background,
+            args=(user_content, assistant_content, active_session),
+            daemon=True,
+        )
+        self._sync_thread.start()
+
+    def _sync_turn_background(
+        self,
+        user_content: str,
+        assistant_content: str,
+        session_id: str,
+    ) -> None:
+        if self._client is None:
+            return
+
+        try:
+            self._client.capture_turn(
+                user_content=user_content,
+                assistant_content=assistant_content,
+                session_id=session_id,
+                platform=self._platform or "hermes",
+            )
+        except MemoriApiError as exc:
+            logger.warning("Memori sync_turn failed: %s", exc)
+
+    def on_session_switch(
+        self,
+        new_session_id: str,
+        *,
+        parent_session_id: str = "",
+        reset: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        del parent_session_id, reset, kwargs
+        self._session_id = str(new_session_id)
+
+    def on_session_end(self, messages: list[dict[str, Any]]) -> None:
+        del messages
+        self.shutdown()
+
+    def get_tool_schemas(self) -> list[dict[str, Any]]:
+        return TOOL_SCHEMAS
+
+    def handle_tool_call(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        **kwargs: Any,
+    ) -> str:
+        del kwargs
+        if self._client is None:
+            return json.dumps({"error": "Memori is not initialized"})
+
+        try:
+            if tool_name == "memori_recall":
+                params = self._with_project_defaults(args)
+                return json.dumps(self._client.agent_recall(params), ensure_ascii=False)
+            if tool_name == "memori_recall_summary":
+                params = self._with_project_defaults(args)
+                return json.dumps(
+                    self._client.agent_recall_summary(params),
+                    ensure_ascii=False,
+                )
+            if tool_name == "memori_quota":
+                return json.dumps(self._client.quota(), ensure_ascii=False)
+            if tool_name == "memori_signup":
+                email = str(args.get("email") or "").strip()
+                if not email:
+                    return json.dumps({"error": "email is required"})
+                return json.dumps(self._client.signup(email), ensure_ascii=False)
+            if tool_name == "memori_feedback":
+                content = str(args.get("content") or "").strip()
+                if not content:
+                    return json.dumps({"error": "content is required"})
+                return json.dumps(self._client.feedback(content), ensure_ascii=False)
+        except Exception as exc:  # noqa: BLE001
+            return json.dumps({"error": str(exc)})
+
+        return json.dumps({"error": f"Unknown Memori tool: {tool_name}"})
+
+    def shutdown(self) -> None:
+        if self._sync_thread and self._sync_thread.is_alive():
+            self._sync_thread.join(timeout=SYNC_JOIN_TIMEOUT_SECS)
+
+    def get_config_schema(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "key": "api_key",
+                "description": "Memori API key",
+                "secret": True,
+                "required": True,
+                "env_var": "MEMORI_API_KEY",
+                "url": "https://app.memorilabs.ai/signup",
+            },
+            {
+                "key": "entity_id",
+                "description": "Stable end-user or workspace identifier for Memori attribution",
+                "secret": False,
+                "required": True,
+            },
+            {
+                "key": "project_id",
+                "description": "Project scope for Memori recall and summaries",
+                "default": DEFAULT_PROJECT_ID,
+            },
+        ]
+
+    def save_config(self, values: dict[str, Any], hermes_home: str) -> None:
+        path = _config_path(hermes_home)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        config = {
+            "entityId": values.get("entity_id") or values.get("entityId"),
+            "projectId": values.get("project_id")
+            or values.get("projectId")
+            or DEFAULT_PROJECT_ID,
+        }
+        path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+    def _with_project_defaults(self, args: dict[str, Any]) -> dict[str, Any]:
+        params = {k: v for k, v in args.items() if v not in (None, "")}
+        if (
+            self._config
+            and not params.get("projectId")
+            and not params.get("project_id")
+        ):
+            params["projectId"] = self._config.project_id
+        return params
+
+    @staticmethod
+    def _extract_facts(response: dict[str, Any]) -> list[Any]:
+        for key in ("facts", "results", "memories", "data"):
+            value = response.get(key)
+            if isinstance(value, list):
+                return value
+        return []
+
+
+def register(ctx: Any) -> None:
+    """Hermes plugin entry point."""
+    ctx.register_memory_provider(MemoriMemoryProvider())
+
+
+__all__ = ["MemoriMemoryProvider", "register"]

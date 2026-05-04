@@ -1,0 +1,71 @@
+name: Publish Hermes to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate artifacts, but do not upload to PyPI."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-hermes-pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build and test tools
+        run: python -m pip install --upgrade pip build twine pytest ruff
+
+      - name: Install local packages
+        run: |
+          python -m pip install -e .
+          python -m pip install -e integrations/hermes
+
+      - name: Run Hermes integration tests
+        run: python -m pytest tests/test_agent.py integrations/hermes/tests -q
+
+      - name: Run Ruff
+        run: python -m ruff check memori integrations/hermes tests/test_agent.py
+
+      - name: Build memori-hermes distributions
+        working-directory: integrations/hermes
+        run: python -m build --sdist --wheel --outdir ../../dist/memori-hermes
+
+      - name: Verify memori-hermes distributions
+        run: python -m twine check dist/memori-hermes/*
+
+      - name: List built artifacts
+        run: ls -lh dist/memori-hermes
+
+      - name: Publish memori-hermes to PyPI
+        if: ${{ inputs.dry_run != true }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/memori-hermes/
+          user: __token__
+          password: ${{ secrets.PYPI_HERMES_API_TOKEN }}
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "::notice::Dry run complete. Artifacts validated with twine but not uploaded to PyPI."
+          echo "Download the dist artifacts from this run to inspect before publishing."

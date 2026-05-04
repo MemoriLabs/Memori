@@ -1,0 +1,48 @@
+---
+title: Hermes Quickstart
+description: Install and configure the Memori memory provider for Hermes Agent.
+---
+
+# Hermes Quickstart
+
+## Install
+
+```bash
+pip install memori-hermes
+```
+
+For local development from the Memori repository:
+
+```bash
+pip install -e .
+pip install -e integrations/hermes
+```
+
+## Configure
+
+Run Hermes' memory provider setup flow:
+
+```bash
+hermes memory setup
+```
+
+Select `memori`, then enter your Memori API key and entity ID.
+
+If `memori` is not listed yet, install `memori-hermes` in the same Python environment Hermes uses, then set the provider manually.
+
+Manual configuration:
+
+```bash
+hermes config set memory.provider memori
+echo "MEMORI_API_KEY=your-key" >> ~/.hermes/.env
+echo "MEMORI_ENTITY_ID=your-user-or-workspace-id" >> ~/.hermes/.env
+echo "MEMORI_PROJECT_ID=hermes" >> ~/.hermes/.env
+```
+
+## Verify
+
+```bash
+hermes memory status
+```
+
+Start Hermes and ask about something from a prior session. The provider will recall relevant Memori context automatically, and the agent can call `memori_recall` for explicit searches.

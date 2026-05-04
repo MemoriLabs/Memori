@@ -1,0 +1,5 @@
+name: memori
+version: 0.1.0
+description: Structured long-term memory for Hermes Agent using Memori Cloud.
+hooks:
+  - on_session_end
