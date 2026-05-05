@@ -28,6 +28,7 @@ jobs:
           - os: macos-15-intel
             artifact-name: darwin-x64
             rust-target: x86_64-apple-darwin
+            cargo-args: --no-default-features --features ort-load-dynamic
           - os: windows-latest
             artifact-name: win32-x64-msvc
             rust-target: x86_64-pc-windows-msvc
