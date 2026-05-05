@@ -3,16 +3,19 @@ import type { StorageAdapter, SqlBindValue } from '../base.js';
 import { Registry } from '../registry.js';
 
 export interface DrizzleInstance {
-  execute(query: SQL): Promise<unknown>;
+  execute?(query: SQL): Promise<unknown>;
+  all?(query: SQL): unknown;
+  run?(query: SQL): unknown;
 }
 
 function isDrizzleConnection(conn: unknown): conn is DrizzleInstance {
   return (
     typeof conn === 'object' &&
     conn !== null &&
-    'execute' in conn &&
-    typeof conn.execute === 'function' &&
-    'select' in conn
+    'select' in conn &&
+    (('execute' in conn && typeof conn.execute === 'function') ||
+      ('run' in conn && typeof conn.run === 'function') ||
+      ('all' in conn && typeof conn.all === 'function'))
   );
 }
 
@@ -21,6 +24,23 @@ export class DrizzleAdapter implements StorageAdapter {
 
   constructor(conn: unknown) {
     this.db = conn as DrizzleInstance;
+  }
+
+  private async runQuery(query: SQL, rawSql: string): Promise<unknown> {
+    if (typeof this.db.execute === 'function') {
+      return await this.db.execute(query);
+    }
+
+    // SQLite requires .all() for operations returning data, and .run() for mutations
+    const isSelect = /^\s*(SELECT|PRAGMA)\b/i.test(rawSql) || /\bRETURNING\b/i.test(rawSql);
+
+    if (isSelect && typeof this.db.all === 'function') {
+      return await this.db.all(query);
+    } else if (typeof this.db.run === 'function') {
+      return await this.db.run(query);
+    }
+
+    throw new Error('[Memori] Could not find a suitable execution method on Drizzle connection.');
   }
 
   public async execute<T = Record<string, unknown>>(
@@ -45,23 +65,23 @@ export class DrizzleAdapter implements StorageAdapter {
       query = sql`${query}${val}${sql.raw(nextPart)}`;
     }
 
-    const result = await this.db.execute(query);
+    const result = await this.runQuery(query, operation);
     return this.normalizeResult<T>(result);
   }
 
   public async begin(): Promise<void> {
     const { sql } = await import('drizzle-orm');
-    await this.db.execute(sql`BEGIN`);
+    await this.runQuery(sql`BEGIN`, 'BEGIN');
   }
 
   public async commit(): Promise<void> {
     const { sql } = await import('drizzle-orm');
-    await this.db.execute(sql`COMMIT`);
+    await this.runQuery(sql`COMMIT`, 'COMMIT');
   }
 
   public async rollback(): Promise<void> {
     const { sql } = await import('drizzle-orm');
-    await this.db.execute(sql`ROLLBACK`);
+    await this.runQuery(sql`ROLLBACK`, 'ROLLBACK');
   }
 
   public getDialect(): string {

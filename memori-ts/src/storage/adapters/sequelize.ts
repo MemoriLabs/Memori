@@ -9,7 +9,11 @@ export interface SequelizeTransaction {
 export interface SequelizeInstance {
   query(
     sql: string,
-    options?: { replacements?: unknown[]; transaction?: SequelizeTransaction | null }
+    options?: {
+      replacements?: unknown[];
+      bind?: unknown[];
+      transaction?: SequelizeTransaction | null;
+    }
   ): Promise<[unknown[], unknown]>;
   transaction(): Promise<SequelizeTransaction>;
   getDialect(): string;
@@ -38,10 +42,21 @@ export class SequelizeAdapter implements StorageAdapter {
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
-    const [results] = await this.sequelize.query(operation, {
-      replacements: binds,
+    const options: {
+      transaction: SequelizeTransaction | null;
+      replacements?: unknown[];
+      bind?: unknown[];
+    } = {
       transaction: this.tx,
-    });
+    };
+
+    if (this.getDialect() === 'postgresql') {
+      options.bind = binds;
+    } else {
+      options.replacements = binds;
+    }
+
+    const [results] = await this.sequelize.query(operation, options);
     return (Array.isArray(results) ? results : []) as T[];
   }
 
