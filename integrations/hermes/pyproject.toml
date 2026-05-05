@@ -7,7 +7,7 @@ name = "hermes-memori"
 version = "0.1.0"
 description = "Official Memori Labs long-term memory provider for Hermes Agent"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["hermes-agent", "memory", "memori", "ai-agents", "long-term-memory"]
@@ -15,7 +15,6 @@ dependencies = ["memori>=3.3.3"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",

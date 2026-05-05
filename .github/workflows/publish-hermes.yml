@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -33,7 +33,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install build and test tools
-        run: python -m pip install --upgrade pip build twine pytest ruff
+        run: python -m pip install --upgrade pip build twine pytest pytest-cov ruff
 
       - name: Install local packages
         run: |
@@ -46,21 +46,21 @@ jobs:
       - name: Run Ruff
         run: python -m ruff check memori integrations/hermes tests/test_agent.py
 
-      - name: Build memori-hermes distributions
+      - name: Build hermes-memori distributions
         working-directory: integrations/hermes
-        run: python -m build --sdist --wheel --outdir ../../dist/memori-hermes
+        run: python -m build --sdist --wheel --outdir ../../dist/hermes-memori
 
-      - name: Verify memori-hermes distributions
-        run: python -m twine check dist/memori-hermes/*
+      - name: Verify hermes-memori distributions
+        run: python -m twine check dist/hermes-memori/*
 
       - name: List built artifacts
-        run: ls -lh dist/memori-hermes
+        run: ls -lh dist/hermes-memori
 
-      - name: Publish memori-hermes to PyPI
+      - name: Publish hermes-memori to PyPI
         if: ${{ inputs.dry_run != true }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/memori-hermes/
+          packages-dir: dist/hermes-memori/
           user: __token__
           password: ${{ secrets.PYPI_HERMES_API_TOKEN }}
 
