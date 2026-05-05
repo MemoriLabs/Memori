@@ -171,15 +171,17 @@ For setup and configuration, see the [OpenClaw Quickstart](docs/memori-cloud/ope
 
 ## Hermes Agent (Persistent Memory Provider)
 
-Memori also ships as a Hermes Agent memory provider. It recalls relevant context before each turn, captures completed conversations in the background, and gives Hermes explicit `memori_recall` and `memori_recall_summary` tools.
+Memori also ships as a Hermes Agent memory provider. It captures completed conversations in the background and gives Hermes explicit `memori_recall` and `memori_recall_summary` tools for agent-controlled recall.
 
 ```bash
-pip install memori-hermes
+pip install hermes-memori
 
 hermes config set memory.provider memori
-echo "MEMORI_API_KEY=YOUR_MEMORI_API_KEY" >> ~/.hermes/.env
-echo "MEMORI_ENTITY_ID=your-app-user-id" >> ~/.hermes/.env
-echo "MEMORI_PROJECT_ID=hermes" >> ~/.hermes/.env
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+mkdir -p "$HERMES_HOME"
+echo "MEMORI_API_KEY=YOUR_MEMORI_API_KEY" >> "$HERMES_HOME/.env"
+echo "MEMORI_ENTITY_ID=your-app-user-id" >> "$HERMES_HOME/.env"
+echo "MEMORI_PROJECT_ID=hermes" >> "$HERMES_HOME/.env"
 ```
 
 For setup and configuration, see the [Hermes Quickstart](docs/memori-cloud/hermes/quickstart.mdx). For architecture and lifecycle details, see the [Hermes Overview](docs/memori-cloud/hermes/overview.mdx).

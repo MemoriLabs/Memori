@@ -34,22 +34,6 @@ class MemoriAgentClient:
         )
         self.memori.config.request_secs_timeout = timeout
 
-    def cloud_recall(
-        self,
-        *,
-        query: str,
-        session_id: str,
-        limit: int,
-    ) -> dict[str, Any]:
-        try:
-            self.memori.set_session(session_id)
-            response = self.memori.recall(query, limit=limit)
-            if isinstance(response, dict):
-                return response
-            return {"facts": response}
-        except Exception as exc:  # noqa: BLE001
-            raise MemoriApiError(str(exc)) from exc
-
     def capture_turn(
         self,
         *,

@@ -3,7 +3,7 @@ requires = ["setuptools>=60", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "memori-hermes"
+name = "hermes-memori"
 version = "0.1.0"
 description = "Official Memori Labs long-term memory provider for Hermes Agent"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]

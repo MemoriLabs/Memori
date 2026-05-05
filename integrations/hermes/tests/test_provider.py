@@ -14,14 +14,6 @@ class FakeClient:
         self.captured = []
         self.recall_params = None
 
-    def cloud_recall(self, *, query: str, session_id: str, limit: int):
-        return {
-            "facts": [
-                {"content": f"{query} for {session_id}"},
-                {"content": "prefers concise summaries"},
-            ]
-        }
-
     def capture_turn(
         self,
         *,
@@ -61,16 +53,12 @@ def test_save_config_writes_profile_scoped_memori_json(tmp_path: Path) -> None:
     assert data == {"entityId": "user-1", "projectId": "project-1"}
 
 
-def test_prefetch_formats_facts() -> None:
+def test_prefetch_does_not_auto_recall() -> None:
     provider = MemoriMemoryProvider(client=FakeClient())
-    provider._config = type("Config", (), {"recall_limit": 10})()
-    provider._session_id = "session-1"
 
     result = provider.prefetch("database")
 
-    assert "Relevant context from Memori:" in result
-    assert "- database for session-1" in result
-    assert "- prefers concise summaries" in result
+    assert result == ""
 
 
 def test_sync_turn_runs_background_capture() -> None:

@@ -1,6 +1,6 @@
 # Memori for Hermes Agent
 
-Memori gives Hermes Agent structured long-term memory. It recalls relevant context before each turn, captures completed user/assistant exchanges after each turn, and exposes explicit tools for memory search, summaries, quota checks, signup, and feedback.
+Memori gives Hermes Agent structured long-term memory. It captures completed user/assistant exchanges after each turn and exposes explicit tools for memory search, summaries, quota checks, signup, and feedback.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ pip install -e integrations/hermes
 Or install the published package when available:
 
 ```bash
-pip install memori-hermes
+pip install hermes-memori
 ```
 
 ## Configure
@@ -31,16 +31,18 @@ Use Hermes' memory setup flow and select `memori`:
 hermes memory setup
 ```
 
-If `memori` is not listed yet, install `memori-hermes` in the same Python environment Hermes uses, then set the provider manually.
+If `memori` is not listed yet, install `hermes-memori` in the same Python environment Hermes uses, then set the provider manually.
 
 Manual configuration also works:
 
 ```bash
 hermes config set memory.provider memori
-echo "MEMORI_API_KEY=your-key" >> ~/.hermes/.env
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+mkdir -p "$HERMES_HOME"
+echo "MEMORI_API_KEY=your-key" >> "$HERMES_HOME/.env"
 ```
 
-Then add `~/.hermes/memori.json`:
+Then add `$HERMES_HOME/memori.json`:
 
 ```json
 {
@@ -55,7 +57,6 @@ Environment variables override file config:
 - `MEMORI_ENTITY_ID`
 - `MEMORI_PROJECT_ID`
 - `MEMORI_PROCESS_ID`
-- `MEMORI_RECALL_LIMIT`
 
 ## Tools
 
