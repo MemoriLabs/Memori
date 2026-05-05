@@ -38,7 +38,7 @@ jobs:
 
       - name: Install NAPI build dependencies
         working-directory: ./core/bindings/node
-        run: npm install
+        run: npm ci
 
       - name: Set Windows C/C++ dynamic CRT flags
         if: runner.os == 'Windows'
