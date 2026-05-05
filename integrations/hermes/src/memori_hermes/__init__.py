@@ -14,7 +14,7 @@ from .client import MemoriAgentClient, MemoriApiError
 from .tools import TOOL_SCHEMAS
 
 try:  # pragma: no cover - exercised inside Hermes, absent in local unit tests.
-    from agent.memory_provider import MemoryProvider
+    from agent.memory_provider import MemoryProvider  # ty: ignore[unresolved-import]
 except Exception:  # noqa: BLE001
 
     class MemoryProvider:  # type: ignore[no-redef]

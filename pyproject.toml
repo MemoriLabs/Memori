@@ -140,6 +140,7 @@ exclude_lines = [
 exclude = [
     "benchmarks/**/*.ipynb",
     "tests/**/*.py",
+    "integrations/hermes/tests/**/*.py",
     "**/__pycache__/**",
     "setup.py",
 ]
