@@ -33,7 +33,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install build and test tools
-        run: python -m pip install --upgrade pip build twine pytest pytest-cov ruff
+        run: python -m pip install --upgrade pip build twine pytest pytest-cov pytest-mock ruff
 
       - name: Install local packages
         run: |
