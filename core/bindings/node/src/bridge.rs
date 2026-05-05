@@ -149,9 +149,6 @@ impl StorageBridge for NodeStorageBridge {
     }
 
     fn shutdown(&self) {
-        // .take() pulls the ThreadsafeFunction out of the Option.
-        // Because we don't keep it, Rust immediately drops it.
-        // The Drop implementation automatically releases the Node.js event loop reference!
         let _ = self.fetch_embeddings_tsfn.lock().unwrap().take();
         let _ = self.fetch_facts_by_ids_tsfn.lock().unwrap().take();
         let _ = self.write_batch_tsfn.lock().unwrap().take();
