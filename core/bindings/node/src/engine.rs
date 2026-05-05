@@ -8,8 +8,8 @@ use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::panic::catch_unwind;
-use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
+use std::sync::{Arc, Mutex};
 
 #[napi]
 pub struct MemoriEngine {
@@ -33,9 +33,9 @@ impl MemoriEngine {
         let pending_writes = Arc::new(DashMap::new());
 
         let bridge = Arc::new(NodeStorageBridge {
-            fetch_embeddings_tsfn: fetch_embeddings_cb,
-            fetch_facts_by_ids_tsfn: fetch_facts_by_ids_cb,
-            write_batch_tsfn: write_batch_cb,
+            fetch_embeddings_tsfn: Mutex::new(Some(fetch_embeddings_cb)),
+            fetch_facts_by_ids_tsfn: Mutex::new(Some(fetch_facts_by_ids_cb)),
+            write_batch_tsfn: Mutex::new(Some(write_batch_cb)),
             pending_embeddings: pending_embeddings.clone(),
             pending_facts: pending_facts.clone(),
             pending_writes: pending_writes.clone(),
