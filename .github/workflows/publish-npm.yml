@@ -34,6 +34,7 @@ jobs:
           - os: ubuntu-latest
             artifact-name: android-arm64
             rust-target: aarch64-linux-android
+            cargo-args: --no-default-features --features ort-load-dynamic
 
     steps:
       - name: Checkout repository
@@ -95,7 +96,7 @@ jobs:
 
       - name: Build Rust bindings
         working-directory: ./core/bindings/node
-        run: npm run build -- --target ${{ matrix.rust-target }}
+        run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
