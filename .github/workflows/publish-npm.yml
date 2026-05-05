@@ -181,11 +181,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      # Temporarily force Node 24 to run the modern NAPI CLI build tools
-      - name: Setup Node.js (Build Environment)
+      - name: Setup Node.js (Build & Publish Environment)
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -221,11 +221,6 @@ jobs:
           for artifact in "${artifacts[@]}"; do
             cp "$artifact" core/bindings/node/
           done
-
-      - name: Setup Node.js ${{ matrix.node-version }} (Test Environment)
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
 
       - name: Install TypeScript dependencies
         working-directory: ./memori-ts
