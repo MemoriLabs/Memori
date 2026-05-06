@@ -2,12 +2,29 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from memori_hermes.client import MemoriAgentClient, MemoriApiError  # noqa: E402
+
+
+def test_client_reports_missing_memori_dependency() -> None:
+    def fake_import(name, *args, **kwargs):
+        if name == "memori":
+            raise ModuleNotFoundError("No module named 'memori'", name="memori")
+        return original_import(name, *args, **kwargs)
+
+    original_import = __import__
+    with patch("builtins.__import__", side_effect=fake_import):
+        with pytest.raises(RuntimeError, match="pip install memori"):
+            MemoriAgentClient(
+                api_key="key",
+                entity_id="entity",
+                project_id="project",
+            )
 
 
 def make_client() -> MemoriAgentClient:
@@ -74,7 +91,7 @@ def test_capture_turn_writes_default_then_collector(
         "assistant_content": "a",
         "project_id": "project",
         "session_id": "session",
-        "platform": "cli",
+        "platform": "hermes",
     }
 
 

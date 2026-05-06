@@ -24,15 +24,15 @@ except Exception:  # noqa: BLE001
 logger = logging.getLogger(__name__)
 
 PLUGIN_NAME = "memori"
-DEFAULT_PROJECT_ID = "hermes"
 SYNC_JOIN_TIMEOUT_SECS = 5.0
+HERMES_PLATFORM = "hermes"
 
 
 @dataclass
 class MemoriConfig:
     api_key: str
     entity_id: str
-    project_id: str = DEFAULT_PROJECT_ID
+    project_id: str | None = None
     process_id: str | None = None
     base_url: str | None = None
 
@@ -72,9 +72,7 @@ def _load_config(hermes_home: str | Path | None = None) -> MemoriConfig | None:
     api_key = _env("MEMORI_API_KEY") or str(file_config.get("apiKey") or "")
     entity_id = _env("MEMORI_ENTITY_ID") or str(file_config.get("entityId") or "")
     project_id = (
-        _env("MEMORI_PROJECT_ID")
-        or str(file_config.get("projectId") or "")
-        or DEFAULT_PROJECT_ID
+        _env("MEMORI_PROJECT_ID") or str(file_config.get("projectId") or "") or None
     )
     process_id = _env("MEMORI_PROCESS_ID") or file_config.get("processId")
     base_url = _env("MEMORI_API_URL_BASE") or file_config.get("baseUrl")
@@ -98,7 +96,7 @@ class MemoriMemoryProvider(MemoryProvider):
         self._client = client
         self._config: MemoriConfig | None = None
         self._session_id = ""
-        self._platform = ""
+        self._project_id = ""
         self._agent_identity = ""
         self._sync_thread: threading.Thread | None = None
 
@@ -120,14 +118,15 @@ class MemoriMemoryProvider(MemoryProvider):
 
         self._config = config
         self._session_id = str(session_id)
-        self._platform = str(kwargs.get("platform") or "hermes")
         self._agent_identity = str(kwargs.get("agent_identity") or "")
 
-        process_id = config.process_id or self._agent_identity or self._platform or None
+        project_id = config.project_id or self._project_id_from_agent(kwargs)
+        self._project_id = project_id
+        process_id = config.process_id or self._agent_identity or HERMES_PLATFORM
         self._client = self._client or MemoriAgentClient(
             api_key=config.api_key,
             entity_id=config.entity_id,
-            project_id=config.project_id,
+            project_id=project_id,
             process_id=process_id,
             base_url=config.base_url,
         )
@@ -200,7 +199,7 @@ was not provided."""
                 user_content=user_content,
                 assistant_content=assistant_content,
                 session_id=session_id,
-                platform=self._platform or "hermes",
+                platform=HERMES_PLATFORM,
             )
         except MemoriApiError as exc:
             logger.warning("Memori sync_turn failed: %s", exc)
@@ -283,29 +282,47 @@ was not provided."""
             {
                 "key": "project_id",
                 "description": "Project scope for Memori recall and summaries",
-                "default": DEFAULT_PROJECT_ID,
             },
         ]
 
     def save_config(self, values: dict[str, Any], hermes_home: str) -> None:
         path = _config_path(hermes_home)
         path.parent.mkdir(parents=True, exist_ok=True)
-        config = {
-            "entityId": values.get("entity_id") or values.get("entityId"),
-            "projectId": values.get("project_id")
-            or values.get("projectId")
-            or DEFAULT_PROJECT_ID,
-        }
+        config = _read_file_config(hermes_home)
+
+        entity_id = values.get("entity_id") or values.get("entityId")
+        if entity_id:
+            config["entityId"] = entity_id
+
+        project_id = values.get("project_id") or values.get("projectId")
+        if project_id:
+            config["projectId"] = project_id
+
         path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+    def _project_id_from_agent(self, kwargs: dict[str, Any]) -> str:
+        project_id = str(
+            kwargs.get("agent_workspace")
+            or kwargs.get("agent_identity")
+            or kwargs.get("user_id")
+            or kwargs.get("session_title")
+            or self._session_id
+        ).strip()
+        if not project_id:
+            raise RuntimeError(
+                "Memori project_id is not configured and Hermes did not provide "
+                "an agent project scope."
+            )
+        return project_id
 
     def _with_project_defaults(self, args: dict[str, Any]) -> dict[str, Any]:
         params = {k: v for k, v in args.items() if v not in (None, "")}
         if (
-            self._config
+            self._project_id
             and not params.get("projectId")
             and not params.get("project_id")
         ):
-            params["projectId"] = self._config.project_id
+            params["projectId"] = self._project_id
         return params
 
 

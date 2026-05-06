@@ -65,18 +65,17 @@ def test_sync_turn_runs_background_capture() -> None:
     client = FakeClient()
     provider = MemoriMemoryProvider(client=client)
     provider._session_id = "session-1"
-    provider._platform = "cli"
 
     provider.sync_turn("hello", "hi")
     provider.shutdown()
 
-    assert client.captured == [("hello", "hi", "session-1", "cli")]
+    assert client.captured == [("hello", "hi", "session-1", "hermes")]
 
 
 def test_handle_recall_adds_project_default() -> None:
     client = FakeClient()
     provider = MemoriMemoryProvider(client=client)
-    provider._config = type("Config", (), {"project_id": "project-1"})()
+    provider._project_id = "project-1"
 
     result = json.loads(provider.handle_tool_call("memori_recall", {"query": "prefs"}))
 
@@ -103,3 +102,4 @@ def test_config_schema_contains_required_setup_fields() -> None:
     keys = {field["key"] for field in schema}
     assert {"api_key", "entity_id", "project_id"} <= keys
     assert schema[0]["env_var"] == "MEMORI_API_KEY"
+    assert "default" not in schema[2]

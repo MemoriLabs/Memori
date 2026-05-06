@@ -1,6 +1,8 @@
 # Memori for Hermes Agent
 
-Memori gives Hermes Agent structured long-term memory. It captures completed user/assistant exchanges after each turn and exposes explicit tools for memory search, summaries, quota checks, signup, and feedback.
+Official Memori Labs provider for Hermes Agent, enabling structured long-term memory from agent trace and execution.
+
+Memori gives Hermes Agent structured, long-term memory from agent trace and execution. It captures completed agent activity, including user goals, assistant decisions, workflow steps, outcomes, constraints, failures, and feedback, and structures that activity into durable memory primitives for future recall. The provider exposes explicit tools for memory recall, summaries, quota checks, signup, and feedback.
 
 ## Requirements
 
@@ -57,6 +59,8 @@ Environment variables override file config:
 - `MEMORI_ENTITY_ID`
 - `MEMORI_PROJECT_ID`
 - `MEMORI_PROCESS_ID`
+
+`MEMORI_PROJECT_ID` is optional. When it is not configured, Hermes-provided project context such as the active workspace, agent identity, user ID, session title, or session ID is used as the Memori project scope.
 
 ## Tools
 

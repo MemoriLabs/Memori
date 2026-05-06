@@ -181,8 +181,9 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 mkdir -p "$HERMES_HOME"
 echo "MEMORI_API_KEY=YOUR_MEMORI_API_KEY" >> "$HERMES_HOME/.env"
 echo "MEMORI_ENTITY_ID=your-app-user-id" >> "$HERMES_HOME/.env"
-echo "MEMORI_PROJECT_ID=hermes" >> "$HERMES_HOME/.env"
 ```
+
+`MEMORI_PROJECT_ID` is optional; when omitted, the provider uses Hermes' active project context for scoping.
 
 For setup and configuration, see the [Hermes Quickstart](docs/memori-cloud/hermes/quickstart.mdx). For architecture and lifecycle details, see the [Hermes Overview](docs/memori-cloud/hermes/overview.mdx).
 

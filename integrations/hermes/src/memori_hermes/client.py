@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from memori import Memori
-
 DEFAULT_TIMEOUT_SECS = 30
+MEMORI_PLATFORM = "hermes"
 
 
 class MemoriApiError(RuntimeError):
@@ -26,6 +25,18 @@ class MemoriAgentClient:
         base_url: str | None = None,
         timeout: int = DEFAULT_TIMEOUT_SECS,
     ) -> None:
+        try:
+            from memori import Memori
+        except ModuleNotFoundError as exc:
+            missing = exc.name or "memori"
+            raise RuntimeError(
+                f"Memori SDK dependency missing: {missing}. Run: pip install memori"
+            ) from exc
+        except ImportError as exc:
+            raise RuntimeError(
+                "Memori SDK could not be imported. Run: pip install memori"
+            ) from exc
+
         self.entity_id = entity_id
         self.project_id = project_id
         self.memori = Memori(api_key=api_key, base_url=base_url).attribution(
@@ -42,13 +53,14 @@ class MemoriAgentClient:
         session_id: str,
         platform: str,
     ) -> None:
+        del platform
         try:
             self.memori.capture_agent_turn(
                 user_content=user_content,
                 assistant_content=assistant_content,
                 project_id=self.project_id,
                 session_id=session_id,
-                platform=platform or "hermes",
+                platform=MEMORI_PLATFORM,
             )
         except Exception as exc:  # noqa: BLE001
             raise MemoriApiError(str(exc)) from exc

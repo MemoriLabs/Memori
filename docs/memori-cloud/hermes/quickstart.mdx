@@ -38,8 +38,9 @@ HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 mkdir -p "$HERMES_HOME"
 echo "MEMORI_API_KEY=your-key" >> "$HERMES_HOME/.env"
 echo "MEMORI_ENTITY_ID=your-user-or-workspace-id" >> "$HERMES_HOME/.env"
-echo "MEMORI_PROJECT_ID=hermes" >> "$HERMES_HOME/.env"
 ```
+
+`MEMORI_PROJECT_ID` is optional. If omitted, the provider uses Hermes' active workspace, agent identity, user ID, session title, or session ID as the project scope.
 
 ## Verify
 

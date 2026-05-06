@@ -1,5 +1,7 @@
 name: memori
 version: 0.1.0
 description: Structured long-term memory for Hermes Agent using Memori Cloud.
+pip_dependencies:
+  - memori
 hooks:
   - on_session_end
