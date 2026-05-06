@@ -3,7 +3,7 @@ use crate::types::*;
 use dashmap::DashMap;
 use engine_orchestrator::EngineOrchestrator;
 use engine_orchestrator::search::FactId;
-use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, WriteAck};
+use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, RankedFact, WriteAck};
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
@@ -138,12 +138,44 @@ impl MemoriEngine {
         tokio::task::spawn_blocking(move || {
             let req = serde_json::from_value(serde_json::to_value(&request).unwrap())
                 .map_err(|e| Error::from_reason(format!("Invalid retrieval request: {}", e)))?;
-            let results = inner
+            let results: Vec<RankedFact> = inner
                 .retrieve(req)
                 .map_err(|e| Error::from_reason(e.to_string()))?;
-            let napi_results: Vec<NapiRecallObject> =
-                serde_json::from_value(serde_json::to_value(&results).unwrap())
-                    .map_err(|e| Error::from_reason(e.to_string()))?;
+            let napi_results = results
+                .into_iter()
+                .map(|r| {
+                    let id = match r.id {
+                        FactId::Int(n) => Either::A(n),
+                        FactId::String(s) => Either::B(s),
+                    };
+                    let summaries = if r.summaries.is_empty() {
+                        None
+                    } else {
+                        Some(
+                            r.summaries
+                                .into_iter()
+                                .map(|s| NapiRecallSummary {
+                                    content: s["content"].as_str().unwrap_or("").to_string(),
+                                    date_created: s["date_created"]
+                                        .as_str()
+                                        .unwrap_or("")
+                                        .to_string(),
+                                    entity_fact_id: fact_id_from_json(&s["entity_fact_id"]),
+                                    fact_id: fact_id_from_json(&s["fact_id"]),
+                                })
+                                .collect(),
+                        )
+                    };
+                    NapiRecallObject {
+                        id,
+                        content: r.content,
+                        rank_score: Some(r.rank_score as f64),
+                        similarity: Some(r.similarity as f64),
+                        date_created: Some(r.date_created),
+                        summaries,
+                    }
+                })
+                .collect();
             Ok(napi_results)
         })
         .await
@@ -198,5 +230,13 @@ impl MemoriEngine {
     #[napi]
     pub fn shutdown(&self) {
         self.inner.shutdown();
+    }
+}
+
+fn fact_id_from_json(v: &serde_json::Value) -> Option<Either<i64, String>> {
+    match v {
+        serde_json::Value::Number(n) => n.as_i64().map(Either::A),
+        serde_json::Value::String(s) => Some(Either::B(s.clone())),
+        _ => None,
     }
 }

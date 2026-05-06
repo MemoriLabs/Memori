@@ -15,18 +15,16 @@ pub struct NapiRetrievalRequest {
 }
 
 #[napi(object)]
-#[derive(Serialize, Deserialize)]
 pub struct NapiRecallSummary {
     pub content: String,
     pub date_created: String,
-    pub entity_fact_id: Option<i64>,
-    pub fact_id: Option<i64>,
+    pub entity_fact_id: Option<Either<i64, String>>,
+    pub fact_id: Option<Either<i64, String>>,
 }
 
 #[napi(object)]
-#[derive(Serialize, Deserialize)]
 pub struct NapiRecallObject {
-    pub id: i64,
+    pub id: Either<i64, String>,
     pub content: String,
     pub rank_score: Option<f64>,
     pub similarity: Option<f64>,
