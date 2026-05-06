@@ -1,7 +1,5 @@
 # Memori for Hermes Agent
 
-Official Memori Labs provider for Hermes Agent, enabling structured long-term memory from agent trace and execution.
-
 Memori gives Hermes Agent structured, long-term memory from agent trace and execution. It captures completed agent activity — including user goals, assistant decisions, tool usage, workflow steps, outcomes, constraints, failures, and feedback — and structures that activity into durable memory primitives for future recall. This allows Hermes agents to learn from prior execution, preserve workflow context, avoid repeated mistakes, and become more efficient over time. The provider exposes explicit tools for memory recall, summaries, quota checks, signup, and feedback.
 
 ## Requirements
