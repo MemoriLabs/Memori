@@ -1,0 +1,113 @@
+---
+title: PostgreSQL (TypeScript)
+description: Connect Memori BYODB to PostgreSQL using the pg driver and the TypeScript SDK.
+---
+
+# PostgreSQL (TypeScript)
+
+Memori connects to PostgreSQL via the `pg` driver. PostgreSQL is the recommended database for production Memori deployments — full concurrent write support, connection pooling, and cloud-ready.
+
+<Note>
+  This page covers the TypeScript SDK. For the Python SDK, see
+  [PostgreSQL](/docs/memori-byodb/databases/postgres).
+</Note>
+
+## Install
+
+```bash
+npm install @memorilabs/memori pg openai dotenv
+npm install --save-dev @types/pg
+```
+
+## Quick Start
+
+<CodeGroup title="PostgreSQL Connection">
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+await pool.end();
+```
+
+</CodeGroup>
+
+## Connection Strings
+
+| Environment     | Connection String                                                        |
+| --------------- | ------------------------------------------------------------------------ |
+| **Local**       | `postgresql://user:password@localhost:5432/memori_db`                    |
+| **With SSL**    | `postgresql://user:password@host:5432/memori_db?sslmode=require`         |
+| **Neon**        | `postgresql://user:password@ep-xxx.neon.tech/memori_db?sslmode=require`  |
+| **Supabase**    | `postgresql://postgres:password@db.xxx.supabase.co:5432/postgres`        |
+| **AWS RDS**     | `postgresql://user:password@xxx.rds.amazonaws.com:5432/memori_db`        |
+
+## Complete Example
+
+```typescript
+import 'dotenv/config';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+try {
+  await mem.config.storage.build();
+
+  const response1 = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+  });
+  console.log(`AI: ${response1.choices[0]?.message?.content}`);
+
+  // Wait for background augmentation
+  await mem.augmentation.wait();
+} finally {
+  await mem.config.storage.close();
+  await pool.end();
+}
+```
+
+## Notes
+
+- Pass a `pg.Pool` instance, not a `pg.Client` — Memori requires a pool to safely manage concurrent read/write operations and background augmentation.
+- Set `DATABASE_CONNECTION_STRING` in your `.env` file.
+- Call `await pool.end()` after `mem.config.storage.close()` to drain and release all pooled connections.
+- For cloud-hosted PostgreSQL (Neon, Supabase, AWS RDS), append `?sslmode=require` to your connection string.

@@ -1,0 +1,168 @@
+---
+title: MikroORM
+description: Connect Memori BYODB to your database using MikroORM (SQLite, PostgreSQL, MySQL, MariaDB).
+---
+
+# MikroORM
+
+Memori auto-detects a MikroORM `EntityManager` and routes SQL to the correct dialect. Pass `orm.em` directly.
+
+## Install
+
+Install the MikroORM core package and your dialect driver:
+
+<CodeGroup title="Install MikroORM">
+
+```bash {{ title: 'SQLite' }}
+npm install @mikro-orm/core @mikro-orm/sqlite better-sqlite3
+npm install --save-dev @types/better-sqlite3
+```
+
+```bash {{ title: 'PostgreSQL' }}
+npm install @mikro-orm/core @mikro-orm/postgresql pg
+npm install --save-dev @types/pg
+```
+
+```bash {{ title: 'MySQL / MariaDB' }}
+npm install @mikro-orm/core @mikro-orm/mysql mysql2
+```
+
+</CodeGroup>
+
+## Quick Start
+
+<CodeGroup title="MikroORM Connection">
+
+```typescript {{ title: 'SQLite' }}
+import 'dotenv/config';
+import { MikroORM, EntitySchema } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// MikroORM requires at least one entity. Use a placeholder if you
+// are only using Memori and have no entities of your own yet.
+const DummyEntity = new EntitySchema({
+  name: 'Dummy',
+  properties: { id: { type: 'number', primary: true } },
+});
+
+const orm = await MikroORM.init({
+  driver: SqliteDriver,
+  dbName: 'memori-mikro.db',
+  entities: [DummyEntity],
+  allowGlobalContext: true,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: orm.em }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+await orm.close();
+```
+
+```typescript {{ title: 'PostgreSQL' }}
+import 'dotenv/config';
+import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const orm = await MikroORM.init({
+  driver: PostgreSqlDriver,
+  clientUrl: process.env.DATABASE_CONNECTION_STRING,
+  entities: [/* your entities */],
+  allowGlobalContext: true,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: orm.em }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+await orm.close();
+```
+
+```typescript {{ title: 'MySQL / MariaDB' }}
+import 'dotenv/config';
+import { MikroORM } from '@mikro-orm/core';
+import { MySqlDriver } from '@mikro-orm/mysql';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const orm = await MikroORM.init({
+  driver: MySqlDriver,
+  clientUrl: process.env.DATABASE_CONNECTION_STRING,
+  entities: [/* your entities */],
+  allowGlobalContext: true,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: orm.em }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+await orm.close();
+```
+
+</CodeGroup>
+
+## Supported Dialects
+
+| MikroORM Driver      | Dialect Detected |
+| -------------------- | ---------------- |
+| `SqliteDriver`       | SQLite           |
+| `PostgreSqlDriver`   | PostgreSQL       |
+| `MySqlDriver`        | MySQL            |
+| `MariaDbDriver`      | MySQL            |
+
+## Notes
+
+- Pass `orm.em` (the `EntityManager`), not `orm` itself.
+- MikroORM requires at least one entity defined in `entities`. If you're using Memori standalone without any of your own entities, define a minimal placeholder entity to satisfy the requirement.
+- `allowGlobalContext: true` is needed when using `orm.em` outside of a request context (e.g., in scripts or background workers).
+- Call `await orm.close()` after `mem.config.storage.close()` to release the connection pool.
+- Memori manages its own raw SQL tables — no MikroORM entity definitions required for its tables.

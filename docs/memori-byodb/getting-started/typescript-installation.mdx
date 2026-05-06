@@ -1,0 +1,276 @@
+---
+title: Installation (TypeScript)
+description: Install the Memori TypeScript SDK and connect your own database for Memori BYODB.
+---
+
+# Installation (TypeScript)
+
+Get the Memori TypeScript SDK installed and connected to your own database.
+
+<Note>
+  This page covers the TypeScript SDK for Memori BYODB. For the Python SDK, see
+  the [Installation](/docs/memori-byodb/getting-started/installation) page.
+</Note>
+
+## Install Memori
+
+<CodeGroup title="Install Memori (TypeScript)">
+
+```bash {{ title: 'npm' }}
+npm install @memorilabs/memori
+```
+
+```bash {{ title: 'yarn' }}
+yarn add @memorilabs/memori
+```
+
+```bash {{ title: 'pnpm' }}
+pnpm add @memorilabs/memori
+```
+
+</CodeGroup>
+
+## Install Your Database Driver
+
+Memori supports SQLite, PostgreSQL, and MySQL/MariaDB through both raw drivers and popular ORMs. Install the package for your preferred setup:
+
+<CodeGroup title="Database Drivers">
+
+```bash {{ title: 'SQLite (better-sqlite3)' }}
+npm install better-sqlite3
+npm install --save-dev @types/better-sqlite3
+```
+
+```bash {{ title: 'PostgreSQL (pg)' }}
+npm install pg
+npm install --save-dev @types/pg
+```
+
+```bash {{ title: 'MySQL (mysql2)' }}
+npm install mysql2
+```
+
+```bash {{ title: 'Drizzle ORM' }}
+# Drizzle + your underlying driver (e.g. pg for PostgreSQL)
+npm install drizzle-orm pg
+npm install --save-dev @types/pg drizzle-kit
+```
+
+```bash {{ title: 'TypeORM' }}
+# TypeORM + your underlying driver
+npm install typeorm better-sqlite3
+npm install --save-dev @types/better-sqlite3
+```
+
+```bash {{ title: 'Sequelize' }}
+# Sequelize + your underlying driver
+npm install sequelize mysql2
+```
+
+```bash {{ title: 'MikroORM' }}
+# MikroORM core + dialect driver
+npm install @mikro-orm/core @mikro-orm/sqlite better-sqlite3
+npm install --save-dev @types/better-sqlite3
+```
+
+</CodeGroup>
+
+## Connection Patterns
+
+| Pattern       | What to pass to `conn`                                     | Works With                          |
+| ------------- | ---------------------------------------------------------- | ----------------------------------- |
+| better-sqlite3 | `new Database('memori.db')`                               | SQLite                              |
+| pg            | `new pg.Pool({ connectionString })`                        | PostgreSQL, CockroachDB             |
+| mysql2        | `await mysql.createConnection(connectionString)`           | MySQL, MariaDB                      |
+| Drizzle ORM   | `drizzle(pool)` instance                                   | SQLite, PostgreSQL, MySQL           |
+| TypeORM       | Initialized `DataSource`                                   | SQLite, PostgreSQL, MySQL, MariaDB  |
+| Sequelize     | `new Sequelize(connectionString, { dialect })`             | SQLite, PostgreSQL, MySQL           |
+| MikroORM      | `orm.em` (EntityManager)                                   | SQLite, PostgreSQL, MySQL, MariaDB  |
+
+## Connection Examples
+
+<CodeGroup title="Database Setup">
+
+```typescript {{ title: 'SQLite' }}
+import Database from 'better-sqlite3';
+import { Memori } from '@memorilabs/memori';
+
+const db = new Database('memori.db');
+const mem = new Memori({ conn: db });
+```
+
+```typescript {{ title: 'PostgreSQL' }}
+import pg from 'pg';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
+const mem = new Memori({ conn: pool });
+```
+
+```typescript {{ title: 'MySQL' }}
+import mysql from 'mysql2/promise';
+import { Memori } from '@memorilabs/memori';
+
+const conn = await mysql.createConnection(
+  process.env.DATABASE_CONNECTION_STRING!
+);
+const mem = new Memori({ conn });
+```
+
+```typescript {{ title: 'Drizzle (PostgreSQL)' }}
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
+const db = drizzle(pool);
+const mem = new Memori({ conn: db });
+```
+
+```typescript {{ title: 'TypeORM' }}
+import { DataSource } from 'typeorm';
+import { Memori } from '@memorilabs/memori';
+
+const dataSource = new DataSource({
+  type: 'better-sqlite3',
+  database: 'memori.db',
+});
+await dataSource.initialize();
+
+const mem = new Memori({ conn: dataSource });
+```
+
+```typescript {{ title: 'Sequelize' }}
+import { Sequelize } from 'sequelize';
+import { Memori } from '@memorilabs/memori';
+
+const sequelize = new Sequelize(
+  process.env.DATABASE_CONNECTION_STRING!,
+  { dialect: 'mysql', logging: false }
+);
+const mem = new Memori({ conn: sequelize });
+```
+
+```typescript {{ title: 'MikroORM' }}
+import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
+import { Memori } from '@memorilabs/memori';
+
+const orm = await MikroORM.init({
+  driver: SqliteDriver,
+  dbName: 'memori.db',
+  entities: [/* your entities */],
+});
+const mem = new Memori({ conn: orm.em });
+```
+
+</CodeGroup>
+
+## Create the Schema
+
+After setting up your connection, call `build()` once to create the Memori tables in your database. This only needs to run the first time, or after upgrading Memori.
+
+```typescript
+await mem.config.storage.build();
+```
+
+## Close the Connection
+
+Always call `close()` when your application exits. This flushes any in-flight writes and tears down the native engine cleanly — especially important for short-lived scripts and CLI tools.
+
+```typescript
+await mem.config.storage.close();
+```
+
+For ORMs that manage their own connection lifecycle (TypeORM `DataSource`, MikroORM, Sequelize), you should also close the ORM connection afterward:
+
+```typescript
+// TypeORM
+await mem.config.storage.close();
+await dataSource.destroy();
+
+// MikroORM
+await mem.config.storage.close();
+await orm.close();
+
+// Sequelize
+await mem.config.storage.close();
+await sequelize.close();
+
+// pg Pool
+await mem.config.storage.close();
+await pool.end();
+
+// mysql2
+await mem.config.storage.close();
+await conn.end();
+```
+
+## Install Your LLM Provider
+
+Install the SDK for your preferred LLM provider:
+
+<CodeGroup title="LLM Provider SDKs">
+
+```bash {{ title: 'OpenAI' }}
+npm install openai
+```
+
+```bash {{ title: 'Anthropic' }}
+npm install @anthropic-ai/sdk
+```
+
+```bash {{ title: 'Google Gemini' }}
+npm install @google/genai
+```
+
+</CodeGroup>
+
+## Set Your LLM Provider Key
+
+```bash
+# OpenAI
+export OPENAI_API_KEY="your-openai-key"
+
+# Anthropic
+export ANTHROPIC_API_KEY="your-anthropic-key"
+
+# Google Gemini
+export GOOGLE_API_KEY="your-google-key"
+```
+
+## Set Up Your Memori API Key (Optional)
+
+A Memori API key unlocks higher augmentation quotas (5,000/month vs 100 without a key). Sign up directly from the CLI:
+
+```bash
+memori signup your-email@example.com
+```
+
+Then set it as an environment variable:
+
+```bash
+export MEMORI_API_KEY="your-api-key-here"
+```
+
+Or add it to a `.env` file:
+
+```
+MEMORI_API_KEY=your-api-key-here
+```
+
+Check your current quota at any time:
+
+```bash
+memori quota
+```
+
+## Verify Installation
+
+```bash
+npx tsx -e "import { Memori } from '@memorilabs/memori'; console.log('Memori installed successfully')"
+```

@@ -1,0 +1,137 @@
+---
+title: OpenAI (TypeScript)
+description: Using Memori BYODB with OpenAI models and the TypeScript SDK.
+---
+
+# OpenAI (TypeScript)
+
+Memori supports all OpenAI Chat Completions models. Register your client once and every call is automatically captured and stored in your own database.
+
+<Note>
+  This page covers the TypeScript SDK. For the Python SDK, see
+  [OpenAI](/docs/memori-byodb/llm/openai). Want a zero-setup option? Try
+  [Memori Cloud](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+<CodeGroup title="OpenAI Integration">
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+```
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | TypeScript                               | Python                                   |
+| ------------ | ---------------------------------------- | ---------------------------------------- |
+| **Async**    | `await client.chat.completions.create()` | `await client.chat.completions.create()` |
+| **Streamed** | `stream: true` parameter                 | `stream=True` parameter                  |
+| **Sync**     | —                                        | `client.chat.completions.create()`       |
+
+## Streaming
+
+```typescript
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content);
+  }
+}
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+```
+
+## Multi-Turn Conversations
+
+Memori captures each call and links them within the same session. Pass your full conversation history as usual.
+
+```typescript
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const messages: OpenAI.ChatCompletionMessageParam[] = [
+  { role: 'user', content: 'My name is Alice.' },
+];
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages,
+});
+messages.push({
+  role: 'assistant',
+  content: response.choices[0]?.message?.content ?? '',
+});
+
+messages.push({ role: 'user', content: "What's my name?" });
+const response2 = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages,
+});
+console.log(response2.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+```
