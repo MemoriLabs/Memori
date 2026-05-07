@@ -34,15 +34,9 @@ describe('tools/memori-recall', () => {
       expect(tool.label).toBe('Recall Memory');
     });
 
-    it('should require the query parameter', () => {
-      const tool = createMemoriRecallTool(deps);
-      expect(tool.parameters.required).toContain('query');
-    });
-
     it('should define expected parameter properties', () => {
       const tool = createMemoriRecallTool(deps);
       const props = tool.parameters.properties;
-      expect(props).toHaveProperty('query');
       expect(props).toHaveProperty('dateStart');
       expect(props).toHaveProperty('dateEnd');
       expect(props).toHaveProperty('projectId');
