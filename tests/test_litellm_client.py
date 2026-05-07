@@ -20,8 +20,8 @@ _fake_litellm.acompletion = MagicMock()
 _fake_litellm.__version__ = "0.0.0-test"
 sys.modules.setdefault("litellm", _fake_litellm)
 
-from memori.llm._utils import client_is_litellm
-from memori.llm.clients import LiteLLM
+from memori.llm._utils import client_is_litellm  # noqa: E402
+from memori.llm.clients import LiteLLM  # noqa: E402
 
 
 def test_client_is_litellm_matches_module() -> None:
