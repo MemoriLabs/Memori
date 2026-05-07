@@ -14,4 +14,6 @@ pub trait StorageBridge: Send + Sync {
     -> Result<Vec<CandidateFactRow>, HostStorageError>;
 
     fn write_batch(&self, batch: &WriteBatch) -> Result<WriteAck, HostStorageError>;
+
+    fn shutdown(&self) {}
 }

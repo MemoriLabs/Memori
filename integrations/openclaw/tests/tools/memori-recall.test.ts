@@ -43,7 +43,6 @@ describe('tools/memori-recall', () => {
       const tool = createMemoriRecallTool(deps);
       const props = tool.parameters.properties;
       expect(props).toHaveProperty('query');
-      expect(props).toHaveProperty('limit');
       expect(props).toHaveProperty('dateStart');
       expect(props).toHaveProperty('dateEnd');
       expect(props).toHaveProperty('projectId');
@@ -93,7 +92,6 @@ describe('tools/memori-recall', () => {
 
       await tool.execute('call-1', {
         query: 'search query',
-        limit: 5,
         dateStart: '2024-01-01',
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
@@ -106,7 +104,6 @@ describe('tools/memori-recall', () => {
       expect(client.agentRecall).toHaveBeenCalledWith(
         expect.objectContaining({
           query: 'search query',
-          limit: 5,
           dateStart: '2024-01-01',
           dateEnd: '2024-12-31',
           projectId: 'proj-1',

@@ -2,7 +2,7 @@ import type { StorageAdapter, SqlBindValue } from '../base.js';
 import { Registry } from '../registry.js';
 
 export interface MikroOrmConnection {
-  execute(query: string, params?: unknown[]): Promise<unknown[]>;
+  execute(query: string, params?: unknown[], method?: string, ctx?: unknown): Promise<unknown>;
   getPlatform(): { constructor: { name: string } };
 }
 
@@ -11,6 +11,8 @@ export interface MikroOrmLike {
   begin(): Promise<void>;
   commit(): Promise<void>;
   rollback(): Promise<void>;
+  execute?(query: string, params?: unknown[]): Promise<unknown>;
+  getTransactionContext?(): unknown;
 }
 
 function isMikroOrmConnection(conn: unknown): conn is MikroOrmLike {
@@ -37,7 +39,20 @@ export class MikroOrmAdapter implements StorageAdapter {
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
-    const result = await this.connection.execute(operation, binds);
+    const sql = this.getDialect() === 'postgresql' ? operation.replace(/\$\d+/g, '?') : operation;
+
+    let result: unknown;
+
+    if (typeof this.em.execute === 'function') {
+      result = await this.em.execute(sql, binds);
+    } else {
+      const ctx =
+        typeof this.em.getTransactionContext === 'function'
+          ? this.em.getTransactionContext()
+          : undefined;
+      result = await this.connection.execute(sql, binds, 'all', ctx);
+    }
+
     return (Array.isArray(result) ? result : []) as T[];
   }
 
@@ -54,7 +69,6 @@ export class MikroOrmAdapter implements StorageAdapter {
   }
 
   public getDialect(): string {
-    // FIX: Safely inspect the Platform class name instead of relying on deprecated config keys
     const platform = this.connection.getPlatform();
     const name = platform.constructor.name;
 

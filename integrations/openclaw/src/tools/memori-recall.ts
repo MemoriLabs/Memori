@@ -17,10 +17,6 @@ export function createMemoriRecallTool(deps: ToolDeps) {
           description:
             'REQUIRED: The natural language search query to find specific facts (e.g., "What database did we decide to use?", "Ryan\'s dogs"). DO NOT use wildcards like "*" or regex. This is a semantic search, so use real words.',
         },
-        limit: {
-          type: 'number',
-          description: 'Maximum number of memories to return (default: 10)',
-        },
         dateStart: {
           type: 'string',
           description:

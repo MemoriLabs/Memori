@@ -51,7 +51,10 @@ class Conversation {
     public readonly message: ConversationMessage,
     public readonly messages: ConversationMessages
   ) {}
-  public async create(sessionId: number | string, timeoutMinutes: number): Promise<number | null> {
+  public async create(
+    sessionId: number | string,
+    timeoutMinutes: number
+  ): Promise<number | string | null> {
     const existing = await this.conn.execute<{ id: number | string; last_activity: string }>(
       `SELECT c.id, COALESCE(MAX(m.date_created), c.date_created) as last_activity FROM memori_conversation c LEFT JOIN memori_conversation_message m ON m.conversation_id = c.id WHERE c.session_id = $1 GROUP BY c.id, c.date_created`,
       [sessionId]
@@ -62,7 +65,7 @@ class Conversation {
         [existing[0].last_activity]
       );
       if (result.length > 0 && result[0].minutes_since_activity <= timeoutMinutes)
-        return Number(existing[0].id);
+        return existing[0].id;
     }
     await this.conn.execute(
       `INSERT INTO memori_conversation(uuid, session_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -72,7 +75,7 @@ class Conversation {
       `SELECT id FROM memori_conversation WHERE session_id = $1`,
       [sessionId]
     );
-    return newConv.length > 0 ? Number(newConv[0].id) : null;
+    return newConv.length > 0 ? newConv[0].id : null;
   }
   public async update(id: number | string, summary: string): Promise<this> {
     if (!summary) return this;
@@ -86,7 +89,7 @@ class Conversation {
 
 class Entity {
   constructor(private readonly conn: StorageAdapter) {}
-  public async create(externalId: string | number): Promise<number | null> {
+  public async create(externalId: string | number): Promise<number | string | null> {
     await this.conn.execute(
       `INSERT INTO memori_entity(uuid, external_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [randomUUID(), externalId]
@@ -95,7 +98,7 @@ class Entity {
       `SELECT id FROM memori_entity WHERE external_id = $1`,
       [externalId]
     );
-    return res.length > 0 ? Number(res[0].id) : null;
+    return res.length > 0 ? res[0].id : null;
   }
 }
 
@@ -203,7 +206,7 @@ class EntityFact {
       )
       .map((r) => {
         return {
-          id: Number(r.id),
+          id: r.id,
           content_embedding: bufferToFloat32Array(r.content_embedding),
         };
       });
@@ -211,8 +214,6 @@ class EntityFact {
 
   public async getFactsByIds(factIds: (string | number)[]): Promise<CandidateFactRow[]> {
     if (factIds.length === 0) return [];
-
-    // Generate $1, $2, $3... placeholders based on the array length
     const placeholders = factIds.map((_, i) => `$${i + 1}`).join(',');
 
     const factRows = await this.conn.execute<{
@@ -221,24 +222,23 @@ class EntityFact {
       date_created: string | Date;
     }>(
       `SELECT id, content, date_created FROM memori_entity_fact WHERE id IN (${placeholders})`,
-      factIds // Spread the array items as standard binds
+      factIds
     );
 
     if (factRows.length === 0) return [];
 
-    const factsById = new Map<number, CandidateFactRow>();
+    const factsById = new Map<string, CandidateFactRow>();
     const facts: CandidateFactRow[] = [];
 
     for (const row of factRows) {
-      const numId = Number(row.id);
       const fact: CandidateFactRow = {
-        id: numId,
+        id: row.id,
         content: row.content,
         date_created: row.date_created ? new Date(row.date_created).toISOString() : '',
         summaries: [],
       };
       facts.push(fact);
-      factsById.set(numId, fact);
+      factsById.set(String(row.id), fact);
     }
 
     const summaryRows = await this.conn.execute<{
@@ -251,7 +251,7 @@ class EntityFact {
     );
 
     for (const row of summaryRows) {
-      const fact = factsById.get(Number(row.fact_id));
+      const fact = factsById.get(String(row.fact_id));
       if (fact) {
         (fact.summaries ??= []).push({
           content: row.content,
@@ -317,7 +317,7 @@ class KnowledgeGraph {
 
 class Process {
   constructor(private readonly conn: StorageAdapter) {}
-  public async create(externalId: string | number): Promise<number | null> {
+  public async create(externalId: string | number): Promise<number | string | null> {
     await this.conn.execute(
       `INSERT INTO memori_process(uuid, external_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [randomUUID(), externalId]
@@ -326,7 +326,7 @@ class Process {
       `SELECT id FROM memori_process WHERE external_id = $1`,
       [externalId]
     );
-    return res.length > 0 ? Number(res[0].id) : null;
+    return res.length > 0 ? res[0].id : null;
   }
 }
 
@@ -350,7 +350,7 @@ class Session {
     uuid: string | number | null,
     entityId: number | string | null,
     processId: number | string | null
-  ): Promise<number | null> {
+  ): Promise<number | string | null> {
     await this.conn.execute(
       `INSERT INTO memori_session(uuid, entity_id, process_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
       [uuid, entityId, processId]
@@ -359,7 +359,7 @@ class Session {
       `SELECT id FROM memori_session WHERE uuid = $1`,
       [uuid]
     );
-    return res.length > 0 ? Number(res[0].id) : null;
+    return res.length > 0 ? res[0].id : null;
   }
 }
 
