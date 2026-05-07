@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <i>Give Hermes Agent persistent, structured memory with Memori. Capture completed turns, recall prior context intentionally, and preserve workflow knowledge across sessions.</i>
+  <i>Give Hermes Agent persistent, structured memory with Memori. Capture agent trace, tool activity, decisions, outcomes, and conversation into durable memory that Hermes can recall across sessions.</i>
 </p>
 
 <p align="center">
@@ -24,14 +24,9 @@
 
 # Memori for Hermes Agent
 
-Memori gives Hermes Agent a structured, long-term memory provider. It captures
-completed agent turns in the background and equips Hermes with explicit tools
-for recall, summaries, quota checks, signup, and feedback.
+Memori gives Hermes Agent a structured, long-term memory provider that captures not only conversation, but also agent trace and execution context. As Hermes completes work, Memori can structure durable memory from the agent’s actions: tool calls, workflow steps, assistant decisions, outcomes, failures, constraints, and feedback.
 
-Instead of relying only on transcript text, Memori structures persistent memory
-from conversation and agent activity: user goals, assistant decisions, workflow
-steps, outcomes, constraints, failures, and feedback. Hermes can then retrieve
-the context it needs without stuffing every prompt with old history.
+This means Hermes can remember what happened during prior execution paths, not just what was said in the transcript. Instead of stuffing old conversation history into every prompt, Hermes can intentionally retrieve the structured context it needs to continue work, avoid repeated mistakes, preserve project knowledge, and improve across sessions.
 
 ---
 
@@ -41,6 +36,7 @@ Agent workflows often lose useful context across sessions:
 
 - Prior decisions and constraints disappear
 - Workflow state is scattered across long transcripts
+- Conversation-only memory misses tool calls, workflow decisions, outcomes, failures, and corrections
 - Failures and corrections are repeated
 - Project context is hard to retrieve precisely
 - Cross-session memory can become noisy without scoping
@@ -49,19 +45,18 @@ Agent workflows often lose useful context across sessions:
 
 ## What Memori Changes
 
-Memori adds structured, scoped memory to Hermes through the `memori` memory
-provider.
+Memori adds structured, scoped, agent-native memory to Hermes through the `memori` memory provider.
 
 It gives Hermes:
 
 - Automatic capture after completed, non-interrupted turns
+- Structured memory from agent trace, execution paths, decisions, outcomes, and conversation
 - Agent-Controlled Intelligent Recall through explicit tools
-- Project, entity, and session scoping
+- Project, entity, process, and session scoping
 - Structured summaries for state awareness
 - Fail-soft behavior so memory issues do not stop Hermes from answering
 
-Hermes' built-in `MEMORY.md` and `USER.md` files remain active. Memori is
-additive: it does not mirror, edit, replace, or remove those files.
+Hermes' built-in `MEMORY.md` and `USER.md` files remain active. Memori is additive: it does not mirror, edit, replace, or remove those files.
 
 ---
 
@@ -71,28 +66,86 @@ Memori runs on two parallel systems:
 
 ### 1. Advanced Augmentation
 
-After Hermes completes a turn, the Memori provider captures the user message and
-assistant response in the background.
+After Hermes completes a turn, the Memori provider captures the user message, assistant response, and available execution context in the background.
 
-- Converts completed turns into structured memory
-- Preserves goals, decisions, constraints, outcomes, and failures
-- Scopes memory by entity, project, process, and session
-- Runs after the response, so it does not block the user-facing answer
+Memori then converts the completed interaction into structured memory primitives, including:
 
-This is how structured memory is continuously built and updated over time.
+- User goals and preferences
+- Assistant decisions and reasoning outcomes
+- Tool calls and execution steps
+- Workflow state and task progress
+- Constraints, instructions, and project-specific rules
+- Results, failures, corrections, and recurring patterns
+
+Memory is scoped by entity, project, process, and session, then updated asynchronously after the response so it does not block the user-facing answer.
+
+This is how Hermes continuously builds memory from what it says and what it does.
 
 ### 2. Agent-Controlled Intelligent Recall
 
-Recall is explicit and initiated by the agent.
-
 Memori separates memory creation from memory recall:
 
-- Creation is automatic after successful turns
-- Recall is intentional and tool-driven
+- **Creation** is automatic (advanced augmentation).
+- **Recall** is intentional (agent-controlled).
 
-Hermes does not automatically inject recalled Memori context into every prompt.
-The provider's prefetch path returns no memory content; agents retrieve only the
-context they need.
+Agents decide:
+
+- When to recall
+- What scope to recall from
+- How much history to include
+
+Recall is also intelligent. When memories are retrieved, Memori does not simply return raw chronological history. It uses a proprietary multi-dimensional ranking algorithm to prioritize the memories most likely to matter for the current agent task.
+
+The recall algorithm takes into account factors such as:
+
+- Source and signal weights
+- Recency
+- Frequency
+- Memory type
+- Scope relevance
+- Historical importance
+- Retrieval context
+
+This allows agents to retrieve the most relevant facts, decisions, constraints, patterns, and prior outcomes without stuffing irrelevant history into the prompt.
+
+**Supported parameters:** `entity_id`, `project_id`, `session_id`, `date_start`, `date_end`, `source`, `signal`
+
+**Memory classification schema**
+
+*Sources*
+
+- `constraint`
+- `decision`
+- `execution`
+- `fact`
+- `insight`
+- `instruction`
+- `status`
+- `strategy`
+- `task`
+
+*Signals*
+
+- `commit`
+- `discovery`
+- `failure`
+- `inference`
+- `pattern`
+- `result`
+- `update`
+- `verification`
+
+**Default behavior:** If no date range is provided, recall returns all-time memories.
+
+**Returned context may include:**
+
+- Relevant facts
+- Prior decisions
+- Constraints
+- Patterns
+- Summaries
+- Execution outcomes
+- Known failure modes
 
 Available tools:
 
@@ -175,22 +228,36 @@ Memori project scope.
 hermes memory status
 ```
 
+
 ### 4. Test the Memory Loop
 
-1. Tell Hermes something durable:
+1. Ask Hermes to complete a multi-step task:
 
-   > "For this project, I prefer pytest fixtures over global test state."
+   > "Investigate why the payment sync test is failing and fix it."
 
-2. Complete the turn and start a later session.
+2. Let Hermes complete the workflow. During the task, Hermes may inspect files,
+   run commands, identify a failing fixture, make a decision, apply a fix, and
+   observe the result.
 
-3. Ask something that depends on that preference:
+3. After the turn completes, Memori structures the completed execution path into
+   durable memory, including the failure, decision, fix, outcome, and any
+   recurring pattern.
 
-   > "Add a test for the new behavior using my usual testing style."
+4. In a later session, ask:
 
-4. Hermes can call `memori_recall` or `memori_recall_summary` to retrieve the
-   relevant prior context.
+   > "A similar payment sync test is failing again. Check prior fixes before changing anything."
 
-If it works, Hermes has persistent, structured memory across sessions.
+5. The agent can call `memori_recall` or `memori_recall_summary` to retrieve
+   the relevant prior failure, fix, and workflow pattern.
+
+### Send Feedback
+
+Tell the agent to send feedback:
+
+> "Send feedback to Memori that the recall was useful."
+
+If it works, Hermes now has persistent, structured memory across sessions from
+both conversation and agent execution.
 
 ---
 

@@ -289,4 +289,109 @@ describe('RecallEngine', () => {
       ]);
     });
   });
+
+  describe('agentRecall()', () => {
+    it('calls GET agent/recall with entity and project params', async () => {
+      (mockApi.get as any).mockResolvedValue({ facts: [] });
+      await recallEngine.agentRecall();
+      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('agent/recall'));
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('entity_id=test-entity');
+      expect(url).toContain('project_id=test-project-id');
+    });
+
+    it('accepts explicit projectId and sessionId overrides', async () => {
+      (mockApi.get as any).mockResolvedValue({ facts: [] });
+      await recallEngine.agentRecall({ projectId: 'proj-override', sessionId: 'sess-override' });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('project_id=proj-override');
+      expect(url).toContain('session_id=sess-override');
+    });
+
+    it('throws if sessionId provided without projectId', async () => {
+      // Force project.id to be falsy
+      (mockProject as any).id = undefined;
+      await expect(recallEngine.agentRecall({ sessionId: 'some-session' })).rejects.toThrow(
+        'sessionId cannot be provided without projectId'
+      );
+      (mockProject as any).id = 'test-project-id';
+    });
+
+    it('serialises Date params as ISO strings', async () => {
+      (mockApi.get as any).mockResolvedValue({ facts: [] });
+      const d = new Date('2024-06-15T00:00:00.000Z');
+      await recallEngine.agentRecall({ dateStart: d, dateEnd: d });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('date_start=2024-06-15T00%3A00%3A00.000Z');
+    });
+
+    it('omits null and empty string params from query string', async () => {
+      (mockApi.get as any).mockResolvedValue({ facts: [] });
+      await recallEngine.agentRecall({ signal: undefined, source: '' });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).not.toContain('signal=');
+      expect(url).not.toContain('source=');
+    });
+  });
+
+  describe('agentRecallSummary()', () => {
+    it('calls GET agent/recall/summary', async () => {
+      (mockApi.get as any).mockResolvedValue({ summaries: [] });
+      await recallEngine.agentRecallSummary();
+      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('agent/recall/summary'));
+    });
+
+    it('throws if sessionId provided without projectId', async () => {
+      (mockProject as any).id = undefined;
+      await expect(recallEngine.agentRecallSummary({ sessionId: 'sess' })).rejects.toThrow(
+        'sessionId cannot be provided without projectId'
+      );
+      (mockProject as any).id = 'test-project-id';
+    });
+  });
+
+  describe('recall() — local storage path error handling', () => {
+    it('returns [] and warns when local retrieval throws', async () => {
+      (mockNativeEngine as any).hasStorage = true;
+      (mockNativeEngine.retrieve as any).mockRejectedValue(new Error('engine crash'));
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await recallEngine.recall('query');
+      expect(result).toEqual([]);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('returns [] when storage is active but entityId is missing', async () => {
+      (mockNativeEngine as any).hasStorage = true;
+      (mockConfig as any).entityId = null;
+
+      const result = await recallEngine.recall('query');
+      expect(result).toEqual([]);
+      (mockConfig as any).entityId = 'test-entity';
+    });
+  });
+
+  describe('handleRecall() — local storage path error handling', () => {
+    it('returns original request and warns when local retrieval throws', async () => {
+      (mockNativeEngine as any).hasStorage = true;
+      (mockNativeEngine.retrieve as any).mockRejectedValue(new Error('engine crash'));
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const req = { messages: [{ role: 'user', content: 'hi' }] } as any;
+      const result = await recallEngine.handleRecall(req, {} as any);
+      expect(result).toBe(req);
+      consoleSpy.mockRestore();
+    });
+
+    it('returns original request when storage active but entityId missing', async () => {
+      (mockNativeEngine as any).hasStorage = true;
+      (mockConfig as any).entityId = null;
+
+      const req = { messages: [{ role: 'user', content: 'hi' }] } as any;
+      const result = await recallEngine.handleRecall(req, {} as any);
+      expect(result).toBe(req);
+      (mockConfig as any).entityId = 'test-entity';
+    });
+  });
 });

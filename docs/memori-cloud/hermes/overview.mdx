@@ -1,22 +1,35 @@
 ---
 title: Hermes Overview
-description: Give Hermes Agent structured, persistent memory with the Memori memory provider.
+description: Give Hermes Agent structured, persistent memory from conversation, agent trace, and execution.
 ---
 
 # Hermes Overview
 
-Memori gives Hermes Agent a structured long-term memory provider. It plugs into Hermes' memory-provider interface, captures completed agent activity after responses, and exposes explicit tools for memory search, summaries, quota checks, signup, and feedback.
+Memori gives Hermes Agent a structured, long-term memory provider for production agent workflows. It plugs into Hermes' memory-provider interface and captures memory not only from conversation, but also from agent trace and execution context.
+
+As Hermes completes work, Memori can structure durable memory from tool calls, workflow steps, execution paths, decisions, outcomes, failures, constraints, and recurring patterns. This gives Hermes memory of what actually happened during prior tasks, not just what was said in the transcript.
+
+Memori then exposes explicit tools for intelligent recall, memory summaries, quota checks, signup, and feedback.
 
 ## How It Works
 
 The Hermes integration is a Python memory provider named `memori`.
 
-- **Agent-Controlled Intelligent Recall** is available through `memori_recall` and `memori_recall_summary`.
-- **Advanced augmentation** captures completed turns in the background after responses.
-- **Account helpers** are available through `memori_signup`, `memori_quota`, and `memori_feedback`.
-- **Project scoping** uses `MEMORI_PROJECT_ID` when configured, or Hermes' active project context when omitted.
+- Agent-Controlled Intelligent Recall is available through `memori_recall` and `memori_recall_summary`.
+- Advanced augmentation captures completed turns and available execution context in the background after responses.
+- Memori structures memory from conversation, agent trace, tool activity, workflow decisions, outcomes, and failures.
+- Account helpers are available through `memori_signup`, `memori_quota`, and `memori_feedback`.
+- Project scoping uses `MEMORI_PROJECT_ID` when configured, or Hermes' active project context when omitted.
 
-Hermes' built-in `MEMORY.md` and `USER.md` files remain active. Memori is additive and provides durable, structured, cross-session memory in Memori Cloud. It does not mirror edit, replace, or remove operations from those built-in files.
+Hermes' built-in `MEMORY.md` and `USER.md` files remain active. Memori is additive and provides durable, structured, cross-session memory in Memori Cloud. It does not mirror, edit, replace, or remove operations from those built-in files.
+
+## Why Agent Trace Matters
+
+Conversation history captures what the user and agent said. Agent trace captures what the agent actually did.
+
+For Hermes, that distinction matters. Long-running agent workflows need memory of prior execution paths, tool usage, workflow decisions, known failure modes, corrections, and outcomes. Without this execution memory, agents can repeat the same mistakes, lose project-specific context, or reprocess long histories unnecessarily.
+
+Memori turns that trace into structured memory that Hermes can recall later, scoped by project, session, process, or entity.
 
 ## Package
 

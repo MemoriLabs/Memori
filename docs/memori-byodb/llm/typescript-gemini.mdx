@@ -1,0 +1,127 @@
+---
+title: Google Gemini (TypeScript)
+description: Using Memori BYODB with Google Gemini models and the TypeScript SDK.
+---
+
+# Google Gemini (TypeScript)
+
+Memori integrates with Google Gemini via the `@google/genai` SDK. Register the client instance and all `generateContent()` calls are automatically captured and stored in your own database.
+
+<Note>
+  This page covers the TypeScript SDK. For the Python SDK, see
+  [Google Gemini](/docs/memori-byodb/llm/gemini). Want a zero-setup option? Try
+  [Memori Cloud](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+<CodeGroup title="Gemini Integration">
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { GoogleGenAI } from '@google/genai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'gemini-assistant');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.models.generateContent({
+  model: 'gemini-2.0-flash',
+  contents: 'Hello!',
+});
+console.log(response.text);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | TypeScript                                      | Python                                  |
+| ------------ | ----------------------------------------------- | --------------------------------------- |
+| **Async**    | `await client.models.generateContent()`         | `await client.generate_content_async()` |
+| **Streamed** | `client.models.generateContentStream()`         | `stream=True` parameter                 |
+| **Sync**     | —                                               | `client.generate_content()`             |
+
+## Streaming
+
+```typescript
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { GoogleGenAI } from '@google/genai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'gemini-assistant');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const stream = await client.models.generateContentStream({
+  model: 'gemini-2.0-flash',
+  contents: 'Hello!',
+});
+
+for await (const chunk of stream) {
+  if (chunk.text) {
+    process.stdout.write(chunk.text);
+  }
+}
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+```
+
+## Multi-Turn Conversations
+
+```typescript
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { GoogleGenAI } from '@google/genai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'gemini-assistant');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response1 = await client.models.generateContent({
+  model: 'gemini-2.0-flash',
+  contents: 'My name is Alice.',
+});
+console.log(response1.text);
+
+const response2 = await client.models.generateContent({
+  model: 'gemini-2.0-flash',
+  contents: "What's my name?",
+});
+console.log(response2.text);
+
+await mem.augmentation.wait();
+await mem.config.storage.close();
+```
