@@ -163,6 +163,7 @@ dev = [
     "langchain-google-genai>=3.0.0",
     "langchain-google-vertexai>=2.0.0",
     "langchain-openai>=1.0.1",
+    "litellm>=1.65.0",
     "openai>=2.6.0",
     "oracledb>=3.0.0",
     "pip-audit>=2.8.0",

@@ -11,22 +11,14 @@ import sys
 import types
 from unittest.mock import MagicMock
 
+import litellm
 import pytest
 
-# Build a fake litellm module so the real package is not required at test time.
-_fake_litellm = types.ModuleType("litellm")
-_fake_litellm.completion = MagicMock()
-_fake_litellm.acompletion = MagicMock()
-_fake_litellm.__version__ = "0.0.0-test"
-sys.modules.setdefault("litellm", _fake_litellm)
-
-from memori.llm._utils import client_is_litellm  # noqa: E402
-from memori.llm.clients import LiteLLM  # noqa: E402
+from memori.llm._utils import client_is_litellm
+from memori.llm.clients import LiteLLM
 
 
 def test_client_is_litellm_matches_module() -> None:
-    import litellm
-
     assert client_is_litellm(litellm) is True
 
 
