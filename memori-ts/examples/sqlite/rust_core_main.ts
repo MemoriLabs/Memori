@@ -30,39 +30,35 @@ async function main(): Promise<void> {
     throw new Error('Storage not initialized');
   }
 
-  try {
-    await mem.config.storage.build();
+  await mem.config.storage.build();
 
-    if (!mem.engine.hasStorage) {
-      throw new Error('Storage bridge is not active. Pass conn= to Memori.');
-    }
-
-    console.log('\nYou: What is my favorite season?');
-    const first = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: 'What is my favorite season?' }],
-    });
-    console.log('AI:', first.choices[0]?.message?.content);
-
-    console.log("\nYou: What's my favorite season?");
-    const second = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: "What's my favorite season?" }],
-    });
-    console.log('AI:', second.choices[0]?.message?.content);
-
-    console.log('\nYou: What season do I like for the weather?');
-    const third = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: 'What season do I like for the weather?' }],
-    });
-    console.log('AI:', third.choices[0]?.message?.content);
-
-    await mem.augmentation.wait(10_000);
-    console.log('\nDone.');
-  } finally {
-    await mem.config.storage.close();
+  if (!mem.engine.hasStorage) {
+    throw new Error('Storage bridge is not active. Pass conn= to Memori.');
   }
+
+  console.log('\nYou: What is my favorite season?');
+  const first = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: 'What is my favorite season?' }],
+  });
+  console.log('AI:', first.choices[0]?.message?.content);
+
+  console.log("\nYou: What's my favorite season?");
+  const second = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: "What's my favorite season?" }],
+  });
+  console.log('AI:', second.choices[0]?.message?.content);
+
+  console.log('\nYou: What season do I like for the weather?');
+  const third = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: 'What season do I like for the weather?' }],
+  });
+  console.log('AI:', third.choices[0]?.message?.content);
+
+  await mem.augmentation.wait(10_000);
+  console.log('\nDone.');
 }
 
 main().catch((err: unknown) => {

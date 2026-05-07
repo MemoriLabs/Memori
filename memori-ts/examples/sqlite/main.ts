@@ -51,6 +51,5 @@ try {
   // line program, we need to wait for it to finish.
   await mem.augmentation.wait();
 } finally {
-  await mem.config.storage.close();
   db.close();
 }

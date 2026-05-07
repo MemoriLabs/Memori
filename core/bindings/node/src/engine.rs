@@ -23,11 +23,22 @@ pub struct MemoriEngine {
 impl MemoriEngine {
     #[napi(constructor)]
     pub fn new(
+        env: Env,
         model_name: Option<String>,
         fetch_embeddings_cb: ThreadsafeFunction<(u32, String)>,
         fetch_facts_by_ids_cb: ThreadsafeFunction<(u32, String)>,
         write_batch_cb: ThreadsafeFunction<(u32, String)>,
     ) -> Result<Self> {
+        // Unref all three callbacks so they don't keep the Node.js event loop
+        // alive. The callbacks remain fully functional when called from Rust;
+        // they just no longer prevent the process from exiting naturally once
+        // all other handles (e.g. the DB pool) are closed.
+        unsafe {
+            napi::sys::napi_unref_threadsafe_function(env.raw(), fetch_embeddings_cb.raw());
+            napi::sys::napi_unref_threadsafe_function(env.raw(), fetch_facts_by_ids_cb.raw());
+            napi::sys::napi_unref_threadsafe_function(env.raw(), write_batch_cb.raw());
+        }
+
         let pending_embeddings = Arc::new(DashMap::new());
         let pending_facts = Arc::new(DashMap::new());
         let pending_writes = Arc::new(DashMap::new());

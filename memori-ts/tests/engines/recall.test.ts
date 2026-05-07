@@ -317,10 +317,10 @@ describe('RecallEngine', () => {
       (mockProject as any).id = 'test-project-id';
     });
 
-    it('serialises Date params as ISO strings', async () => {
+    it('includes ISO string date params in the query string', async () => {
       (mockApi.get as any).mockResolvedValue({ facts: [] });
-      const d = new Date('2024-06-15T00:00:00.000Z');
-      await recallEngine.agentRecall({ dateStart: d, dateEnd: d });
+      const iso = '2024-06-15T00:00:00.000Z';
+      await recallEngine.agentRecall({ dateStart: iso, dateEnd: iso });
       const url: string = (mockApi.get as any).mock.calls[0][0];
       expect(url).toContain('date_start=2024-06-15T00%3A00%3A00.000Z');
     });

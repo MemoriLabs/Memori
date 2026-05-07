@@ -51,7 +51,6 @@ const response = await client.chat.completions.create({
 console.log(`AI: ${response.choices[0]?.message?.content}`);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 await pool.end();
 ```
 
@@ -100,7 +99,6 @@ try {
   // Wait for background augmentation
   await mem.augmentation.wait();
 } finally {
-  await mem.config.storage.close();
   await pool.end();
 }
 ```

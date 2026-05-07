@@ -113,8 +113,6 @@ const response2 = await client2.chat.completions.create({
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log(response2.choices[0].message.content + '\n');
-
-await mem2.config.storage.close();
 ```
 
 ### Full Quickstart File
@@ -143,7 +141,6 @@ const response1 = await client.chat.completions.create({
 console.log('AI:', response1.choices[0].message.content + '\n');
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 
 // --- Step 2: Test Recall (fresh instance, no prior context) ---
 const db2 = new Database('memori.db');
@@ -157,8 +154,6 @@ const response2 = await client2.chat.completions.create({
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log('AI:', response2.choices[0].message.content + '\n');
-
-await mem2.config.storage.close();
 ```
 
 ## Step 4: Run the Application

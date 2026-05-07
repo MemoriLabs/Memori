@@ -42,7 +42,6 @@ const response = await client.models.generateContent({
 console.log(response.text);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```
 
 </CodeGroup>
@@ -87,7 +86,6 @@ for await (const chunk of stream) {
 }
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```
 
 ## Multi-Turn Conversations
@@ -123,5 +121,4 @@ const response2 = await client.models.generateContent({
 console.log(response2.text);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```

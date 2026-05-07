@@ -53,7 +53,6 @@ async function main(): Promise<void> {
 
     await mem.augmentation.wait();
   } finally {
-    await mem.config.storage.close();
     await dataSource.destroy();
   }
 }

@@ -109,8 +109,7 @@ await client.chat.completions.create({
 // In short-lived scripts, wait for background augmentation before exiting
 await mem.augmentation.wait();
 
-// Flush writes and tear down the native engine, then close your own connection
-await mem.config.storage.close();
+// Close your own database connection — Memori handles engine cleanup automatically
 db.close();
 ```
 
