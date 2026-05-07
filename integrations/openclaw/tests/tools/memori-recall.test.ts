@@ -51,7 +51,14 @@ describe('tools/memori-recall', () => {
       const { createRecallClient } = await import('../../src/utils/memori-client.js');
       const tool = createMemoriRecallTool(deps);
 
-      await tool.execute('call-1', { query: 'test query' });
+      await tool.execute('call-1', {
+        dateStart: '2024-01-01',
+        dateEnd: '2024-12-31',
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        signal: 'user',
+        source: 'chat',
+      });
 
       expect(createRecallClient).toHaveBeenCalledWith('test-key', 'test-entity');
     });
@@ -60,7 +67,13 @@ describe('tools/memori-recall', () => {
       const { createRecallClient } = await import('../../src/utils/memori-client.js');
       const tool = createMemoriRecallTool(deps);
 
-      await tool.execute('call-1', { query: 'test' });
+      await tool.execute('call-1', {
+        dateStart: '2024-01-01',
+        dateEnd: '2024-12-31',
+        sessionId: 'sess-1',
+        signal: 'user',
+        source: 'chat',
+      });
 
       const client = vi.mocked(createRecallClient).mock.results[0].value;
       expect(client.agentRecall).toHaveBeenCalledWith(
@@ -72,7 +85,14 @@ describe('tools/memori-recall', () => {
       const { createRecallClient } = await import('../../src/utils/memori-client.js');
       const tool = createMemoriRecallTool(deps);
 
-      await tool.execute('call-1', { query: 'test', projectId: 'override-project' });
+      await tool.execute('call-1', {
+        dateStart: '2024-01-01',
+        dateEnd: '2024-12-31',
+        projectId: 'override-project',
+        sessionId: 'sess-1',
+        signal: 'user',
+        source: 'chat',
+      });
 
       const client = vi.mocked(createRecallClient).mock.results[0].value;
       expect(client.agentRecall).toHaveBeenCalledWith(
@@ -85,7 +105,6 @@ describe('tools/memori-recall', () => {
       const tool = createMemoriRecallTool(deps);
 
       await tool.execute('call-1', {
-        query: 'search query',
         dateStart: '2024-01-01',
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
@@ -97,7 +116,6 @@ describe('tools/memori-recall', () => {
       const client = vi.mocked(createRecallClient).mock.results[0].value;
       expect(client.agentRecall).toHaveBeenCalledWith(
         expect.objectContaining({
-          query: 'search query',
           dateStart: '2024-01-01',
           dateEnd: '2024-12-31',
           projectId: 'proj-1',
@@ -116,7 +134,14 @@ describe('tools/memori-recall', () => {
       } as any);
 
       const tool = createMemoriRecallTool(deps);
-      const result = await tool.execute('call-1', { query: 'something' });
+      const result = await tool.execute('call-1', {
+        dateStart: '2024-01-01',
+        dateEnd: '2024-12-31',
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        signal: 'user',
+        source: 'chat',
+      });
 
       expect(result.content).toHaveLength(1);
       expect(result.content[0].type).toBe('text');
@@ -133,7 +158,14 @@ describe('tools/memori-recall', () => {
       } as any);
 
       const tool = createMemoriRecallTool(deps);
-      const result = await tool.execute('call-1', { query: 'test' });
+      const result = await tool.execute('call-1', {
+        dateStart: '2024-01-01',
+        dateEnd: '2024-12-31',
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        signal: 'user',
+        source: 'chat',
+      });
 
       expect(JSON.parse(result.content[0].text)).toEqual({ error: 'Recall failed' });
       expect(deps.logger.warn).toHaveBeenCalledWith(
@@ -146,7 +178,6 @@ describe('tools/memori-recall', () => {
       const tool = createMemoriRecallTool(deps);
 
       const result = await tool.execute('call-1', {
-        query: 'test',
         projectId: '',
         sessionId: 'sess-1',
       });
@@ -161,7 +192,6 @@ describe('tools/memori-recall', () => {
       const tool = createMemoriRecallTool(deps);
 
       const result = await tool.execute('call-1', {
-        query: 'test',
         projectId: 'proj-1',
         sessionId: 'sess-1',
       });
@@ -174,7 +204,14 @@ describe('tools/memori-recall', () => {
     it('should log params before executing', async () => {
       const tool = createMemoriRecallTool(deps);
 
-      await tool.execute('call-1', { query: 'log test' });
+      await tool.execute('call-1', {
+        dateStart: '2024-01-01',
+        dateEnd: '2024-12-31',
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        signal: 'user',
+        source: 'chat',
+      });
 
       expect(deps.logger.info).toHaveBeenCalledWith(
         expect.stringContaining('memori_recall params')
