@@ -235,7 +235,7 @@ memori sign-up your-email@example.com
 memori quota
 ```
 
-Or by logging in at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
+Or by logging in at [https:/app.memorilabs.ai/](https:/app.memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
 
 If your API key exceeds its quota limits we will email you and let you know.
 
