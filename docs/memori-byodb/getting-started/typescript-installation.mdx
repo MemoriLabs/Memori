@@ -185,9 +185,13 @@ Always call `close()` when your application exits. This flushes any in-flight wr
 await mem.config.storage.close();
 ```
 
-You own the lifecycle of whatever you passed to the factory — Memori never closes your pool or DataSource. Clean up your own resources after `close()`:
+You own the lifecycle of whatever you passed to the factory — Memori never closes your connection. Clean up your own resources after `close()`:
 
 ```typescript
+// SQLite (better-sqlite3)
+await mem.config.storage.close();
+db.close();
+
 // pg Pool
 await mem.config.storage.close();
 await pool.end();

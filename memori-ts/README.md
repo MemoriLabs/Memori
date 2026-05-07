@@ -91,7 +91,7 @@ import { Memori } from '@memorilabs/memori';
 const db = new Database('memori.db');
 const client = new OpenAI();
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'my-agent');
 
 if (!mem.config.storage) {
@@ -109,8 +109,9 @@ await client.chat.completions.create({
 // In short-lived scripts, wait for background augmentation before exiting
 await mem.augmentation.wait();
 
-// Always close to flush writes and tear down the native engine cleanly
+// Flush writes and tear down the native engine, then close your own connection
 await mem.config.storage.close();
+db.close();
 ```
 
 > [!TIP]

@@ -8,7 +8,7 @@ import { TypeOrmAdapter } from '../../src/storage/adapters/typeorm.js';
 // SqliteAdapter
 // ---------------------------------------------------------------------------
 
-function makeSqliteDb(overrides: Partial<ReturnType<typeof makeSqliteDb>> = {}) {
+function makeSqliteDb(overrides: Record<string, unknown> = {}) {
   const stmt = { all: vi.fn().mockReturnValue([]), run: vi.fn(), reader: true };
   return {
     open: true,
@@ -48,13 +48,13 @@ describe('SqliteAdapter', () => {
   });
 
   it('execute() returns [] when db is closed', () => {
-    const db = makeSqliteDb({ open: false } as any);
+    const db = makeSqliteDb({ open: false });
     const adapter = new SqliteAdapter(db);
     expect(adapter.execute('SELECT 1')).toEqual([]);
   });
 
   it('begin() runs BEGIN when db is open and not in transaction', () => {
-    const db = makeSqliteDb({ inTransaction: false } as any);
+    const db = makeSqliteDb({ inTransaction: false });
     const adapter = new SqliteAdapter(db);
     adapter.begin();
     expect(db.prepare).toHaveBeenCalledWith('BEGIN');
@@ -62,7 +62,7 @@ describe('SqliteAdapter', () => {
   });
 
   it('begin() is a no-op when already in transaction', () => {
-    const db = makeSqliteDb({ inTransaction: true } as any);
+    const db = makeSqliteDb({ inTransaction: true });
     const adapter = new SqliteAdapter(db);
     adapter.begin();
     // pragma calls happen in constructor, but BEGIN prepare should not be called
@@ -71,28 +71,21 @@ describe('SqliteAdapter', () => {
   });
 
   it('commit() runs COMMIT when in transaction', () => {
-    const db = makeSqliteDb({ inTransaction: true } as any);
+    const db = makeSqliteDb({ inTransaction: true });
     const adapter = new SqliteAdapter(db);
     adapter.commit();
     expect(db.prepare).toHaveBeenCalledWith('COMMIT');
   });
 
   it('rollback() runs ROLLBACK when in transaction', () => {
-    const db = makeSqliteDb({ inTransaction: true } as any);
+    const db = makeSqliteDb({ inTransaction: true });
     const adapter = new SqliteAdapter(db);
     adapter.rollback();
     expect(db.prepare).toHaveBeenCalledWith('ROLLBACK');
   });
 
-  it('close() calls db.close() when open', () => {
+  it('close() does not close the user database — caller owns the lifecycle', () => {
     const db = makeSqliteDb();
-    const adapter = new SqliteAdapter(db);
-    adapter.close();
-    expect(db.close).toHaveBeenCalled();
-  });
-
-  it('close() is a no-op when already closed', () => {
-    const db = makeSqliteDb({ open: false } as any);
     const adapter = new SqliteAdapter(db);
     adapter.close();
     expect(db.close).not.toHaveBeenCalled();
