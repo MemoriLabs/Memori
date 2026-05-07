@@ -36,7 +36,7 @@ const pool = new pg.Pool({
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: pool }).llm.register(client);
+const mem = new Memori({ conn: () => pool }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -80,7 +80,7 @@ const pool = new pg.Pool({
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: pool }).llm.register(client);
+const mem = new Memori({ conn: () => pool }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -111,7 +111,7 @@ try {
 
 ## Notes
 
-- Pass a `pg.Pool` instance, not a `pg.Client` — pooling is required for CockroachDB's connection model.
+- Pass a factory function: `conn: () => pool`. Memori never closes the pool — you own its lifecycle and call `pool.end()` when you're done.
+- Use a `pg.Pool`, not a `pg.Client` — pooling is required for CockroachDB's connection model.
 - Set `COCKROACHDB_CONNECTION_STRING` in your `.env` file.
-- Call `await pool.end()` after `mem.config.storage.close()` to release the connection pool.
 - For CockroachDB Cloud, append `?sslmode=verify-full` to your connection string.

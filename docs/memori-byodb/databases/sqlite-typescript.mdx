@@ -32,7 +32,7 @@ import { Memori } from '@memorilabs/memori';
 const db = new Database('memori.db');
 const client = new OpenAI();
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -49,7 +49,6 @@ console.log(`AI: ${response.choices[0]?.message?.content}`);
 
 await mem.augmentation.wait();
 await mem.config.storage.close();
-db.close();
 ```
 
 </CodeGroup>
@@ -65,7 +64,7 @@ import { Memori } from '@memorilabs/memori';
 const db = new Database('memori.db');
 const client = new OpenAI();
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -85,13 +84,11 @@ try {
   await mem.augmentation.wait();
 } finally {
   await mem.config.storage.close();
-  db.close();
 }
 ```
 
 ## Notes
 
 - `better-sqlite3` runs synchronously, which perfectly matches Memori's low-latency design — no async overhead for local storage.
-- Pass the initialized `Database` instance directly to `new Memori({ conn: db })`.
-- SQLite does not strictly require an explicit `db.close()`, but calling it is good practice to flush any pending writes and release the file lock.
+- Pass a factory function: `conn: () => db`. Memori calls it once to borrow the database and closes it via `storage.close()` — no separate `db.close()` needed.
 - Set `OPENAI_API_KEY` in your `.env` file.

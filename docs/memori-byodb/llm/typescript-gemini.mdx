@@ -26,7 +26,7 @@ import { Memori } from '@memorilabs/memori';
 const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 const db = new Database('memori.db');
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'gemini-assistant');
 
 if (!mem.config.storage) {
@@ -66,7 +66,7 @@ import { Memori } from '@memorilabs/memori';
 const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 const db = new Database('memori.db');
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'gemini-assistant');
 
 if (!mem.config.storage) {
@@ -101,7 +101,7 @@ import { Memori } from '@memorilabs/memori';
 const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 const db = new Database('memori.db');
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'gemini-assistant');
 
 if (!mem.config.storage) {

@@ -23,6 +23,7 @@ export default defineConfig({
         '**/types/**',
         '**/index.ts',
         'src/bin/cli.ts',
+        'src/native/**',
       ],
     },
     include: isIntegration ? ['tests/integrations/**/*.test.ts'] : ['tests/**/*.test.ts'],

@@ -172,12 +172,22 @@ mem.setSession(sessionId);
 
 **ORMs**
 
-| ORM       | Dialects                           |
-| --------- | ---------------------------------- |
-| Drizzle   | SQLite, PostgreSQL, MySQL          |
-| TypeORM   | SQLite, PostgreSQL, MySQL, MariaDB |
-| Sequelize | SQLite, PostgreSQL, MySQL          |
-| MikroORM  | SQLite, PostgreSQL, MySQL, MariaDB |
+| ORM     | Dialects                           |
+| ------- | ---------------------------------- |
+| TypeORM | SQLite, PostgreSQL, MySQL, MariaDB |
+
+**Using Drizzle, Sequelize, MikroORM, or another ORM?** Memori needs a direct connection factory — but you're already creating a raw pool for your ORM. Pass that same pool to Memori and both share it with no conflict:
+
+```typescript
+// You already have this for Drizzle
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool);
+
+// Just also give Memori the pool — no extra connection needed
+const mem = new Memori({ conn: () => pool });
+```
+
+The same pattern applies to Sequelize (`mysql.createPool(...)`) and MikroORM (`new pg.Pool(...)`). Your ORM handles your queries; Memori handles its own tables — same pool, no conflict.
 
 ## Memori Advanced Augmentation
 

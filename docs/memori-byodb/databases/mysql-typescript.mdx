@@ -34,7 +34,7 @@ const pool = mysql.createPool({
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: pool }).llm.register(client);
+const mem = new Memori({ conn: () => pool }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -79,7 +79,7 @@ const pool = mysql.createPool({
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: pool }).llm.register(client);
+const mem = new Memori({ conn: () => pool }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -106,7 +106,7 @@ try {
 ## Notes
 
 - Import from `mysql2/promise`, not `mysql2` — Memori expects the modern, promise-based interface.
-- Pass the connection pool (`mysql.createPool()`), not a single connection (`mysql.createConnection()`) — Memori requires a pool to safely manage concurrent reads, writes, and background augmentation.
+- Pass a factory function: `conn: () => pool`. Memori never closes the pool — you own its lifecycle and call `pool.end()` when you're done.
+- Use `mysql.createPool()`, not `mysql.createConnection()` — a pool safely handles the concurrent reads, writes, and background augmentation that Memori performs.
 - `mysql2` ships with built-in TypeScript types — no separate `@types/mysql2` package is needed.
 - Set `DATABASE_CONNECTION_STRING` in your `.env` file.
-- Call `await pool.end()` after `mem.config.storage.close()` to drain and release all connections.

@@ -72,7 +72,7 @@ import { Memori } from '@memorilabs/memori';
 const db = new Database('memori.db');
 const client = new OpenAI();
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'test-ai-agent');
 
 await mem.config.storage.build();
@@ -105,7 +105,7 @@ The second response should correctly recall your favorite color, proving memory 
 const client2 = new OpenAI();
 const db2 = new Database('memori.db');
 
-const mem2 = new Memori({ conn: db2 }).llm.register(client2);
+const mem2 = new Memori({ conn: () => db2 }).llm.register(client2);
 mem2.attribution('user_123', 'test-ai-agent');
 
 const response2 = await client2.chat.completions.create({
@@ -131,7 +131,7 @@ import { Memori } from '@memorilabs/memori';
 const db = new Database('memori.db');
 const client = new OpenAI();
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'test-ai-agent');
 
 await mem.config.storage.build();
@@ -149,7 +149,7 @@ await mem.config.storage.close();
 const db2 = new Database('memori.db');
 const client2 = new OpenAI();
 
-const mem2 = new Memori({ conn: db2 }).llm.register(client2);
+const mem2 = new Memori({ conn: () => db2 }).llm.register(client2);
 mem2.attribution('user_123', 'test-ai-agent');
 
 const response2 = await client2.chat.completions.create({

@@ -32,7 +32,7 @@ pnpm add @memorilabs/memori
 
 ## Install Your Database Driver
 
-Memori supports SQLite, PostgreSQL, and MySQL/MariaDB through both raw drivers and popular ORMs. Install the package for your preferred setup:
+Memori supports SQLite, PostgreSQL, and MySQL/MariaDB through raw drivers and TypeORM. Install the package for your preferred setup:
 
 <CodeGroup title="Database Drivers">
 
@@ -50,26 +50,9 @@ npm install --save-dev @types/pg
 npm install mysql2
 ```
 
-```bash {{ title: 'Drizzle ORM' }}
-# Drizzle + your underlying driver (e.g. pg for PostgreSQL)
-npm install drizzle-orm pg
-npm install --save-dev @types/pg drizzle-kit
-```
-
 ```bash {{ title: 'TypeORM' }}
 # TypeORM + your underlying driver
 npm install typeorm better-sqlite3
-npm install --save-dev @types/better-sqlite3
-```
-
-```bash {{ title: 'Sequelize' }}
-# Sequelize + your underlying driver
-npm install sequelize mysql2
-```
-
-```bash {{ title: 'MikroORM' }}
-# MikroORM core + dialect driver
-npm install @mikro-orm/core @mikro-orm/sqlite better-sqlite3
 npm install --save-dev @types/better-sqlite3
 ```
 
@@ -77,15 +60,12 @@ npm install --save-dev @types/better-sqlite3
 
 ## Connection Patterns
 
-| Pattern       | What to pass to `conn`                                     | Works With                          |
-| ------------- | ---------------------------------------------------------- | ----------------------------------- |
-| better-sqlite3 | `new Database('memori.db')`                               | SQLite                              |
-| pg            | `new pg.Pool({ connectionString })`                        | PostgreSQL, CockroachDB             |
-| mysql2        | `await mysql.createConnection(connectionString)`           | MySQL, MariaDB                      |
-| Drizzle ORM   | `drizzle(pool)` instance                                   | SQLite, PostgreSQL, MySQL           |
-| TypeORM       | Initialized `DataSource`                                   | SQLite, PostgreSQL, MySQL, MariaDB  |
-| Sequelize     | `new Sequelize(connectionString, { dialect })`             | SQLite, PostgreSQL, MySQL           |
-| MikroORM      | `orm.em` (EntityManager)                                   | SQLite, PostgreSQL, MySQL, MariaDB  |
+| Pattern       | Factory to pass to `conn`                                  | Works With                         |
+| ------------- | ---------------------------------------------------------- | ---------------------------------- |
+| better-sqlite3 | `() => new Database('memori.db')`                         | SQLite                             |
+| pg            | `() => new pg.Pool({ connectionString })`                  | PostgreSQL, CockroachDB            |
+| mysql2        | `() => mysql.createPool(connectionString)`                 | MySQL, MariaDB                     |
+| TypeORM       | `() => dataSource` (initialized `DataSource`)              | SQLite, PostgreSQL, MySQL, MariaDB |
 
 ## Connection Examples
 
@@ -96,7 +76,7 @@ import Database from 'better-sqlite3';
 import { Memori } from '@memorilabs/memori';
 
 const db = new Database('memori.db');
-const mem = new Memori({ conn: db });
+const mem = new Memori({ conn: () => db });
 ```
 
 ```typescript {{ title: 'PostgreSQL' }}
@@ -106,29 +86,17 @@ import { Memori } from '@memorilabs/memori';
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_CONNECTION_STRING,
 });
-const mem = new Memori({ conn: pool });
+const mem = new Memori({ conn: () => pool });
 ```
 
 ```typescript {{ title: 'MySQL' }}
 import mysql from 'mysql2/promise';
 import { Memori } from '@memorilabs/memori';
 
-const conn = await mysql.createConnection(
+const pool = mysql.createPool(
   process.env.DATABASE_CONNECTION_STRING!
 );
-const mem = new Memori({ conn });
-```
-
-```typescript {{ title: 'Drizzle (PostgreSQL)' }}
-import pg from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Memori } from '@memorilabs/memori';
-
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_CONNECTION_STRING,
-});
-const db = drizzle(pool);
-const mem = new Memori({ conn: db });
+const mem = new Memori({ conn: () => pool });
 ```
 
 ```typescript {{ title: 'TypeORM' }}
@@ -141,34 +109,65 @@ const dataSource = new DataSource({
 });
 await dataSource.initialize();
 
-const mem = new Memori({ conn: dataSource });
-```
-
-```typescript {{ title: 'Sequelize' }}
-import { Sequelize } from 'sequelize';
-import { Memori } from '@memorilabs/memori';
-
-const sequelize = new Sequelize(
-  process.env.DATABASE_CONNECTION_STRING!,
-  { dialect: 'mysql', logging: false }
-);
-const mem = new Memori({ conn: sequelize });
-```
-
-```typescript {{ title: 'MikroORM' }}
-import { MikroORM } from '@mikro-orm/core';
-import { SqliteDriver } from '@mikro-orm/sqlite';
-import { Memori } from '@memorilabs/memori';
-
-const orm = await MikroORM.init({
-  driver: SqliteDriver,
-  dbName: 'memori.db',
-  entities: [/* your entities */],
-});
-const mem = new Memori({ conn: orm.em });
+const mem = new Memori({ conn: () => dataSource });
 ```
 
 </CodeGroup>
+
+## Using Drizzle, Sequelize, MikroORM, or Another ORM?
+
+Memori needs a direct connection factory, but that doesn't mean you have to stop using your ORM. You're already creating a raw database pool for your ORM — just pass that same pool to Memori. Both share it simultaneously with no conflict.
+
+<CodeGroup title="ORM Pool Sharing">
+
+```typescript {{ title: 'Drizzle' }}
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Memori } from '@memorilabs/memori';
+
+// The pool you already create for Drizzle
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_CONNECTION_STRING });
+const db = drizzle(pool);
+
+// Pass the same pool to Memori — no extra connection needed
+const mem = new Memori({ conn: () => pool });
+```
+
+```typescript {{ title: 'Sequelize' }}
+import mysql from 'mysql2/promise';
+import { Sequelize } from 'sequelize';
+import { Memori } from '@memorilabs/memori';
+
+// Create the pool first, then pass it to both
+const pool = mysql.createPool({ uri: process.env.DATABASE_CONNECTION_STRING });
+const sequelize = new Sequelize(process.env.DATABASE_CONNECTION_STRING!, {
+  dialect: 'mysql',
+  logging: false,
+});
+
+const mem = new Memori({ conn: () => pool });
+```
+
+```typescript {{ title: 'MikroORM' }}
+import pg from 'pg';
+import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { Memori } from '@memorilabs/memori';
+
+// Create the pool first, then pass it to both
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_CONNECTION_STRING });
+const orm = await MikroORM.init({
+  driver: PostgreSqlDriver,
+  clientUrl: process.env.DATABASE_CONNECTION_STRING,
+  entities: [/* your entities */],
+});
+
+const mem = new Memori({ conn: () => pool });
+```
+
+</CodeGroup>
+
+Your ORM handles your application's queries; Memori handles its own memory tables — same underlying pool, fully independent.
 
 ## Create the Schema
 
@@ -186,28 +185,20 @@ Always call `close()` when your application exits. This flushes any in-flight wr
 await mem.config.storage.close();
 ```
 
-For ORMs that manage their own connection lifecycle (TypeORM `DataSource`, MikroORM, Sequelize), you should also close the ORM connection afterward:
+You own the lifecycle of whatever you passed to the factory — Memori never closes your pool or DataSource. Clean up your own resources after `close()`:
 
 ```typescript
-// TypeORM
-await mem.config.storage.close();
-await dataSource.destroy();
-
-// MikroORM
-await mem.config.storage.close();
-await orm.close();
-
-// Sequelize
-await mem.config.storage.close();
-await sequelize.close();
-
 // pg Pool
 await mem.config.storage.close();
 await pool.end();
 
-// mysql2
+// mysql2 Pool
 await mem.config.storage.close();
-await conn.end();
+await pool.end();
+
+// TypeORM DataSource
+await mem.config.storage.close();
+await dataSource.destroy();
 ```
 
 ## Install Your LLM Provider

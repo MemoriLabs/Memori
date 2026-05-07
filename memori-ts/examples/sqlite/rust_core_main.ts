@@ -23,7 +23,7 @@ async function main(): Promise<void> {
   const db = new Database('memori_rust_core.db');
 
   console.log('Initializing Memori (BYODB + Rust core)...');
-  const mem = new Memori({ conn: db }).llm.register(client);
+  const mem = new Memori({ conn: () => db }).llm.register(client);
   mem.attribution('rust-core-user', 'sqlite-example');
 
   if (!mem.config.storage) {

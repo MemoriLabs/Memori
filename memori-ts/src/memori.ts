@@ -10,9 +10,10 @@ import { ParsedFact } from './types/api.js';
 import { IntegrationConstructor, SupportedIntegration } from './types/integrations.js';
 import { NativeEngine } from './core/engine.js';
 import { StorageManager } from './storage/manager.js';
+import type { ConnFactory } from './storage/base.js';
 
 export interface MemoriOptions {
-  conn?: unknown; // The raw database connection (pg Pool, mysql2 conn, better-sqlite3 DB, etc.)
+  conn?: ConnFactory; // A factory function returning your database connection: () => pool, () => db, etc.
   embeddingModel?: string;
 }
 

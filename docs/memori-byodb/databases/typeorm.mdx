@@ -47,7 +47,7 @@ await dataSource.initialize();
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: dataSource }).llm.register(client);
+const mem = new Memori({ conn: () => dataSource }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -81,7 +81,7 @@ await dataSource.initialize();
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: dataSource }).llm.register(client);
+const mem = new Memori({ conn: () => dataSource }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -115,7 +115,7 @@ await dataSource.initialize();
 
 const client = new OpenAI();
 
-const mem = new Memori({ conn: dataSource }).llm.register(client);
+const mem = new Memori({ conn: () => dataSource }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
