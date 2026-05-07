@@ -63,7 +63,6 @@ const response = await client.chat.completions.create({
 console.log(`AI: ${response.choices[0]?.message?.content}`);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 await dataSource.destroy();
 ```
 
@@ -97,7 +96,6 @@ const response = await client.chat.completions.create({
 console.log(`AI: ${response.choices[0]?.message?.content}`);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 await dataSource.destroy();
 ```
 
@@ -131,7 +129,6 @@ const response = await client.chat.completions.create({
 console.log(`AI: ${response.choices[0]?.message?.content}`);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 await dataSource.destroy();
 ```
 
@@ -151,5 +148,5 @@ await dataSource.destroy();
 ## Notes
 
 - Always call `await dataSource.initialize()` before passing it to `Memori`. TypeORM requires explicit initialization.
-- Call `await dataSource.destroy()` after `mem.config.storage.close()` to cleanly shut down the connection pool.
+- Call `await dataSource.destroy()` when you're done to cleanly shut down the TypeORM connection pool. Memori handles engine cleanup automatically.
 - Memori manages its own raw SQL tables — no TypeORM `Entity` definitions required.

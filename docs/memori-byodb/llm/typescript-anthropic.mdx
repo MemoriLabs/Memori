@@ -43,7 +43,6 @@ const response = await client.messages.create({
 console.log(response.content[0].type === 'text' ? response.content[0].text : '');
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```
 
 </CodeGroup>
@@ -89,7 +88,6 @@ for await (const chunk of stream) {
 }
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```
 
 ## System Prompts

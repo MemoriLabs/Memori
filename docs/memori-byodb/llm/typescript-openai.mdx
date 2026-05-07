@@ -42,7 +42,6 @@ const response = await client.chat.completions.create({
 console.log(response.choices[0]?.message?.content);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```
 </CodeGroup>
 
@@ -87,7 +86,6 @@ for await (const chunk of stream) {
 }
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```
 
 ## Multi-Turn Conversations
@@ -133,5 +131,4 @@ const response2 = await client.chat.completions.create({
 console.log(response2.choices[0]?.message?.content);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 ```

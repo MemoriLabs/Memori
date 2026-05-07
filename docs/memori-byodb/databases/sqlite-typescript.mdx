@@ -48,7 +48,6 @@ const response = await client.chat.completions.create({
 console.log(`AI: ${response.choices[0]?.message?.content}`);
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 db.close();
 ```
 
@@ -84,7 +83,7 @@ try {
   // Wait for background augmentation
   await mem.augmentation.wait();
 } finally {
-  await mem.config.storage.close();
+  await mem.close();
   db.close();
 }
 ```
@@ -92,5 +91,5 @@ try {
 ## Notes
 
 - `better-sqlite3` runs synchronously, which perfectly matches Memori's low-latency design — no async overhead for local storage.
-- Pass a factory function: `conn: () => db`. Memori calls it once to borrow the database. You own the lifecycle — call `db.close()` yourself after `storage.close()`.
+- Pass a factory function: `conn: () => db`. Memori calls it once to borrow the database. You own the lifecycle — call `await mem.close()` to shut down Memori, then `db.close()` to close your connection.
 - Set `OPENAI_API_KEY` in your `.env` file.

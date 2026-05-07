@@ -177,31 +177,21 @@ After setting up your connection, call `build()` once to create the Memori table
 await mem.config.storage.build();
 ```
 
-## Close the Connection
+## Close Your Connection
 
-Always call `close()` when your application exits. This flushes any in-flight writes and tears down the native engine cleanly — especially important for short-lived scripts and CLI tools.
-
-```typescript
-await mem.config.storage.close();
-```
-
-You own the lifecycle of whatever you passed to the factory — Memori never closes your connection. Clean up your own resources after `close()`:
+Memori tears down its native engine automatically when the process exits — no cleanup call needed on your end. You only need to close the database connection you own:
 
 ```typescript
 // SQLite (better-sqlite3)
-await mem.config.storage.close();
 db.close();
 
 // pg Pool
-await mem.config.storage.close();
 await pool.end();
 
 // mysql2 Pool
-await mem.config.storage.close();
 await pool.end();
 
 // TypeORM DataSource
-await mem.config.storage.close();
 await dataSource.destroy();
 ```
 
