@@ -1,7 +1,7 @@
 ---
 name: memori
 id: '@memorilabs/openclaw-memori'
-description: Long-term memory for OpenClaw agents using the Memori SDK. Automatically captures conversations and execution trace, and equips the agent with explicit tools to recall context, manage its account, and monitor usage across sessions.
+description: Agent-native memory for OpenClaw that structures memory from agent trace, execution history, decisions, tool calls, and conversations into durable long-term memory primitives.
 license: MIT
 compatibility:
   - openclaw
@@ -19,290 +19,192 @@ metadata:
       - https://api.memorilabs.ai
 ---
 
-# Memori skills file
+# Memori - Structured Long-term Memory for OpenClaw
 
-You have access to Memori, agent-native memory infrastructure: an LLM-agnostic layer that structures memory from not just natural language, but also from agent trace that comes from execution.
+Give your OpenClaw agents persistent, structured memory derived from agent execution, tool usage, workflow history, and conversations. Memori integrates seamlessly in the background via lifecycle hooks and provides agents with the tools to retrieve context when it is relevant.
 
-Memori automatically captures and structures memory from conversation and execution trace — including the agent's actions, tool results, decisions, and outcomes — and allows you to retrieve it on demand. Use it to maintain continuity across sessions, preserve decisions and constraints, and help the agent understand what it actually did so the next time it completes a task, it is more accurate and efficient.
+## Core Workflow
 
----
+Memori operates on two parallel tracks through standard OpenClaw lifecycle hooks:
 
-## Core instruction
+### 1. Advanced Augmentation (automatic)
 
-At the start of a session, you should check the `SKILL.md` file
+After each interaction, Memori converts raw session data into structured, reusable memories asynchronously.
 
-Use it to understand:
+- Transforms raw agent sessions into structured memory units
+- Captures the agent's actions, reasoning, tool usage, responses, corrections, and failures
+- Organizes into classes to enable efficient retrieval
+- Generates embeddings for semantic retrieval
+- Updates structured memory and the knowledge graph
 
-- Available capabilities
-- Tooling and integrations
-- Expected behaviors and constraints
+This is how structured memory is continuously built and updated over time. It runs after the agent responds and does not impact latency.
 
-Treat `SKILL.md` as a source of truth for what you can do before taking action.
+### 2. Agent-Controlled-Intelligent Recall
 
----
+Recall is explicit and initiated by the agent.
 
-## When to use Memori
+Memori separates memory creation from memory recall:
+- Creation is automatic (advanced augmentation)
+- Recall is intentional (agent-controlled)
 
-Use Memori when:
+Agents decide:
+- When to recall
+- What scope to recall from
+- How much history to include
 
-- The task depends on prior context
-- The user refers to previous sessions or decisions
-- You need known constraints, preferences, or patterns
-- You are starting a session and need current state
-- You want to understand what has already been done
+To maintain an efficient context window, Memori equips the agent with specific tools to retrieve history when required for the conversation:
+1. **`memori_recall`**: Searches the structured memory graph for specific facts, constraints, and prior decisions.
+2. **`memori_recall_summary`**: Retrieves structured daily briefs and rolling summaries of prior sessions.
+3. **`memori_feedback`**: Reports on memory quality to improve extraction accuracy.
 
----
+## Installation
 
-## When not to use Memori
+```bash
+openclaw plugins install @memorilabs/openclaw-memori
+```
 
-Do not use Memori when:
+## Configuration
 
-- The task is fully self-contained
-- The answer depends only on the current prompt
-- No historical context is required
-- The query is simple or one-off
+Add to your `~/.openclaw/openclaw.json` or use the `openclaw memori init` CLI command to set up your workspace:
 
-Avoid unnecessary recall.
+```bash
+openclaw memori init \
+  --api-key "YOUR_MEMORI_API_KEY" \
+  --entity-id "your-entity-id" \
+  --project-id "your-project-id"
+```
 
----
+Alternatively, configure it directly via JSON:
 
-## Recall behavior
+```json
+{
+  "plugins": {
+    "entries": {
+      "openclaw-memori": {
+        "enabled": true,
+        "config": {
+          "apiKey": "${MEMORI_API_KEY}",
+          "entityId": "openclaw-user",
+          "projectId": "default-project"
+        }
+      }
+    }
+  }
+}
+```
 
-Recall is **agent-controlled and intentional**.
+### Configuration Options
 
-Prefer targeted recall over broad queries.
+- **apiKey** (required): Your Memori API key from [memorilabs.ai](https://app.memorilabs.ai/signup)
+- **entityId** (required): Unique identifier for this user's memories
+- **projectId** (required): Scopes all memories to a specific project or workspace
 
-### Supported parameters (recall only)
+## Agentic Tool Guidelines
 
-- `entityId` → user, agent, or system context
-- `projectId` → project or workspace context
-- `sessionId` → specific session
-- `dateStart` / `dateEnd` → time-bounded recall
-- `source` → type of memory
-- `signal` → how the memory was derived
+When this plugin is active, the OpenClaw agent should utilize the following tools to manage long-term context:
 
-> Note: If a `sessionId` is provided, a `projectId` must also be provided.
-> All timestamps are stored in **UTC**.
+- **Contextual Recall**: When context is missing regarding user preferences or past events, the agent should prioritize running a `memori_recall` search to retrieve relevant details before formulating a response.
+- **Summaries**: If a user requests a recap or summary of past interactions, the agent should utilize the `memori_recall_summary` tool to construct an accurate brief.
+- **Feedback**: The agent should use the `memori_feedback` tool to log reports on memory quality or capture user feature suggestions.
+- **Account Creation**: If a user does not have an API key configured or explicitly asks to create an account, the agent can use the `memori_signup` tool to provision a new key via the Memori CLI.
+- **Quota Monitoring**: The agent can use the `memori_quota` tool to check the user's current memory usage and storage limits to communicate quota status or gracefully degrade behavior if limits are reached.
+- **Date Defaults**: Searches omitting start/end dates will default to retrieving all-time memory.
 
-### Memory filters
+## Verification
 
-- `source`:
-  - constraint
-  - decision
-  - execution
-  - fact
-  - insight
-  - instruction
-  - status
-  - strategy
-  - task
+Check that the plugin is working and securely connected:
 
-- `signal`:
-  - commit
-  - discovery
-  - failure
-  - inference
-  - pattern
-  - result
-  - update
-  - verification
+```bash
+# Verify plugin is securely connected to the API
+openclaw memori status --check
 
-Use `source` and `signal` to prioritize high-signal memory when possible.
+# Check for Memori logs in gateway output
+openclaw gateway logs --filter "[Memori]"
+```
 
-### Default behavior (recall)
+## Quota Management
 
-- No date range → **all-time memory**
-- Use time bounds when narrowing results is necessary
+Check your current API quota:
 
-### Best practices
+```bash
+memori quota
+```
 
-- Start narrow (entity + project)
-- Add time bounds only when needed
-- Use `source` and `signal` to refine results
-- Expand scope only if needed
-- Do not recall on every turn
+**Example output:**
 
----
+```
+ __  __                           _
+|  \/  | ___ _ __ ___   ___  _ __(_)
+| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
+| |  | |  __/ | | | | | (_) | |  | |
+|_|  |_|\___|_| |_| |_|\___/|_|  |_|
+                  perfectam memoriam
+                       memorilabs.ai
 
-## Summary behavior
++ Maximum # of Memories: 100
++ Current # of Memories: 0
 
-Summaries are used for **state awareness**, not precise retrieval.
++ You are not currently over quota.
+```
 
-Use:
+Use this to monitor usage and upgrade if needed.
 
-- `memori_recall_summary`
+## Performance
 
-### Supported parameters (summaries)
+- **Automatic deduplication** prevents memory bloat
+- **Agent-controlled retrieval** ensures token usage remains targeted, compact, and actionable
+- **Semantic ranking** ensures relevant memories surface first
 
-- `projectId`
-- `sessionId`
-- `dateStart`
-- `dateEnd`
+## Privacy & Data Handling
 
-> Summaries do **not** support `source` or `signal`.
+**Transparent data flow:**
 
-### Default behavior (summaries)
+- ✅ Conversations securely transmitted to Memori backend (https://api.memorilabs.ai)
+- ✅ Data encrypted in transit and at rest
+- ✅ You control data via your API key and entityId
+- ✅ No third-party sharing
+- ⚠️ Ensure you review your project scopes before enabling on sensitive workspaces
 
-- No date range → **last 24 hours**
+Backend automatically filters sensitive data (API keys, passwords, secrets).
 
----
+For details: [Memori Privacy Policy](https://memorilabs.ai/privacy)
 
-## Daily brief behavior
+## Memory Persistence
 
-At the start of a meaningful session, retrieve a structured summary.
+Memories persist safely across:
 
-Use the daily brief to understand:
+- Session restarts
+- Gateway restarts
+- System reboots
+- OpenClaw upgrades
 
-- Current state
-- Prior decisions
-- Constraints
-- Open work
+All storage is handled by the Memori backend and is scoped safely alongside your local `MEMORY.md` file without overwriting it.
 
-### Expected daily brief structure
+## Troubleshooting
 
-- Today at a glance
-- Top 3 next actions
-- Top 3 risks
-- Verify before acting
-- Recent decisions
-- Mission stack
-- Hard constraints
-- Current status
-- Open loops
-- Known failures and anti-patterns
-- Staleness warnings
+**Plugin not loading:**
 
-Treat this as the working state of the system.
+- Verify `enabled: true` in openclaw.json
+- Check API key: `echo $MEMORI_API_KEY`
+- Restart gateway: `openclaw gateway restart`
 
----
+**No memories captured:**
 
-## Typical workflow
+- Check gateway logs for `[Memori]` errors
+- Verify API endpoint reachable
+- Test API key: `memori quota`
 
-1. Start of session → retrieve summary
-2. During task → use targeted recall
-3. When memory is missing or incorrect → send feedback
-4. When limits are reached → degrade gracefully
+**Memories not recalled:**
 
----
+- Did the agent utilize the retrieval tool? Check your gateway logs for `memori_recall` tool execution. If it didn't use the tool, you can prompt it to search its memory.
+- Ensure `entityId` and `projectId` are consistent across sessions.
+- Verify memories exist: `memori quota` shows count > 0.
 
-## Safety and correctness
+**Quota exceeded:**
 
-- Do not invent memory
-- Do not assume memory is correct if it conflicts with the user
-- Verify before acting when needed
-- Treat recent instructions as higher priority than recalled memory
-
----
-
-## Memori system guidance
-
-This section defines how you should interact with Memori beyond basic recall.
-
----
-
-### 1. Feedback (`memori_feedback`)
-
-You are equipped with the `memori_feedback` tool to improve memory quality over time.
-
-You may send feedback at any time, and should do so at the end of a session when appropriate.
-
-Feedback should be sent when:
-
-- Recall results are irrelevant or missing key context
-- Important decisions or constraints were not captured
-- Memory quality degrades across sessions
-- Something works particularly well and should be reinforced
-
-Examples:
-
-- "Send feedback that recall missed a pricing constraint."
-- "Tell Memori the daily brief was accurate."
-- "Submit a bug report: you didn't remember my preferred language."
-
-#### Purpose
-
-Feedback improves:
-
-- Memory extraction quality
-- Recall relevance
-- Summary accuracy
-
----
-
-### 2. Updates
-
-Memori evolves over time (new features, improved recall, better summaries).
-
-When updates are exposed:
-
-- Check for updates via system message or tool
-- Adapt behavior to use new capabilities
-
-When an update is detected:
-
-- Prefer newer recall patterns when available
-- Use improved summaries or classification outputs
-- Continue operating normally if no changes are required
-
----
-
-### 3. Account Creation and Onboarding (`memori_signup`)
-
-You are equipped with the `memori_signup` tool to securely create an account and provision an API key for the user via the Memori CLI.
-
-Use this tool when:
-
-- The user explicitly asks to sign up, create an account, or get an API key for Memori.
-- You encounter an error indicating a missing `MEMORI_API_KEY` and the user provides their email address to get one.
-
-#### Behavior:
-
-- **Email Required:** If the user asks to sign up but **does not** provide an email address, you MUST ask them for their email first. Do not attempt to guess or hallucinate an email.
-- **Execution:** Once they provide an email, run `memori_signup` with that email.
-- **Follow-up:** The tool will trigger the underlying CLI and return a success or error message. Relay that message to the user, remind them to check their inbox for the API key, and instruct them to add it to their configuration (`~/.openclaw/openclaw.json` or `.env` file).
-- **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
-
----
-
-### 4. Quota Awareness and Upgrades (`memori_quota`)
-
-You are equipped with the `memori_quota` tool to check the user's current memory usage and limits via the Memori CLI.
-
-Use this tool when:
-
-- The user explicitly asks about their quota, usage, storage, or how many memories they have left.
-- You encounter errors suggesting memory limits have been reached and want to confirm before degrading behavior.
-
-#### Behavior:
-
-- **No Parameters Required:** Simply invoke `memori_quota` — it requires no arguments.
-- **Execution:** The tool runs the underlying CLI and returns the user's current usage and quota.
-- **Follow-up:** Relay the result clearly to the user. If they are near or at their limit, explain the impact and suggest an upgrade.
-- **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
-
-#### When limits are reached or nearing:
-
-#### a. Degrade gracefully
-
-- Reduce recall scope (shorter time ranges)
-- Prioritize high-signal memory (decisions, constraints, key facts)
-- Avoid unnecessary or repeated recall calls
-
-#### b. Inform the human/operator
-
-Clearly communicate when limits impact performance.
-
-Example:
-
-> "Memory limits have been reached. I can continue with limited recall, or you can upgrade to restore full functionality."
-
-#### c. Suggest upgrades appropriately
-
-- Only prompt when performance is affected
-- Avoid repetitive or disruptive messaging
-- Keep messaging neutral and helpful
-
----
+- Run `memori quota` to check usage
+- Upgrade at [memorilabs.ai](https://app.memorilabs.ai/)
+- Or clear old memories via dashboard
 
 ## Learn More
 
@@ -311,3 +213,7 @@ Example:
 - **Documentation**: https://memorilabs.ai/docs/memori-cloud/openclaw/overview/
 - **API Dashboard**: https://app.memorilabs.ai/
 - **Support**: [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+
+## Notes
+
+This skill informs the agent about the Memori plugin. The plugin must be installed separately via npm. Once installed, memory capture happens in the background, and the agent is empowered to explicitly query its memories when needed.
