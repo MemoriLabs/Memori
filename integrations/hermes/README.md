@@ -228,22 +228,36 @@ Memori project scope.
 hermes memory status
 ```
 
+
 ### 4. Test the Memory Loop
 
-1. Tell Hermes something durable:
+1. Ask Hermes to complete a multi-step task:
 
-   > "For this project, I prefer pytest fixtures over global test state."
+   > "Investigate why the payment sync test is failing and fix it."
 
-2. Complete the turn and start a later session.
+2. Let Hermes complete the workflow. During the task, Hermes may inspect files,
+   run commands, identify a failing fixture, make a decision, apply a fix, and
+   observe the result.
 
-3. Ask something that depends on that preference:
+3. After the turn completes, Memori structures the completed execution path into
+   durable memory, including the failure, decision, fix, outcome, and any
+   recurring pattern.
 
-   > "Add a test for the new behavior using my usual testing style."
+4. In a later session, ask:
 
-4. Hermes can call `memori_recall` or `memori_recall_summary` to retrieve the
-   relevant prior context.
+   > "A similar payment sync test is failing again. Check prior fixes before changing anything."
 
-If it works, Hermes has persistent, structured memory across sessions.
+5. The agent can call `memori_recall` or `memori_recall_summary` to retrieve
+   the relevant prior failure, fix, and workflow pattern.
+
+### Send Feedback
+
+Tell the agent to send feedback:
+
+> "Send feedback to Memori that the recall was useful."
+
+If it works, Hermes now has persistent, structured memory across sessions from
+both conversation and agent execution.
 
 ---
 
