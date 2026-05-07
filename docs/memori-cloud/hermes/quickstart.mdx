@@ -7,9 +7,9 @@ description: Install and configure the Memori memory provider for Hermes Agent.
 
 Get structured, long-term memory running in Hermes Agent in a few minutes.
 
-Memori plugs into Hermes as a memory provider named `memori`. It captures
-completed turns in the background and gives the agent explicit tools for
-Agent-Controlled Intelligent Recall.
+Memori plugs into Hermes as a memory provider named `memori`. It captures not only completed conversation turns, but also available agent trace and execution context, then structures that activity into durable memory the agent can recall later.
+
+This means Hermes can remember what happened during prior work — tool usage, workflow steps, decisions, outcomes, failures, constraints, and recurring patterns — not just what was said in the transcript.
 
 ## Prerequisites
 
@@ -140,18 +140,10 @@ The Memori provider operates on two parallel tracks:
 | Track | Mechanism | What it does |
 | --- | --- | --- |
 | **Agent-Controlled Intelligent Recall** | Memory Provider Tools | Equips Hermes with `memori_recall`, `memori_recall_summary`, `memori_quota`, `memori_signup`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
-| **Advanced Augmentation** | Memory Provider Sync | After a completed, non-interrupted turn, Hermes calls its memory sync path. Memori captures the user message and assistant response in the background and structures them into durable memory. |
+| **Advanced Augmentation** | Memory Provider Sync | After a completed, non-interrupted turn, Hermes calls its memory sync path. The exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
 
-Together, these systems continuously structure memory from agent conversations
-and workflow outcomes. Memori captures durable facts, decisions, constraints,
-and failures into memory the agent can recall on demand.
+Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient. Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy and efficiency while avoiding unnecessary token usage.
 
-Memori does not automatically inject recalled memory into every prompt. Its
-prefetch path returns no memory content, so agents retrieve only the context
-they need through explicit tools.
+##### Tip: Project scoping
 
-<Admonition type="tip" title="Project Scoping">
-  Set `MEMORI_PROJECT_ID` when you want one stable project scope. Leave it unset
-  when you want Hermes' active workspace or session context to determine the
-  project scope automatically.
-</Admonition>
+Set `MEMORI_PROJECT_ID` when you want one stable project scope. Leave it unset when you want Hermes' active workspace or session context to determine the project scope automatically.

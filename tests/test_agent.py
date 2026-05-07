@@ -148,7 +148,23 @@ def test_capture_agent_turn_writes_turn_then_collector(monkeypatch, mocker):
 
     assert collector_post.call_args.args[0] == "agent/augmentation"
     aug_payload = collector_post.call_args.args[1]
+    assert aug_payload["attribution"] == {
+        "entity": {"id": "entity"},
+        "process": {"id": "process"},
+    }
+    assert "attribution" not in aug_payload["meta"]
     assert aug_payload["meta"]["platform"] == {"provider": "hermes"}
+    assert aug_payload["meta"]["sdk"] == {
+        "lang": "python",
+        "version": mem.config.version,
+    }
+    assert aug_payload["meta"]["llm"] == {
+        "model": {
+            "provider": None,
+            "sdk": {"version": None},
+            "version": None,
+        }
+    }
     assert aug_payload["trace"] == {"tools": []}
 
 
