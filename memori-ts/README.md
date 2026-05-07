@@ -45,115 +45,160 @@ Install the Memori SDK and your preferred LLM client using your package manager 
 npm install @memorilabs/memori
 ```
 
-_(Note: Memori currently supports `openai` and `@anthropic-ai/sdk` as peer dependencies)._
+_(Memori supports `openai`, `@anthropic-ai/sdk`, and `@google/genai` as peer dependencies. Requires Node.js 18 or higher.)_
 
-## Quickstart Example
+## Quickstart
+
+### Memori Cloud
+
+Zero config. Sign up at [app.memorilabs.ai](https://app.memorilabs.ai), set `MEMORI_API_KEY` and your LLM key, then:
 
 ```typescript
 import 'dotenv/config';
 import { OpenAI } from 'openai';
 import { Memori } from '@memorilabs/memori';
 
-// Environment check
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_API_KEY) {
-  console.error('Error: OPENAI_API_KEY must be set in .env');
-  process.exit(1);
-}
+const client = new OpenAI();
+const mem = new Memori().llm.register(client).attribution('user_123', 'my-agent');
 
-// 1. Initialize the LLM Client
-const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+// Conversations are persisted and recalled automatically.
 
-// 2. Initialize Memori and Register the Client
-const memori = new Memori().llm
-  .register(client)
-  .attribution('typescript-sdk-test-user', 'test-process-1');
-
-async function main() {
-  console.log('--- Step 1: Teaching the AI ---');
-  const factPrompt = 'My favorite color is blue and I live in Paris.';
-  console.log(`User: ${factPrompt}`);
-
-  // This call automatically triggers Persistence and Augmentation in the background.
-  const response1 = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: factPrompt }],
-  });
-
-  console.log(`AI:   ${response1.choices[0].message.content}`);
-
-  console.log('\n(Waiting 5 seconds for backend processing...)\n');
-  await new Promise((resolve) => setTimeout(resolve, 5000));
-
-  console.log('--- Step 2: Testing Recall ---');
-  const questionPrompt = 'What is my favorite color?';
-  console.log(`User: ${questionPrompt}`);
-
-  // This call automatically triggers Recall, injecting the Paris/Blue facts into the prompt.
-  const response2 = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: questionPrompt }],
-  });
-
-  console.log(`AI:   ${response2.choices[0].message.content}`);
-}
-
-main().catch(console.error);
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: "What's my favorite color?" }],
+});
+// Memori recalls that your favorite color is blue.
 ```
+
+### BYODB (Bring Your Own Database)
+
+Self-host with your own database. Install a database driver alongside Memori:
+
+```bash
+npm install @memorilabs/memori better-sqlite3
+```
+
+```typescript
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const db = new Database('memori.db');
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user_123', 'my-agent');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+// Run once on startup to create Memori's schema tables
+await mem.config.storage.build();
+
+await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+
+// In short-lived scripts, wait for background augmentation before exiting
+await mem.augmentation.wait();
+
+// Flush writes and tear down the native engine, then close your own connection
+await mem.config.storage.close();
+db.close();
+```
+
+> [!TIP]
+> Want the full BYODB setup guide? Check out the docs:
+> [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/)
 
 ## Key Features
 
 - **Zero-Latency Memory:** Background processing ensures your LLM calls are never slowed down.
 - **Advanced Augmentation:** Automatically extracts and structures facts, preferences, and relationships.
-- **Cloud-Hosted:** Fully managed infrastructure via the Memori Cloud API.
-- **LLM Agnostic:** Native support for the official OpenAI and Anthropic SDKs via interceptors.
+- **Memori Cloud:** Fully managed infrastructure via the Memori Cloud API — no database required.
+- **BYODB:** Self-host with your own database. SQLite, PostgreSQL, MySQL, and popular ORMs are all supported.
+- **LLM Agnostic:** Native support for OpenAI, Anthropic, and Google Gemini via interceptors.
 - **Automatic Prompt Injection:** Seamlessly fetches relevant memories and injects them into the system context.
 
 ## Attribution
 
-To get the most out of Memori, you want to attribute your LLM interactions to an entity (think person, place or thing; like a user) and a process (think your agent, LLM interaction or program).
+To get the most out of Memori, attribute your LLM interactions to an entity (think person, place, or thing — like a user) and a process (think your agent, LLM interaction, or program).
 
-If you do not provide any attribution, Memori cannot make memories for you.
+If you do not provide attribution, Memori cannot make memories for you.
 
 ```typescript
-memori.attribution('user-123', 'my-app');
+mem.attribution('user-123', 'my-app');
 ```
 
 ## Session Management
 
-Memori uses sessions to group your LLM interactions together. For example, if you have an agent that executes multiple steps you want those to be recorded in a single session.
+Memori uses sessions to group your LLM interactions together. For example, if you have an agent that executes multiple steps you want those recorded in a single session.
 
-By default, Memori handles setting the session for you but you can start a new session or override the session by executing the following:
+By default, Memori handles sessions for you, but you can start a new session or resume an existing one:
 
 ```typescript
-memori.resetSession();
+mem.resetSession();
 ```
 
-or
-
 ```typescript
-const sessionId = memori.session.id;
+const sessionId = mem.session.id;
 
 // ... Later ...
 
-memori.setSession(sessionId);
+mem.setSession(sessionId);
 ```
 
 ## Supported LLMs
 
 - Anthropic Claude (`@anthropic-ai/sdk`)
 - OpenAI (`openai`)
-- Gemini (`@google/genai`)
+- Google Gemini (`@google/genai`)
+
+## Supported Databases (BYODB)
+
+**Raw Drivers**
+
+| Driver           | Dialects                |
+| ---------------- | ----------------------- |
+| `better-sqlite3` | SQLite                  |
+| `pg`             | PostgreSQL, CockroachDB |
+| `mysql2`         | MySQL, MariaDB          |
+
+**ORMs**
+
+| ORM     | Dialects                           |
+| ------- | ---------------------------------- |
+| TypeORM | SQLite, PostgreSQL, MySQL, MariaDB |
+
+**Using Drizzle, Sequelize, MikroORM, or another ORM?** Memori needs a direct connection factory — but you're already creating a raw pool for your ORM. Pass that same pool to Memori and both share it with no conflict:
+
+```typescript
+// You already have this for Drizzle
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool);
+
+// Just also give Memori the pool — no extra connection needed
+const mem = new Memori({ conn: () => pool });
+```
+
+The same pattern applies to Sequelize (`mysql.createPool(...)`) and MikroORM (`new pg.Pool(...)`). Your ORM handles your queries; Memori handles its own tables — same pool, no conflict.
 
 ## Memori Advanced Augmentation
 
 Memories are tracked at several different levels:
 
 - **entity**: think person, place, or thing; like a user
-- **process**: think your agent, LLM interaction or program
-- **session**: the current interactions between the entity, process and the LLM
+- **process**: think your agent, LLM interaction, or program
+- **session**: the current interactions between the entity, process, and the LLM
 
-[Memori's Advanced Augmentation](https://github.com/MemoriLabs/Memori/blob/main/docs/advanced-augmentation.md) enhances memories at each of these levels with:
+[Memori's Advanced Augmentation](https://memorilabs.ai/docs/memori-byodb/concepts/advanced-augmentation) enhances memories at each of these levels with:
 
 - attributes
 - events
@@ -164,27 +209,33 @@ Memories are tracked at several different levels:
 - rules
 - skills
 
-Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs asynchronously in the background incurring no latency.
+Memori knows who your user is, what tasks your agent handles, and creates unparalleled context between the two. Augmentation occurs asynchronously in the background incurring no latency.
 
 By default, Memori Advanced Augmentation is available without an account but is rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup).
 
 Memori Advanced Augmentation is always free for developers!
 
-Once you've obtained an API key, simply set the following environment variable:
+Once you've obtained an API key, set the following environment variable:
 
 ```bash
 export MEMORI_API_KEY=[api_key]
 ```
 
-## Managing Your Quota
+## Sign Up and Managing Your Quota
 
-Any any time, you can check your quota using the Memori CLI:
+You can sign up and manage your quota using the Memori CLI:
 
 ```bash
+# If installed locally to your project
+npx memori sign-up your-email@example.com
+npx memori quota
+
+# If installed globally (npm install -g @memorilabs/memori)
+memori sign-up your-email@example.com
 memori quota
 ```
 
-Or by checking your account by logging in at [https://memorilabs.ai/](https://memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
+Or by logging in at [https://app.memorilabs.ai/](https://app.memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
 
 If your API key exceeds its quota limits we will email you and let you know.
 

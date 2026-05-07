@@ -40,7 +40,7 @@ export class SqliteAdapter implements StorageAdapter {
     return 'sqlite';
   }
   public close(): void {
-    if (this.client.open) this.client.close();
+    // Never close the user's database — caller owns the connection lifecycle.
   }
 }
 
