@@ -6,7 +6,13 @@
   "kind": "memory",
   "main": "dist/index.js",
   "contracts": {
-    "tools": ["memori_recall", "memori_recall_summary", "memori_feedback"]
+    "tools": [
+      "memori_recall",
+      "memori_recall_summary",
+      "memori_feedback",
+      "memori_signup",
+      "memori_quota"
+    ]
   },
   "uiHints": {
     "apiKey": {
