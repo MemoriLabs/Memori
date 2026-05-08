@@ -58,7 +58,7 @@ Create a new file `quickstart.ts` and add the following code:
 
 Import libraries, open a SQLite database, and initialize Memori with your OpenAI client.
 
-- `conn` accepts the raw database connection (a `better-sqlite3` `Database` instance, `pg` Pool, `mysql2` connection, or an ORM handle)
+- `conn` accepts the raw database connection (a `better-sqlite3` `Database` instance, `pg` Pool, or `mysql2` Pool)
 - `llm.register()` wraps your LLM client for automatic memory capture
 - `attribution()` links memories to a specific user and process
 - `await mem.config.storage.build()` creates the Memori schema tables in your database
@@ -75,6 +75,9 @@ const client = new OpenAI();
 const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'test-ai-agent');
 
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
 await mem.config.storage.build();
 ```
 
@@ -132,6 +135,9 @@ const client = new OpenAI();
 const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'test-ai-agent');
 
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
 await mem.config.storage.build();
 
 const response1 = await client.chat.completions.create({
@@ -154,6 +160,9 @@ const response2 = await client2.chat.completions.create({
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log('AI:', response2.choices[0].message.content + '\n');
+
+db.close();
+db2.close();
 ```
 
 ## Step 4: Run the Application

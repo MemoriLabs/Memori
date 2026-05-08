@@ -82,6 +82,9 @@ try {
 
   // Wait for background augmentation
   await mem.augmentation.wait();
+
+  const facts = await mem.recall('favorite color');
+  console.log(facts);
 } finally {
   db.close();
 }

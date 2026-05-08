@@ -17,7 +17,7 @@ CockroachDB is a distributed SQL database that uses the PostgreSQL wire protocol
 
 ```bash
 npm install @memorilabs/memori pg openai dotenv
-npm install --save-dev @types/pg @types/node typescript tsx
+npm install --save-dev @types/pg
 ```
 
 ## Quick Start
@@ -102,6 +102,9 @@ try {
   console.log(`AI: ${response2.choices[0]?.message?.content}`);
 
   await mem.augmentation.wait();
+
+  const facts = await mem.recall('favorite color');
+  console.log(facts);
 } finally {
   await pool.end();
 }

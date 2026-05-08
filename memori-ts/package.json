@@ -50,7 +50,6 @@
     "sqlite": "npm run example:sqlite",
     "postgresql": "npm run example:postgres",
     "mysql": "npm run example:mysql",
-    "typeorm": "npm run build:dev && node dist/examples/orm/typeorm-sqlite.js",
     "prepublishOnly": "node scripts/sync-native.js && npm run build"
   },
   "keywords": [
@@ -81,8 +80,7 @@
     "better-sqlite3": "*",
     "mysql2": "*",
     "openai": "*",
-    "pg": "*",
-    "typeorm": "*"
+    "pg": "*"
   },
   "peerDependenciesMeta": {
     "openai": {
@@ -101,9 +99,6 @@
       "optional": true
     },
     "mysql2": {
-      "optional": true
-    },
-    "typeorm": {
       "optional": true
     }
   },
@@ -126,7 +121,6 @@
     "openai": "*",
     "pg": "*",
     "prettier": "^3.0.0",
-    "typeorm": "*",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^2.1.9"

@@ -2,8 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { SqliteAdapter } from '../../src/storage/adapters/sqlite.js';
 import { MysqlAdapter } from '../../src/storage/adapters/mysql.js';
 import { PostgresAdapter } from '../../src/storage/adapters/postgresql.js';
-import { TypeOrmAdapter } from '../../src/storage/adapters/typeorm.js';
-
 // ---------------------------------------------------------------------------
 // SqliteAdapter
 // ---------------------------------------------------------------------------
@@ -281,110 +279,5 @@ describe('PostgresAdapter', () => {
 
   it('getDialect() returns "postgresql"', () => {
     expect(new PostgresAdapter(makePgPool()).getDialect()).toBe('postgresql');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// TypeOrmAdapter
-// ---------------------------------------------------------------------------
-
-function makeQueryRunner(_type = 'postgres') {
-  return {
-    isTransactionActive: false,
-    query: vi.fn().mockResolvedValue([{ id: 1 }]),
-    startTransaction: vi.fn().mockResolvedValue(undefined),
-    commitTransaction: vi.fn().mockResolvedValue(undefined),
-    rollbackTransaction: vi.fn().mockResolvedValue(undefined),
-    release: vi.fn().mockResolvedValue(undefined),
-  };
-}
-
-function makeDataSource(type = 'postgres', qr = makeQueryRunner()) {
-  return {
-    options: { type },
-    createQueryRunner: vi.fn().mockReturnValue(qr),
-    _qr: qr,
-  };
-}
-
-describe('TypeOrmAdapter', () => {
-  it('calls createQueryRunner() on construction', () => {
-    const ds = makeDataSource();
-    new TypeOrmAdapter(ds);
-    expect(ds.createQueryRunner).toHaveBeenCalled();
-  });
-
-  it('execute() delegates to queryRunner.query()', async () => {
-    const ds = makeDataSource();
-    const adapter = new TypeOrmAdapter(ds);
-    const rows = await adapter.execute('SELECT 1', []);
-    expect(ds._qr.query).toHaveBeenCalledWith('SELECT 1', []);
-    expect(rows).toEqual([{ id: 1 }]);
-  });
-
-  it('execute() returns [] when query result is not an array', async () => {
-    const ds = makeDataSource();
-    ds._qr.query.mockResolvedValue(null);
-    const adapter = new TypeOrmAdapter(ds);
-    expect(await adapter.execute('SELECT 1')).toEqual([]);
-  });
-
-  it('begin() calls startTransaction() when not active', async () => {
-    const ds = makeDataSource();
-    ds._qr.isTransactionActive = false;
-    const adapter = new TypeOrmAdapter(ds);
-    await adapter.begin();
-    expect(ds._qr.startTransaction).toHaveBeenCalled();
-  });
-
-  it('begin() is a no-op when transaction already active', async () => {
-    const ds = makeDataSource();
-    ds._qr.isTransactionActive = true;
-    const adapter = new TypeOrmAdapter(ds);
-    await adapter.begin();
-    expect(ds._qr.startTransaction).not.toHaveBeenCalled();
-  });
-
-  it('commit() calls commitTransaction() when active', async () => {
-    const ds = makeDataSource();
-    ds._qr.isTransactionActive = true;
-    const adapter = new TypeOrmAdapter(ds);
-    await adapter.commit();
-    expect(ds._qr.commitTransaction).toHaveBeenCalled();
-  });
-
-  it('commit() is a no-op when no active transaction', async () => {
-    const ds = makeDataSource();
-    const adapter = new TypeOrmAdapter(ds);
-    await adapter.commit();
-    expect(ds._qr.commitTransaction).not.toHaveBeenCalled();
-  });
-
-  it('rollback() calls rollbackTransaction() when active', async () => {
-    const ds = makeDataSource();
-    ds._qr.isTransactionActive = true;
-    const adapter = new TypeOrmAdapter(ds);
-    await adapter.rollback();
-    expect(ds._qr.rollbackTransaction).toHaveBeenCalled();
-  });
-
-  it('close() releases the queryRunner', async () => {
-    const ds = makeDataSource();
-    const adapter = new TypeOrmAdapter(ds);
-    await adapter.close();
-    expect(ds._qr.release).toHaveBeenCalled();
-  });
-
-  it.each([
-    ['postgres', 'postgresql'],
-    ['cockroachdb', 'postgresql'],
-    ['mysql', 'mysql'],
-    ['mariadb', 'mysql'],
-    ['sqlite', 'sqlite'],
-    ['better-sqlite3', 'sqlite'],
-    ['unknown-db', 'unknown-db'],
-  ])('getDialect() maps TypeORM type "%s" → "%s"', (type, expected) => {
-    const ds = makeDataSource(type);
-    expect(new TypeOrmAdapter(ds).getDialect()).toBe(expected);
   });
 });

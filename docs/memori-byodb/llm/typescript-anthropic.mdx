@@ -36,7 +36,7 @@ if (!mem.config.storage) {
 await mem.config.storage.build();
 
 const response = await client.messages.create({
-  model: 'claude-sonnet-4-5',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Hello!' }],
 });
@@ -76,7 +76,7 @@ if (!mem.config.storage) {
 await mem.config.storage.build();
 
 const stream = client.messages.stream({
-  model: 'claude-sonnet-4-5',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   messages: [{ role: 'user', content: 'Hello!' }],
 });
@@ -96,7 +96,7 @@ Anthropic supports a top-level `system` parameter separate from the `messages` a
 
 ```typescript
 const response = await client.messages.create({
-  model: 'claude-sonnet-4-5',
+  model: 'claude-sonnet-4-6',
   max_tokens: 1024,
   system: 'You are a helpful coding assistant.',
   messages: [{ role: 'user', content: 'Explain TypeScript generics.' }],

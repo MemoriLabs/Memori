@@ -12,8 +12,6 @@ import {
 
 // Side-effect imports: each module calls Registry.registerAdapter / Registry.registerDriver
 // on load, so the Registry can auto-detect the connection type at runtime.
-import './adapters/typeorm.js';
-
 import './adapters/postgresql.js';
 import './drivers/postgresql.js';
 import './adapters/sqlite.js';

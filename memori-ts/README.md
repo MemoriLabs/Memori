@@ -122,7 +122,7 @@ db.close();
 - **Zero-Latency Memory:** Background processing ensures your LLM calls are never slowed down.
 - **Advanced Augmentation:** Automatically extracts and structures facts, preferences, and relationships.
 - **Memori Cloud:** Fully managed infrastructure via the Memori Cloud API — no database required.
-- **BYODB:** Self-host with your own database. SQLite, PostgreSQL, MySQL, and popular ORMs are all supported.
+- **BYODB:** Self-host with your own database. SQLite, PostgreSQL, and MySQL are all supported. Pass any ORM's underlying connection pool and it works out of the box.
 - **LLM Agnostic:** Native support for OpenAI, Anthropic, and Google Gemini via interceptors.
 - **Automatic Prompt Injection:** Seamlessly fetches relevant memories and injects them into the system context.
 
@@ -170,13 +170,7 @@ mem.setSession(sessionId);
 | `pg`             | PostgreSQL, CockroachDB |
 | `mysql2`         | MySQL, MariaDB          |
 
-**ORMs**
-
-| ORM     | Dialects                           |
-| ------- | ---------------------------------- |
-| TypeORM | SQLite, PostgreSQL, MySQL, MariaDB |
-
-**Using Drizzle, Sequelize, MikroORM, or another ORM?** Memori needs a direct connection factory — but you're already creating a raw pool for your ORM. Pass that same pool to Memori and both share it with no conflict:
+**Using an ORM?** Memori needs a direct connection factory — but you're already creating a raw pool for your ORM. Pass that same pool to Memori and both share it with no conflict:
 
 ```typescript
 // You already have this for Drizzle
@@ -187,7 +181,7 @@ const db = drizzle(pool);
 const mem = new Memori({ conn: () => pool });
 ```
 
-The same pattern applies to Sequelize (`mysql.createPool(...)`) and MikroORM (`new pg.Pool(...)`). Your ORM handles your queries; Memori handles its own tables — same pool, no conflict.
+The same pattern applies to Sequelize (`mysql.createPool(...)`), MikroORM (`new pg.Pool(...)`), and any other ORM. Your ORM handles your queries; Memori handles its own tables — same pool, no conflict.
 
 ## Memori Advanced Augmentation
 
@@ -200,12 +194,8 @@ Memories are tracked at several different levels:
 [Memori's Advanced Augmentation](https://memorilabs.ai/docs/memori-byodb/concepts/advanced-augmentation) enhances memories at each of these levels with:
 
 - attributes
-- events
 - facts
-- people
 - preferences
-- relationships
-- rules
 - skills
 
 Memori knows who your user is, what tasks your agent handles, and creates unparalleled context between the two. Augmentation occurs asynchronously in the background incurring no latency.
