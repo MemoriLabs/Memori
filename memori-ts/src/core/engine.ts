@@ -1,126 +1,53 @@
 import { MemoriEngine } from '../native/index.js';
-import {
-  StorageBridge,
-  WriteBatch,
-  EmbeddingRow,
-  CandidateFactRow,
-  WriteAck,
-} from '../types/storage.js';
+import { WriteBatch, WriteAck } from '../types/storage.js';
 import { RetrievalRequest, RecallObject, NapiRecallRow } from '../types/api.js';
 import { AugmentationInput } from '../types/integrations.js';
-
-type BridgeCb = (err: Error | null, _id: number, _reqJson: string) => void;
+import { StorageManager } from '../storage/manager.js';
 
 export class NativeEngine {
   private memoriEngine?: MemoriEngine;
   private _hasStorage: boolean = false;
   private readonly modelName: string | null;
-  private readonly fetchEmbeddingsCb: BridgeCb;
-  private readonly fetchFactsCb: BridgeCb;
-  private readonly writeBatchCb: BridgeCb;
+  private readonly storageManager?: StorageManager;
 
-  constructor(storageBridge?: StorageBridge, modelName?: string) {
+  constructor(storageManager?: StorageManager, modelName?: string) {
     this.modelName = modelName ?? null;
-
-    if (storageBridge) {
-      this._hasStorage = true;
-
-      this.fetchEmbeddingsCb = (err, _id, _reqJson) => {
-        if (err) {
-          console.error('[Memori] Bridge error in fetchEmbeddings:', err);
-          return;
-        }
-        const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-        this.handleBridgeCall<EmbeddingRow[]>(
-          id,
-          'fetchEmbeddings',
-          () => {
-            const req = JSON.parse(reqJson) as { entity_id: string; limit: number };
-            return storageBridge.fetchEmbeddings(req.entity_id, req.limit);
-          },
-          (res) =>
-            this.memoriEngine?.resolveEmbeddingsCallback(
-              id,
-              res.map((r) => ({
-                id: r.id,
-                contentEmbedding: r.content_embedding ?? new Float32Array(0),
-              }))
-            ),
-          () => this.memoriEngine?.resolveEmbeddingsCallback(id, [])
-        );
-      };
-
-      this.fetchFactsCb = (err, _id, _reqJson) => {
-        if (err) {
-          console.error('[Memori] Bridge error in fetchFactsByIds:', err);
-          return;
-        }
-        const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-        this.handleBridgeCall<CandidateFactRow[]>(
-          id,
-          'fetchFactsByIds',
-          () => {
-            const req = JSON.parse(reqJson) as { ids: (number | string)[] };
-            return storageBridge.fetchFactsByIds(req.ids);
-          },
-          (res) =>
-            this.memoriEngine?.resolveFactsCallback(
-              id,
-              res.map((r) => ({
-                id: r.id,
-                content: r.content,
-                dateCreated: r.date_created,
-                summaries: r.summaries?.map((s) => ({
-                  content: s.content,
-                  dateCreated: s.date_created,
-                })),
-              }))
-            ),
-          () => this.memoriEngine?.resolveFactsCallback(id, [])
-        );
-      };
-
-      this.writeBatchCb = (err, _id, _reqJson) => {
-        if (err) {
-          console.error('[Memori] Bridge error in writeBatch:', err);
-          return;
-        }
-        const [id, reqJson] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-        this.handleBridgeCall<WriteAck>(
-          id,
-          'writeBatch',
-          () => {
-            const req = JSON.parse(reqJson) as WriteBatch;
-            return storageBridge.writeBatch(req);
-          },
-          (res) => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: res.written_ops }),
-          () => this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 })
-        );
-      };
-    } else {
-      this.fetchEmbeddingsCb = (err, _id, _reqJson) => {
-        const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-        if (!err) this.memoriEngine?.resolveEmbeddingsCallback(id, []);
-      };
-      this.fetchFactsCb = (err, _id, _reqJson) => {
-        const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-        if (!err) this.memoriEngine?.resolveFactsCallback(id, []);
-      };
-      this.writeBatchCb = (err, _id, _reqJson) => {
-        const [id] = (Array.isArray(_id) ? _id : [_id, _reqJson]) as [number, string];
-        if (!err) this.memoriEngine?.resolveWriteCallback(id, { writtenOps: 0 });
-      };
-    }
+    this.storageManager = storageManager;
+    if (storageManager) this._hasStorage = true;
   }
 
   private getEngine(): MemoriEngine {
     if (!this.memoriEngine) {
-      this.memoriEngine = new MemoriEngine(
-        this.modelName,
-        this.fetchEmbeddingsCb,
-        this.fetchFactsCb,
-        this.writeBatchCb
-      );
+      if (this.storageManager) {
+        const dialect = this.storageManager.getDialect();
+        const sm = this.storageManager;
+        const storageCallCb = (
+          err: Error | null,
+          _id: number | [number, string],
+          _payloadJson?: string
+        ) => {
+          if (err) {
+            console.error('[Memori] Bridge error in storageCall:', err);
+            return;
+          }
+          const [id, payloadJson] = Array.isArray(_id) ? _id : [_id, _payloadJson as string];
+          sm.handleStorageCall(id, payloadJson, (result) => {
+            this.memoriEngine?.resolveStorageCall(id, JSON.stringify(result));
+          });
+        };
+        this.memoriEngine = new MemoriEngine(this.modelName, storageCallCb, dialect);
+      } else {
+        // No storage configured — provide a no-op callback so Rust doesn't hang.
+        const noopCb = (err: Error | null, _id: number | [number, string], _json?: string) => {
+          if (err) return;
+          const id = Array.isArray(_id) ? _id[0] : _id;
+          this.memoriEngine?.resolveStorageCall(
+            id,
+            JSON.stringify({ error: { code: 'NO_STORAGE', message: 'no storage configured' } })
+          );
+        };
+        this.memoriEngine = new MemoriEngine(this.modelName, noopCb, 'sqlite');
+      }
     }
     return this.memoriEngine;
   }
@@ -129,41 +56,34 @@ export class NativeEngine {
     return this._hasStorage;
   }
 
-  /**
-   * Helper to execute storage bridge callbacks safely, handling both async Promises
-   * and sync returns, while catching all crossing boundary errors.
-   */
-  private handleBridgeCall<TRes>(
-    id: number,
-    operationName: string,
-    executeFn: () => Promise<TRes> | TRes,
-    successCb: (res: TRes) => void,
-    fallbackCb: () => void
-  ) {
-    try {
-      const result = executeFn();
-
-      if (result instanceof Promise) {
-        result
-          .then((res) => {
-            try {
-              successCb(res);
-            } catch (e: unknown) {
-              console.error(`[Memori] Bridge Error in ${operationName} (success handler):`, e);
-              fallbackCb();
-            }
-          })
-          .catch((err: unknown) => {
-            console.error(`[Memori] Bridge Error in ${operationName}:`, err);
-            fallbackCb();
-          });
-      } else {
-        successCb(result);
-      }
-    } catch (e: unknown) {
-      console.error(`[Memori] Bridge Sync Error (${operationName}):`, e);
-      fallbackCb();
+  /** Runs database migrations. Must be called once after the engine is constructed with storage. */
+  public async build(): Promise<void> {
+    if (this._hasStorage) {
+      await this.getEngine().build();
     }
+  }
+
+  /**
+   * Executes a write batch through the Rust storage layer.
+   *
+   * Used by the TS persistence engine for immediate conversation message writes
+   * before the async augmentation pipeline completes.
+   */
+  public async writeBatch(batch: WriteBatch): Promise<WriteAck> {
+    if (!this._hasStorage) return { written_ops: 0 };
+    const ack = await this.getEngine().writeBatch(JSON.stringify(batch));
+    return { written_ops: ack.writtenOps };
+  }
+
+  /**
+   * Returns the conversation history for a session from the Rust storage layer.
+   */
+  public async getConversationHistory(
+    sessionId: string
+  ): Promise<Array<{ role: string; content: string }>> {
+    if (!this._hasStorage) return [];
+    const json = await this.getEngine().getConversationHistory(sessionId);
+    return JSON.parse(json) as Array<{ role: string; content: string }>;
   }
 
   public async retrieve(request: RetrievalRequest): Promise<RecallObject[]> {

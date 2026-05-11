@@ -15,6 +15,7 @@ import type { ConnFactory } from './storage/base.js';
 export interface MemoriOptions {
   conn?: ConnFactory; // A factory function returning your database connection: () => pool, () => db, etc.
   embeddingModel?: string;
+  dialect?: 'sqlite' | 'postgresql' | 'cockroachdb' | 'mysql'; // Override auto-detected SQL dialect (required for CockroachDB).
 }
 
 /**
@@ -96,9 +97,8 @@ export class Memori {
 
     // 3. Local Rust Layer & Storage Manager Init
     if (options.conn) {
-      this.config.storage = new StorageManager(options.conn);
+      this.config.storage = new StorageManager(options.conn, options.dialect);
       this.engine = new NativeEngine(this.config.storage, options.embeddingModel);
-      this.config.storage.setEmbedder(this.engine.embedTexts.bind(this.engine));
       this.config.storage.setEngineShutdown(this.engine.shutdown.bind(this.engine));
     } else {
       this.engine = new NativeEngine(undefined, options.embeddingModel);

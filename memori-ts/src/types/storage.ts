@@ -75,15 +75,3 @@ export interface WriteBatch {
 export interface WriteAck {
   written_ops: number;
 }
-
-/**
- * The core contract that all Database Adapters must fulfill to power Memori locally.
- */
-export interface StorageBridge {
-  fetchEmbeddings(entityId: string, limit: number): Promise<EmbeddingRow[]> | EmbeddingRow[];
-  fetchFactsByIds(ids: (number | string)[]): Promise<CandidateFactRow[]> | CandidateFactRow[];
-  writeBatch(batch: WriteBatch): Promise<WriteAck> | WriteAck;
-  getConversationHistory(
-    sessionId: string
-  ): Promise<Array<{ role: string; content: string }>> | Array<{ role: string; content: string }>;
-}

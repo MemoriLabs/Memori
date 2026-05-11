@@ -4,7 +4,7 @@ import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { NativeEngine } from '../core/engine.js';
 import { extractLastUserMessageString } from '../utils/utils.js';
-import { WriteBatch } from 'src/types/storage.js';
+import { WriteBatch } from '../types/storage.js';
 
 /**
  * Saves conversation messages to the Memori Cloud after each LLM response.
@@ -31,7 +31,7 @@ export class PersistenceEngine {
     const lastUserMessage = extractLastUserMessageString(req.messages);
     if (!lastUserMessage) return res;
 
-    if (this.engine.hasStorage && this.config.storage) {
+    if (this.engine.hasStorage) {
       const batch: WriteBatch = {
         ops: [
           {
@@ -47,7 +47,7 @@ export class PersistenceEngine {
         ],
       };
 
-      await this.config.storage.writeBatch(batch);
+      await this.engine.writeBatch(batch);
 
       return res;
     }

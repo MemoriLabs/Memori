@@ -1,7 +1,6 @@
 use dashmap::DashMap;
-use engine_orchestrator::search::FactId;
 use engine_orchestrator::storage::{
-    CandidateFactRow, EmbeddingRow, HostStorageError, StorageBridge, WriteAck, WriteBatch,
+    ConnectionFactory, HostStorageError, SqlBind, StorageConnection,
 };
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use std::sync::Arc;
@@ -13,144 +12,179 @@ use tokio::time::timeout;
 
 const JS_CALLBACK_TIMEOUT: Duration = Duration::from_secs(30);
 
-pub type PendingEmbeddingsMap = Arc<DashMap<u32, oneshot::Sender<Vec<EmbeddingRow>>>>;
-pub type PendingFactsMap = Arc<DashMap<u32, oneshot::Sender<Vec<CandidateFactRow>>>>;
-pub type PendingWritesMap = Arc<DashMap<u32, oneshot::Sender<WriteAck>>>;
+pub type PendingStorageMap = Arc<DashMap<u32, oneshot::Sender<serde_json::Value>>>;
 
-pub struct NodeStorageBridge {
-    pub fetch_embeddings_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
-    pub fetch_facts_by_ids_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
-    pub write_batch_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
-    pub pending_embeddings: PendingEmbeddingsMap,
-    pub pending_facts: PendingFactsMap,
-    pub pending_writes: PendingWritesMap,
-    pub next_id: AtomicU32,
+/// Shared TSFN state cloned into every [`NodeConnection`] that the factory produces.
+struct Inner {
+    storage_call_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
+    pending: PendingStorageMap,
+    next_id: AtomicU32,
 }
 
-impl StorageBridge for NodeStorageBridge {
-    fn fetch_embeddings(
-        &self,
-        entity_id: &str,
-        limit: usize,
-    ) -> std::result::Result<Vec<EmbeddingRow>, HostStorageError> {
-        let payload = serde_json::json!({ "entity_id": entity_id, "limit": limit }).to_string();
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let (tx, rx) = oneshot::channel();
-
-        self.pending_embeddings.insert(id, tx);
-
-        let status = {
-            if let Some(tsfn) = self.fetch_embeddings_tsfn.lock().unwrap().as_ref() {
-                tsfn.call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking)
-            } else {
-                napi::Status::Closing
-            }
-        };
-
-        // Fail gracefully if the TS function queue fails, preventing thread lockup
-        if status != napi::Status::Ok {
-            self.pending_embeddings.remove(&id);
-            return Err(HostStorageError::new(
-                "NAPI_ERR",
-                "Failed to queue JS callback",
-            ));
-        }
-
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                match timeout(JS_CALLBACK_TIMEOUT, rx).await {
-                    Ok(Ok(rows)) => Ok(rows),
-                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "Channel dropped")),
-                    Err(_) => Err(HostStorageError::new(
-                        "TIMEOUT",
-                        "fetchEmbeddings JS callback did not respond within 30s",
-                    )),
-                }
-            })
-        })
-    }
-
-    fn fetch_facts_by_ids(
-        &self,
-        ids: &[FactId],
-    ) -> std::result::Result<Vec<CandidateFactRow>, HostStorageError> {
-        let payload = serde_json::json!({ "ids": ids }).to_string();
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let (tx, rx) = oneshot::channel();
-
-        self.pending_facts.insert(id, tx);
-
-        let status = {
-            if let Some(tsfn) = self.fetch_facts_by_ids_tsfn.lock().unwrap().as_ref() {
-                tsfn.call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking)
-            } else {
-                napi::Status::Closing
-            }
-        };
-
-        if status != napi::Status::Ok {
-            self.pending_facts.remove(&id);
-            return Err(HostStorageError::new(
-                "NAPI_ERR",
-                "Failed to queue JS callback",
-            ));
-        }
-
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                match timeout(JS_CALLBACK_TIMEOUT, rx).await {
-                    Ok(Ok(rows)) => Ok(rows),
-                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "Channel dropped")),
-                    Err(_) => Err(HostStorageError::new(
-                        "TIMEOUT",
-                        "fetchFactsByIds JS callback did not respond within 30s",
-                    )),
-                }
-            })
-        })
-    }
-
-    fn write_batch(&self, batch: &WriteBatch) -> std::result::Result<WriteAck, HostStorageError> {
-        let payload = serde_json::to_string(batch)
+impl Inner {
+    /// Send a JSON payload to TS and block until TS resolves it.
+    fn call(&self, payload: serde_json::Value) -> Result<serde_json::Value, HostStorageError> {
+        let payload_str = serde_json::to_string(&payload)
             .map_err(|e| HostStorageError::new("JSON_ERR", e.to_string()))?;
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let (tx, rx) = oneshot::channel();
-
-        self.pending_writes.insert(id, tx);
+        self.pending.insert(id, tx);
 
         let status = {
-            if let Some(tsfn) = self.write_batch_tsfn.lock().unwrap().as_ref() {
-                tsfn.call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking)
+            if let Some(tsfn) = self.storage_call_tsfn.lock().unwrap().as_ref() {
+                tsfn.call(
+                    Ok((id, payload_str)),
+                    ThreadsafeFunctionCallMode::NonBlocking,
+                )
             } else {
                 napi::Status::Closing
             }
         };
 
         if status != napi::Status::Ok {
-            self.pending_writes.remove(&id);
+            self.pending.remove(&id);
             return Err(HostStorageError::new(
                 "NAPI_ERR",
-                "Failed to queue JS callback",
+                "failed to queue JS storage callback",
             ));
         }
 
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 match timeout(JS_CALLBACK_TIMEOUT, rx).await {
-                    Ok(Ok(ack)) => Ok(ack),
-                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "Channel dropped")),
+                    Ok(Ok(value)) => {
+                        if let Some(err) = value.get("error") {
+                            let code = err["code"].as_str().unwrap_or("ERR").to_string();
+                            let msg = err["message"]
+                                .as_str()
+                                .unwrap_or("unknown error")
+                                .to_string();
+                            Err(HostStorageError::new(code, msg))
+                        } else {
+                            Ok(value)
+                        }
+                    }
+                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "storage channel dropped")),
                     Err(_) => Err(HostStorageError::new(
                         "TIMEOUT",
-                        "writeBatch JS callback did not respond within 30s",
+                        "storage JS callback did not respond within 30s",
                     )),
                 }
             })
         })
     }
+}
+
+/// Implements [`ConnectionFactory`] by delegating to a single TypeScript
+/// `storageCall(id, payloadJson)` ThreadsafeFunction.
+///
+/// Protocol — all payloads/results are JSON strings:
+///   acquire  → `{ "op": "acquire" }`                                   → `{ "conn_id": N }`
+///   execute  → `{ "op": "execute", "conn_id": N, "sql": "…", "binds": […] }` → `{ "rows": […] }`
+///   begin    → `{ "op": "begin",   "conn_id": N }`                     → `{ "ok": true }`
+///   commit   → `{ "op": "commit",  "conn_id": N }`                     → `{ "ok": true }`
+///   rollback → `{ "op": "rollback","conn_id": N }`                     → `{ "ok": true }`
+///   close    → `{ "op": "close",   "conn_id": N }`                     → `{ "ok": true }`
+///
+///   On any error: `{ "error": { "code": "…", "message": "…" } }`
+///
+/// TS resolves each call via `engine.resolveStorageCall(id, resultJson)`.
+pub struct NodeConnectionFactory {
+    inner: Arc<Inner>,
+    dialect_str: String,
+}
+
+impl NodeConnectionFactory {
+    pub fn new(storage_call_tsfn: ThreadsafeFunction<(u32, String)>, dialect_str: String) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                storage_call_tsfn: Mutex::new(Some(storage_call_tsfn)),
+                pending: Arc::new(DashMap::new()),
+                next_id: AtomicU32::new(1),
+            }),
+            dialect_str,
+        }
+    }
+
+    /// Called by `engine.resolveStorageCall` to unblock the waiting Rust thread.
+    pub fn resolve(&self, id: u32, result_json: String) {
+        if let Some((_, tx)) = self.inner.pending.remove(&id) {
+            let value: serde_json::Value = serde_json::from_str(&result_json).unwrap_or(
+                serde_json::json!({ "error": { "code": "JSON_ERR", "message": "invalid JSON from TS" } }),
+            );
+            let _ = tx.send(value);
+        }
+    }
+}
+
+impl ConnectionFactory for NodeConnectionFactory {
+    fn acquire(&self) -> Result<Box<dyn StorageConnection>, HostStorageError> {
+        let result = self.inner.call(serde_json::json!({ "op": "acquire" }))?;
+        let conn_id = result["conn_id"]
+            .as_u64()
+            .map(|n| n as u32)
+            .ok_or_else(|| HostStorageError::new("NAPI_ERR", "acquire returned no conn_id"))?;
+        Ok(Box::new(NodeConnection {
+            conn_id,
+            inner: self.inner.clone(),
+        }))
+    }
+
+    fn dialect(&self) -> &str {
+        &self.dialect_str
+    }
 
     fn shutdown(&self) {
-        let _ = self.fetch_embeddings_tsfn.lock().unwrap().take();
-        let _ = self.fetch_facts_by_ids_tsfn.lock().unwrap().take();
-        let _ = self.write_batch_tsfn.lock().unwrap().take();
+        let _ = self.inner.storage_call_tsfn.lock().unwrap().take();
+    }
+}
+
+/// A single checked-out connection. Calls TS for every SQL operation.
+pub struct NodeConnection {
+    conn_id: u32,
+    inner: Arc<Inner>,
+}
+
+impl StorageConnection for NodeConnection {
+    fn execute(
+        &self,
+        sql: &str,
+        binds: Vec<SqlBind>,
+    ) -> Result<Vec<serde_json::Value>, HostStorageError> {
+        let result = self.inner.call(serde_json::json!({
+            "op": "execute",
+            "conn_id": self.conn_id,
+            "sql": sql,
+            "binds": binds,
+        }))?;
+        result["rows"]
+            .as_array()
+            .cloned()
+            .ok_or_else(|| HostStorageError::new("NAPI_ERR", "execute response missing rows array"))
+    }
+
+    fn begin(&self) -> Result<(), HostStorageError> {
+        self.inner
+            .call(serde_json::json!({ "op": "begin", "conn_id": self.conn_id }))?;
+        Ok(())
+    }
+
+    fn commit(&self) -> Result<(), HostStorageError> {
+        self.inner
+            .call(serde_json::json!({ "op": "commit", "conn_id": self.conn_id }))?;
+        Ok(())
+    }
+
+    fn rollback(&self) -> Result<(), HostStorageError> {
+        self.inner
+            .call(serde_json::json!({ "op": "rollback", "conn_id": self.conn_id }))?;
+        Ok(())
+    }
+
+    fn close(&self) {
+        // Fire-and-wait; errors are non-fatal since we're releasing the connection.
+        let _ = self
+            .inner
+            .call(serde_json::json!({ "op": "close", "conn_id": self.conn_id }));
     }
 }

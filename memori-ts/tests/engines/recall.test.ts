@@ -225,6 +225,7 @@ describe('RecallEngine', () => {
 
     it('should fetch from local Rust engine if storage is active', async () => {
       (mockNativeEngine as any).hasStorage = true;
+      (mockNativeEngine as any).getConversationHistory = vi.fn().mockResolvedValue([]);
       (mockNativeEngine.retrieve as any).mockReturnValue([
         { content: 'Local storage memory', rank_score: 0.95, date_created: null },
       ]);
@@ -249,7 +250,7 @@ describe('RecallEngine', () => {
         { role: 'assistant', content: 'prior answer' },
       ]);
       (mockNativeEngine as any).hasStorage = true;
-      (mockConfig as any).storage = { getConversationHistory: mockGetHistory };
+      (mockNativeEngine as any).getConversationHistory = mockGetHistory;
       (mockNativeEngine.retrieve as any).mockReturnValue([]);
 
       const req = {
@@ -273,7 +274,7 @@ describe('RecallEngine', () => {
         { role: 'assistant', content: 'It is 21C.' },
       ]);
       (mockNativeEngine as any).hasStorage = true;
-      (mockConfig as any).storage = { getConversationHistory: mockGetHistory };
+      (mockNativeEngine as any).getConversationHistory = mockGetHistory;
       (mockNativeEngine.retrieve as any).mockReturnValue([]);
 
       const req = {

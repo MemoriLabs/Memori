@@ -8,9 +8,12 @@ import { Api } from '../src/core/network.js';
 
 // Mock the storage manager so we don't need real DB adapters in unit tests
 vi.mock('../src/storage/manager.js', () => ({
-  StorageManager: vi
-    .fn()
-    .mockImplementation(() => ({ setEmbedder: vi.fn(), setEngineShutdown: vi.fn() })),
+  StorageManager: vi.fn().mockImplementation(() => ({
+    getDialect: vi.fn().mockReturnValue('sqlite'),
+    setEngineShutdown: vi.fn(),
+    handleStorageCall: vi.fn(),
+    close: vi.fn(),
+  })),
 }));
 
 describe('Memori SDK', () => {

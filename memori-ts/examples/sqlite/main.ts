@@ -18,12 +18,12 @@ const db = new Database('memori.db');
 const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
-if (!mem.config.storage) {
+if (!mem.engine.hasStorage) {
   throw new Error('Storage not initialized');
 }
 
 try {
-  await mem.config.storage.build();
+  await mem.engine.build();
 
   console.log('You: My favorite color is blue and I live in Paris');
   const response1 = await client.chat.completions.create({
