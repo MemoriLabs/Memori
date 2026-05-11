@@ -306,35 +306,36 @@ class XAi(BaseClient):
 
 @Registry.register_client(client_is_litellm)
 class LiteLLM(BaseClient):
-    """Memori integration for the LiteLLM SDK.
+    """Memori integration for LiteLLM (module or Router).
 
-    LiteLLM is functional rather than client-class-based: users invoke
-    `litellm.completion(...)` / `litellm.acompletion(...)` directly. This
-    wrapper installs Memori's invoke pipeline at the *module* level, so any
-    call into either function (regardless of which of LiteLLM's 100+ backing
-    providers the model spec routes to) flows through Memori's conversation
-    capture and recall injection.
+    Accepts two registration patterns:
 
-    Usage:
+    **Router (recommended for apps/servers):**
+        import litellm
+        from memori import Memori
+
+        router = litellm.Router(model_list=[...])
+        memori = Memori(...)
+        memori.llm.register(router)
+
+    **Module (convenience for simple scripts):**
         import litellm
         from memori import Memori
 
         memori = Memori(...)
         memori.llm.register(litellm)   # patches litellm.completion + litellm.acompletion
 
-        # Any subsequent call routes via Memori
-        response = litellm.completion(
-            model="anthropic/claude-sonnet-4-6",
-            messages=[{"role": "user", "content": "hello"}],
-        )
+    Router registration is preferred because it wraps instance methods
+    instead of patching global module functions, making it safe for
+    concurrent use in servers.
     """
 
     def register(self, client, _provider=None):
-        # `client` is the litellm module (caller passed `import litellm`).
+        # `client` is the litellm module or a litellm.Router instance.
         if not hasattr(client, "completion"):
             raise RuntimeError(
-                "client provided is not the litellm module "
-                "(expected `litellm.completion` to be present)"
+                "expected the litellm module or a LiteLLM Router object "
+                "with a `completion` method"
             )
 
         if not hasattr(client, "_memori_installed"):

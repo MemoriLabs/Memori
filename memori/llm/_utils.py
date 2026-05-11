@@ -55,12 +55,17 @@ def client_is_xai(client) -> bool:
 
 
 def client_is_litellm(client) -> bool:
-    """Match the LiteLLM module itself.
+    """Match the LiteLLM module or a LiteLLM Router object.
 
-    LiteLLM is functional rather than client-class-based: users don't
-    instantiate `litellm.LiteLLM()`. Instead they import the module and call
-    `litellm.completion(...)` directly. The integration matcher therefore
-    accepts the module object passed via `memori.llm.register(litellm)`.
+    Accepts two forms:
+      1. The ``litellm`` module itself (``memori.llm.register(litellm)``),
+         convenient for simple scripts.
+      2. A ``litellm.Router`` instance
+         (``memori.llm.register(litellm.Router(...))``), recommended for
+         app/server use because it avoids global module patching.
+
+    Both expose ``completion`` / ``acompletion`` and route through LiteLLM's
+    100+ provider backends.
     """
     if isinstance(client, types.ModuleType):
         name = getattr(client, "__name__", "")
