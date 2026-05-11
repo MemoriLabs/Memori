@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-memori"
-version = "0.1.3"
+version = "0.1.4"
 description = "Official Memori Labs provider for Hermes Agent, enabling structured long-term memory from agent trace and execution."
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
 license = "Apache-2.0"
@@ -25,6 +25,9 @@ classifiers = [
 
 [project.entry-points."hermes_agent.plugins"]
 memori = "memori_hermes:register"
+
+[project.scripts]
+hermes-memori = "memori_hermes.install:main"
 
 [project.urls]
 Homepage = "https://memorilabs.ai"
