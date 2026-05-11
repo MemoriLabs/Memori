@@ -70,11 +70,11 @@ await mem.augmentation.wait();
 
 ## Supported Modes
 
-| Mode         | Python                           | TypeScript                         |
-| ------------ | -------------------------------- | ---------------------------------- |
-| **Sync**     | `client.messages.create()`       | —                                  |
-| **Async**    | `await client.messages.create()` | `await client.messages.create()`   |
-| **Streamed** | `client.messages.stream()`       | Not supported                      |
+| Mode         | Python                           | TypeScript                                          |
+| ------------ | -------------------------------- | --------------------------------------------------- |
+| **Sync**     | `client.messages.create()`       | —                                                   |
+| **Async**    | `await client.messages.create()` | `await client.messages.create()`                    |
+| **Streamed** | `client.messages.stream()`       | `await client.messages.create({ stream: true })`    |
 
 ## Additional Modes
 
