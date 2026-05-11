@@ -23,10 +23,12 @@ This means Hermes can remember what happened during prior work — tool usage, w
 
 ```bash
 pip install hermes-memori
+hermes-memori install
 ```
 
-If `memori` does not appear in Hermes' memory setup flow, install
-`hermes-memori` in the same Python environment that Hermes uses.
+Install `hermes-memori` in the same Python environment that Hermes uses.
+The `hermes-memori install` command registers the provider in Hermes' memory
+plugin directory at `$HERMES_HOME/plugins/memori`.
 
 ## 2. Configure
 
@@ -108,6 +110,7 @@ You should see `memori` configured as the active memory provider.
 If the provider is unavailable, confirm that:
 
 - `hermes-memori` is installed in the same Python environment as Hermes
+- `hermes-memori install` has been run for the same `HERMES_HOME`
 - `memory.provider` is set to `memori`
 - `MEMORI_API_KEY` and `MEMORI_ENTITY_ID` are set
 

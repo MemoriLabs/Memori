@@ -175,6 +175,7 @@ Memori also ships as a Hermes Agent memory provider. It captures completed conve
 
 ```bash
 pip install hermes-memori
+hermes-memori install
 
 hermes config set memory.provider memori
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"

@@ -172,6 +172,7 @@ Available tools:
 
 ```bash
 pip install hermes-memori
+hermes-memori install
 ```
 
 For local development from this repository:
@@ -179,7 +180,12 @@ For local development from this repository:
 ```bash
 pip install -e .
 pip install -e integrations/hermes
+hermes-memori install --force
 ```
+
+The `hermes-memori install` command registers the provider in Hermes' memory
+plugin directory at `$HERMES_HOME/plugins/memori`, which is where Hermes scans
+for user-installed memory providers.
 
 ### 2. Configure
 
