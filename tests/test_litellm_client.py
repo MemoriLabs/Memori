@@ -155,8 +155,8 @@ def test_litellm_register_wraps_router_instance_methods() -> None:
     assert router._memori_installed is True
 
 
-def test_litellm_registered_in_registry() -> None:
-    """LiteLLM should be discoverable through the Registry by passing a litellm module."""
+def test_litellm_registered_in_registry_via_module() -> None:
+    """LiteLLM module should be discoverable through the Registry."""
     from memori._config import Config
     from memori.llm._registry import Registry
 
@@ -166,4 +166,29 @@ def test_litellm_registered_in_registry() -> None:
     registry = Registry()
     config = Config()
     client = registry.client(fake_litellm, config)
+    assert isinstance(client, LiteLLM)
+
+
+def test_litellm_registered_in_registry_via_router() -> None:
+    """litellm.Router instances should also be discoverable through the Registry.
+
+    This is the recommended registration path for app/server use:
+        import litellm
+        router = litellm.Router(model_list=[...])
+        memori.llm.register(router)
+    """
+    from memori._config import Config
+    from memori.llm._registry import Registry
+
+    class FakeRouter:
+        pass
+
+    FakeRouter.__module__ = "litellm.router"
+    router = FakeRouter()
+    router.completion = MagicMock()
+    router.acompletion = MagicMock()
+
+    registry = Registry()
+    config = Config()
+    client = registry.client(router, config)
     assert isinstance(client, LiteLLM)
