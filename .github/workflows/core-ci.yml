@@ -80,7 +80,14 @@ jobs:
           python-version: "3.10"
 
       - name: Set up Rust
+        if: runner.os != 'macOS'
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Use preinstalled Rust
+        if: runner.os == 'macOS'
+        run: |
+          rustc --version
+          cargo --version
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -219,12 +226,14 @@ jobs:
           - os: macos-15-intel
             artifact-name: darwin-x64
             rust-target: x86_64-apple-darwin
+            cargo-args: --no-default-features --features ort-load-dynamic
           - os: windows-latest
             artifact-name: win32-x64-msvc
             rust-target: x86_64-pc-windows-msvc
           - os: ubuntu-latest
             artifact-name: android-arm64
             rust-target: aarch64-linux-android
+            cargo-args: --no-default-features --features ort-load-dynamic
     steps:
       - uses: actions/checkout@v5
 
@@ -282,4 +291,4 @@ jobs:
 
       - name: Build Rust bindings
         working-directory: ./core/bindings/node
-        run: npm run build -- --target ${{ matrix.rust-target }}
+        run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}

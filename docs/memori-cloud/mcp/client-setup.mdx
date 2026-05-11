@@ -30,9 +30,9 @@ Create `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
     "memori": {
       "url": "https://api.memorilabs.ai/mcp/",
       "headers": {
-        "X-Memori-API-Key": "${MEMORI_API_KEY}",
-        "X-Memori-Entity-Id": "${MEMORI_ENTITY_ID}",
-        "X-Memori-Process-Id": "${MEMORI_PROCESS_ID}"
+        "X-Memori-API-Key": "${env:MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "${env:MEMORI_ENTITY_ID}",
+        "X-Memori-Process-Id": "${env:MEMORI_PROCESS_ID}"
       }
     }
   }
@@ -40,6 +40,29 @@ Create `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
 ```
 
 Restart Cursor after saving the file.
+
+### Project-Scoped Attribution (Recommended)
+
+When working across multiple repositories, derive both attribution headers from the active workspace to avoid mixing memories across projects:
+
+```json
+{
+  "mcpServers": {
+    "memori": {
+      "url": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "${env:MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "${workspaceFolderBasename}",
+        "X-Memori-Process-Id": "${workspaceFolderBasename}"
+      }
+    }
+  }
+}
+```
+
+If your MCP client does not support workspace placeholders, set equivalent values with environment variables before launching the client.
+
+**Same value vs. different values.** Use the **same** value for `X-Memori-Entity-Id` and `X-Memori-Process-Id` when each project has a single agent and you want one isolated memory scope per project (the common case for the snippet above). Use **different** values when several agents share one entity but each agent needs its own isolated conversation history: keep `X-Memori-Entity-Id` as a stable user/team identifier (for example `user_123` or `${env:MEMORI_ENTITY_ID}`) and let `X-Memori-Process-Id` vary per workspace, agent, or integration (for example `${workspaceFolderBasename}` or `cursor-web-app`).
 
 ## Claude Code
 

@@ -44,10 +44,10 @@ export class MysqlAdapter implements StorageAdapter {
     return 'mysql';
   }
 
-  public async close(): Promise<void> {
-    if (typeof this.client.end === 'function') {
-      await this.client.end();
-    } else if (typeof this.client.release === 'function') {
+  public close(): void {
+    // Only release back to a pool — never call end(), which would destroy the pool.
+    // The caller owns the pool lifecycle and is responsible for calling pool.end().
+    if (typeof this.client.release === 'function') {
       this.client.release();
     }
   }

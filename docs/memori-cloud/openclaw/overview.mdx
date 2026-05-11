@@ -94,7 +94,7 @@ It runs **after the agent responds** and does not impact latency.
 
 ---
 
-### 3. Agent-controlled recall
+### 3. Agent-Controlled Intelligent Recall
 
 Recall is **explicit and initiated by the agent**.
 
@@ -109,6 +109,20 @@ Agents decide:
 - What scope to recall from
 - How much history to include
 
+Recall is also intelligent. When memories are retrieved, Memori does not simply return raw chronological history. It uses a proprietary multi-dimensional ranking algorithm to prioritize the memories most likely to matter for the current agent task.
+
+The recall algorithm takes into account factors such as:
+
+- Source and signal weights
+- Recency
+- Frequency
+- Memory type
+- Scope relevance
+- Historical importance
+- Retrieval context
+
+This allows agents to retrieve the most relevant facts, decisions, constraints, patterns, and prior outcomes without stuffing irrelevant history into the prompt.
+
 Supported parameters:
 
 - `entity_id`
@@ -119,7 +133,7 @@ Supported parameters:
 - `source`
 - `signal`
 
-#### Memory classification schema
+#### Memory classification schema:
 
 **Sources**
 - constraint
@@ -142,7 +156,7 @@ Supported parameters:
 - update
 - verification
 
-#### Default behavior
+#### Default behavior:
 
 - If no date range is provided → returns **all-time**
 
@@ -153,6 +167,8 @@ Supported parameters:
 - Constraints
 - Patterns
 - Summaries
+- Execution outcomes
+- Known failure modes
 
 ---
 
@@ -164,7 +180,7 @@ These summaries are generated from structured memory and execution traces — no
 
 They represent the agent's **working state**, not just a recap.
 
-#### Daily brief structure
+#### Daily brief structure:
 
 Memori generates a consistent, structured daily brief with the following sections:
 
@@ -193,7 +209,7 @@ Supported parameters:
 - `date_start`
 - `date_end`
 
-#### Default behavior
+#### Default behavior:
 
 - If no date range is provided → returns **last 24 hours**
 
@@ -217,7 +233,7 @@ Memori Cloud provides full visibility into memory behavior:
 Memori separates memory into two systems:
 
 - **Advanced Augmentation (automatic)** — captures and structures memory
-- **Agent-controlled recall (on demand)** — retrieves memory when needed
+- **Agent-Controlled Intelligent Recall (on demand)** — retrieves memory when needed
 
 ### 1. Advanced Augmentation (`agent_end` hook)
 
@@ -233,7 +249,7 @@ This runs in the background and **never blocks the agent's response**.
 
 ---
 
-### 2. Agent-controlled recall (plugin tools)
+### 2. Agent-Controlled Intelligent Recall (plugin tools)
 
 Memori does not automatically inject memory. The agent retrieves it explicitly.
 

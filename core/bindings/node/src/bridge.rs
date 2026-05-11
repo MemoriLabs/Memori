@@ -5,6 +5,7 @@ use engine_orchestrator::storage::{
 };
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use tokio::sync::oneshot;
@@ -17,9 +18,9 @@ pub type PendingFactsMap = Arc<DashMap<u32, oneshot::Sender<Vec<CandidateFactRow
 pub type PendingWritesMap = Arc<DashMap<u32, oneshot::Sender<WriteAck>>>;
 
 pub struct NodeStorageBridge {
-    pub fetch_embeddings_tsfn: ThreadsafeFunction<(u32, String)>,
-    pub fetch_facts_by_ids_tsfn: ThreadsafeFunction<(u32, String)>,
-    pub write_batch_tsfn: ThreadsafeFunction<(u32, String)>,
+    pub fetch_embeddings_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
+    pub fetch_facts_by_ids_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
+    pub write_batch_tsfn: Mutex<Option<ThreadsafeFunction<(u32, String)>>>,
     pub pending_embeddings: PendingEmbeddingsMap,
     pub pending_facts: PendingFactsMap,
     pub pending_writes: PendingWritesMap,
@@ -38,9 +39,13 @@ impl StorageBridge for NodeStorageBridge {
 
         self.pending_embeddings.insert(id, tx);
 
-        let status = self
-            .fetch_embeddings_tsfn
-            .call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking);
+        let status = {
+            if let Some(tsfn) = self.fetch_embeddings_tsfn.lock().unwrap().as_ref() {
+                tsfn.call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking)
+            } else {
+                napi::Status::Closing
+            }
+        };
 
         // Fail gracefully if the TS function queue fails, preventing thread lockup
         if status != napi::Status::Ok {
@@ -75,9 +80,13 @@ impl StorageBridge for NodeStorageBridge {
 
         self.pending_facts.insert(id, tx);
 
-        let status = self
-            .fetch_facts_by_ids_tsfn
-            .call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking);
+        let status = {
+            if let Some(tsfn) = self.fetch_facts_by_ids_tsfn.lock().unwrap().as_ref() {
+                tsfn.call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking)
+            } else {
+                napi::Status::Closing
+            }
+        };
 
         if status != napi::Status::Ok {
             self.pending_facts.remove(&id);
@@ -109,9 +118,13 @@ impl StorageBridge for NodeStorageBridge {
 
         self.pending_writes.insert(id, tx);
 
-        let status = self
-            .write_batch_tsfn
-            .call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking);
+        let status = {
+            if let Some(tsfn) = self.write_batch_tsfn.lock().unwrap().as_ref() {
+                tsfn.call(Ok((id, payload)), ThreadsafeFunctionCallMode::NonBlocking)
+            } else {
+                napi::Status::Closing
+            }
+        };
 
         if status != napi::Status::Ok {
             self.pending_writes.remove(&id);
@@ -133,5 +146,11 @@ impl StorageBridge for NodeStorageBridge {
                 }
             })
         })
+    }
+
+    fn shutdown(&self) {
+        let _ = self.fetch_embeddings_tsfn.lock().unwrap().take();
+        let _ = self.fetch_facts_by_ids_tsfn.lock().unwrap().take();
+        let _ = self.write_batch_tsfn.lock().unwrap().take();
     }
 }

@@ -5,12 +5,17 @@ version.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+default = ["ort-download-binaries"]
+ort-download-binaries = ["engine-orchestrator/ort-download-binaries"]
+ort-load-dynamic = ["engine-orchestrator/ort-load-dynamic"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 dashmap = "6.1.0"
-engine-orchestrator = { path = "../..", default-features = false, features = ["ort-load-dynamic"] }
+engine-orchestrator = { path = "../..", default-features = false }
 napi = { workspace = true, features = ["napi8", "tokio_rt", "async"] }
 napi-derive.workspace = true
 serde = { version = "1.0.228", features = ["derive"] }

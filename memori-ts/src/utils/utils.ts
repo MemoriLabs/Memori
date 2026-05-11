@@ -51,7 +51,7 @@ export function formatSummariesFromFacts(facts: ParsedFact[]): string[] {
 function attachRawSummariesToFacts(facts: RecallItem[], summaries: RecallSummary[]): RecallItem[] {
   if (summaries.length === 0) return facts;
 
-  const summariesByFactId = new Map<number, RecallSummary[]>();
+  const summariesByFactId = new Map<number | string, RecallSummary[]>();
 
   for (const summary of summaries) {
     const summaryFactId = summary.entity_fact_id;

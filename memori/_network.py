@@ -41,7 +41,7 @@ class Api:
     def __init__(self, config: Config, subdomain: ApiSubdomain = ApiSubdomain.DEFAULT):
         test_mode = os.environ.get("MEMORI_TEST_MODE") == "1"
 
-        self.__base = os.environ.get("MEMORI_API_URL_BASE")
+        self.__base = config.api_url_base or os.environ.get("MEMORI_API_URL_BASE")
 
         if self.__base is None:
             if test_mode:
@@ -159,7 +159,11 @@ class Api:
 
     def delete(self, route):
         logger.debug("DELETE request to %s", route)
-        r = self.__session().delete(self.url(route), headers=self.headers())
+        r = self.__session().delete(
+            self.url(route),
+            headers=self.headers(),
+            timeout=self.config.request_secs_timeout,
+        )
         logger.debug("DELETE response - status: %d", r.status_code)
 
         r.raise_for_status()
@@ -168,7 +172,11 @@ class Api:
 
     def get(self, route):
         logger.debug("GET request to %s", route)
-        r = self.__session().get(self.url(route), headers=self.headers())
+        r = self.__session().get(
+            self.url(route),
+            headers=self.headers(),
+            timeout=self.config.request_secs_timeout,
+        )
         logger.debug("GET response - status: %d", r.status_code)
 
         r.raise_for_status()
@@ -180,7 +188,12 @@ class Api:
 
     def patch(self, route, json=None):
         logger.debug("PATCH request to %s", route)
-        r = self.__session().patch(self.url(route), headers=self.headers(), json=json)
+        r = self.__session().patch(
+            self.url(route),
+            headers=self.headers(),
+            json=json,
+            timeout=self.config.request_secs_timeout,
+        )
         logger.debug("PATCH response - status: %d", r.status_code)
 
         r.raise_for_status()
@@ -192,7 +205,12 @@ class Api:
 
     def post(self, route, json=None, status_code: bool = False):
         logger.debug("POST request to %s", route)
-        r = self.__session().post(self.url(route), headers=self.headers(), json=json)
+        r = self.__session().post(
+            self.url(route),
+            headers=self.headers(),
+            json=json,
+            timeout=self.config.request_secs_timeout,
+        )
         logger.debug("POST response - status: %d", r.status_code)
 
         if status_code:
@@ -208,7 +226,7 @@ class Api:
     def headers(self):
         headers = {"X-Memori-API-Key": self.__x_api_key}
 
-        api_key = os.environ.get("MEMORI_API_KEY")
+        api_key = self.config.api_key or os.environ.get("MEMORI_API_KEY")
         if api_key is not None:
             headers["Authorization"] = f"Bearer {api_key}"
 

@@ -1,0 +1,155 @@
+---
+title: Hermes Quickstart
+description: Install and configure the Memori memory provider for Hermes Agent.
+---
+
+# Hermes Quickstart
+
+Get structured, long-term memory running in Hermes Agent in a few minutes.
+
+Memori plugs into Hermes as a memory provider named `memori`. It captures not only completed conversation turns, but also available agent trace and execution context, then structures that activity into durable memory the agent can recall later.
+
+This means Hermes can remember what happened during prior work — tool usage, workflow steps, decisions, outcomes, failures, constraints, and recurring patterns — not just what was said in the transcript.
+
+## Prerequisites
+
+- Hermes Agent with memory provider plugins
+- Python 3.10+
+- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+- An Entity ID to scope memory to a specific user, workspace, agent, or system
+- Optional: a Project ID to scope memory to a specific project or workspace
+
+## 1. Install
+
+```bash
+pip install hermes-memori
+```
+
+If `memori` does not appear in Hermes' memory setup flow, install
+`hermes-memori` in the same Python environment that Hermes uses.
+
+## 2. Configure
+
+You need two required values: your Memori API key and an Entity ID.
+
+`MEMORI_PROJECT_ID` is optional. When it is omitted, the provider uses Hermes'
+active workspace, agent identity, user ID, session title, or session ID as the
+Memori project scope.
+
+### Option A: Via Hermes Setup
+
+Run Hermes' memory provider setup flow:
+
+```bash
+hermes memory setup
+```
+
+Select `memori`, then enter your Memori API key and entity ID.
+
+### Option B: Via Environment Variables
+
+```bash
+hermes config set memory.provider memori
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+mkdir -p "$HERMES_HOME"
+echo "MEMORI_API_KEY=your-key" >> "$HERMES_HOME/.env"
+echo "MEMORI_ENTITY_ID=your-user-or-workspace-id" >> "$HERMES_HOME/.env"
+```
+
+To set a fixed project scope:
+
+```bash
+echo "MEMORI_PROJECT_ID=my-project" >> "$HERMES_HOME/.env"
+```
+
+### Option C: Via `memori.json`
+
+Add `$HERMES_HOME/memori.json`:
+
+```json
+{
+  "entityId": "your-user-or-workspace-id",
+  "projectId": "my-project"
+}
+```
+
+Environment variables override file config.
+
+### Configuration Options
+
+<Properties>
+  <Property name="MEMORI_API_KEY" type="string" required>
+    Your Memori API key, available from [app.memorilabs.ai](https://app.memorilabs.ai).
+  </Property>
+  <Property name="MEMORI_ENTITY_ID" type="string" required>
+    A stable identifier for the entity (user, workspace, agent, tenant, or system) to attribute memories to.
+  </Property>
+  <Property name="MEMORI_PROJECT_ID" type="string">
+    Optional project or workspace scope. If omitted, Hermes context is used to derive the project scope.
+  </Property>
+  <Property name="MEMORI_PROCESS_ID" type="string">
+    Optional workflow or agent identity. If omitted, the Hermes agent identity is used when available.
+  </Property>
+  <Property name="MEMORI_API_URL_BASE" type="string">
+    Optional custom Memori API base URL for non-default deployments.
+  </Property>
+</Properties>
+
+## 3. Verify
+
+Check that Hermes sees the memory provider:
+
+```bash
+hermes memory status
+```
+
+You should see `memori` configured as the active memory provider.
+
+If the provider is unavailable, confirm that:
+
+- `hermes-memori` is installed in the same Python environment as Hermes
+- `memory.provider` is set to `memori`
+- `MEMORI_API_KEY` and `MEMORI_ENTITY_ID` are set
+
+## 4. Test the Full Memory Loop
+
+1. Start Hermes and ask it to complete a small task with an outcome worth
+   remembering:
+
+   > "Run the API test suite and fix the failing auth-token regression. If you
+   > find the cause, remember what changed."
+
+2. Let the turn complete. After a successful, non-interrupted turn, Hermes calls
+   the Memori provider's sync path and captures the exchange plus available
+   execution trace in the background. Memori can structure memory from the
+   actions Hermes took, tools it used, files it changed, failures it found, and
+   final outcome.
+
+3. Start a later session and ask:
+
+   > "The auth-token tests are failing again. Check whether this looks like the
+   > regression we fixed before."
+
+4. The agent can call `memori_recall` or `memori_recall_summary` to retrieve
+   relevant prior execution context before deciding what to inspect or change.
+
+5. Tell the agent to send feedback:
+
+   > "Send feedback to Memori that the recall was useful."
+
+If it works, Hermes now has persistent, structured memory across sessions.
+
+## What Happens Under the Hood
+
+The Memori provider operates on two parallel tracks:
+
+| Track | Mechanism | What it does |
+| --- | --- | --- |
+| **Agent-Controlled Intelligent Recall** | Memory Provider Tools | Equips Hermes with `memori_recall`, `memori_recall_summary`, `memori_quota`, `memori_signup`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
+| **Advanced Augmentation** | Memory Provider Sync | After a completed, non-interrupted turn, Hermes calls its memory sync path. The exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
+
+Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient. Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy and efficiency while avoiding unnecessary token usage.
+
+##### Tip: Project scoping
+
+Set `MEMORI_PROJECT_ID` when you want one stable project scope. Leave it unset when you want Hermes' active workspace or session context to determine the project scope automatically.

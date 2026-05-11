@@ -13,7 +13,7 @@
 </p>
 <p align="center">
   <a href="https://trendshift.io/repositories/15418">
-    <img src="https://trendshift.io/_next/image?url=https%3A%2F%2Ftrendshift.io%2Fapi%2Fbadge%2Frepositories%2F15418&w=640&q=75" alt="Memori%2fLabs%2FMemori | Trendshif">
+    <img src="https://trendshift.io/_next/image?url=https%3A%2F%2Ftrendshift.io%2Fapi%2Fbadge%2Frepositories%2F15418&w=640&q=75" alt="Memori%2fLabs%2FMemori | Trendshift">
   </a>
 </p>
 
@@ -63,7 +63,7 @@ npm install @memorilabs/memori
 ```
 </details>
 
-<details>
+<details open>
 <summary><b>Python SDK</b></summary>
 
 ```bash
@@ -106,7 +106,7 @@ async function main() {
 ```
 </details>
 
-<details>
+<details open>
 <summary><b>Python SDK</b></summary>
 
 ```python
@@ -153,21 +153,41 @@ Read the [benchmark overview](docs/memori-cloud/benchmark/overview.mdx), see the
 
 ## OpenClaw (Persistent Memory for Your Gateway)
 
-By default, OpenClaw agents forget everything between sessions. The Memori plugin fixes that. It captures durable facts and preferences after each conversation, then injects the most relevant context back into future prompts automatically.
+By default, OpenClaw agents forget everything between sessions. The Memori plugin fixes that. It automatically captures structured memory from conversation and agent execution after each turn — including tool calls, decisions, and outcomes — and makes it available for agents to recall on demand.
 
-No changes to your agent code or prompts are required. The plugin hooks into OpenClaw's lifecycle, so you get structured memory, Intelligent Recall, and Advanced Augmentation with a drop-in plugin.
+No changes to your agent code or prompts are required. The plugin hooks into OpenClaw's lifecycle, so you get structured memory, agent-controlled recall, and Advanced Augmentation with a drop-in plugin.
 
 ```bash
 openclaw plugins install @memorilabs/openclaw-memori
 openclaw plugins enable openclaw-memori
 
-openclaw config set plugins.entries.openclaw-memori.config.apiKey "YOUR_MEMORI_API_KEY"
-openclaw config set plugins.entries.openclaw-memori.config.entityId "your-app-user-id"
+openclaw memori init \
+  --api-key "YOUR_MEMORI_API_KEY" \
+  --entity-id "your-app-user-id" \
+  --project-id "my-project"
 
 openclaw gateway restart
 ```
 
 For setup and configuration, see the [OpenClaw Quickstart](docs/memori-cloud/openclaw/quickstart.mdx). For architecture and lifecycle details, see the [OpenClaw Overview](docs/memori-cloud/openclaw/overview.mdx).
+
+## Hermes Agent (Persistent Memory Provider)
+
+Memori also ships as a Hermes Agent memory provider. It captures completed conversations in the background and gives Hermes explicit `memori_recall` and `memori_recall_summary` tools for agent-controlled recall.
+
+```bash
+pip install hermes-memori
+
+hermes config set memory.provider memori
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+mkdir -p "$HERMES_HOME"
+echo "MEMORI_API_KEY=YOUR_MEMORI_API_KEY" >> "$HERMES_HOME/.env"
+echo "MEMORI_ENTITY_ID=your-app-user-id" >> "$HERMES_HOME/.env"
+```
+
+`MEMORI_PROJECT_ID` is optional; when omitted, the provider uses Hermes' active project context for scoping.
+
+For setup and configuration, see the [Hermes Quickstart](docs/memori-cloud/hermes/quickstart.mdx). For architecture and lifecycle details, see the [Hermes Overview](docs/memori-cloud/hermes/overview.mdx).
 
 ## MCP (Connect Your Agent in One Command)
 
@@ -200,7 +220,7 @@ mem.attribution("12345", "my-ai-bot");
 ```
 </details>
 
-<details>
+<details open>
 <summary><b>Python SDK</b></summary>
 
 ```python
@@ -224,7 +244,7 @@ mem.setSession(sessionId);
 ```
 </details>
 
-<details>
+<details open>
 <summary><b>Python SDK</b></summary>
 
 ```python

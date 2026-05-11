@@ -18,7 +18,7 @@ async function main(): Promise<void> {
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const mem = new Memori({ conn: dataSource }).llm.register(client);
+  const mem = new Memori({ conn: () => dataSource }).llm.register(client);
   mem.attribution('user-123', 'my-app');
 
   if (!mem.config.storage) {

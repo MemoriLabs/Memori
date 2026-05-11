@@ -26,7 +26,7 @@ describe('Memori SDK', () => {
 
   it('should instantiate StorageManager when a database connection is provided', () => {
     const mockDbConnection = { dummyDb: true };
-    const memori = new Memori({ conn: mockDbConnection });
+    const memori = new Memori({ conn: () => mockDbConnection });
 
     expect(memori.config.storage).toBeDefined();
   });

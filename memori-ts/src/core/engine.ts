@@ -184,8 +184,8 @@ export class NativeEngine {
       summaries: r.summaries?.map((s) => ({
         content: s.content,
         date_created: s.dateCreated,
-        entity_fact_id: s.entityFactId as number,
-        fact_id: s.factId as number,
+        entity_fact_id: s.entityFactId as number | string,
+        fact_id: s.factId as number | string,
       })),
     }));
   }
