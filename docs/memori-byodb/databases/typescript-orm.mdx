@@ -22,6 +22,43 @@ const db = drizzle(pool);
 const mem = new Memori({ conn: () => pool });
 ```
 
+## Prisma
+
+Prisma uses `@prisma/adapter-pg` which accepts a `pg.Pool` directly — pass that same pool to Memori so both share one connection.
+
+```typescript
+import 'dotenv/config';
+import pg from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+const client = new OpenAI();
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await prisma.$disconnect();
+await pool.end();
+```
+
 ## Drizzle
 
 <CodeGroup title="Drizzle">

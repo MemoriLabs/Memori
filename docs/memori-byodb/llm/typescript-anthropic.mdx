@@ -52,10 +52,10 @@ await mem.augmentation.wait();
 | Mode         | TypeScript                         | Python                           |
 | ------------ | ---------------------------------- | -------------------------------- |
 | **Async**    | `await client.messages.create()`   | `await client.messages.create()` |
-| **Streamed** | `client.messages.stream()`         | `client.messages.stream()`       |
+| **Streamed** | Not supported                      | `client.messages.stream()`       |
 | **Sync**     | —                                  | `client.messages.create()`       |
 
-## Streaming
+## Multi-Turn
 
 ```typescript
 import 'dotenv/config';
@@ -75,17 +75,25 @@ if (!mem.config.storage) {
 
 await mem.config.storage.build();
 
-const stream = client.messages.stream({
+const messages: Anthropic.MessageParam[] = [];
+
+messages.push({ role: 'user', content: 'My favorite color is blue.' });
+const first = await client.messages.create({
   model: 'claude-sonnet-4-6',
   max_tokens: 1024,
-  messages: [{ role: 'user', content: 'Hello!' }],
+  messages,
 });
+const firstText = first.content[0].type === 'text' ? first.content[0].text : '';
+console.log(`Assistant: ${firstText}`);
+messages.push({ role: 'assistant', content: firstText });
 
-for await (const chunk of stream) {
-  if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-    process.stdout.write(chunk.delta.text);
-  }
-}
+messages.push({ role: 'user', content: 'What did I just tell you?' });
+const second = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages,
+});
+console.log(`Assistant: ${second.content[0].type === 'text' ? second.content[0].text : ''}`);
 
 await mem.augmentation.wait();
 ```
