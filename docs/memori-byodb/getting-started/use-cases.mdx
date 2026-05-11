@@ -44,7 +44,7 @@ mem.attribution(
 
 # Memori automatically recalls relevant context
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{
         "role": "user",
         "content": "I'm having that issue again"
@@ -87,7 +87,7 @@ mem.attribution(
 # - "Prefers type hints and dataclasses"
 # - "Works on e-commerce platform"
 response = client.messages.create(
-    model="claude-sonnet-4-5-20250929",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[{
         "role": "user",
@@ -125,7 +125,7 @@ mem.attribution(
     process_id="research_agent"
 )
 client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{
         "role": "user",
         "content": "Research competitor pricing"

@@ -89,7 +89,7 @@ Since augmentation runs asynchronously, call `mem.augmentation.wait()` in short-
 
 ```typescript
 const response1 = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: 'My favorite color is blue.' }],
 });
 console.log(response1.choices[0].message.content + '\n');
@@ -112,7 +112,7 @@ const mem2 = new Memori({ conn: () => db2 }).llm.register(client2);
 mem2.attribution('user_123', 'test-ai-agent');
 
 const response2 = await client2.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log(response2.choices[0].message.content + '\n');
@@ -141,7 +141,7 @@ if (!mem.config.storage) {
 await mem.config.storage.build();
 
 const response1 = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: 'My favorite color is blue.' }],
 });
 console.log('AI:', response1.choices[0].message.content + '\n');
@@ -156,7 +156,7 @@ const mem2 = new Memori({ conn: () => db2 }).llm.register(client2);
 mem2.attribution('user_123', 'test-ai-agent');
 
 const response2 = await client2.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log('AI:', response2.choices[0].message.content + '\n');

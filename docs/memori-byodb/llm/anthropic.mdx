@@ -16,7 +16,7 @@ Memori supports all Anthropic Claude models. Register your client once and every
 
 <CodeGroup title="Anthropic Integration">
 
-```python {{ title: 'Sync' }}
+```python {{ title: 'Python' }}
 from anthropic import Anthropic
 from memori import Memori
 from sqlalchemy import create_engine
@@ -31,14 +31,56 @@ mem.config.storage.build()
 mem.attribution(entity_id="user_123", process_id="claude_assistant")
 
 response = client.messages.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[{"role": "user", "content": "Hello!"}]
 )
 print(response.content[0].text)
 ```
 
-```python {{ title: 'Async' }}
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import Anthropic from '@anthropic-ai/sdk';
+import { Memori } from '@memorilabs/memori';
+
+const client = new Anthropic();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'claude-assistant');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(response.content[0].type === 'text' ? response.content[0].text : '');
+
+await mem.augmentation.wait();
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode         | Python                           | TypeScript                         |
+| ------------ | -------------------------------- | ---------------------------------- |
+| **Sync**     | `client.messages.create()`       | —                                  |
+| **Async**    | `await client.messages.create()` | `await client.messages.create()`   |
+| **Streamed** | `client.messages.stream()`       | Not supported                      |
+
+## Additional Modes
+
+### Async (Python)
+
+```python
 import asyncio
 from anthropic import AsyncAnthropic
 from memori import Memori
@@ -55,7 +97,7 @@ mem.attribution(entity_id="user_123", process_id="claude_assistant")
 
 async def main():
     response = await client.messages.create(
-        model="claude-3-5-sonnet-20241022",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[{"role": "user", "content": "Hello!"}]
     )
@@ -64,7 +106,9 @@ async def main():
 asyncio.run(main())
 ```
 
-```python {{ title: 'Streaming' }}
+### Streaming (Python)
+
+```python
 from anthropic import Anthropic
 from memori import Memori
 from sqlalchemy import create_engine
@@ -79,7 +123,7 @@ mem.config.storage.build()
 mem.attribution(entity_id="user_123", process_id="claude_assistant")
 
 with client.messages.stream(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     messages=[{"role": "user", "content": "Hello!"}]
 ) as stream:
@@ -87,26 +131,108 @@ with client.messages.stream(
         print(text, end="")
 ```
 
+## Multi-Turn Conversations
+
+<CodeGroup title="Multi-Turn Conversations">
+
+```python {{ title: 'Python' }}
+from anthropic import Anthropic
+from memori import Memori
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = Anthropic()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="claude_assistant")
+
+messages = [{"role": "user", "content": "My favorite color is blue."}]
+first = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=messages
+)
+print(f"Assistant: {first.content[0].text}")
+messages.append({"role": "assistant", "content": first.content[0].text})
+
+messages.append({"role": "user", "content": "What did I just tell you?"})
+second = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=messages
+)
+print(f"Assistant: {second.content[0].text}")
+```
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import Anthropic from '@anthropic-ai/sdk';
+import { Memori } from '@memorilabs/memori';
+
+const client = new Anthropic();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'claude-assistant');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const messages: Anthropic.MessageParam[] = [];
+
+messages.push({ role: 'user', content: 'My favorite color is blue.' });
+const first = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages,
+});
+const firstText = first.content[0].type === 'text' ? first.content[0].text : '';
+console.log(`Assistant: ${firstText}`);
+messages.push({ role: 'assistant', content: firstText });
+
+messages.push({ role: 'user', content: 'What did I just tell you?' });
+const second = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages,
+});
+console.log(`Assistant: ${second.content[0].type === 'text' ? second.content[0].text : ''}`);
+
+await mem.augmentation.wait();
+```
+
 </CodeGroup>
-
-## Supported Modes
-
-| Mode         | Method                           |
-| ------------ | -------------------------------- |
-| **Sync**     | `client.messages.create()`       |
-| **Async**    | `await client.messages.create()` |
-| **Streamed** | `client.messages.stream()`       |
 
 ## System Prompts
 
 Anthropic supports a top-level `system` parameter separate from the `messages` array. Memori captures both.
 
-```python
+<CodeGroup title="System Prompts">
+
+```python {{ title: 'Python' }}
 response = client.messages.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-4-6",
     max_tokens=1024,
     system="You are a helpful coding assistant.",
     messages=[{"role": "user", "content": "Explain Python decorators."}]
 )
 print(response.content[0].text)
 ```
+
+```typescript {{ title: 'TypeScript' }}
+const response = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  system: 'You are a helpful coding assistant.',
+  messages: [{ role: 'user', content: 'Explain TypeScript generics.' }],
+});
+console.log(response.content[0].type === 'text' ? response.content[0].text : '');
+```
+
+</CodeGroup>
