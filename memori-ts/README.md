@@ -7,7 +7,9 @@
 <p align="center">
   <i>Memori plugs into the software and infrastructure you already use. It is LLM and framework agnostic and seamlessly integrates into the architecture you've already designed.</i>
 </p>
-
+<p align="center">
+  <a href="https://trendshift.io/repositories/15435" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15435" alt="MemoriLabs%2FMemori | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</p>
 <p align="center">
   <a href="https://www.npmjs.com/package/@memorilabs/memori">
     <img src="https://img.shields.io/npm/v/@memorilabs/memori.svg" alt="NPM version">

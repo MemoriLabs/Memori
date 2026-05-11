@@ -19,7 +19,7 @@ We use `uv` for fast dependency management and Docker for integration testing. Y
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer
 - Docker and Docker Compose (for integration tests)
 - Make
-- Node.js 18+
+- Node.js 20+
 - npm
 
 ### Rust Toolchain (when needed)
