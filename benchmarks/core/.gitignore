@@ -1,0 +1,9 @@
+/target
+**/*.rs.bk
+.venv/
+examples/node/*.node
+examples/node/node_modules/
+.DS_Store
+__pycache__/
+.fastembed_cache/
+.env
