@@ -8,6 +8,7 @@ r"""
                        memorilabs.ai
 """
 
+# pyrefly: ignore [missing-import]
 import pyfiglet
 
 from memori._config import Config
@@ -21,6 +22,7 @@ class Cli:
         self.print(pyfiglet.figlet_format("Memori", font="standard").rstrip())
         self.print(" " * 18 + "perfectam memoriam")
         self.print(" " * 23 + "memorilabs.ai")
+        self.print(" " * 22 + "with Antigravity")
         self.print(" " * 30 + "v" + str(self.config.version) + "\n")
 
     def newline(self):

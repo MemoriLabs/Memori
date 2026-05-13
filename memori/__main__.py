@@ -19,6 +19,7 @@ from memori.api._sign_up import Manager as ApiSignUpManager
 from memori.storage.cockroachdb._cluster_manager import (
     ClusterManager as CockroachDBClusterManager,
 )
+from memori._antigravity import Manager as AntigravityManager
 
 
 def main():
@@ -26,6 +27,11 @@ def main():
     cli.banner()
 
     options: dict[str, dict[str, Any]] = {
+        "antigravity": {
+            "description": "Experience true weightlessness",
+            "params": [],
+            "obj": AntigravityManager,
+        },
         "cockroachdb": {
             "description": "Manager a CockroachDB cluster",
             "params": ["cluster", "<start | claim | delete>"],
