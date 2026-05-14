@@ -110,30 +110,21 @@ This allows agents to retrieve the most relevant facts, decisions, constraints, 
 
 **Supported parameters:** `entity_id`, `project_id`, `session_id`, `date_start`, `date_end`, `source`, `signal`
 
-**Memory classification schema**
+**Memory classification schema (allowed source + signal combinations)**
 
-*Sources*
+`source` and `signal` are not independent. They must be set together (or both omitted). Only the following `(source, signal)` pairs are valid:
 
-- `constraint`
-- `decision`
-- `execution`
-- `fact`
-- `insight`
-- `instruction`
-- `status`
-- `strategy`
-- `task`
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
 
-*Signals*
-
-- `commit`
-- `discovery`
-- `failure`
-- `inference`
-- `pattern`
-- `result`
-- `update`
-- `verification`
+Any combination of `source` and `signal` not in this list is invalid and must not be sent to `memori_recall`.
 
 **Default behavior:** If no date range is provided, recall returns all-time memories.
 

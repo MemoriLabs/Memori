@@ -75,17 +75,28 @@ Supported parameters:
 - `project_id`: project or workspace context
 - `session_id`: specific session, only with `project_id`
 - `date_start` / `date_end`: UTC time-bounded recall
-- `source`: type of memory
-- `signal`: how the memory was derived
+- `source`: type of memory (must be paired with `signal` from the allowed combinations below)
+- `signal`: how the memory was derived (must be paired with `source` from the allowed combinations below)
 
 If a `session_id` is provided, a `project_id` must also be provided. All timestamps are stored in UTC.
 
-Memory filters:
+Allowed source + signal combinations:
 
-- `source`: `constraint`, `decision`, `execution`, `fact`, `insight`, `instruction`, `status`, `strategy`, `task`
-- `signal`: `commit`, `discovery`, `failure`, `inference`, `pattern`, `result`, `update`, `verification`
+`source` and `signal` are not independent. They must be set together (or both omitted). Only the following `(source, signal)` pairs are valid:
 
-Use `source` and `signal` to prioritize high-signal memory when possible.
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
+
+Any combination of `source` and `signal` not in this list is invalid and must not be sent to `memori_recall`.
+
+Use one of the allowed `(source, signal)` pairs to prioritize high-signal memory when possible; never set `source` or `signal` independently.
 
 Default behavior:
 
@@ -95,7 +106,7 @@ Best practices:
 
 - Start narrow with the configured project scope.
 - Add time bounds only when needed.
-- Use `source` and `signal` to refine results.
+- Use an allowed `(source, signal)` pair to refine results (never set them independently).
 - Expand scope only if needed.
 - Do not recall on every turn.
 

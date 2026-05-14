@@ -133,28 +133,21 @@ Supported parameters:
 - `source`
 - `signal`
 
-#### Memory classification schema:
+#### Memory classification schema (allowed source + signal combinations):
 
-**Sources**
-- constraint
-- decision
-- execution
-- fact
-- insight
-- instruction
-- status
-- strategy
-- task
+`source` and `signal` are not independent. They must be set together (or both omitted). Only the following `(source, signal)` pairs are valid:
 
-**Signals**
-- commit
-- discovery
-- failure
-- inference
-- pattern
-- result
-- update
-- verification
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
+
+Any combination of `source` and `signal` not in this list is invalid and must not be sent to `memori_recall`.
 
 #### Default behavior:
 
