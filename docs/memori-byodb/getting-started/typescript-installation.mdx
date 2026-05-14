@@ -9,7 +9,7 @@ Get the Memori TypeScript SDK installed and connected to your own database.
 
 <Note>
   This page covers the TypeScript SDK for Memori BYODB. For the Python SDK, see
-  the [Installation](/docs/memori-byodb/getting-started/installation) page.
+  the [Installation (Python)](/docs/memori-byodb/getting-started/installation) page.
 </Note>
 
 ## Install Memori
@@ -32,13 +32,12 @@ pnpm add @memorilabs/memori
 
 ## Install Your Database Driver
 
-Memori supports SQLite, PostgreSQL, and MySQL/MariaDB through raw drivers. Install the package for your preferred setup:
+Memori supports MySQL/MariaDB, PostgreSQL, and SQLite through raw drivers. Install the package for your preferred setup:
 
 <CodeGroup title="Database Drivers">
 
-```bash {{ title: 'SQLite (better-sqlite3)' }}
-npm install better-sqlite3
-npm install --save-dev @types/better-sqlite3
+```bash {{ title: 'MySQL (mysql2)' }}
+npm install mysql2
 ```
 
 ```bash {{ title: 'PostgreSQL (pg)' }}
@@ -46,8 +45,9 @@ npm install pg
 npm install --save-dev @types/pg
 ```
 
-```bash {{ title: 'MySQL (mysql2)' }}
-npm install mysql2
+```bash {{ title: 'SQLite (better-sqlite3)' }}
+npm install better-sqlite3
+npm install --save-dev @types/better-sqlite3
 ```
 
 </CodeGroup>
@@ -56,9 +56,9 @@ npm install mysql2
 
 | Pattern        | Factory to pass to `conn`                         | Works With              |
 | -------------- | ------------------------------------------------- | ----------------------- |
-| better-sqlite3 | `() => new Database('memori.db')`                 | SQLite                  |
-| pg             | `() => new pg.Pool({ connectionString })`         | PostgreSQL, CockroachDB |
 | mysql2         | `() => mysql.createPool(connectionString)`        | MySQL, MariaDB          |
+| pg             | `() => new pg.Pool({ connectionString })`         | PostgreSQL, CockroachDB |
+| better-sqlite3 | `() => new Database('memori.db')`                 | SQLite                  |
 
 ## Connection Examples
 

@@ -98,7 +98,7 @@ short-lived scripts to ensure memories are fully processed before continuing.
 
 ```python
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[
         {"role": "user", "content": "My favorite color is blue."}
     ]
@@ -125,7 +125,7 @@ mem = Memori(conn=get_sqlite_connection).llm.register(client)
 mem.attribution(entity_id="user_123", process_id="test-ai-agent")
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[
         {"role": "user", "content": "What's my favorite color?"}
     ]

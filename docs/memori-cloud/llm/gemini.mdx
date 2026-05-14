@@ -5,7 +5,7 @@ description: Using Memori with Google Gemini models on Memori Cloud.
 
 # Google Gemini
 
-Memori integrates with Google Gemini via the `google-genai` SDK. Register the `GenerativeModel` instance and all `generate_content()` calls are automatically captured.
+Memori integrates with Google Gemini via the `google-genai` SDK (Python) and `@google/genai` SDK (TypeScript). Register the client instance and all calls are automatically captured.
 
 ## Quick Start
 
@@ -13,16 +13,18 @@ Memori integrates with Google Gemini via the `google-genai` SDK. Register the `G
 
 ```python {{ title: 'Python' }}
 import os
+from google import genai
 from memori import Memori
-import google.generativeai as genai
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-client = genai.GenerativeModel("gemini-2.0-flash-exp")  # Use any Gemini model
+client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 mem = Memori().llm.register(client)
 mem.attribution(entity_id="user_123", process_id="gemini_assistant")
 
-response = client.generate_content("Hello!")
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents="Hello!"
+)
 print(response.text)
 ```
 
@@ -46,11 +48,11 @@ console.log(response.text);
 
 ## Supported Modes
 
-| Mode         | Python                                  | TypeScript                                      |
-| ------------ | --------------------------------------- | ----------------------------------------------- |
-| **Sync**     | `client.generate_content()`             | —                                               |
-| **Async**    | `await client.generate_content_async()` | `await client.models.generateContent()`         |
-| **Streamed** | `stream=True` parameter                 | `client.models.generateContentStream()`         |
+| Mode         | Python                                              | TypeScript                                        |
+| ------------ | --------------------------------------------------- | ------------------------------------------------- |
+| **Sync**     | `client.models.generate_content()`                  | —                                                 |
+| **Async**    | `await client.aio.models.generate_content()`        | `await client.models.generateContent()`           |
+| **Streamed** | `client.models.generate_content_stream()`           | `await client.models.generateContentStream()`     |
 
 ## Additional Modes
 
@@ -58,17 +60,19 @@ console.log(response.text);
 
 ```python
 import os, asyncio
+from google import genai
 from memori import Memori
-import google.generativeai as genai
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-client = genai.GenerativeModel("gemini-2.0-flash-exp")  # Use any Gemini model
+client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 mem = Memori().llm.register(client)
 mem.attribution(entity_id="user_123", process_id="gemini_assistant")
 
 async def main():
-    response = await client.generate_content_async("Hello!")
+    response = await client.aio.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="Hello!"
+    )
     print(response.text)
 
 asyncio.run(main())
@@ -80,17 +84,18 @@ asyncio.run(main())
 
 ```python {{ title: 'Python' }}
 import os
+from google import genai
 from memori import Memori
-import google.generativeai as genai
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-client = genai.GenerativeModel("gemini-2.0-flash-exp")  # Use any Gemini model
+client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
 mem = Memori().llm.register(client)
 mem.attribution(entity_id="user_123", process_id="gemini_assistant")
 
-response = client.generate_content("Hello!", stream=True)
-for chunk in response:
+for chunk in client.models.generate_content_stream(
+    model="gemini-2.5-flash",
+    contents="Hello!"
+):
     print(chunk.text, end="")
 ```
 
@@ -116,22 +121,29 @@ for await (const chunk of stream) {
 
 ## Multi-Turn Conversations
 
-Use `start_chat()` for multi-turn interactions. Memori tracks the full conversation automatically.
+Pass a message history as the `contents` array. Memori tracks the full conversation automatically.
 
-```python
-chat = client.start_chat()
-response = chat.send_message("My name is Alice.")
+<CodeGroup title="Multi-Turn">
+
+```python {{ title: 'Python' }}
+response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents="My name is Alice."
+)
 print(response.text)
 
-response = chat.send_message("What's my name?")
-print(response.text)
+response2 = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=[
+        {"role": "user", "parts": [{"text": "My name is Alice."}]},
+        {"role": "model", "parts": [{"text": response.text}]},
+        {"role": "user", "parts": [{"text": "What's my name?"}]},
+    ]
+)
+print(response2.text)
 ```
 
-### TypeScript
-
-Multi-turn conversations in TypeScript use the standard messages array pattern:
-
-```typescript
+```typescript {{ title: 'TypeScript' }}
 import { GoogleGenAI } from '@google/genai';
 import { Memori } from '@memorilabs/memori';
 
@@ -158,3 +170,5 @@ const response2 = await client.models.generateContent({
 });
 console.log(response2.text);
 ```
+
+</CodeGroup>

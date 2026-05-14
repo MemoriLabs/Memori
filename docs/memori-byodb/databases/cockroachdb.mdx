@@ -5,19 +5,28 @@ description: Set up Memori with CockroachDB — distributed SQL database with Po
 
 # CockroachDB
 
-CockroachDB is a distributed SQL database that uses the PostgreSQL wire protocol. It works with Memori through the same `psycopg` driver as PostgreSQL — no special adapter needed.
+CockroachDB is a distributed SQL database that uses the PostgreSQL wire protocol. It works with Memori through `psycopg2` (Python) or the `pg` driver (TypeScript) — no special adapter needed.
 
 ## Install
 
-```bash
+<CodeGroup title="Install">
+
+```bash {{ title: 'Python' }}
 pip install memori psycopg2-binary
 ```
+
+```bash {{ title: 'TypeScript' }}
+npm install @memorilabs/memori pg openai dotenv
+npm install --save-dev @types/pg
+```
+
+</CodeGroup>
 
 ## Quick Start
 
 <CodeGroup title="CockroachDB Connection">
 
-```python {{ title: 'Basic' }}
+```python {{ title: 'Python (Basic)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -32,7 +41,7 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'CockroachDB Cloud' }}
+```python {{ title: 'Python (Cloud)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -50,6 +59,37 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.COCKROACHDB_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+await pool.end();
+```
+
 </CodeGroup>
 
 ## Connection Strings
@@ -61,9 +101,13 @@ mem.config.storage.build()
 | **CockroachDB Cloud** | `cockroachdb+psycopg2://user:pass@cluster.cockroachlabs.cloud:26257/memori_db?sslmode=verify-full` |
 | **PostgreSQL scheme** | `postgresql+psycopg2://user:pass@host:26257/memori_db`                                             |
 
+For TypeScript, set `COCKROACHDB_CONNECTION_STRING` in your `.env` file and append `?sslmode=verify-full` for CockroachDB Cloud.
+
 ## Complete Example
 
-```python
+<CodeGroup title="Complete Example">
+
+```python {{ title: 'Python' }}
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -85,7 +129,7 @@ mem.attribution(entity_id="user_123", process_id="my_agent")
 mem.config.storage.build()
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "I manage a distributed systems team."}]
 )
 print(response.choices[0].message.content)
@@ -94,3 +138,49 @@ mem.augmentation.wait()
 facts = mem.recall("job role")
 print(facts)
 ```
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.COCKROACHDB_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+try {
+  await mem.config.storage.build();
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [{ role: 'user', content: 'My favorite color is blue and I live in Paris.' }],
+  });
+  console.log(response.choices[0]?.message?.content);
+
+  await mem.augmentation.wait();
+
+  const facts = await mem.recall('favorite color');
+  console.log(facts);
+} finally {
+  await pool.end();
+}
+```
+
+</CodeGroup>
+
+## Notes (TypeScript)
+
+- Pass a factory function: `conn: () => pool`. Memori never closes the pool — you own its lifecycle and call `pool.end()` when you're done.
+- Use a `pg.Pool`, not a `pg.Client` — pooling is required for CockroachDB's connection model.
+- Set `COCKROACHDB_CONNECTION_STRING` in your `.env` file.
+- For CockroachDB Cloud, append `?sslmode=verify-full` to your connection string.

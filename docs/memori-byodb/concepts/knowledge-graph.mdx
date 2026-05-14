@@ -79,7 +79,7 @@ Since the knowledge graph lives in your database, you can query it directly for 
 ```sql {{ title: 'View All Triples' }}
 SELECT
     s.name AS subject,
-    p.name AS predicate,
+    p.content AS predicate,
     o.name AS object
 FROM memori_knowledge_graph kg
 JOIN memori_subject s ON kg.subject_id = s.id
@@ -90,23 +90,25 @@ JOIN memori_object o ON kg.object_id = o.id;
 ```sql {{ title: 'Triples for an Entity' }}
 SELECT
     s.name AS subject,
-    p.name AS predicate,
+    p.content AS predicate,
     o.name AS object,
-    kg.mention_count,
-    kg.last_mentioned_at
+    kg.num_times,
+    kg.date_last_time
 FROM memori_knowledge_graph kg
+JOIN memori_entity e ON kg.entity_id = e.id
 JOIN memori_subject s ON kg.subject_id = s.id
 JOIN memori_predicate p ON kg.predicate_id = p.id
 JOIN memori_object o ON kg.object_id = o.id
-WHERE kg.entity_id = 'user_alice'
-ORDER BY kg.mention_count DESC;
+WHERE e.external_id = 'user_alice'
+ORDER BY kg.num_times DESC;
 ```
 
 ```sql {{ title: 'View Facts' }}
-SELECT content, created_at
-FROM memori_entity_fact
-WHERE entity_id = 'user_alice'
-ORDER BY created_at DESC;
+SELECT content, date_created
+FROM memori_entity_fact ef
+JOIN memori_entity e ON ef.entity_id = e.id
+WHERE e.external_id = 'user_alice'
+ORDER BY date_created DESC;
 ```
 
 </CodeGroup>

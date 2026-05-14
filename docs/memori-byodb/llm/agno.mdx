@@ -12,6 +12,7 @@ Memori integrates with Agno at the model layer. Register your Agno model with `l
   [app.memorilabs.ai](https://app.memorilabs.ai).
 </Note>
 
+
 ## Quick Start
 
 <CodeGroup title="Agno Integration">
@@ -26,7 +27,7 @@ from sqlalchemy.orm import sessionmaker
 engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
-model = OpenAIChat(id="gpt-4o-mini")
+model = OpenAIChat(id="gpt-4.1-mini")
 
 mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
 mem.config.storage.build()
@@ -53,7 +54,7 @@ from sqlalchemy.orm import sessionmaker
 engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
-model = OpenAIChat(id="gpt-4o-mini")
+model = OpenAIChat(id="gpt-4.1-mini")
 
 mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
 mem.config.storage.build()
@@ -82,7 +83,7 @@ from sqlalchemy.orm import sessionmaker
 engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
-model = OpenAIChat(id="gpt-4o-mini")
+model = OpenAIChat(id="gpt-4.1-mini")
 
 mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
 mem.config.storage.build()
@@ -118,21 +119,21 @@ Agno supports multiple model families. Use the matching registration keyword in 
 ```python {{ title: 'OpenAI' }}
 from agno.models.openai import OpenAIChat
 
-model = OpenAIChat(id="gpt-4o-mini")
+model = OpenAIChat(id="gpt-4.1-mini")
 mem = Memori(conn=SessionLocal).llm.register(openai_chat=model)
 ```
 
 ```python {{ title: 'Anthropic' }}
 from agno.models.anthropic import Claude
 
-model = Claude(id="claude-sonnet-4-20250514")
+model = Claude(id="claude-sonnet-4-6")
 mem = Memori(conn=SessionLocal).llm.register(claude=model)
 ```
 
 ```python {{ title: 'Google Gemini' }}
 from agno.models.google import Gemini
 
-model = Gemini(id="gemini-2.0-flash-exp")
+model = Gemini(id="gemini-2.5-flash")
 mem = Memori(conn=SessionLocal).llm.register(gemini=model)
 ```
 
