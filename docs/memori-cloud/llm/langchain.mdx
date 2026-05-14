@@ -5,7 +5,7 @@ description: Using Memori with LangChain chat models on Memori Cloud.
 
 # LangChain
 
-Memori Cloud supports any LangChain chat model. Each class has its own registration keyword: `ChatOpenAI` for OpenAI, `ChatAnthropic` for Anthropic, `ChatBedrock` for BedRock, `ChatGoogleGenerativeAI` for Google Gen AI models.
+Memori Cloud supports LangChain chat models. Each class has its own registration keyword: `ChatOpenAI` for OpenAI, `ChatBedrock` for AWS Bedrock, `ChatGoogleGenerativeAI` for Google Gen AI models.
 
 <Note>
   TypeScript support for LangChain is coming soon. The TypeScript SDK currently supports [OpenAI](/docs/memori-cloud/llm/openai), [Anthropic](/docs/memori-cloud/llm/anthropic), and [Gemini](/docs/memori-cloud/llm/gemini).
@@ -65,19 +65,10 @@ for chunk in client.stream("Hello!"):
 | Package                  | Chat Model               | Registration Keyword     |
 | ------------------------ | ------------------------ | ------------------------ |
 | `langchain-openai`       | `ChatOpenAI`             | `chatopenai=client`      |
-| `langchain-anthropic`    | `ChatAnthropic`          | `chatanthropic=client`   |
 | `langchain-google-genai` | `ChatGoogleGenerativeAI` | `chatgooglegenai=client` |
 | `langchain-aws`          | `ChatBedrock`            | `chatbedrock=client`     |
 
 <CodeGroup title="LangChain Providers">
-
-```python {{ title: 'Anthropic' }}
-from langchain_anthropic import ChatAnthropic
-from memori import Memori
-
-client = ChatAnthropic(model="claude-sonnet-4-5-20250929")
-mem = Memori().llm.register(chatopenai=client)
-```
 
 ```python {{ title: 'Google Gemini' }}
 from langchain_google_genai import ChatGoogleGenerativeAI

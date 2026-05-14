@@ -9,14 +9,17 @@ Quick fixes for the most common Memori issues.
 
 ## Installation
 
-**`pip install memori` fails** — Requires Python 3.10+.
+**Python: `pip install memori` fails** — Requires Python 3.10+.
 Run `python --version` to check, then `pip install --upgrade pip && pip install memori`.
 
-**Missing binary deps** — Install prerequisites first: `pip install numpy>=1.24.0 sentence-transformers>=3.0.0 memori`.
+**Python: Missing binary deps** — Install prerequisites first: `pip install numpy>=1.24.0 sentence-transformers>=3.0.0 memori`.
+
+**TypeScript: `npm install @memorilabs/memori` fails** — Requires Node.js 20+.
+Run `node --version` to check.
 
 ## Database Connection
 
-**`No connection factory provided`** — You must pass `conn` when initializing:
+**Python: `No connection factory provided`** — You must pass `conn` when initializing:
 
 ```python
 from sqlalchemy import create_engine
@@ -28,9 +31,21 @@ SessionLocal = sessionmaker(bind=engine)
 mem = Memori(conn=SessionLocal)
 ```
 
-**`Table does not exist`** — Run `mem.config.storage.build()` once after initialization or after upgrading.
+**`Table does not exist`** — Run `build()` once after initialization or after upgrading:
 
-**Connection pool errors** — Enable pre-ping and recycling:
+<CodeGroup title="Build Schema">
+
+```python {{ title: 'Python' }}
+mem.config.storage.build()
+```
+
+```typescript {{ title: 'TypeScript' }}
+await mem.config.storage.build();
+```
+
+</CodeGroup>
+
+**Python: Connection pool errors** — Enable pre-ping and recycling:
 
 ```python
 engine = create_engine("postgresql+psycopg2://user:pass@host/db", pool_pre_ping=True, pool_recycle=300)
@@ -49,45 +64,116 @@ engine = create_engine("postgresql+psycopg2://user:pass@host/db", pool_pre_ping=
 
 1. **Set attribution** before LLM calls — without it, no memories are stored:
 
-```python
+<CodeGroup title="Set Attribution">
+
+```python {{ title: 'Python' }}
 mem.attribution(entity_id="user_123", process_id="my_app")
 ```
 
+```typescript {{ title: 'TypeScript' }}
+mem.attribution('user_123', 'my_app');
+```
+
+</CodeGroup>
+
 2. **Wait for augmentation** in short-lived scripts:
 
-```python
+<CodeGroup title="Wait for Augmentation">
+
+```python {{ title: 'Python' }}
 mem.augmentation.wait()
 ```
 
+```typescript {{ title: 'TypeScript' }}
+await mem.augmentation.wait();
+```
+
+</CodeGroup>
+
 3. **Register your LLM client** — conversations aren't captured without registration:
 
-```python
+<CodeGroup title="Register LLM Client">
+
+```python {{ title: 'Python' }}
 client = OpenAI()
 mem = Memori(conn=SessionLocal).llm.register(client)
 ```
 
+```typescript {{ title: 'TypeScript' }}
+const client = new OpenAI();
+const mem = new Memori({ conn: () => db }).llm.register(client);
+```
+
+</CodeGroup>
+
 ## Recall Returns Empty
 
 - Verify `entity_id` matches what was used when memories were created
-- Wait for augmentation: `mem.augmentation.wait()`
-- Increase limit: `mem.recall("query", limit=10)`
-- Lower threshold: `mem.config.recall_relevance_threshold = 0.05`
+- Wait for augmentation:
+
+<CodeGroup title="Wait for Augmentation">
+
+```python {{ title: 'Python' }}
+mem.augmentation.wait()
+```
+
+```typescript {{ title: 'TypeScript' }}
+await mem.augmentation.wait();
+```
+
+</CodeGroup>
+
+- **Python:** Increase limit: `mem.recall("query", limit=10)`
+- Lower threshold:
+
+<CodeGroup title="Lower Recall Threshold">
+
+```python {{ title: 'Python' }}
+mem.config.recall_relevance_threshold = 0.05
+```
+
+```typescript {{ title: 'TypeScript' }}
+mem.config.recallRelevanceThreshold = 0.05;
+```
+
+</CodeGroup>
 
 ## Quota Exceeded
 
-```
-QuotaExceededError: your IP address is over quota
+<CodeGroup title="Quota Exceeded Error">
+
+```python {{ title: 'Python' }}
+# QuotaExceededError: your IP address is over quota
 ```
 
-Sign up for a free API key at [app.memorilabs.ai](https://app.memorilabs.ai) — gives 5,000/month (vs 100 without a key). Set it via `export MEMORI_API_KEY="your-key"`.
+```typescript {{ title: 'TypeScript' }}
+// QuotaExceededError: Your IP address is over quota; register for an API key now: https://app.memorilabs.ai/signup
+```
+
+</CodeGroup>
+
+Sign up for a free API key at [app.memorilabs.ai](https://app.memorilabs.ai) - gives 5,000/month. Set it via `export MEMORI_API_KEY="your-key"`.
 
 ## Performance
 
-**Slow first run** — Memori downloads the embedding model on first use. Pre-download with `python -m memori setup`.
+**Python: Slow first run** — Memori downloads the embedding model on first use. Pre-download with `python -m memori setup`.
 
-**High memory usage** — Reduce embeddings limit: `mem.config.recall_embeddings_limit = 500`. Use PostgreSQL for production.
+**Python: High memory usage** — Reduce embeddings limit: `mem.config.recall_embeddings_limit = 500`. Use PostgreSQL for production.
 
-**Network timeouts** — Increase timeout: `mem.config.request_secs_timeout = 10` and retries: `mem.config.request_num_backoff = 10`.
+**Network timeouts:**
+
+<CodeGroup title="Network Timeout">
+
+```python {{ title: 'Python' }}
+mem.config.request_secs_timeout = 10
+mem.config.request_num_backoff = 10
+```
+
+```typescript {{ title: 'TypeScript' }}
+mem.config.timeout = 10000; // milliseconds, default 30000
+```
+
+</CodeGroup>
 
 ## Debug Logging
 
@@ -105,4 +191,8 @@ mem = Memori(conn=SessionLocal, debug_truncate=False)
 - [Discord](https://discord.gg/abD4eGym6v)
 - [Examples](https://github.com/MemoriLabs/Memori/tree/main/examples)
 
-Include your Python version, Memori version (`pip show memori`), database type, and full error trace.
+If you need help troubleshooting an issue, please reach out on Discord with more details and we will be happy to assist you.
+
+For Python: include your Python version, Memori version (`pip show memori`), database type, and full error trace.
+
+For TypeScript: include your Node.js version, Memori version (`npm list @memorilabs/memori`), database type, and full error trace.

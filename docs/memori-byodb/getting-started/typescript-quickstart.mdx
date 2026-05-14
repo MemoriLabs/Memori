@@ -58,7 +58,7 @@ Create a new file `quickstart.ts` and add the following code:
 
 Import libraries, open a SQLite database, and initialize Memori with your OpenAI client.
 
-- `conn` accepts the raw database connection (a `better-sqlite3` `Database` instance, `pg` Pool, or `mysql2` Pool)
+- `conn` accepts a factory function that returns the database connection (a `better-sqlite3` `Database` instance, `pg` Pool, or `mysql2` Pool)
 - `llm.register()` wraps your LLM client for automatic memory capture
 - `attribution()` links memories to a specific user and process
 - `await mem.config.storage.build()` creates the Memori schema tables in your database

@@ -11,15 +11,16 @@ __Memori__ is a memory layer for LLM applications, agents, and copilots. It cont
 
 ## Which languages are supported?
 
-Memori Cloud supports both **Python** and **TypeScript** SDKs. The Python SDK (`memori`) works with both Memori Cloud and BYODB. The TypeScript SDK (`@memorilabs/memori`) is currently Cloud-only. Both SDKs support OpenAI, Anthropic, and Gemini, with additional provider support in Python.
+Memori offers official **Python** and **TypeScript** SDKs, both compatible with Memori Cloud and BYODB. OpenAI, Anthropic, and Google Gemini are supported in both languages, with a broader set of LLM providers and frameworks available in Python.
 
 ## Memori Cloud vs Memori BYODB?
 
-**Memori Cloud** — managed storage, dashboard UI, just add an API key. Available for Python and TypeScript. **Memori BYODB** — bring your own database & maintain full control. Available for Python and TypeScript.
+**Memori Cloud** — managed storage, dashboard UI, just add an API key.<br />
+**Memori BYODB** — bring your own database & maintain full control.
 
 ## Which LLM providers and frameworks are supported?
 
-**Python:** OpenAI, Anthropic, Google Gemini, xAI Grok, Deepseek, Nebius AI Studio, AWS Bedrock, LangChain, Agno, and Pydantic AI. All support sync, async, and streaming.
+**Python:** OpenAI, Anthropic, Google Gemini, Agno, AWS Bedrock, DeepSeek, LangChain, Nebius AI Studio, Pydantic AI, and xAI Grok. All support sync, async, and streaming.
 
 **TypeScript:** OpenAI, Anthropic, and Google Gemini. More providers coming soon.
 
@@ -27,11 +28,11 @@ See the [Integration Overview](/docs/memori-cloud/llm/overview).
 
 ## Do I need to set up a database?
 
-No. The Memori Cloud platform manages all storage. Just initialize with `mem = Memori()`.
+No, the Memori Cloud platform manages all storage. We recommend initializing with `mem = Memori()`.
 
 ## Is there a free tier?
 
-Yes. 5000 memory read & writes per month. Sign up at [app.memorilabs.ai](https://app.memorilabs.ai).
+Yes, you can create 5,000 memories and recall 15,000 memories per month with a free API key. Sign up on [app.memorilabs.ai](https://app.memorilabs.ai)
 
 ## What counts as a "memory"?
 
@@ -39,7 +40,8 @@ Each fact, preference, or relationship extracted by Advanced Augmentation counts
 
 ## Does it support async?
 
-Yes. In Python, use your provider's async client (e.g. `AsyncOpenAI`). TypeScript is natively async — all SDK calls return Promises.
+Yes, in Python, use your provider's async client (e.g. `AsyncOpenAI`).<br />
+TypeScript is natively async — LLM calls and `recall()` return Promises.
 
 ## How does augmentation work?
 
@@ -47,11 +49,14 @@ It runs in the background after each conversation and extracts facts, preference
 
 ## Can I use multiple LLM providers?
 
-Yes. Register multiple clients on the same Memori instance. Memories are shared across providers since they're scoped to entities, not to providers.
+Yes, you can register multiple clients on the same Memori instance. Memories are shared across providers since they're scoped to entities, not to providers.
 
 ## Can I migrate between Memori Cloud and Memori BYODB?
 
-Yes. In Python, both use the same SDK — just remove `conn=SessionLocal` for Memori Cloud or add it for Memori BYODB. Existing memories don't auto-transfer. The TypeScript SDK is Cloud-only.
+Yes, both use the same SDK.<br />
+In Python, remove `conn=SessionLocal` for Memori Cloud or add it for Memori BYODB.<br />
+In TypeScript, remove the `conn` option and set `MEMORI_API_KEY` for Cloud, or pass `conn: () => db` for BYODB.<br />
+Existing memories don't auto-transfer.
 
 ## Still have questions?
 

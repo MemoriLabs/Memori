@@ -14,22 +14,22 @@ Memori works with all major LLM providers and frameworks. Register any supported
 
 ## Supported Providers
 
-| Provider                                              | Integration        | Install                               |
-| ----------------------------------------------------- | ------------------ | ------------------------------------- |
-| **[OpenAI](/docs/memori-byodb/llm/openai)**           | Direct SDK wrapper | `pip install memori openai`           |
-| **[Anthropic](/docs/memori-byodb/llm/anthropic)**     | Direct SDK wrapper | `pip install memori anthropic`        |
-| **[Google Gemini](/docs/memori-byodb/llm/gemini)**    | Direct SDK wrapper | `pip install memori google-genai`     |
-| **[xAI Grok](/docs/memori-byodb/llm/xai-grok)**       | OpenAI-compatible  | `pip install memori openai`           |
-| **[AWS Bedrock](/docs/memori-byodb/llm/aws-bedrock)** | LangChain adapter  | `pip install memori langchain-aws`    |
-| **[LangChain](/docs/memori-byodb/llm/langchain)**     | Framework support  | `pip install memori langchain-openai` |
-| **[Agno](/docs/memori-byodb/llm/agno)**               | Framework support  | `pip install memori agno`             |
-| **[Pydantic AI](/docs/memori-byodb/llm/pydantic-ai)** | Framework support  | `pip install memori pydantic-ai`      |
-| **[Nebius AI Studio](/docs/memori-byodb/llm/nebius)** | OpenAI-compatible  | `pip install memori openai`           |
-| **[DeepSeek](/docs/memori-byodb/llm/deepseek)**       | OpenAI-compatible  | `pip install memori openai`           |
+| Provider                                              | Integration        | Python                                | TypeScript                                          |
+| ----------------------------------------------------- | ------------------ | ------------------------------------- | --------------------------------------------------- |
+| **[OpenAI](/docs/memori-byodb/llm/openai)**           | Direct SDK wrapper | `pip install memori openai`           | `npm install @memorilabs/memori openai`             |
+| **[Anthropic](/docs/memori-byodb/llm/anthropic)**     | Direct SDK wrapper | `pip install memori anthropic`        | `npm install @memorilabs/memori @anthropic-ai/sdk`  |
+| **[Google Gemini](/docs/memori-byodb/llm/gemini)**    | Direct SDK wrapper | `pip install memori google-genai`     | `npm install @memorilabs/memori @google/genai`      |
+| **[Agno](/docs/memori-byodb/llm/agno)**               | Framework support  | `pip install memori agno`             | Coming soon                                         |
+| **[AWS Bedrock](/docs/memori-byodb/llm/aws-bedrock)** | LangChain adapter  | `pip install memori langchain-aws`    | Coming soon                                         |
+| **[DeepSeek](/docs/memori-byodb/llm/deepseek)**       | OpenAI-compatible  | `pip install memori openai`           | Coming soon                                         |
+| **[LangChain](/docs/memori-byodb/llm/langchain)**     | Framework support  | `pip install memori langchain-openai` | Coming soon                                         |
+| **[Nebius AI Studio](/docs/memori-byodb/llm/nebius)** | OpenAI-compatible  | `pip install memori openai`           | Coming soon                                         |
+| **[Pydantic AI](/docs/memori-byodb/llm/pydantic-ai)** | Framework support  | `pip install memori pydantic-ai`      | Coming soon                                         |
+| **[xAI Grok](/docs/memori-byodb/llm/xai-grok)**       | OpenAI-compatible  | `pip install memori openai`           | Coming soon                                         |
 
 All providers support sync, async, streamed, and unstreamed modes.
 
-Any provider with an OpenAI-compatible API works by setting a custom `base_url` — including Nebius AI Studio, DeepSeek, NVIDIA NIM, Azure OpenAI, and more. See [OpenAI-Compatible Providers](#openai-compatible-providers) below.
+Any provider with an OpenAI-compatible API works by setting a custom `base_url` — including Azure OpenAI, DeepSeek, Nebius AI Studio, NVIDIA NIM, and more. See [OpenAI-Compatible Providers](#openai-compatible-providers) below.
 
 ## Pydantic AI
 
@@ -55,7 +55,7 @@ print(result.output)
 
 ## OpenAI-Compatible Providers
 
-Any provider with an OpenAI-compatible API works by setting a custom `base_url`. Examples: xAI, Nebius AI Studio, DeepSeek, Azure OpenAI.
+Any provider with an OpenAI-compatible API works by setting a custom `base_url`. Examples: Azure OpenAI, DeepSeek, Nebius AI Studio, xAI.
 
 ```python
 import os
