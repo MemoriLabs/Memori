@@ -61,6 +61,8 @@ def main():
             )
 
         cli.print("\nusage: python -m memori <option> [params]\n")
+        if len(sys.argv) > 1 and sys.argv[1] not in options:
+            sys.exit(1)
     else:
         option = options[sys.argv[1]]
         params = option["params"]

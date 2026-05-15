@@ -266,6 +266,7 @@ def test_conversation_messages_read(mock_conn, mock_multiple_results):
     select_call = mock_conn.execute.call_args_list[0]
     assert "SELECT role" in select_call[0][0]
     assert "FROM memori_conversation_message" in select_call[0][0]
+    assert "ORDER BY id" in select_call[0][0]
     assert select_call[0][1] == (101,)
 
 

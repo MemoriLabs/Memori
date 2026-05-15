@@ -169,6 +169,23 @@ def test_set_session(mocker):
     assert mem.config.session_id == "66cf2a0b-7503-4dcd-b717-b29c826fa1db"
 
 
+def test_set_session_clears_cached_state(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    mem = Memori(conn=lambda: mock_conn)
+    mem.config.cache.conversation_id = 123
+    mem.config.cache.session_id = 456
+
+    mem.set_session("66cf2a0b-7503-4dcd-b717-b29c826fa1db")
+
+    assert mem.config.cache.conversation_id is None
+    assert mem.config.cache.session_id is None
+
+
 def test_set_session_resets_cache(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"

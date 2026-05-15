@@ -136,6 +136,7 @@ class ConversationMessages(BaseConversationMessages):
             "find",
             {"conversation_id": conversation_id},
             {"role": 1, "content": 1, "_id": 0},
+            sort=[("date_created", 1), ("_id", 1)],
         )
 
         messages = []
