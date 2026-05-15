@@ -56,8 +56,8 @@ describe('tools/memori-recall', () => {
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       expect(createRecallClient).toHaveBeenCalledWith('test-key', 'test-entity');
@@ -71,8 +71,8 @@ describe('tools/memori-recall', () => {
         dateStart: '2024-01-01',
         dateEnd: '2024-12-31',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       const client = vi.mocked(createRecallClient).mock.results[0].value;
@@ -90,8 +90,8 @@ describe('tools/memori-recall', () => {
         dateEnd: '2024-12-31',
         projectId: 'override-project',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       const client = vi.mocked(createRecallClient).mock.results[0].value;
@@ -109,8 +109,8 @@ describe('tools/memori-recall', () => {
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       const client = vi.mocked(createRecallClient).mock.results[0].value;
@@ -120,8 +120,8 @@ describe('tools/memori-recall', () => {
           dateEnd: '2024-12-31',
           projectId: 'proj-1',
           sessionId: 'sess-1',
-          signal: 'user',
-          source: 'chat',
+          source: 'fact',
+          signal: 'verification',
         })
       );
     });
@@ -139,8 +139,8 @@ describe('tools/memori-recall', () => {
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       expect(result.content).toHaveLength(1);
@@ -163,8 +163,8 @@ describe('tools/memori-recall', () => {
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       expect(JSON.parse(result.content[0].text)).toEqual({ error: 'Recall failed' });
@@ -209,13 +209,90 @@ describe('tools/memori-recall', () => {
         dateEnd: '2024-12-31',
         projectId: 'proj-1',
         sessionId: 'sess-1',
-        signal: 'user',
-        source: 'chat',
+        source: 'fact',
+        signal: 'verification',
       });
 
       expect(deps.logger.info).toHaveBeenCalledWith(
         expect.stringContaining('memori_recall params')
       );
+    });
+
+    describe('source/signal validation', () => {
+      it('should reject source provided without signal', async () => {
+        const tool = createMemoriRecallTool(deps);
+
+        const result = await tool.execute('call-1', { source: 'fact' });
+
+        expect(JSON.parse(result.content[0].text)).toEqual({
+          error: 'source and signal must be provided together or both omitted',
+        });
+        expect(deps.logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('memori_recall rejected')
+        );
+      });
+
+      it('should reject signal provided without source', async () => {
+        const tool = createMemoriRecallTool(deps);
+
+        const result = await tool.execute('call-1', { signal: 'verification' });
+
+        expect(JSON.parse(result.content[0].text)).toEqual({
+          error: 'source and signal must be provided together or both omitted',
+        });
+        expect(deps.logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('memori_recall rejected')
+        );
+      });
+
+      it('should reject an invalid (source, signal) pair', async () => {
+        const tool = createMemoriRecallTool(deps);
+
+        const result = await tool.execute('call-1', { source: 'fact', signal: 'commit' });
+
+        const parsed = JSON.parse(result.content[0].text);
+        expect(parsed.error).toMatch(/Invalid \(source, signal\) pair/);
+        expect(parsed.error).toContain('fact');
+        expect(parsed.error).toContain('commit');
+        expect(parsed.error).toContain('verification');
+        expect(deps.logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('memori_recall rejected')
+        );
+      });
+
+      it('should succeed when both source and signal are omitted', async () => {
+        const { createRecallClient } = await import('../../src/utils/memori-client.js');
+        const tool = createMemoriRecallTool(deps);
+
+        const result = await tool.execute('call-1', { projectId: 'proj-1' });
+
+        const client = vi.mocked(createRecallClient).mock.results[0].value;
+        expect(client.agentRecall).toHaveBeenCalled();
+        expect(JSON.parse(result.content[0].text)).not.toHaveProperty('error');
+      });
+
+      it.each([
+        ['constraint', 'discovery'],
+        ['decision', 'commit'],
+        ['fact', 'verification'],
+        ['execution', 'failure'],
+        ['instruction', 'discovery'],
+        ['insight', 'inference'],
+        ['status', 'update'],
+        ['strategy', 'pattern'],
+        ['task', 'result'],
+      ])('should accept valid pair (%s, %s)', async (source, signal) => {
+        const { createRecallClient } = await import('../../src/utils/memori-client.js');
+        const tool = createMemoriRecallTool(deps);
+
+        const result = await tool.execute('call-1', { source, signal });
+
+        const client = vi.mocked(createRecallClient).mock.results[0].value;
+        expect(client.agentRecall).toHaveBeenCalledWith(
+          expect.objectContaining({ source, signal })
+        );
+        expect(JSON.parse(result.content[0].text)).not.toHaveProperty('error');
+      });
     });
   });
 });
