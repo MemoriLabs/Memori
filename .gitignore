@@ -52,7 +52,6 @@ google-credentials.json
 
 AGENTS.md
 .codex/skills/
-
 tests/examples/*
 
 # Benchmarking results
