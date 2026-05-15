@@ -3,7 +3,7 @@ import { handleAugmentation } from './handlers/augmentation.js';
 import { OpenClawEvent, OpenClawContext, MemoriPluginConfig } from './types.js';
 import { PLUGIN_CONFIG } from './constants.js';
 import { MemoriLogger, loadSkillsContent } from './utils/index.js';
-import { registerAllTools } from './tools/index.js';
+import { registerUtilityTools, registerAuthenticatedTools } from './tools/index.js';
 import { registerCliCommands } from './cli/commands.js';
 
 const memoriPlugin = {
@@ -22,15 +22,17 @@ const memoriPlugin = {
       projectId: rawConfig?.projectId as string,
     };
 
+    const logger = new MemoriLogger(api);
+    const skillsContent = loadSkillsContent(api.resolvePath.bind(api));
+
+    registerUtilityTools({ api, config, logger });
+
     if (!config.apiKey || !config.entityId) {
       api.logger.warn(
         `${PLUGIN_CONFIG.LOG_PREFIX} Missing apiKey or entityId in config. Plugin disabled.`
       );
       return;
     }
-
-    const logger = new MemoriLogger(api);
-    const skillsContent = loadSkillsContent(api.resolvePath.bind(api));
 
     logger.info(`\n=== ${PLUGIN_CONFIG.LOG_PREFIX} INITIALIZING PLUGIN ===`);
     logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}`);
@@ -43,7 +45,7 @@ const memoriPlugin = {
       handleAugmentation(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
     );
 
-    registerAllTools({ api, config, logger });
+    registerAuthenticatedTools({ api, config, logger });
   },
 };
 

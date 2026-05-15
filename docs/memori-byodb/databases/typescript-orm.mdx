@@ -1,0 +1,206 @@
+---
+title: ORMs (TypeScript)
+description: Use any ORM with Memori BYODB by passing its underlying connection pool.
+---
+
+# ORMs (TypeScript)
+
+Memori works with any ORM — Drizzle, Sequelize, MikroORM, Prisma, or anything else. No special adapter is needed. Every ORM creates a raw database pool under the hood; pass that same pool to Memori and both coexist on the same connection with no conflict.
+
+Your ORM handles your application's queries. Memori manages its own memory tables. Same pool, fully independent.
+
+## How It Works
+
+Memori's `conn` option accepts a factory that returns a raw database connection — the same kind your ORM already uses internally. Instead of creating a separate connection for Memori, share the pool your ORM already creates.
+
+```typescript
+// Your ORM uses pool internally
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool);
+
+// Pass the same pool to Memori — no extra connection
+const mem = new Memori({ conn: () => pool });
+```
+
+## Prisma
+
+Prisma uses `@prisma/adapter-pg` which accepts a `pg.Pool` directly — pass that same pool to Memori so both share one connection.
+
+```typescript
+import 'dotenv/config';
+import pg from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+const client = new OpenAI();
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await prisma.$disconnect();
+await pool.end();
+```
+
+## Drizzle
+
+<CodeGroup title="Drizzle">
+
+```typescript {{ title: 'PostgreSQL' }}
+import 'dotenv/config';
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool);
+
+const client = new OpenAI();
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await pool.end();
+```
+
+```typescript {{ title: 'SQLite' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const sqlite = new Database('memori.db');
+const db = drizzle(sqlite);
+
+const client = new OpenAI();
+const mem = new Memori({ conn: () => sqlite }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+sqlite.close();
+```
+
+</CodeGroup>
+
+## Sequelize
+
+```typescript
+import 'dotenv/config';
+import mysql from 'mysql2/promise';
+import { Sequelize } from 'sequelize';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// Sequelize manages its own pool; create a separate pool for Memori
+const pool = mysql.createPool({ uri: process.env.DATABASE_URL });
+const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  dialect: 'mysql',
+  logging: false,
+});
+
+const client = new OpenAI();
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await pool.end();
+```
+
+## MikroORM
+
+```typescript
+import 'dotenv/config';
+import pg from 'pg';
+import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// Create the raw pool first — pass it to both MikroORM and Memori
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const orm = await MikroORM.init<PostgreSqlDriver>({
+  driver: PostgreSqlDriver,
+  clientUrl: process.env.DATABASE_URL,
+  entities: [/* your entities */],
+});
+
+const client = new OpenAI();
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(`AI: ${response.choices[0]?.message?.content}`);
+
+await mem.augmentation.wait();
+await pool.end();
+```
+
+## Notes
+
+- **You own the pool lifecycle.** Call `pool.end()` (or `db.close()` for SQLite) when you're done. Memori never closes the pool.
+- **No extra dependencies.** Memori uses the raw pool directly — no ORM-specific package is needed beyond what your ORM already requires.
+- **`mem.config.storage.build()` runs once.** Call it on first run or after upgrading Memori. It creates Memori's schema tables without touching your ORM's tables.

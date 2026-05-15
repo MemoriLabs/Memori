@@ -9,15 +9,24 @@ PostgreSQL is the recommended database for production Memori deployments. Full c
 
 ## Install
 
-```bash
+<CodeGroup title="Install">
+
+```bash {{ title: 'Python' }}
 pip install memori psycopg
 ```
+
+```bash {{ title: 'TypeScript' }}
+npm install @memorilabs/memori pg openai dotenv
+npm install --save-dev @types/pg
+```
+
+</CodeGroup>
 
 ## Quick Start
 
 <CodeGroup title="PostgreSQL Connection">
 
-```python {{ title: 'Basic' }}
+```python {{ title: 'Python (Basic)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -32,7 +41,7 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'With Connection Pool' }}
+```python {{ title: 'Python (With Pool)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -50,11 +59,75 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+await pool.end();
+```
+
 </CodeGroup>
+
+## Cloud Providers
+
+| Provider             | Connection Format                                            |
+| -------------------- | ------------------------------------------------------------ |
+| **Neon**             | `postgresql+psycopg://...@*.neon.tech/...`                   |
+| **Supabase**         | `postgresql+psycopg://...@*.supabase.co/...`                 |
+| **AWS RDS**          | `postgresql+psycopg://...@*.rds.amazonaws.com/...`           |
+| **AWS Aurora**       | `postgresql+psycopg://...@*.rds.amazonaws.com/...`           |
+| **Google Cloud SQL** | `postgresql+psycopg://...@*.cloudsql/...`                    |
+| **Azure Database**   | `postgresql+psycopg://...@*.postgres.database.azure.com/...` |
+
+For TypeScript, append `?sslmode=require` to `DATABASE_CONNECTION_STRING` for cloud-hosted PostgreSQL (Neon, Supabase, AWS RDS).
+
+## SSL Connections (Python)
+
+For cloud-hosted PostgreSQL, use SSL:
+
+```python
+engine = create_engine(
+    "postgresql+psycopg://user:password@host:5432/memori_db"
+    "?sslmode=require",
+    pool_pre_ping=True
+)
+```
+
+| Mode          | Description                               |
+| ------------- | ----------------------------------------- |
+| `require`     | SSL required, no certificate verification |
+| `verify-ca`   | SSL + verify server certificate           |
+| `verify-full` | SSL + verify certificate + hostname       |
 
 ## Complete Example
 
-```python
+<CodeGroup title="Complete Example">
+
+```python {{ title: 'Python' }}
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -76,7 +149,7 @@ mem.attribution(entity_id="user_123", process_id="my_agent")
 mem.config.storage.build()
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "I'm a senior engineer at Google."}]
 )
 print(response.choices[0].message.content)
@@ -86,31 +159,47 @@ facts = mem.recall("job title and company")
 print(facts)
 ```
 
-## Cloud Providers
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
 
-| Provider             | Connection Format                                            |
-| -------------------- | ------------------------------------------------------------ |
-| **Neon**             | `postgresql+psycopg://...@*.neon.tech/...`                   |
-| **Supabase**         | `postgresql+psycopg://...@*.supabase.co/...`                 |
-| **AWS RDS**          | `postgresql+psycopg://...@*.rds.amazonaws.com/...`           |
-| **AWS Aurora**       | `postgresql+psycopg://...@*.rds.amazonaws.com/...`           |
-| **Google Cloud SQL** | `postgresql+psycopg://...@*.cloudsql/...`                    |
-| **Azure Database**   | `postgresql+psycopg://...@*.postgres.database.azure.com/...` |
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
 
-## SSL Connections
+const client = new OpenAI();
 
-For cloud-hosted PostgreSQL, use SSL:
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
 
-```python
-engine = create_engine(
-    "postgresql+psycopg://user:password@host:5432/memori_db"
-    "?sslmode=require",
-    pool_pre_ping=True
-)
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+try {
+  await mem.config.storage.build();
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+  });
+  console.log(response.choices[0]?.message?.content);
+
+  await mem.augmentation.wait();
+
+  const facts = await mem.recall('favorite color');
+  console.log(facts);
+} finally {
+  await pool.end();
+}
 ```
 
-| Mode          | Description                               |
-| ------------- | ----------------------------------------- |
-| `require`     | SSL required, no certificate verification |
-| `verify-ca`   | SSL + verify server certificate           |
-| `verify-full` | SSL + verify certificate + hostname       |
+</CodeGroup>
+
+## Notes (TypeScript)
+
+- Pass a factory function: `conn: () => pool`. Memori never closes the pool — you own its lifecycle and call `pool.end()` when you're done.
+- Use a `pg.Pool`, not a `pg.Client` — a pool safely handles the concurrent reads, writes, and background augmentation that Memori performs.
+- Set `DATABASE_CONNECTION_STRING` in your `.env` file.

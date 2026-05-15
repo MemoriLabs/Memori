@@ -42,14 +42,14 @@ mem = Memori(conn=SessionLocal).llm.register(client)
 # User A's conversations
 mem.attribution(entity_id="user_alice", process_id="support_bot")
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "I prefer dark mode"}]
 )
 
 # User B's conversations — completely isolated
 mem.attribution(entity_id="user_bob", process_id="support_bot")
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "What are my preferences?"}]
 )
 # Bob will NOT see Alice's preferences
@@ -70,7 +70,7 @@ mem = Memori(conn=SessionLocal).llm.register(client)
 # Same user, different processes
 mem.attribution(entity_id="user_alice", process_id="support_bot")
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[
         {"role": "user", "content": "I use PostgreSQL for my databases"}
     ]
@@ -81,7 +81,7 @@ mem.attribution(entity_id="user_alice", process_id="sales_bot")
 # The sales bot can recall Alice's facts (like "uses PostgreSQL")
 # because facts are shared across processes for the same entity.
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[
         {"role": "user", "content": "What databases do I use?"}
     ]
@@ -134,7 +134,7 @@ def handle_chat(user_id: str, message: str):
     mem.attribution(entity_id=user_id, process_id="web_assistant")
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-mini",
         messages=[{"role": "user", "content": message}]
     )
     return response.choices[0].message.content

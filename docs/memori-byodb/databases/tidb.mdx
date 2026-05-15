@@ -85,7 +85,7 @@ mem.attribution(entity_id="user_123", process_id="my_agent")
 mem.config.storage.build()
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "I work on distributed systems."}]
 )
 print(response.choices[0].message.content)

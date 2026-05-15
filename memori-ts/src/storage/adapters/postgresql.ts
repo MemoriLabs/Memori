@@ -6,41 +6,72 @@ function isPostgresConnection(conn: unknown): boolean {
   return (
     conn != null &&
     typeof (conn as Pool).query === 'function' &&
+    typeof (conn as Pool).connect === 'function' &&
     typeof (conn as { execute?: unknown }).execute !== 'function'
   );
 }
 
 export class PostgresAdapter implements StorageAdapter {
-  private client: PoolClient | Pool;
+  private readonly pool: Pool;
+  private txClient: PoolClient | null = null;
+
   constructor(conn: unknown) {
-    this.client = conn as PoolClient | Pool;
+    this.pool = conn as Pool;
   }
 
   public async execute<T = Record<string, unknown>>(
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
-    const result = await this.client.query(operation, binds);
+    const client = this.txClient ?? this.pool;
+    const result = await client.query(operation, binds);
     return result.rows as T[];
   }
 
   public async begin(): Promise<void> {
-    await this.client.query('BEGIN');
+    this.txClient = await this.pool.connect();
+    await this.txClient.query('BEGIN');
   }
+
   public async commit(): Promise<void> {
-    await this.client.query('COMMIT');
+    if (this.txClient) {
+      const client = this.txClient;
+      this.txClient = null;
+      try {
+        await client.query('COMMIT');
+        client.release();
+      } catch (e) {
+        // Connection may be in an unknown state after a failed COMMIT — destroy it.
+        client.release(true);
+        throw e;
+      }
+    }
   }
+
   public async rollback(): Promise<void> {
-    await this.client.query('ROLLBACK');
+    if (this.txClient) {
+      const client = this.txClient;
+      this.txClient = null;
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // Connection may be terminated — that's fine, we're rolling back anyway.
+      } finally {
+        // Always release. Pass true to destroy rather than returning a bad connection to the pool.
+        client.release(true);
+      }
+    }
   }
+
   public getDialect(): string {
     return 'postgresql';
   }
 
   public close(): void {
-    // If it's a PoolClient, release it back to the user's pool.
-    if ('release' in this.client && typeof this.client.release === 'function') {
-      this.client.release();
+    // Release any open transaction client — never call pool.end(), caller owns pool lifecycle.
+    if (this.txClient) {
+      this.txClient.release();
+      this.txClient = null;
     }
   }
 }

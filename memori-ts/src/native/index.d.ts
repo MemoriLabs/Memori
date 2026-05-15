@@ -61,7 +61,7 @@ export interface NapiMessage {
 }
 
 export interface NapiRecallObject {
-  id: number;
+  id: number | string;
   content: string;
   rankScore?: number;
   similarity?: number;
@@ -72,8 +72,8 @@ export interface NapiRecallObject {
 export interface NapiRecallSummary {
   content: string;
   dateCreated: string;
-  entityFactId?: number;
-  factId?: number;
+  entityFactId?: number | string;
+  factId?: number | string;
 }
 
 export interface NapiRetrievalRequest {

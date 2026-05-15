@@ -3,13 +3,13 @@ use crate::types::*;
 use dashmap::DashMap;
 use engine_orchestrator::EngineOrchestrator;
 use engine_orchestrator::search::FactId;
-use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, WriteAck};
+use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, RankedFact, WriteAck};
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::panic::catch_unwind;
-use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
+use std::sync::{Arc, Mutex};
 
 #[napi]
 pub struct MemoriEngine {
@@ -23,19 +23,30 @@ pub struct MemoriEngine {
 impl MemoriEngine {
     #[napi(constructor)]
     pub fn new(
+        env: Env,
         model_name: Option<String>,
         fetch_embeddings_cb: ThreadsafeFunction<(u32, String)>,
         fetch_facts_by_ids_cb: ThreadsafeFunction<(u32, String)>,
         write_batch_cb: ThreadsafeFunction<(u32, String)>,
     ) -> Result<Self> {
+        // Unref all three callbacks so they don't keep the Node.js event loop
+        // alive. The callbacks remain fully functional when called from Rust;
+        // they just no longer prevent the process from exiting naturally once
+        // all other handles (e.g. the DB pool) are closed.
+        unsafe {
+            napi::sys::napi_unref_threadsafe_function(env.raw(), fetch_embeddings_cb.raw());
+            napi::sys::napi_unref_threadsafe_function(env.raw(), fetch_facts_by_ids_cb.raw());
+            napi::sys::napi_unref_threadsafe_function(env.raw(), write_batch_cb.raw());
+        }
+
         let pending_embeddings = Arc::new(DashMap::new());
         let pending_facts = Arc::new(DashMap::new());
         let pending_writes = Arc::new(DashMap::new());
 
         let bridge = Arc::new(NodeStorageBridge {
-            fetch_embeddings_tsfn: fetch_embeddings_cb,
-            fetch_facts_by_ids_tsfn: fetch_facts_by_ids_cb,
-            write_batch_tsfn: write_batch_cb,
+            fetch_embeddings_tsfn: Mutex::new(Some(fetch_embeddings_cb)),
+            fetch_facts_by_ids_tsfn: Mutex::new(Some(fetch_facts_by_ids_cb)),
+            write_batch_tsfn: Mutex::new(Some(write_batch_cb)),
             pending_embeddings: pending_embeddings.clone(),
             pending_facts: pending_facts.clone(),
             pending_writes: pending_writes.clone(),
@@ -138,12 +149,44 @@ impl MemoriEngine {
         tokio::task::spawn_blocking(move || {
             let req = serde_json::from_value(serde_json::to_value(&request).unwrap())
                 .map_err(|e| Error::from_reason(format!("Invalid retrieval request: {}", e)))?;
-            let results = inner
+            let results: Vec<RankedFact> = inner
                 .retrieve(req)
                 .map_err(|e| Error::from_reason(e.to_string()))?;
-            let napi_results: Vec<NapiRecallObject> =
-                serde_json::from_value(serde_json::to_value(&results).unwrap())
-                    .map_err(|e| Error::from_reason(e.to_string()))?;
+            let napi_results = results
+                .into_iter()
+                .map(|r| {
+                    let id = match r.id {
+                        FactId::Int(n) => Either::A(n),
+                        FactId::String(s) => Either::B(s),
+                    };
+                    let summaries = if r.summaries.is_empty() {
+                        None
+                    } else {
+                        Some(
+                            r.summaries
+                                .into_iter()
+                                .map(|s| NapiRecallSummary {
+                                    content: s["content"].as_str().unwrap_or("").to_string(),
+                                    date_created: s["date_created"]
+                                        .as_str()
+                                        .unwrap_or("")
+                                        .to_string(),
+                                    entity_fact_id: fact_id_from_json(&s["entity_fact_id"]),
+                                    fact_id: fact_id_from_json(&s["fact_id"]),
+                                })
+                                .collect(),
+                        )
+                    };
+                    NapiRecallObject {
+                        id,
+                        content: r.content,
+                        rank_score: Some(r.rank_score as f64),
+                        similarity: Some(r.similarity as f64),
+                        date_created: Some(r.date_created),
+                        summaries,
+                    }
+                })
+                .collect();
             Ok(napi_results)
         })
         .await
@@ -198,5 +241,13 @@ impl MemoriEngine {
     #[napi]
     pub fn shutdown(&self) {
         self.inner.shutdown();
+    }
+}
+
+fn fact_id_from_json(v: &serde_json::Value) -> Option<Either<i64, String>> {
+    match v {
+        serde_json::Value::Number(n) => n.as_i64().map(Either::A),
+        serde_json::Value::String(s) => Some(Either::B(s.clone())),
+        _ => None,
     }
 }

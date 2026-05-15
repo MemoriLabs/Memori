@@ -21,8 +21,8 @@ class TEI:
     timeout: int | None = 30
     headers: dict[str, str] | None = None
 
-    def _request_headers(self) -> dict[str, str]:
-        base = {"Content-Type": "application/json"}
+    def _request_headers(self) -> dict[str, str | bytes]:
+        base: dict[str, str | bytes] = {"Content-Type": "application/json"}
         if self.headers:
             base.update(self.headers)
         return base

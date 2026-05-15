@@ -14,7 +14,7 @@ export interface RetrievalRequest {
  * @internal
  */
 export interface RecallObject {
-  id: number;
+  id: number | string;
   content: string;
   rank_score?: number;
   similarity?: number;
@@ -26,7 +26,7 @@ export interface RecallObject {
  * Single row from the native N-API `retrieve` response (camelCase before mapping to `RecallObject`).
  */
 export interface NapiRecallRow {
-  id: number;
+  id: number | string;
   content: string;
   rankScore?: number;
   similarity?: number;
@@ -34,8 +34,8 @@ export interface NapiRecallRow {
   summaries?: Array<{
     content: string;
     dateCreated: string;
-    entityFactId?: number;
-    factId?: number;
+    entityFactId?: number | string;
+    factId?: number | string;
   }>;
 }
 
@@ -51,8 +51,8 @@ export type RecallItem = string | RecallObject;
 export interface RecallSummary {
   content: string;
   date_created: string;
-  entity_fact_id: number;
-  fact_id: number;
+  entity_fact_id: number | string;
+  fact_id: number | string;
 }
 
 /**
