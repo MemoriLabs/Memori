@@ -93,7 +93,9 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         const hasSource = finalParams.source != null;
         const hasSignal = finalParams.signal != null;
         if (hasSource !== hasSignal) {
-          const errorResult = { error: 'source and signal must be provided together or both omitted' };
+          const errorResult = {
+            error: 'source and signal must be provided together or both omitted',
+          };
           logger.warn(`memori_recall rejected: ${JSON.stringify(errorResult)}`);
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
@@ -112,10 +114,10 @@ export function createMemoriRecallTool(deps: ToolDeps) {
           strategy: 'pattern',
           task: 'result',
         };
-        if (hasSource && VALID_PAIRS[finalParams.source!] !== finalParams.signal) {
-
+        const source = finalParams.source;
+        if (hasSource && source != null && VALID_PAIRS[source] !== finalParams.signal) {
           const errorResult = {
-            error: `Invalid (source, signal) pair: (${finalParams.source}, ${finalParams.signal}). Expected signal for source "${finalParams.source}" is "${VALID_PAIRS[finalParams.source!]}".`,
+            error: `Invalid (source, signal) pair: (${source}, ${finalParams.signal}). Expected signal for source "${source}" is "${VALID_PAIRS[source]}".`,
           };
           logger.warn(`memori_recall rejected: ${JSON.stringify(errorResult)}`);
           return {
