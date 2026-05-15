@@ -57,36 +57,29 @@ Prefer targeted recall over broad queries.
 - `projectId` → project or workspace context
 - `sessionId` → specific session
 - `dateStart` / `dateEnd` → time-bounded recall
-- `source` → type of memory
-- `signal` → how the memory was derived
+- `source` → type of memory (must be paired with `signal` from the allowed combinations below)
+- `signal` → how the memory was derived (must be paired with `source` from the allowed combinations below)
 
 > Note: If a `sessionId` is provided, a `projectId` must also be provided.
 > All timestamps are stored in **UTC**.
 
-### Memory filters
+### Allowed source + signal combinations
 
-- `source`:
-  - constraint
-  - decision
-  - execution
-  - fact
-  - insight
-  - instruction
-  - status
-  - strategy
-  - task
+`source` and `signal` are not independent. They must be set together (or both omitted). Only the following `(source, signal)` pairs are valid:
 
-- `signal`:
-  - commit
-  - discovery
-  - failure
-  - inference
-  - pattern
-  - result
-  - update
-  - verification
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
 
-Use `source` and `signal` to prioritize high-signal memory when possible.
+Any combination of `source` and `signal` not in this list is invalid and must not be sent to `memori_recall`.
+
+Use one of the allowed `(source, signal)` pairs to prioritize high-signal memory when possible; never set `source` or `signal` independently.
 
 ### Default behavior (recall)
 
@@ -97,7 +90,7 @@ Use `source` and `signal` to prioritize high-signal memory when possible.
 
 - Start narrow (entity + project)
 - Add time bounds only when needed
-- Use `source` and `signal` to refine results
+- Use an allowed `(source, signal)` pair to refine results (never set them independently)
 - Expand scope only if needed
 - Do not recall on every turn
 

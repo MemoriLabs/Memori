@@ -51,6 +51,7 @@ google-credentials.json
 *.key
 
 AGENTS.md
+.codex/skills/
 
 tests/examples/*
 
