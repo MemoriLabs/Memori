@@ -22,6 +22,7 @@ from memori._exceptions import (
     warn_if_legacy_memorisdk_installed,
 )
 from memori._rust_core import RustCoreAdapter
+from memori.agent import Agent as AgentClient
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
 from memori.llm._providers import Google as LlmProviderGoogle
@@ -91,6 +92,8 @@ class Memori:
         conn: Callable[[], Any] | Any | None = None,
         debug_truncate: bool = True,
         *,
+        api_key: str | None = None,
+        base_url: str | None = None,
         use_rust_core: bool | None = None,
     ) -> None:
         """Initialize Memori with cloud mode or a user-provided connection.
@@ -98,12 +101,16 @@ class Memori:
         Args:
             conn: Database connection factory or managed connection instance.
             debug_truncate: When True, truncate long content in debug logging.
+            api_key: Optional Memori Cloud API key. Defaults to `MEMORI_API_KEY`.
+            base_url: Optional Memori Cloud API base URL. Defaults to `MEMORI_API_URL_BASE`.
             use_rust_core: When not None, overrides env for BYODB Rust engine use.
         """
         from memori._logging import set_truncate_enabled
 
         self.config = Config()
-        self.config.api_key = os.environ.get("MEMORI_API_KEY", None)
+        self.config.api_key = api_key or os.environ.get("MEMORI_API_KEY", None)
+        if base_url is not None:
+            self.config.api_url_base = base_url
         self.config.session_id = uuid4()
         self.config.debug_truncate = debug_truncate
         set_truncate_enabled(debug_truncate)
@@ -121,6 +128,7 @@ class Memori:
         self.config.augmentation = AugmentationManager(self.config).start(conn)
         self.config.rust_core = RustCoreAdapter.maybe_create(self.config)
 
+        self.agent = AgentClient(self.config)
         self.augmentation = self.config.augmentation
         self.llm = LlmRegistry(self)
         self.agno = LlmProviderAgno(self)
@@ -145,7 +153,7 @@ class Memori:
 
         self.config.cloud = True
         self.config.byodb = False
-        api_key = os.environ.get("MEMORI_API_KEY", None)
+        api_key = self.config.api_key
         if api_key is None or api_key == "":
             raise MissingMemoriApiKeyError()
         return None
@@ -214,6 +222,76 @@ class Memori:
             raise RuntimeError("entity_id cannot be greater than 100 characters")
 
         Recall(self.config).delete_entity_memories(entity_id)
+
+    def agent_recall(
+        self,
+        *,
+        query: str | None = None,
+        date_start: str | None = None,
+        date_end: str | None = None,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        signal: str | None = None,
+        source: str | None = None,
+    ) -> dict[str, Any]:
+        """Fetch memories from the Memori Cloud agent recall endpoint."""
+        return self.agent.recall(
+            query=query,
+            date_start=date_start,
+            date_end=date_end,
+            project_id=project_id,
+            session_id=session_id,
+            signal=signal,
+            source=source,
+        )
+
+    def agent_recall_summary(
+        self,
+        *,
+        date_start: str | None = None,
+        date_end: str | None = None,
+        project_id: str | None = None,
+        session_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Fetch summaries from the Memori Cloud agent recall summary endpoint."""
+        return self.agent.recall_summary(
+            date_start=date_start,
+            date_end=date_end,
+            project_id=project_id,
+            session_id=session_id,
+        )
+
+    def capture_agent_turn(
+        self,
+        *,
+        user_content: str,
+        assistant_content: str,
+        project_id: str,
+        session_id: str | None = None,
+        platform: str = "python",
+        trace: dict[str, Any] | None = None,
+        summary: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+        provider_sdk_version: str | None = None,
+    ) -> None:
+        """Capture an agent conversation turn for persistence and augmentation."""
+        self.agent.capture_turn(
+            user_content=user_content,
+            assistant_content=assistant_content,
+            project_id=project_id,
+            session_id=session_id,
+            platform=platform,
+            trace=trace,
+            summary=summary,
+            provider=provider,
+            model=model,
+            provider_sdk_version=provider_sdk_version,
+        )
+
+    def agent_feedback(self, content: str) -> None:
+        """Send agent integration feedback to Memori Cloud."""
+        self.agent.feedback(content)
 
     def close(self) -> None:
         """Close the underlying storage connection/session, if any.

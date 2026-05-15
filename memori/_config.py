@@ -59,6 +59,7 @@ class Embeddings:
 class Config:
     def __init__(self):
         self.api_key = None
+        self.api_url_base = _env_str("MEMORI_API_URL_BASE", None)
         self.augmentation = None
         self.cache = Cache()
         self.debug_truncate = True  # Truncate long content in debug logs

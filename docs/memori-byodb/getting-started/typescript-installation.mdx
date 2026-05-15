@@ -1,0 +1,238 @@
+---
+title: Installation (TypeScript)
+description: Install the Memori TypeScript SDK and connect your own database for Memori BYODB.
+---
+
+# Installation (TypeScript)
+
+Get the Memori TypeScript SDK installed and connected to your own database.
+
+<Note>
+  This page covers the TypeScript SDK for Memori BYODB. For the Python SDK, see
+  the [Installation (Python)](/docs/memori-byodb/getting-started/installation) page.
+</Note>
+
+## Install Memori
+
+<CodeGroup title="Install Memori (TypeScript)">
+
+```bash {{ title: 'npm' }}
+npm install @memorilabs/memori
+```
+
+```bash {{ title: 'yarn' }}
+yarn add @memorilabs/memori
+```
+
+```bash {{ title: 'pnpm' }}
+pnpm add @memorilabs/memori
+```
+
+</CodeGroup>
+
+## Install Your Database Driver
+
+Memori supports MySQL/MariaDB, PostgreSQL, and SQLite through raw drivers. Install the package for your preferred setup:
+
+<CodeGroup title="Database Drivers">
+
+```bash {{ title: 'MySQL (mysql2)' }}
+npm install mysql2
+```
+
+```bash {{ title: 'PostgreSQL (pg)' }}
+npm install pg
+npm install --save-dev @types/pg
+```
+
+```bash {{ title: 'SQLite (better-sqlite3)' }}
+npm install better-sqlite3
+npm install --save-dev @types/better-sqlite3
+```
+
+</CodeGroup>
+
+## Connection Patterns
+
+| Pattern        | Factory to pass to `conn`                         | Works With              |
+| -------------- | ------------------------------------------------- | ----------------------- |
+| mysql2         | `() => mysql.createPool(connectionString)`        | MySQL, MariaDB          |
+| pg             | `() => new pg.Pool({ connectionString })`         | PostgreSQL, CockroachDB |
+| better-sqlite3 | `() => new Database('memori.db')`                 | SQLite                  |
+
+## Connection Examples
+
+<CodeGroup title="Database Setup">
+
+```typescript {{ title: 'SQLite' }}
+import Database from 'better-sqlite3';
+import { Memori } from '@memorilabs/memori';
+
+const db = new Database('memori.db');
+const mem = new Memori({ conn: () => db });
+```
+
+```typescript {{ title: 'PostgreSQL' }}
+import pg from 'pg';
+import { Memori } from '@memorilabs/memori';
+
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_CONNECTION_STRING,
+});
+const mem = new Memori({ conn: () => pool });
+```
+
+```typescript {{ title: 'MySQL' }}
+import mysql from 'mysql2/promise';
+import { Memori } from '@memorilabs/memori';
+
+const pool = mysql.createPool(
+  process.env.DATABASE_CONNECTION_STRING!
+);
+const mem = new Memori({ conn: () => pool });
+```
+
+</CodeGroup>
+
+## Using an ORM?
+
+Memori needs a direct connection factory, but that doesn't mean you have to stop using your ORM. You're already creating a raw database pool for your ORM — just pass that same pool to Memori. Both share it simultaneously with no conflict.
+
+<CodeGroup title="ORM Pool Sharing">
+
+```typescript {{ title: 'Drizzle' }}
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Memori } from '@memorilabs/memori';
+
+// The pool you already create for Drizzle
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_CONNECTION_STRING });
+const db = drizzle(pool);
+
+// Pass the same pool to Memori — no extra connection needed
+const mem = new Memori({ conn: () => pool });
+```
+
+```typescript {{ title: 'Sequelize' }}
+import mysql from 'mysql2/promise';
+import { Sequelize } from 'sequelize';
+import { Memori } from '@memorilabs/memori';
+
+// Sequelize manages its own pool; create a separate pool for Memori
+const pool = mysql.createPool({ uri: process.env.DATABASE_CONNECTION_STRING });
+const sequelize = new Sequelize(process.env.DATABASE_CONNECTION_STRING!, {
+  dialect: 'mysql',
+  logging: false,
+});
+
+const mem = new Memori({ conn: () => pool });
+```
+
+```typescript {{ title: 'MikroORM' }}
+import pg from 'pg';
+import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { Memori } from '@memorilabs/memori';
+
+// Create the pool first, then pass it to both
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_CONNECTION_STRING });
+const orm = await MikroORM.init({
+  driver: PostgreSqlDriver,
+  clientUrl: process.env.DATABASE_CONNECTION_STRING,
+  entities: [/* your entities */],
+});
+
+const mem = new Memori({ conn: () => pool });
+```
+
+</CodeGroup>
+
+Your ORM handles your application's queries; Memori handles its own memory tables — same underlying pool, fully independent. See the [ORMs guide](/docs/memori-byodb/databases/typescript-orm) for complete examples.
+
+## Create the Schema
+
+After setting up your connection, call `build()` once to create the Memori tables in your database. This only needs to run the first time, or after upgrading Memori.
+
+```typescript
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+await mem.config.storage.build();
+```
+
+## Close Your Connection
+
+Memori tears down its native engine automatically when the process exits — no cleanup call needed on your end. You only need to close the database connection you own:
+
+```typescript
+// SQLite (better-sqlite3)
+db.close();
+
+// pg or mysql2 Pool
+await pool.end();
+```
+
+## Install Your LLM Provider
+
+Install the SDK for your preferred LLM provider:
+
+<CodeGroup title="LLM Provider SDKs">
+
+```bash {{ title: 'OpenAI' }}
+npm install openai
+```
+
+```bash {{ title: 'Anthropic' }}
+npm install @anthropic-ai/sdk
+```
+
+```bash {{ title: 'Google Gemini' }}
+npm install @google/genai
+```
+
+</CodeGroup>
+
+## Set Your LLM Provider Key
+
+```bash
+# OpenAI
+export OPENAI_API_KEY="your-openai-key"
+
+# Anthropic
+export ANTHROPIC_API_KEY="your-anthropic-key"
+
+# Google Gemini
+export GOOGLE_API_KEY="your-google-key"
+```
+
+## Set Up Your Memori API Key (Optional)
+
+A Memori API key unlocks higher augmentation quotas (5,000/month vs 100 without a key). Sign up directly from the CLI:
+
+```bash
+memori sign-up your-email@example.com
+```
+
+Then set it as an environment variable:
+
+```bash
+export MEMORI_API_KEY="your-api-key-here"
+```
+
+Or add it to a `.env` file:
+
+```
+MEMORI_API_KEY=your-api-key-here
+```
+
+Check your current quota at any time:
+
+```bash
+memori quota
+```
+
+## Verify Installation
+
+```bash
+npx tsx -e "import { Memori } from '@memorilabs/memori'; console.log('Memori installed successfully')"
+```

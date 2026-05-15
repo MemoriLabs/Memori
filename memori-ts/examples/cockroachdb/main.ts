@@ -18,7 +18,7 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const pool = new pg.Pool({ connectionString: databaseConnectionString });
 
-const mem = new Memori({ conn: pool }).llm.register(client);
+const mem = new Memori({ conn: () => pool }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -54,6 +54,5 @@ try {
   // line program, we need to wait for it to finish.
   await mem.augmentation.wait();
 } finally {
-  await mem.config.storage.close();
   await pool.end();
 }

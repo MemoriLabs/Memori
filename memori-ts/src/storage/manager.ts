@@ -1,4 +1,4 @@
-import { StorageAdapter, BaseDriver } from './base.js';
+import { StorageAdapter, BaseDriver, ConnFactory } from './base.js';
 import { Registry } from './registry.js';
 import { Builder } from './builder.js';
 import { Config } from '../core/config.js';
@@ -12,11 +12,6 @@ import {
 
 // Side-effect imports: each module calls Registry.registerAdapter / Registry.registerDriver
 // on load, so the Registry can auto-detect the connection type at runtime.
-import './adapters/drizzle.js';
-import './adapters/typeorm.js';
-import './adapters/sequelize.js';
-import './adapters/mikro.js';
-
 import './adapters/postgresql.js';
 import './drivers/postgresql.js';
 import './adapters/sqlite.js';
@@ -32,15 +27,17 @@ import './drivers/mysql.js';
  * object via the `Registry` and delegates all SQL to the appropriate `BaseDriver`.
  */
 export class StorageManager implements StorageBridge {
+  private readonly factory: ConnFactory;
   private readonly adapter: StorageAdapter;
   private readonly driver: BaseDriver;
   private readonly config: Config;
   private embedder?: (texts: string[]) => Float32Array[];
   private engineShutdown?: () => void;
 
-  constructor(rawConnection: unknown) {
+  constructor(factory: ConnFactory) {
+    this.factory = factory;
     this.config = new Config();
-    this.adapter = Registry.getAdapter(rawConnection);
+    this.adapter = Registry.getAdapter(factory);
     this.driver = Registry.getDriver(this.adapter);
   }
 
@@ -110,121 +107,137 @@ export class StorageManager implements StorageBridge {
    */
   private async writeBatchAsync(batch: WriteBatch): Promise<WriteAck> {
     if (batch.ops.length === 0) return { written_ops: 0 };
-    let written = 0;
 
-    try {
-      await this.adapter.begin();
+    // CockroachDB (and PostgreSQL with SERIALIZABLE) can return code 40001 when a
+    // transaction conflicts with a recent commit. The correct response is to retry
+    // the entire transaction from scratch with a fresh connection.
+    const MAX_RETRIES = 5;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      let written = 0;
 
-      for (const op of batch.ops) {
-        switch (op.op_type) {
-          case 'conversation_message.create': {
-            const sId = await this.driver.session.create(op.payload.conversation_id, null, null);
-            const convId = await this.driver.conversation.create(
-              sId || op.payload.conversation_id,
-              30
-            );
-            const internalConvId = convId || op.payload.conversation_id;
-            for (const message of op.payload.messages) {
-              await this.driver.conversationMessage.create(
-                internalConvId,
-                message.role,
-                'text',
-                message.content
-              );
-            }
-            break;
-          }
-          case 'entity_fact.create': {
-            const eId = await this.driver.entity.create(op.payload.entity_id);
-            // driver.entity.create uses INSERT OR IGNORE and returns the internal row ID;
-            // fall back to external_id if the row pre-existed and no ID was returned
-            const internalEntityId = eId || op.payload.entity_id;
-            let factEmbeddings = op.payload.fact_embeddings;
-            if (
-              (!factEmbeddings || factEmbeddings.length === 0) &&
-              this.embedder &&
-              op.payload.facts.length > 0
-            ) {
-              factEmbeddings = this.embedder(op.payload.facts);
-            }
-            let internalConvId = null;
-            if (op.payload.conversation_id) {
-              const sId = await this.driver.session.create(
-                op.payload.conversation_id,
-                internalEntityId,
-                null
-              );
-              // 30 = conversation inactivity timeout in minutes before a new one is created
-              internalConvId = await this.driver.conversation.create(
+      // Each write batch gets its own adapter+driver pair so its dedicated
+      // transaction connection never races with concurrent reads on this.adapter.
+      const txAdapter = Registry.getAdapter(this.factory);
+      const txDriver = Registry.getDriver(txAdapter);
+
+      try {
+        await txAdapter.begin();
+
+        for (const op of batch.ops) {
+          switch (op.op_type) {
+            case 'conversation_message.create': {
+              const sId = await txDriver.session.create(op.payload.conversation_id, null, null);
+              const convId = await txDriver.conversation.create(
                 sId || op.payload.conversation_id,
                 30
               );
+              const internalConvId = convId || op.payload.conversation_id;
+              for (const message of op.payload.messages) {
+                await txDriver.conversationMessage.create(
+                  internalConvId,
+                  message.role,
+                  'text',
+                  message.content
+                );
+              }
+              break;
             }
-            await this.driver.entityFact.create(
-              internalEntityId,
-              op.payload.facts,
-              factEmbeddings,
-              internalConvId
-            );
-            break;
-          }
-          case 'knowledge_graph.create': {
-            const eId = await this.driver.entity.create(op.payload.entity_id);
-            await this.driver.knowledgeGraph.create(
-              eId || op.payload.entity_id,
-              op.payload.semantic_triples
-            );
-            break;
-          }
-          case 'process_attribute.create': {
-            const pId = await this.driver.process.create(op.payload.process_id);
-            await this.driver.processAttribute.create(
-              pId || op.payload.process_id,
-              Array.isArray(op.payload.attributes)
-                ? op.payload.attributes
-                : Object.values(op.payload.attributes)
-            );
-            break;
-          }
-          case 'conversation.update': {
-            const sId = await this.driver.session.create(op.payload.conversation_id, null, null);
-            const convId = await this.driver.conversation.create(
-              sId || op.payload.conversation_id,
-              30
-            );
-            await this.driver.conversation.update(
-              convId || op.payload.conversation_id,
-              op.payload.summary
-            );
-            break;
-          }
-          case 'upsert_fact': {
-            const eId = await this.driver.entity.create(op.payload.entity_id);
-            if (op.payload.content)
-              await this.driver.entityFact.createWithoutEmbedding(
-                eId || op.payload.entity_id,
-                op.payload.content
+            case 'entity_fact.create': {
+              const eId = await txDriver.entity.create(op.payload.entity_id);
+              // driver.entity.create uses INSERT OR IGNORE and returns the internal row ID;
+              // fall back to external_id if the row pre-existed and no ID was returned
+              const internalEntityId = eId || op.payload.entity_id;
+              let factEmbeddings = op.payload.fact_embeddings;
+              if (
+                (!factEmbeddings || factEmbeddings.length === 0) &&
+                this.embedder &&
+                op.payload.facts.length > 0
+              ) {
+                factEmbeddings = this.embedder(op.payload.facts);
+              }
+              let internalConvId = null;
+              if (op.payload.conversation_id) {
+                const sId = await txDriver.session.create(
+                  op.payload.conversation_id,
+                  internalEntityId,
+                  null
+                );
+                // 30 = conversation inactivity timeout in minutes before a new one is created
+                internalConvId = await txDriver.conversation.create(
+                  sId || op.payload.conversation_id,
+                  30
+                );
+              }
+              await txDriver.entityFact.create(
+                internalEntityId,
+                op.payload.facts,
+                factEmbeddings,
+                internalConvId
               );
-            break;
+              break;
+            }
+            case 'knowledge_graph.create': {
+              const eId = await txDriver.entity.create(op.payload.entity_id);
+              await txDriver.knowledgeGraph.create(
+                eId || op.payload.entity_id,
+                op.payload.semantic_triples
+              );
+              break;
+            }
+            case 'process_attribute.create': {
+              const pId = await txDriver.process.create(op.payload.process_id);
+              await txDriver.processAttribute.create(
+                pId || op.payload.process_id,
+                Array.isArray(op.payload.attributes)
+                  ? op.payload.attributes
+                  : Object.values(op.payload.attributes)
+              );
+              break;
+            }
+            case 'conversation.update': {
+              const sId = await txDriver.session.create(op.payload.conversation_id, null, null);
+              const convId = await txDriver.conversation.create(
+                sId || op.payload.conversation_id,
+                30
+              );
+              await txDriver.conversation.update(
+                convId || op.payload.conversation_id,
+                op.payload.summary
+              );
+              break;
+            }
+            case 'upsert_fact': {
+              const eId = await txDriver.entity.create(op.payload.entity_id);
+              if (op.payload.content)
+                await txDriver.entityFact.createWithoutEmbedding(
+                  eId || op.payload.entity_id,
+                  op.payload.content
+                );
+              break;
+            }
+            default: {
+              throw new Error(`Unsupported write op type: ${(op as { op_type: string }).op_type}`);
+            }
           }
-          default: {
-            throw new Error(`Unsupported write op type: ${(op as { op_type: string }).op_type}`);
-          }
+          written++;
         }
-        written++;
-      }
 
-      await this.adapter.commit();
-    } catch (e) {
-      console.error(`[Memori] Async WriteBatch failed, rolling back:`, e);
-      try {
-        await this.adapter.rollback();
-      } catch {
-        // rollback failure is non-fatal
+        await txAdapter.commit();
+        return { written_ops: written };
+      } catch (e) {
+        try {
+          await txAdapter.rollback();
+        } catch {
+          // rollback failure is non-fatal
+        }
+        if ((e as { code?: string }).code === '40001' && attempt < MAX_RETRIES) {
+          await new Promise((r) => setTimeout(r, Math.min(50 * 2 ** attempt, 1000)));
+          continue;
+        }
+        console.error(`[Memori] Async WriteBatch failed, rolling back:`, e);
+        return { written_ops: 0 };
       }
-      return { written_ops: 0 };
     }
-
-    return { written_ops: written };
+    return { written_ops: 0 };
   }
 }

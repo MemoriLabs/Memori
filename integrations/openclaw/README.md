@@ -75,7 +75,7 @@ It runs **after the agent responds** and does not impact latency.
 
 ---
 
-### 2. Agent-controlled recall
+### 2. Agent-Controlled Intelligent Recall
 
 Recall is **explicit and initiated by the agent**.
 

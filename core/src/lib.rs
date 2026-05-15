@@ -198,6 +198,10 @@ impl EngineOrchestrator {
     pub fn shutdown(&self) {
         self.postprocess_runtime.shutdown();
         self.augmentation_runtime.shutdown();
+
+        if let Some(bridge) = &self.storage_bridge {
+            bridge.shutdown();
+        }
     }
 }
 

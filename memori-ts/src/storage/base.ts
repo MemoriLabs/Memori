@@ -1,5 +1,7 @@
 import type { CandidateFactRow, EmbeddingRow, SemanticTriplePayload } from '../types/storage.js';
 
+export type ConnFactory = () => unknown;
+
 export type SqlBindValue =
   | string
   | number

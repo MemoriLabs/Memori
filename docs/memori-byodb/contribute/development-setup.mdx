@@ -16,9 +16,14 @@ This guide walks you through setting up a local development environment for work
 
 Before you begin, make sure you have the following installed on your system:
 
-- **Python 3.10 or higher** — Memori requires Python 3.10+. Check your version with `python --version`.
 - **git** — For cloning the repository and managing branches.
+
+**Python:**
+- **Python 3.10 or higher** — Check your version with `python --version`.
 - **pip** — Python's package manager (usually included with Python).
+
+**TypeScript:**
+- **Node.js 20 or higher** — Check your version with `node --version`.
 
 ## Clone the Repository
 
@@ -38,67 +43,50 @@ git fetch upstream
 
 ## Install Dependencies
 
-It is recommended to use a virtual environment to avoid conflicts with other Python projects:
+<CodeGroup title="Install Dependencies">
 
-<CodeGroup title="Virtual Environment Setup">
-
-```bash {{ title: 'venv (Built-in)' }}
+```bash {{ title: 'Python' }}
+# Create and activate a virtual environment
 python -m venv .venv
 source .venv/bin/activate    # macOS/Linux
 # .venv\Scripts\activate     # Windows
+
+# Install with development dependencies
+pip install -e ".[dev]"
 ```
 
-```bash {{ title: 'conda' }}
-conda create -n memori python=3.12
-conda activate memori
+```bash {{ title: 'TypeScript' }}
+cd memori-ts
+npm install
 ```
 
 </CodeGroup>
 
-Once your virtual environment is active, install Memori with development dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-This installs Memori in editable mode (`-e`) so that changes you make to the source code are immediately reflected without reinstalling. The `[dev]` extra includes testing and linting tools.
-
-If the project uses a `requirements-dev.txt` file instead, install with:
-
-```bash
-pip install -e .
-pip install -r requirements-dev.txt
-```
+The Python `-e` flag installs Memori in editable mode so changes to the source code are immediately reflected without reinstalling. The `[dev]` extra includes testing and linting tools.
 
 ## Running Tests
 
-Memori uses pytest for its test suite. Run all tests from the project root:
+<CodeGroup title="Run Tests">
 
-```bash
+```bash {{ title: 'Python' }}
+# Run all tests
 pytest
-```
 
-To run tests with verbose output:
-
-```bash
+# Run with verbose output
 pytest -v
-```
 
-To run a specific test file or test function:
+# Run a specific test file
+pytest tests/test_config.py
 
-```bash
-# Run all tests in a specific file
-pytest tests/test_openai.py
-
-# Run a specific test function
-pytest tests/test_openai.py::test_sync_completion
-```
-
-To run tests with coverage reporting:
-
-```bash
+# Run with coverage
 pytest --cov=memori --cov-report=term-missing
 ```
+
+```bash {{ title: 'TypeScript' }}
+npm test
+```
+
+</CodeGroup>
 
 ## Local Development Workflow
 
@@ -110,25 +98,45 @@ Here is a typical workflow for making changes to Memori:
    git checkout -b feat/my-new-feature
    ```
 
-2. **Make your changes** — Edit the source code in the `memori/` directory.
+2. **Make your changes** — Edit the source code in the `memori/` directory (Python) or `memori-ts/src/` directory (TypeScript).
 
-3. **Write tests** — Add or update tests in the `tests/` directory to cover your changes.
+3. **Write tests** — Add or update tests in the `tests/` directory (Python) or `memori-ts/` (TypeScript) to cover your changes.
 
 4. **Run the tests** to make sure nothing is broken:
 
-   ```bash
+   <CodeGroup title="Run Tests">
+
+   ```bash {{ title: 'Python' }}
    pytest
    ```
 
-5. **Check code style** — The project uses Ruff for linting and formatting:
+   ```bash {{ title: 'TypeScript' }}
+   npm test
+   ```
 
-   ```bash
+   </CodeGroup>
+
+5. **Check code style:**
+
+   <CodeGroup title="Code Style">
+
+   ```bash {{ title: 'Python' }}
    # Lint
    ruff check .
 
    # Format
    ruff format --check .
    ```
+
+   ```bash {{ title: 'TypeScript' }}
+   # Lint
+   npm run lint
+
+   # Type check
+   npm run typecheck
+   ```
+
+   </CodeGroup>
 
 6. **Commit your changes** with a descriptive message:
 
@@ -146,11 +154,12 @@ Here is a typical workflow for making changes to Memori:
 
 Here is a high-level overview of the Memori repository structure:
 
-| Directory   | Purpose                         |
-| ----------- | ------------------------------- |
-| `memori/`   | Core library source code        |
-| `tests/`    | Test suite (pytest)             |
-| `docs/`     | Documentation source files      |
-| `examples/` | Example scripts and usage demos |
+| Directory    | Purpose                                   |
+| ------------ | ----------------------------------------- |
+| `memori/`    | Python library source code                |
+| `memori-ts/` | TypeScript library source code            |
+| `tests/`     | Python test suite (pytest)                |
+| `docs/`      | Documentation source files                |
+| `examples/`  | Example scripts and usage demos           |
 
-The core integration logic for each LLM provider typically lives in separate modules within the `memori/` directory. When adding support for a new provider, look at existing integrations (such as OpenAI or Anthropic) as templates.
+The core integration logic for each LLM provider lives in separate modules within `memori/` (Python) and `memori-ts/src/` (TypeScript). When adding support for a new provider, look at existing integrations (such as OpenAI or Anthropic) as templates.

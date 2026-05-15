@@ -19,7 +19,7 @@ We use `uv` for fast dependency management and Docker for integration testing. Y
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer
 - Docker and Docker Compose (for integration tests)
 - Make
-- Node.js 18+
+- Node.js 20+
 - npm
 
 ### Rust Toolchain (when needed)
@@ -178,8 +178,7 @@ Notes:
 
 - `sync-native` is the explicit native step for TypeScript BYODB.
 - Rust is required for `sync-native` / `build:dev`, but not for regular unit tests.
-- For short-lived BYODB scripts, always call `await mem.config.storage.close()` to ensure the
-  native worker runtime shuts down cleanly before process exit.
+- For short-lived BYODB scripts, call `await mem.augmentation.wait()` before exit to ensure all background writes complete.
 
 ## Testing
 

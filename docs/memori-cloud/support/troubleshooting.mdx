@@ -16,7 +16,7 @@ Run `python --version` to check, then `pip install --upgrade pip && pip install 
 
 ### TypeScript
 
-**If `npm install @memorilabs/memori` fails** — Requires Node.js 18+.
+**If `npm install @memorilabs/memori` fails** — Requires Node.js 20+.
 Run `node --version` to check, then update Node.js and retry.
 
 **Module resolution errors** — Ensure your `tsconfig.json` uses `"moduleResolution": "node"` or `"bundler"`. The SDK ships ESM with TypeScript declarations.
@@ -77,22 +77,13 @@ mem.attribution('user_123', 'my_app');
 
 Enable debug logging to inspect request flow, attribution, and augmentation behavior when troubleshooting missing memories or API errors. Use it temporarily in development, since logs can include sensitive request metadata.
 
-<CodeGroup title="Debug Logging">
-
-```python {{ title: 'Python' }}
+```python
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
 
 from memori import Memori
 mem = Memori()
 ```
-
-```typescript {{ title: 'TypeScript' }}
-import { Memori } from '@memorilabs/memori';
-const mem = new Memori({ debug: true });
-```
-
-</CodeGroup>
 
 ## Getting Help
 

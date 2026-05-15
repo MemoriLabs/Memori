@@ -12,11 +12,6 @@ export function createMemoriRecallTool(deps: ToolDeps) {
     parameters: {
       type: 'object',
       properties: {
-        query: {
-          type: 'string',
-          description:
-            'REQUIRED: The natural language search query to find specific facts (e.g., "What database did we decide to use?", "Ryan\'s dogs"). DO NOT use wildcards like "*" or regex. This is a semantic search, so use real words.',
-        },
         dateStart: {
           type: 'string',
           description:
@@ -67,14 +62,11 @@ export function createMemoriRecallTool(deps: ToolDeps) {
           ],
         },
       },
-      // Force the LLM to ALWAYS provide a search query
-      required: ['query'],
     },
 
     async execute(
       _toolCallId: string,
       params: {
-        query: string;
         dateStart?: string;
         dateEnd?: string;
         projectId?: string;

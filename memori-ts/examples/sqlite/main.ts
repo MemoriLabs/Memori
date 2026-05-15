@@ -15,7 +15,7 @@ const client = new OpenAI({
 
 const db = new Database('memori.db');
 
-const mem = new Memori({ conn: db }).llm.register(client);
+const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user-123', 'my-app');
 
 if (!mem.config.storage) {
@@ -51,5 +51,5 @@ try {
   // line program, we need to wait for it to finish.
   await mem.augmentation.wait();
 } finally {
-  await mem.config.storage.close();
+  db.close();
 }
