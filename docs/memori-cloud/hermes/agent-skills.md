@@ -34,7 +34,7 @@ Use it to understand:
 
 ## Quick Reference
 
-- `memori_recall`: retrieve precise memories by query, project, session, time range, source, or signal.
+- `memori_recall`: retrieve precise memories by query, project, session, time range, or an allowed source/signal pair.
 - `memori_recall_summary`: retrieve a state summary for session starts, daily briefs, or broad status checks.
 - `memori_feedback`: report irrelevant, missing, stale, or especially useful memory behavior.
 - `memori_signup`: create a Memori account or request an API key when the user explicitly asks.
