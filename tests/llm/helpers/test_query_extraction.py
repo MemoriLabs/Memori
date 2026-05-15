@@ -27,7 +27,7 @@ def test_extract_openai_multimodal_returns_string_not_list():
 
     # Contract 1: Must never return a list
     assert isinstance(result, str)
-    
+
     # Contract 2: Must extract all text and safely ignore non-text blocks
     assert result == "Can you analyze this diagram? What does the top box say?"
 
@@ -37,8 +37,9 @@ def test_extract_text_from_parts_ignores_non_strings():
     Behavioral Guarantee: The helper must never append non-strings to the
     extracted text list, preventing TypeError crashes on string joins.
     """
-    from memori.llm.helpers.query_extraction import extract_text_from_parts
     from types import SimpleNamespace
+
+    from memori.llm.helpers.query_extraction import extract_text_from_parts
 
     # Provide a list of parts that includes malformed text values
     parts = [
