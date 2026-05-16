@@ -221,8 +221,10 @@ class Conversation(BaseConversation):
             )
 
         summaries.sort(
-            key=lambda row: _normalize_datetime(row.get("date_created"))
-            or datetime.min.replace(tzinfo=timezone.utc),
+            key=lambda row: (
+                _normalize_datetime(row.get("date_created"))
+                or datetime.min.replace(tzinfo=timezone.utc)
+            ),
             reverse=True,
         )
         return summaries[:limit]

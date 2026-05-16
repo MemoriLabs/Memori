@@ -307,17 +307,13 @@ migrations = {
                     "collection": "memori_conversation",
                     "method": "create_index",
                     "args": [[("project_id", 1)]],
-                    "kwargs": {
-                        "name": "idx_memori_conversation_project_id"
-                    },
+                    "kwargs": {"name": "idx_memori_conversation_project_id"},
                 },
                 {
                     "collection": "memori_conversation_message",
                     "method": "create_index",
                     "args": [[("conversation_id", 1), ("source", 1), ("signal", 1)]],
-                    "kwargs": {
-                        "name": "idx_memori_conv_msg_source_signal"
-                    },
+                    "kwargs": {"name": "idx_memori_conv_msg_source_signal"},
                 },
             ],
         },

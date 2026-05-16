@@ -168,10 +168,14 @@ class Conversation(BaseConversation):
             clauses.append(f"s.uuid = :{len(params) + 1}")
             params.append(session_id)
         if date_start:
-            clauses.append(f"COALESCE(c.date_updated, c.date_created) >= :{len(params) + 1}")
+            clauses.append(
+                f"COALESCE(c.date_updated, c.date_created) >= :{len(params) + 1}"
+            )
             params.append(date_start)
         if date_end:
-            clauses.append(f"COALESCE(c.date_updated, c.date_created) <= :{len(params) + 1}")
+            clauses.append(
+                f"COALESCE(c.date_updated, c.date_created) <= :{len(params) + 1}"
+            )
             params.append(date_end)
 
         limit_idx = len(params) + 1
