@@ -103,7 +103,12 @@ class BaseConversation:
     def __init__(self, conn: BaseStorageAdapter):
         self.conn = conn
 
-    def create(self, session_id: int, timeout_minutes: int):
+    def create(
+        self,
+        session_id: int,
+        timeout_minutes: int,
+        project_id: str | None = None,
+    ):
         raise NotImplementedError
 
     def update(self, id: int, summary: str):
@@ -112,12 +117,34 @@ class BaseConversation:
     def read(self, id: int) -> dict | None:
         raise NotImplementedError
 
+    def search_summaries(
+        self,
+        entity_id: int,
+        *,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        date_start: str | None = None,
+        date_end: str | None = None,
+        limit: int = 20,
+    ) -> list[dict]:
+        raise NotImplementedError
+
 
 class BaseConversationMessage:
     def __init__(self, conn: BaseStorageAdapter):
         self.conn = conn
 
-    def create(self, conversation_id: int, role: str, type: str, content: str):
+    def create(
+        self,
+        conversation_id: int,
+        role: str,
+        type: str,
+        content: str,
+        *,
+        trace: str | None = None,
+        source: str | None = None,
+        signal: str | None = None,
+    ):
         raise NotImplementedError
 
 
@@ -126,6 +153,9 @@ class BaseConversationMessages:
         self.conn = conn
 
     def read(self, conversation_id: int):
+        raise NotImplementedError
+
+    def read_detailed(self, conversation_id: int):
         raise NotImplementedError
 
 

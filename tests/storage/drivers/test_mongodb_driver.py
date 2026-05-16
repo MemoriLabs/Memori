@@ -182,6 +182,7 @@ def test_conversation_create(mock_conn):
     assert insert_call[0][1] == "insert_one"
     doc = insert_call[0][2]
     assert doc["session_id"] == 789
+    assert doc["project_id"] is None
     assert doc["summary"] is None
     assert "uuid" in doc
 
@@ -260,6 +261,9 @@ def test_conversation_message_create(mock_conn):
     assert doc["role"] == "user"
     assert doc["type"] == "text"
     assert doc["content"] == "Hello, world!"
+    assert doc["trace"] is None
+    assert doc["source"] is None
+    assert doc["signal"] is None
     assert "uuid" in doc
     assert "date_created" in doc
 
@@ -676,10 +680,13 @@ def test_entity_fact_get_facts_by_ids(mock_conn):
             {
                 "_id": 99,
                 "summary": "User prefers concise responses",
+                "project_id": "project-123",
+                "session_id": 55,
                 "date_created": "2026-01-03 09:00:00",
                 "date_updated": None,
             }
         ],
+        [{"_id": 55, "uuid": "session-uuid"}],
     ]
 
     entity_fact = EntityFact(mock_conn)
@@ -696,6 +703,9 @@ def test_entity_fact_get_facts_by_ids(mock_conn):
         {
             "content": "User prefers concise responses",
             "date_created": "2026-01-03 09:00:00",
+            "project_id": "project-123",
+            "session_id": "session-uuid",
+            "conversation_id": 99,
         }
     ]
     assert result[1]["summaries"] == []

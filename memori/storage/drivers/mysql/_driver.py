@@ -35,16 +35,17 @@ class Conversation(BaseConversation):
         self.message = ConversationMessage(conn)
         self.messages = ConversationMessages(conn)
 
-    def create(self, session_id, timeout_minutes: int):
+    def create(self, session_id, timeout_minutes: int, project_id: str | None = None):
         existing = (
             self.conn.execute(
                 """
                 SELECT c.id,
+                       c.project_id,
                        COALESCE(MAX(m.date_created), c.date_created) as last_activity
                   FROM memori_conversation c
                   LEFT JOIN memori_conversation_message m ON m.conversation_id = c.id
                  WHERE c.session_id = %s
-                 GROUP BY c.id, c.date_created
+                 GROUP BY c.id, c.project_id, c.date_created
                 """,
                 (session_id,),
             )
@@ -61,6 +62,16 @@ class Conversation(BaseConversation):
             ).fetchone()
 
             if result[0] <= timeout_minutes:
+                if project_id and existing.get("project_id") != project_id:
+                    self.conn.execute(
+                        """
+                        UPDATE memori_conversation
+                           SET project_id = %s
+                         WHERE id = %s
+                        """,
+                        (project_id, existing["id"]),
+                    )
+                    self.conn.commit()
                 return existing["id"]
 
         uuid = uuid4()
@@ -68,13 +79,15 @@ class Conversation(BaseConversation):
             """
             INSERT IGNORE INTO memori_conversation(
                 uuid,
-                session_id
+                session_id,
+                project_id
             ) VALUES (
+                %s,
                 %s,
                 %s
             )
             """,
-            (uuid, session_id),
+            (uuid, session_id, project_id),
         )
         self.conn.commit()
 
@@ -115,7 +128,7 @@ class Conversation(BaseConversation):
         result = (
             self.conn.execute(
                 """
-                SELECT id, uuid, session_id, summary, date_created, date_updated
+                SELECT id, uuid, session_id, project_id, summary, date_created, date_updated
                   FROM memori_conversation
                  WHERE id = %s
                 """,
@@ -129,6 +142,52 @@ class Conversation(BaseConversation):
             return None
 
         return dict(result)
+
+    def search_summaries(
+        self,
+        entity_id: int,
+        *,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        date_start: str | None = None,
+        date_end: str | None = None,
+        limit: int = 20,
+    ) -> list[dict]:
+        clauses = [
+            "s.entity_id = %s",
+            "c.summary IS NOT NULL",
+            "c.summary != ''",
+        ]
+        params: list[object] = [entity_id]
+
+        if project_id:
+            clauses.append("c.project_id = %s")
+            params.append(project_id)
+        if session_id:
+            clauses.append("s.uuid = %s")
+            params.append(session_id)
+        if date_start:
+            clauses.append("COALESCE(c.date_updated, c.date_created) >= %s")
+            params.append(date_start)
+        if date_end:
+            clauses.append("COALESCE(c.date_updated, c.date_created) <= %s")
+            params.append(date_end)
+
+        params.append(limit)
+        query = f"""
+            SELECT c.id AS conversation_id,
+                   c.project_id AS project_id,
+                   s.uuid AS session_id,
+                   c.summary AS content,
+                   COALESCE(c.date_updated, c.date_created) AS date_created
+              FROM memori_conversation c
+              JOIN memori_session s
+                ON s.id = c.session_id
+             WHERE {" AND ".join(clauses)}
+             ORDER BY COALESCE(c.date_updated, c.date_created) DESC
+             LIMIT %s
+        """
+        return self.conn.execute(query, tuple(params)).mappings().fetchall()
 
     def read_id_by_session_id(self, session_id) -> int | None:
         result = (
@@ -149,7 +208,17 @@ class Conversation(BaseConversation):
 
 
 class ConversationMessage(BaseConversationMessage):
-    def create(self, conversation_id: int, role: str, type: str, content: str):
+    def create(
+        self,
+        conversation_id: int,
+        role: str,
+        type: str,
+        content: str,
+        *,
+        trace: str | None = None,
+        source: str | None = None,
+        signal: str | None = None,
+    ):
         self.conn.execute(
             """
             INSERT INTO memori_conversation_message(
@@ -157,8 +226,14 @@ class ConversationMessage(BaseConversationMessage):
                 conversation_id,
                 role,
                 type,
-                content
+                content,
+                trace,
+                source,
+                signal
             ) VALUES (
+                %s,
+                %s,
+                %s,
                 %s,
                 %s,
                 %s,
@@ -172,6 +247,9 @@ class ConversationMessage(BaseConversationMessage):
                 role,
                 type,
                 content,
+                trace,
+                source,
+                signal,
             ),
         )
 
@@ -185,6 +263,7 @@ class ConversationMessages(BaseConversationMessages):
                        content
                   FROM memori_conversation_message
                  WHERE conversation_id = %s
+                 ORDER BY id
                 """,
                 (conversation_id,),
             )
@@ -195,6 +274,43 @@ class ConversationMessages(BaseConversationMessages):
         messages = []
         for result in results:
             messages.append({"content": result["content"], "role": result["role"]})
+
+        return messages
+
+    def read_detailed(self, conversation_id: int):
+        results = (
+            self.conn.execute(
+                """
+                SELECT role,
+                       type,
+                       content,
+                       trace,
+                       source,
+                       signal,
+                       date_created
+                  FROM memori_conversation_message
+                 WHERE conversation_id = %s
+                 ORDER BY id
+                """,
+                (conversation_id,),
+            )
+            .mappings()
+            .fetchall()
+        )
+
+        messages = []
+        for result in results:
+            messages.append(
+                {
+                    "content": result["content"],
+                    "role": result["role"],
+                    "type": result.get("type"),
+                    "trace": result.get("trace"),
+                    "source": result.get("source"),
+                    "signal": result.get("signal"),
+                    "date_created": result.get("date_created"),
+                }
+            )
 
         return messages
 
@@ -575,10 +691,15 @@ class EntityFact(BaseEntityFact):
         summary_query = f"""
                 SELECT m.fact_id,
                        c.summary AS content,
-                       COALESCE(c.date_updated, c.date_created) AS date_created
+                       COALESCE(c.date_updated, c.date_created) AS date_created,
+                       c.project_id AS project_id,
+                       s.uuid AS session_id,
+                       c.id AS conversation_id
                   FROM memori_entity_fact_mention m
                   JOIN memori_conversation c
                     ON c.id = m.conversation_id
+                  JOIN memori_session s
+                    ON s.id = c.session_id
                  WHERE m.fact_id IN ({placeholders})
                    AND c.summary IS NOT NULL
                    AND c.summary != ''
@@ -594,7 +715,13 @@ class EntityFact(BaseEntityFact):
             if fact is None or not isinstance(content, str) or not content:
                 continue
             fact["summaries"].append(
-                {"content": content, "date_created": row.get("date_created")}
+                {
+                    "content": content,
+                    "date_created": row.get("date_created"),
+                    "project_id": row.get("project_id"),
+                    "session_id": row.get("session_id"),
+                    "conversation_id": row.get("conversation_id"),
+                }
             )
 
         return [facts_by_id[fact_id] for fact_id in fact_ids if fact_id in facts_by_id]

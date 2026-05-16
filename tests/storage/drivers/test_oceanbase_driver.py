@@ -251,12 +251,15 @@ def test_conversation_message_create(mock_conn):
     insert_call = mock_conn.execute.call_args_list[0]
     assert "INSERT INTO memori_conversation_message" in insert_call[0][0]
 
-    uuid_arg, conv_id, role, type_, content = insert_call[0][1]
+    uuid_arg, conv_id, role, type_, content, trace, source, signal = insert_call[0][1]
     assert isinstance(uuid_arg, UUID)
     assert conv_id == 101
     assert role == "user"
     assert type_ == "text"
     assert content == "Hello, world!"
+    assert trace is None
+    assert source is None
+    assert signal is None
 
 
 def test_conversation_messages_read(mock_conn, mock_multiple_results):

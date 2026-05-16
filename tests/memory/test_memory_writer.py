@@ -140,3 +140,35 @@ def test_execute_multiple_turns_ingests_all_messages(config, mocker):
     calls2 = config.storage.driver.conversation.message.create.call_args_list
     assert calls2[0][0][3] == "What's the weather?"
     assert calls2[1][0][3] == "I don't have access."
+
+
+def test_execute_persists_project_and_trace_metadata(config):
+    Writer(config).execute(
+        {
+            "project_id": "project-123",
+            "messages": [
+                {
+                    "role": "assistant",
+                    "type": "text",
+                    "text": "done",
+                    "trace": {"tools": [{"name": "search"}]},
+                    "source": "status",
+                    "signal": "update",
+                }
+            ],
+        }
+    )
+
+    conversation_args = config.storage.driver.conversation.create.call_args[0]
+    assert conversation_args[2] == "project-123"
+
+    _, role, message_type, content = (
+        config.storage.driver.conversation.message.create.call_args[0]
+    )
+    kwargs = config.storage.driver.conversation.message.create.call_args.kwargs
+    assert role == "assistant"
+    assert message_type == "text"
+    assert content == "done"
+    assert kwargs["trace"] == '{"tools": [{"name": "search"}]}'
+    assert kwargs["source"] == "status"
+    assert kwargs["signal"] == "update"

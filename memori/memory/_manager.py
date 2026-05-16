@@ -8,6 +8,7 @@ r"""
                        memorilabs.ai
 """
 
+import json
 import logging
 import time
 
@@ -115,6 +116,7 @@ class Manager:
             driver.conversation.create,
             self.config.cache.session_id,
             self.config.session_timeout_minutes,
+            payload.get("project_id"),
         )
 
         messages = payload.get("messages") if isinstance(payload, dict) else None
@@ -128,11 +130,17 @@ class Manager:
             text = message.get("text")
             if role is None or text is None:
                 continue
+            trace = message.get("trace")
+            if trace is not None and not isinstance(trace, str):
+                trace = json.dumps(trace, default=str)
             driver.conversation.message.create(
                 self.config.cache.conversation_id,
                 role,
                 message.get("type"),
                 str(text),
+                trace=trace,
+                source=message.get("source"),
+                signal=message.get("signal"),
             )
 
         adapter = getattr(storage, "adapter", None)
