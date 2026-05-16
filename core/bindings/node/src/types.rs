@@ -20,6 +20,11 @@ pub struct NapiRecallSummary {
     pub date_created: String,
     pub entity_fact_id: Option<Either<i64, String>>,
     pub fact_id: Option<Either<i64, String>>,
+    pub project_id: Option<String>,
+    pub session_id: Option<String>,
+    pub conversation_id: Option<Either<i64, String>>,
+    pub source: Option<String>,
+    pub signal: Option<String>,
 }
 
 #[napi(object)]
@@ -86,10 +91,14 @@ pub struct NapiEmbeddingRow {
 }
 
 #[napi(object)]
-#[derive(Serialize)]
 pub struct NapiCandidateSummaryRow {
     pub content: String,
     pub date_created: String,
+    pub project_id: Option<String>,
+    pub session_id: Option<String>,
+    pub conversation_id: Option<Either<i64, String>>,
+    pub source: Option<String>,
+    pub signal: Option<String>,
 }
 
 #[napi(object)]

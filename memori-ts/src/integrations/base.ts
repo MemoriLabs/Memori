@@ -41,7 +41,10 @@ export abstract class BaseIntegration {
     const syntheticCtx: CallContext = {
       traceId: `integration-trace-${Date.now()}`,
       startedAt: new Date(),
-      metadata: req.metadata as unknown as Record<string, unknown>,
+      metadata: {
+        ...(req.metadata ? (req.metadata as unknown as Record<string, unknown>) : {}),
+        memoriTrace: req.trace ?? null,
+      },
     };
 
     return { syntheticReq, syntheticRes, syntheticCtx };

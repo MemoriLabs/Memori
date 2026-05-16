@@ -101,7 +101,12 @@ impl MemoriEngine {
                     serde_json::json!(r.date_created),
                 );
                 if let Some(sums) = r.summaries {
-                    obj.insert("summaries".to_string(), serde_json::to_value(sums).unwrap());
+                    obj.insert(
+                        "summaries".to_string(),
+                        serde_json::Value::Array(
+                            sums.into_iter().map(candidate_summary_to_json).collect(),
+                        ),
+                    );
                 }
                 serde_json::from_value(serde_json::Value::Object(obj)).unwrap()
             })
@@ -173,6 +178,11 @@ impl MemoriEngine {
                                         .to_string(),
                                     entity_fact_id: fact_id_from_json(&s["entity_fact_id"]),
                                     fact_id: fact_id_from_json(&s["fact_id"]),
+                                    project_id: s["project_id"].as_str().map(|v| v.to_string()),
+                                    session_id: s["session_id"].as_str().map(|v| v.to_string()),
+                                    conversation_id: fact_id_from_json(&s["conversation_id"]),
+                                    source: s["source"].as_str().map(|v| v.to_string()),
+                                    signal: s["signal"].as_str().map(|v| v.to_string()),
                                 })
                                 .collect(),
                         )
@@ -249,5 +259,31 @@ fn fact_id_from_json(v: &serde_json::Value) -> Option<Either<i64, String>> {
         serde_json::Value::Number(n) => n.as_i64().map(Either::A),
         serde_json::Value::String(s) => Some(Either::B(s.clone())),
         _ => None,
+    }
+}
+
+fn candidate_summary_to_json(summary: NapiCandidateSummaryRow) -> serde_json::Value {
+    let mut obj = serde_json::Map::new();
+    obj.insert("content".to_string(), serde_json::json!(summary.content));
+    obj.insert(
+        "date_created".to_string(),
+        serde_json::json!(summary.date_created),
+    );
+    obj.insert("project_id".to_string(), serde_json::json!(summary.project_id));
+    obj.insert("session_id".to_string(), serde_json::json!(summary.session_id));
+    obj.insert(
+        "conversation_id".to_string(),
+        either_to_json(summary.conversation_id),
+    );
+    obj.insert("source".to_string(), serde_json::json!(summary.source));
+    obj.insert("signal".to_string(), serde_json::json!(summary.signal));
+    serde_json::Value::Object(obj)
+}
+
+fn either_to_json(value: Option<Either<i64, String>>) -> serde_json::Value {
+    match value {
+        Some(Either::A(num)) => serde_json::json!(num),
+        Some(Either::B(text)) => serde_json::json!(text),
+        None => serde_json::Value::Null,
     }
 }

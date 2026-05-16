@@ -81,7 +81,10 @@ describe('BaseIntegration', () => {
       });
       const expectedCtx = expect.objectContaining({
         traceId: expect.stringContaining('integration-trace-'),
-        metadata: req.metadata,
+        metadata: expect.objectContaining({
+          ...req.metadata,
+          memoriTrace: null,
+        }),
       });
 
       expect(mockCore.persistence.handlePersistence).toHaveBeenCalledWith(
@@ -143,7 +146,7 @@ describe('BaseIntegration', () => {
         }),
         expect.objectContaining({
           traceId: expect.stringContaining('integration-trace-'),
-          metadata: {},
+          metadata: { memoriTrace: null },
         })
       );
       expect(result).toBe('<memori_context>You like apples.</memori_context>');

@@ -11,12 +11,21 @@ const {
   mockDriverOps,
 } = vi.hoisted(() => {
   const mockDriverOps = {
-    session: { create: vi.fn().mockResolvedValue('sess-1') },
+    session: {
+      create: vi.fn().mockResolvedValue('sess-1'),
+      read: vi.fn().mockResolvedValue('sess-1'),
+    },
     conversation: {
       create: vi.fn().mockResolvedValue('conv-1'),
       update: vi.fn().mockResolvedValue(undefined),
+      read: vi.fn().mockResolvedValue({ id: 'conv-1' }),
+      searchSummaries: vi.fn().mockResolvedValue([]),
     },
     conversationMessage: { create: vi.fn().mockResolvedValue(undefined) },
+    conversationMessages: {
+      read: vi.fn().mockResolvedValue([]),
+      readDetailed: vi.fn().mockResolvedValue([]),
+    },
     entity: { create: vi.fn().mockResolvedValue('ent-1') },
     entityFact: {
       create: vi.fn().mockResolvedValue(undefined),
@@ -62,13 +71,22 @@ vi.mock('../../src/storage/registry.js', () => ({
     getDriver: vi.fn().mockReturnValue({
       requiresRollbackOnError: false,
       migrations: {},
-      session: { create: (...a: unknown[]) => mockDriverOps.session.create(...a) },
+      session: {
+        create: (...a: unknown[]) => mockDriverOps.session.create(...a),
+        read: (...a: unknown[]) => mockDriverOps.session.read(...a),
+      },
       conversation: {
         create: (...a: unknown[]) => mockDriverOps.conversation.create(...a),
         update: (...a: unknown[]) => mockDriverOps.conversation.update(...a),
+        read: (...a: unknown[]) => mockDriverOps.conversation.read(...a),
+        searchSummaries: (...a: unknown[]) => mockDriverOps.conversation.searchSummaries(...a),
       },
       conversationMessage: {
         create: (...a: unknown[]) => mockDriverOps.conversationMessage.create(...a),
+      },
+      conversationMessages: {
+        read: (...a: unknown[]) => mockDriverOps.conversationMessages.read(...a),
+        readDetailed: (...a: unknown[]) => mockDriverOps.conversationMessages.readDetailed(...a),
       },
       entity: { create: (...a: unknown[]) => mockDriverOps.entity.create(...a) },
       entityFact: {
@@ -132,6 +150,7 @@ describe('StorageManager', () => {
     mockRollback.mockResolvedValue(undefined);
     mockBegin.mockResolvedValue(undefined);
     mockDriverOps.session.create.mockResolvedValue('sess-1');
+    mockDriverOps.session.read.mockResolvedValue('sess-1');
     mockDriverOps.conversation.create.mockResolvedValue('conv-1');
   });
 
@@ -157,6 +176,38 @@ describe('StorageManager', () => {
     expect(mockBegin).toHaveBeenCalled();
     expect(mockCommit).toHaveBeenCalled();
     expect(result.written_ops).toBe(1);
+  });
+
+  it('writeBatch() passes project_id and serialized trace through local message persistence', async () => {
+    const manager = new StorageManager(makeFactory());
+    await manager.writeBatch({
+      ops: [
+        {
+          op_type: 'conversation_message.create',
+          payload: {
+            conversation_id: 'conv-123',
+            project_id: 'proj-1',
+            messages: [
+              {
+                role: 'assistant',
+                content: 'done',
+                type: 'text',
+                trace: { tools: [] },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(mockDriverOps.conversation.create).toHaveBeenCalledWith('sess-1', 30, 'proj-1');
+    expect(mockDriverOps.conversationMessage.create).toHaveBeenCalledWith(
+      'conv-1',
+      'assistant',
+      'text',
+      'done',
+      expect.objectContaining({ trace: '{"tools":[]}' })
+    );
   });
 
   it('writeBatch() rolls back and returns 0 written_ops on driver error', async () => {
@@ -322,6 +373,32 @@ describe('StorageManager', () => {
     mockDriverOps.entityFact.getFactsByIds.mockResolvedValue([{ id: 1, content: 'fact' }]);
     const manager = new StorageManager(makeFactory());
     const rows = await manager.fetchFactsByIds([1, 2]);
+    expect(rows).toHaveLength(1);
+  });
+
+  it('getConversationHistoryDetailed() delegates to the detailed reader', async () => {
+    mockDriverOps.conversationMessages.readDetailed.mockResolvedValue([
+      { role: 'assistant', content: 'done', trace: '{"tools":[]}' },
+    ]);
+
+    const manager = new StorageManager(makeFactory());
+    const rows = await manager.getConversationHistoryDetailed('sess-1');
+
+    expect(rows).toEqual([{ role: 'assistant', content: 'done', trace: '{"tools":[]}' }]);
+  });
+
+  it('getConversationSummaries() resolves entity and delegates to scoped summary search', async () => {
+    mockDriverOps.conversation.searchSummaries.mockResolvedValue([
+      { content: 'summary', date_created: '2026-01-01T00:00:00Z', conversation_id: 'conv-1' },
+    ]);
+
+    const manager = new StorageManager(makeFactory());
+    const rows = await manager.getConversationSummaries('entity-1', { projectId: 'proj-1' });
+
+    expect(mockDriverOps.entity.create).toHaveBeenCalledWith('entity-1');
+    expect(mockDriverOps.conversation.searchSummaries).toHaveBeenCalledWith('ent-1', {
+      projectId: 'proj-1',
+    });
     expect(rows).toHaveLength(1);
   });
 

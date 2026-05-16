@@ -55,6 +55,7 @@ function attachRawSummariesToFacts(facts: RecallItem[], summaries: RecallSummary
 
   for (const summary of summaries) {
     const summaryFactId = summary.entity_fact_id;
+    if (summaryFactId === undefined) continue;
     const existing = summariesByFactId.get(summaryFactId) ?? [];
     existing.push(summary);
     summariesByFactId.set(summaryFactId, existing);
@@ -83,6 +84,11 @@ function normalizeSummary(summary: RecallSummary): ParsedSummary | undefined {
   return {
     content: summary.content,
     dateCreated,
+    projectId: summary.project_id ?? null,
+    sessionId: summary.session_id ?? null,
+    conversationId: summary.conversation_id ?? null,
+    source: summary.source ?? null,
+    signal: summary.signal ?? null,
   };
 }
 

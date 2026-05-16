@@ -276,4 +276,41 @@ export const mysqlMigrations: Record<number, Migration[]> = {
       `,
     },
   ],
+  3: [
+    {
+      description: 'add project_id to memori_conversation',
+      operation: `
+        alter table memori_conversation
+        add column project_id varchar(255) default null
+      `,
+    },
+    {
+      description: 'add trace to memori_conversation_message',
+      operation: `
+        alter table memori_conversation_message
+        add column trace longtext default null
+      `,
+    },
+    {
+      description: 'add source to memori_conversation_message',
+      operation: `
+        alter table memori_conversation_message
+        add column source varchar(255) default null
+      `,
+    },
+    {
+      description: 'add signal to memori_conversation_message',
+      operation: `
+        alter table memori_conversation_message
+        add column signal varchar(255) default null
+      `,
+    },
+    {
+      description: 'create index on memori_conversation.project_id',
+      operation: `
+        create index idx_memori_conversation_project_id
+        on memori_conversation (project_id)
+      `,
+    },
+  ],
 };

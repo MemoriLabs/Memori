@@ -116,7 +116,8 @@ export class Memori {
       this.api,
       this.engine,
       this.config,
-      this.session
+      this.session,
+      this.projectManager
     );
     this.augmentationEngine = new AugmentationEngine(
       this.api,

@@ -109,6 +109,11 @@ describe('Utils', () => {
         {
           content: 'summary1',
           dateCreated: '2023-01-01 12:00',
+          projectId: null,
+          sessionId: null,
+          conversationId: null,
+          source: null,
+          signal: null,
         },
       ]);
     });
@@ -146,10 +151,20 @@ describe('Utils', () => {
         {
           content: 'existing summary',
           dateCreated: '2023-01-01 10:00',
+          projectId: null,
+          sessionId: null,
+          conversationId: null,
+          source: null,
+          signal: null,
         },
         {
           content: 'top-level summary',
           dateCreated: '2023-01-01 11:00',
+          projectId: null,
+          sessionId: null,
+          conversationId: null,
+          source: null,
+          signal: null,
         },
       ]);
     });
