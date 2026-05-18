@@ -261,6 +261,20 @@ class Memori:
             session_id=session_id,
         )
 
+    def agent_compaction(
+        self,
+        *,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        num_messages: int | None = None,
+    ) -> dict[str, Any]:
+        """Fetch a structured compaction from the Memori Cloud agent endpoint."""
+        return self.agent.compaction(
+            project_id=project_id,
+            session_id=session_id,
+            num_messages=num_messages,
+        )
+
     def capture_agent_turn(
         self,
         *,

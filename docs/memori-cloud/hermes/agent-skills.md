@@ -36,6 +36,7 @@ Use it to understand:
 
 - `memori_recall`: retrieve precise memories by query, project, session, time range, or an allowed source/signal pair.
 - `memori_recall_summary`: retrieve a state summary for session starts, daily briefs, or broad status checks.
+- `memori_compaction`: retrieve a compact state snapshot after context loss or when resuming active work.
 - `memori_feedback`: report irrelevant, missing, stale, or especially useful memory behavior.
 - `memori_signup`: create a Memori account or request an API key when the user explicitly asks.
 - `memori_quota`: check usage, quota, storage, or memory capacity when the user asks or limits appear to be reached.
@@ -130,6 +131,24 @@ Summaries do not support `source` or `signal`.
 Default behavior:
 
 - No date range means Memori's summary default, currently the recent working window.
+
+## Compaction Behavior
+
+Compaction is used for context recovery and resuming active work.
+
+Use:
+
+- `memori_compaction`
+
+Supported parameters:
+
+- `project_id`
+- `session_id`
+- `num_messages`
+
+Use compaction when the current context was compressed, when a long-running task
+needs a compact state snapshot, or when you need active tasks, open loops,
+standing orders, workspace changes, and recent messages together.
 
 ## Daily Brief Behavior
 

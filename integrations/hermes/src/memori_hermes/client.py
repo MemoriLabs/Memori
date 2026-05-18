@@ -94,6 +94,18 @@ class MemoriAgentClient:
         except Exception as exc:  # noqa: BLE001
             raise MemoriApiError(str(exc)) from exc
 
+    def agent_compaction(self, params: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self.memori.agent_compaction(
+                project_id=params.get("projectId")
+                or params.get("project_id")
+                or self.project_id,
+                session_id=params.get("sessionId") or params.get("session_id"),
+                num_messages=params.get("numMessages") or params.get("num_messages"),
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise MemoriApiError(str(exc)) from exc
+
     def quota(self) -> dict[str, Any]:
         try:
             return self.memori.agent.default_api.get("sdk/quota")
