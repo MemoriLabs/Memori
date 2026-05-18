@@ -9,13 +9,14 @@ Memori gives Hermes Agent a structured, long-term memory provider for production
 
 As Hermes completes work, Memori can structure durable memory from tool calls, workflow steps, execution paths, decisions, outcomes, failures, constraints, and recurring patterns. This gives Hermes memory of what actually happened during prior tasks, not just what was said in the transcript.
 
-Memori then exposes explicit tools for intelligent recall, memory summaries, quota checks, signup, and feedback.
+Memori then exposes explicit tools for intelligent recall, memory summaries, post-compaction briefs, quota checks, signup, and feedback.
 
 ## How It Works
 
 The Hermes integration is a Python memory provider named `memori`.
 
-- Agent-Controlled Intelligent Recall is available through `memori_recall` and `memori_recall_summary`.
+- Agent-Controlled Intelligent Recall is available through `memori_recall`, `memori_recall_summary`, and `memori_compaction`.
+- Post-compaction briefs restore working state after context compaction with active tasks, open loops, standing orders, environment details, workspace changes, and continuation hints.
 - Advanced augmentation captures completed turns and available execution context in the background after responses.
 - Memori structures memory from conversation, agent trace, tool activity, workflow decisions, outcomes, and failures.
 - Account helpers are available through `memori_signup`, `memori_quota`, and `memori_feedback`.

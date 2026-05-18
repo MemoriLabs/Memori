@@ -31,6 +31,9 @@ class FakeClient:
     def agent_recall_summary(self, params):
         return {"summaries": [{"content": "summary"}]}
 
+    def agent_compaction(self, params):
+        return {"params": params, "state": {"active_tasks": ["ship compaction"]}}
+
     def quota(self):
         return {"memories": {"num": 1, "max": 100}}
 
@@ -81,6 +84,29 @@ def test_handle_recall_adds_project_default() -> None:
 
     assert result == {"facts": [{"content": "remembered"}]}
     assert client.recall_params == {"query": "prefs", "projectId": "project-1"}
+
+
+def test_handle_compaction_adds_project_default() -> None:
+    client = FakeClient()
+    provider = MemoriMemoryProvider(client=client)
+    provider._project_id = "project-1"
+
+    result = json.loads(
+        provider.handle_tool_call("memori_compaction", {"numMessages": 3})
+    )
+
+    assert result == {
+        "params": {"numMessages": 3, "projectId": "project-1"},
+        "state": {"active_tasks": ["ship compaction"]},
+    }
+
+
+def test_tool_schemas_include_compaction() -> None:
+    provider = MemoriMemoryProvider()
+
+    names = {schema["name"] for schema in provider.get_tool_schemas()}
+
+    assert "memori_compaction" in names
 
 
 def test_handle_tool_call_returns_json_error_on_client_failure() -> None:

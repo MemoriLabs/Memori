@@ -351,6 +351,87 @@ describe('RecallEngine', () => {
     });
   });
 
+  describe('agentCompaction()', () => {
+    const mockCompactionResponse = {
+      continuation: { last_action: 'completed task A', next_expected_action: 'start task B' },
+      environment: ['NODE_ENV=production'],
+      messages: [{ content: 'hello', role: 'user', type: 'text' }],
+      metadata: {
+        date: { execution: '2024-01-01T00:00:00.000Z' },
+        filter: { project: { id: 'test-project-id' } },
+      },
+      standing_orders: ['always format code before committing'],
+      state: {
+        active_tasks: ['refactor auth module'],
+        open_loops: ['waiting for DB migration approval'],
+        pending_results: [],
+      },
+      workspace_changes: ['src/auth/index.ts updated'],
+    };
+
+    it('calls GET agent/compaction with the correct route', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction({ projectId: 'proj-1' });
+      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('agent/compaction'));
+    });
+
+    it('includes project_id in the query string', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction({ projectId: 'proj-1' });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('project_id=proj-1');
+    });
+
+    it('defaults projectId to the current project context when not supplied', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction();
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('project_id=test-project-id');
+    });
+
+    it('includes session_id in the query string when provided', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction({ projectId: 'proj-1', sessionId: 'sess-1' });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('session_id=sess-1');
+    });
+
+    it('includes num_messages in the query string when provided', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction({ projectId: 'proj-1', numMessages: 10 });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('num_messages=10');
+    });
+
+    it('omits num_messages from the query string when not provided', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction({ projectId: 'proj-1' });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).not.toContain('num_messages=');
+    });
+
+    it('returns the full compaction response', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      const result = await recallEngine.agentCompaction({ projectId: 'proj-1' });
+      expect(result).toEqual(mockCompactionResponse);
+    });
+
+    it('throws when projectId is absent from both params and project context', async () => {
+      (mockProject as any).id = undefined;
+      await expect(recallEngine.agentCompaction()).rejects.toThrow(
+        'projectId is required for agent compaction'
+      );
+      (mockProject as any).id = 'test-project-id';
+    });
+
+    it('accepts an explicit projectId override', async () => {
+      (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
+      await recallEngine.agentCompaction({ projectId: 'override-proj' });
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('project_id=override-proj');
+    });
+  });
+
   describe('recall() — local storage path error handling', () => {
     it('returns [] and warns when local retrieval throws', async () => {
       (mockNativeEngine as any).hasStorage = true;

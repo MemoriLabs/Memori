@@ -9,6 +9,7 @@
     "tools": [
       "memori_recall",
       "memori_recall_summary",
+      "memori_compaction",
       "memori_feedback",
       "memori_signup",
       "memori_quota"

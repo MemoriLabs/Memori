@@ -60,7 +60,8 @@ To maintain an efficient context window, Memori equips the agent with specific t
 
 1. **`memori_recall`**: Searches the structured memory graph for specific facts, constraints, and prior decisions.
 2. **`memori_recall_summary`**: Retrieves structured daily briefs and rolling summaries of prior sessions.
-3. **`memori_feedback`**: Reports on memory quality to improve extraction accuracy.
+3. **`memori_compaction`**: Retrieves structured post-compaction brief to continue task without interruption.
+4. **`memori_feedback`**: Reports on memory quality to improve extraction accuracy.
 
 ## Installation
 

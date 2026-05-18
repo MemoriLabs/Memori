@@ -101,3 +101,47 @@ def test_summary_rejects_session_without_project() -> None:
 
     with pytest.raises(MemoriApiError):
         client.agent_recall_summary({"sessionId": "session"})
+
+
+def test_agent_compaction_maps_query_params(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client()
+    seen = {}
+
+    def fake_agent_compaction(**kwargs):
+        seen.update(kwargs)
+        return {"state": {"active_tasks": []}}
+
+    monkeypatch.setattr(client.memori, "agent_compaction", fake_agent_compaction)
+
+    assert client.agent_compaction({"sessionId": "session", "numMessages": 7}) == {
+        "state": {"active_tasks": []}
+    }
+
+    assert seen == {
+        "project_id": "project",
+        "session_id": "session",
+        "num_messages": 7,
+    }
+
+
+def test_agent_compaction_falls_back_for_older_sdk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = make_client()
+    seen = {}
+
+    monkeypatch.setattr(client.memori, "agent_compaction", None, raising=False)
+
+    def fake_get(route):
+        seen["route"] = route
+        return {"state": {"active_tasks": []}}
+
+    monkeypatch.setattr(client.memori.agent.default_api, "get", fake_get)
+
+    assert client.agent_compaction({"sessionId": "session", "numMessages": 7}) == {
+        "state": {"active_tasks": []}
+    }
+
+    assert seen["route"] == (
+        "agent/compaction?project_id=project&session_id=session&num_messages=7"
+    )

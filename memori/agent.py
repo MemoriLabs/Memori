@@ -71,6 +71,26 @@ class Agent:
         )
         return self.default_api.get(f"agent/recall/summary{qs}")
 
+    def compaction(
+        self,
+        *,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        num_messages: int | None = None,
+    ) -> dict[str, Any]:
+        """Fetch agent memory compaction from ``GET /v1/agent/compaction``."""
+        if not project_id:
+            raise ValueError("project_id is required for agent compaction")
+
+        qs = self._query_string(
+            {
+                "project_id": project_id,
+                "session_id": session_id,
+                "num_messages": num_messages,
+            }
+        )
+        return self.default_api.get(f"agent/compaction{qs}")
+
     def capture_turn(
         self,
         *,

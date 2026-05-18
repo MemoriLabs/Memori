@@ -25,6 +25,7 @@ describe('plugin index', () => {
       pluginConfig: {
         apiKey: 'test-api-key',
         entityId: 'test-entity-id',
+        projectId: 'test-project-id',
       },
       logger: {
         info: vi.fn(),
@@ -147,7 +148,10 @@ describe('plugin index', () => {
       const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
 
       expect(handler).toBeDefined();
-      expect(handler?.()).toEqual({ appendSystemContext: 'mock skills content' });
+      expect(handler?.()).toEqual({
+        appendSystemContext:
+          'mock skills content\n\nMemori plugin configuration: projectId="test-project-id", entityId="test-entity-id"',
+      });
     });
 
     it('should call handleAugmentation for agent_end event', async () => {
@@ -167,7 +171,7 @@ describe('plugin index', () => {
       expect(handleAugmentation).toHaveBeenCalledWith(
         mockEvent,
         mockCtx,
-        { apiKey: 'test-api-key', entityId: 'test-entity-id' },
+        { apiKey: 'test-api-key', entityId: 'test-entity-id', projectId: 'test-project-id' },
         expect.any(Object)
       );
     });

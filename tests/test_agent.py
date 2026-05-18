@@ -117,6 +117,38 @@ def test_agent_recall_summary_builds_query_string(monkeypatch, mocker):
     )
 
 
+def test_agent_compaction_builds_query_string(monkeypatch, mocker):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    mem = Memori(api_key="key")
+
+    get = mocker.patch.object(
+        mem.agent.default_api,
+        "get",
+        return_value={"state": {"active_tasks": []}},
+    )
+
+    result = mem.agent_compaction(
+        project_id="project",
+        session_id="session",
+        num_messages=10,
+    )
+
+    assert result == {"state": {"active_tasks": []}}
+    assert get.call_args.args[0] == (
+        "agent/compaction?project_id=project&session_id=session&num_messages=10"
+    )
+
+
+def test_agent_compaction_requires_project(monkeypatch):
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    mem = Memori(api_key="key")
+
+    with pytest.raises(ValueError, match="project_id is required"):
+        mem.agent_compaction()
+
+
 def test_capture_agent_turn_writes_turn_then_collector(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.setenv("MEMORI_TEST_MODE", "1")

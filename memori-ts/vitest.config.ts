@@ -29,7 +29,7 @@ export default defineConfig({
     include: isIntegration ? ['tests/integrations/**/*.test.ts'] : ['tests/**/*.test.ts'],
     exclude: isIntegration
       ? ['node_modules/', 'dist/']
-      : ['node_modules/', 'dist/', 'tests/integrations/**'],
+      : ['node_modules/', 'dist/', 'tests/integrations/cloud/**'],
   },
   resolve: {
     alias: {
