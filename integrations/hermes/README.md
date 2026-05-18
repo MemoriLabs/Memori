@@ -144,6 +144,8 @@ Available tools:
   decisions, outcomes, and patterns
 - **`memori_recall_summary`** - retrieve summaries and daily-brief-style state
   awareness
+- **`memori_compaction`** - retrieve a structured post-compaction brief to
+  continue active work without replaying the full prior session
 - **`memori_quota`** - check Memori quota and limits
 - **`memori_signup`** - request a Memori API key
 - **`memori_feedback`** - report memory quality issues or wins
