@@ -94,6 +94,19 @@ export class AugmentationEngine {
     if (this.engine.hasStorage) {
       try {
         this.engine.submitAugmentation(this.buildAugmentationInput(req, ctx, data));
+        if (summary && this.config.storage) {
+          await this.config.storage.writeBatch({
+            ops: [
+              {
+                op_type: 'conversation.update',
+                payload: {
+                  conversation_id: data.sessionId,
+                  summary,
+                },
+              },
+            ],
+          });
+        }
       } catch (e: unknown) {
         if (this.config.testMode) console.warn('Local Agent Augmentation failed:', e);
       }

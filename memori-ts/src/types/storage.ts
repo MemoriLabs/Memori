@@ -4,11 +4,39 @@ export interface EmbeddingRow {
   content_embedding_b64?: string;
 }
 
+export interface CandidateSummaryRow {
+  content: string;
+  date_created: string;
+  project_id?: string | null;
+  session_id?: string | null;
+  conversation_id?: number | string | null;
+  source?: string | null;
+  signal?: string | null;
+}
+
 export interface CandidateFactRow {
   id: number | string;
   content: string;
   date_created: string;
-  summaries?: Array<{ content: string; date_created: string }>;
+  summaries?: CandidateSummaryRow[];
+}
+
+export interface DetailedConversationMessageRow {
+  role: string;
+  content: string;
+  type?: string | null;
+  trace?: string | null;
+  source?: string | null;
+  signal?: string | null;
+  date_created?: string;
+}
+
+export interface ConversationSummaryRow {
+  conversation_id: number | string;
+  project_id?: string | null;
+  session_id?: string | null;
+  content: string;
+  date_created: string;
 }
 
 export interface SemanticTriplePayload {
@@ -26,7 +54,17 @@ export type WriteOp =
       op_type: 'conversation_message.create';
       payload: {
         conversation_id: string | number;
-        messages: Array<{ role: string; content: string }>;
+        project_id?: string | null;
+        entity_id?: string | number | null;
+        process_id?: string | number | null;
+        messages: Array<{
+          role: string;
+          content: string;
+          type?: string | null;
+          trace?: unknown;
+          source?: string | null;
+          signal?: string | null;
+        }>;
       };
     }
   | {

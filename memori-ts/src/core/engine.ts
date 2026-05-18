@@ -73,6 +73,11 @@ export class NativeEngine {
                 summaries: r.summaries?.map((s) => ({
                   content: s.content,
                   dateCreated: s.date_created,
+                  projectId: s.project_id ?? null,
+                  sessionId: s.session_id ?? null,
+                  conversationId: s.conversation_id ?? null,
+                  source: s.source ?? null,
+                  signal: s.signal ?? null,
                 })),
               }))
             ),
@@ -186,6 +191,11 @@ export class NativeEngine {
         date_created: s.dateCreated,
         entity_fact_id: s.entityFactId as number | string,
         fact_id: s.factId as number | string,
+        project_id: s.projectId ?? null,
+        session_id: s.sessionId ?? null,
+        conversation_id: s.conversationId ?? null,
+        source: s.source ?? null,
+        signal: s.signal ?? null,
       })),
     }));
   }

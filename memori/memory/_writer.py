@@ -8,6 +8,7 @@ r"""
                       memorilabs.ai
 """
 
+import json
 import logging
 import time
 
@@ -95,14 +96,21 @@ class Writer:
             self.config.storage.driver.conversation.create,
             self.config.cache.session_id,
             self.config.session_timeout_minutes,
+            payload.get("project_id"),
         )
 
         for message in payload.get("messages", []):
+            trace = message.get("trace")
+            if trace is not None and not isinstance(trace, str):
+                trace = json.dumps(trace, default=str)
             self.config.storage.driver.conversation.message.create(
                 self.config.cache.conversation_id,
                 message["role"],
                 message["type"],
                 message["text"],
+                trace=trace,
+                source=message.get("source"),
+                signal=message.get("signal"),
             )
 
         if self.config.storage is not None and self.config.storage.adapter is not None:

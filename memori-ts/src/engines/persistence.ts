@@ -2,6 +2,7 @@ import { CallContext, LLMRequest, LLMResponse } from '@memorilabs/axon';
 import { Api } from '../core/network.js';
 import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
+import { ProjectManager } from '../core/project.js';
 import { NativeEngine } from '../core/engine.js';
 import { extractLastUserMessageString } from '../utils/utils.js';
 import { WriteBatch } from 'src/types/storage.js';
@@ -17,13 +18,14 @@ export class PersistenceEngine {
     private readonly api: Api,
     private readonly engine: NativeEngine,
     private readonly config: Config,
-    private readonly session: SessionManager
+    private readonly session: SessionManager,
+    private readonly project: ProjectManager
   ) {}
 
   public async handlePersistence(
     req: LLMRequest,
     res: LLMResponse,
-    _ctx: CallContext
+    ctx: CallContext
   ): Promise<LLMResponse> {
     const sessionId = this.session.id;
     if (!sessionId) return res;
@@ -32,15 +34,24 @@ export class PersistenceEngine {
     if (!lastUserMessage) return res;
 
     if (this.engine.hasStorage && this.config.storage) {
+      const trace = (ctx.metadata as Record<string, unknown> | undefined)?.memoriTrace ?? null;
       const batch: WriteBatch = {
         ops: [
           {
             op_type: 'conversation_message.create',
             payload: {
               conversation_id: sessionId,
+              project_id: this.project.id,
+              entity_id: this.config.entityId ?? null,
+              process_id: this.config.processId ?? null,
               messages: [
-                { role: 'user', content: lastUserMessage },
-                { role: 'assistant', content: res.content },
+                { role: 'user', content: lastUserMessage, type: 'text', trace: null },
+                {
+                  role: 'assistant',
+                  content: res.content,
+                  type: res.type ?? 'text',
+                  trace,
+                },
               ],
             },
           },

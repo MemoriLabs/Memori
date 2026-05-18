@@ -3,6 +3,7 @@ import { PersistenceEngine } from '../../src/engines/persistence.js';
 import { Api } from '../../src/core/network.js';
 import { Config } from '../../src/core/config.js';
 import { SessionManager } from '../../src/core/session.js';
+import { ProjectManager } from '../../src/core/project.js';
 import { NativeEngine } from '../../src/core/engine.js';
 import { LLMRequest, LLMResponse } from '@memorilabs/axon';
 
@@ -11,15 +12,17 @@ describe('PersistenceEngine', () => {
   let mockApi: Api;
   let mockConfig: Config;
   let mockSession: SessionManager;
+  let mockProject: ProjectManager;
   let mockNativeEngine: NativeEngine;
 
   beforeEach(() => {
     mockApi = { post: vi.fn().mockResolvedValue({}) } as unknown as Api;
     mockConfig = { entityId: 'u-1', processId: 'p-1' } as unknown as Config;
     mockSession = { id: 'sess-1' } as unknown as SessionManager;
+    mockProject = { id: 'proj-1' } as unknown as ProjectManager;
     mockNativeEngine = { hasStorage: false } as unknown as NativeEngine;
 
-    engine = new PersistenceEngine(mockApi, mockNativeEngine, mockConfig, mockSession);
+    engine = new PersistenceEngine(mockApi, mockNativeEngine, mockConfig, mockSession, mockProject);
   });
 
   it('should return response immediately if no session ID', async () => {
@@ -58,9 +61,40 @@ describe('PersistenceEngine', () => {
             op_type: 'conversation_message.create',
             payload: expect.objectContaining({
               conversation_id: 'sess-1',
+              project_id: 'proj-1',
+              entity_id: 'u-1',
+              process_id: 'p-1',
               messages: [
-                { role: 'user', content: 'hello' },
-                { role: 'assistant', content: 'world' },
+                { role: 'user', content: 'hello', type: 'text', trace: null },
+                { role: 'assistant', content: 'world', type: 'text', trace: null },
+              ],
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
+  it('should include agent trace in the local persistence batch when provided in context metadata', async () => {
+    const mockWriteBatch = vi.fn().mockResolvedValue({ written_ops: 2 });
+    (mockNativeEngine as any).hasStorage = true;
+    (mockConfig as any).storage = { writeBatch: mockWriteBatch };
+
+    const req = { messages: [{ role: 'user', content: 'hello' }] } as unknown as LLMRequest;
+    const res = { content: 'world' } as LLMResponse;
+
+    await engine.handlePersistence(req, res, { metadata: { memoriTrace: { tools: [] } } } as any);
+
+    expect(mockWriteBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ops: [
+          expect.objectContaining({
+            payload: expect.objectContaining({
+              entity_id: 'u-1',
+              process_id: 'p-1',
+              messages: [
+                { role: 'user', content: 'hello', type: 'text', trace: null },
+                { role: 'assistant', content: 'world', type: 'text', trace: { tools: [] } },
               ],
             }),
           }),

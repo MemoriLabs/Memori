@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added MCP client setup guidance for project-scoped attribution using workspace-derived values for `X-Memori-Entity-Id` and `X-Memori-Process-Id` to prevent memory mixing across projects. (Refs #404)
+- Added BYODB storage support for persisting conversation `project_id` and per-message `trace`, `source`, and `signal` metadata across the Python SDK, TypeScript SDK, and native storage bindings to support richer local memory workflows.
 
 ## [3.3.2] - 2026-04-28
 

@@ -1,4 +1,10 @@
-import type { CandidateFactRow, EmbeddingRow, SemanticTriplePayload } from '../types/storage.js';
+import type {
+  CandidateFactRow,
+  ConversationSummaryRow,
+  DetailedConversationMessageRow,
+  EmbeddingRow,
+  SemanticTriplePayload,
+} from '../types/storage.js';
 
 export type ConnFactory = () => unknown;
 
@@ -44,7 +50,12 @@ interface ConversationMessageOps {
     conversationId: number | string,
     role: string,
     type: string | null,
-    content: string
+    content: string,
+    options?: {
+      trace?: string | null;
+      source?: string | null;
+      signal?: string | null;
+    }
   ): Promise<void> | void;
 }
 
@@ -52,14 +63,31 @@ interface ConversationMessagesOps {
   read(
     conversationId: number | string
   ): Promise<Array<{ role: string; content: string }>> | Array<{ role: string; content: string }>;
+  readDetailed(
+    conversationId: number | string
+  ): Promise<DetailedConversationMessageRow[]> | DetailedConversationMessageRow[];
 }
 
 interface ConversationOps {
   create(
     sessionId: number | string | null,
-    timeoutMinutes: number
+    timeoutMinutes: number,
+    projectId?: string | null
   ): Promise<number | string | null> | number | string | null;
   update(id: number | string | null, summary: string): unknown;
+  read?(
+    id: number | string | null
+  ): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
+  searchSummaries?(
+    entityId: number | string,
+    filters?: {
+      projectId?: string | null;
+      sessionId?: string | null;
+      dateStart?: string | null;
+      dateEnd?: string | null;
+      limit?: number;
+    }
+  ): Promise<ConversationSummaryRow[]> | ConversationSummaryRow[];
 }
 
 interface EntityOps {
@@ -99,6 +127,7 @@ interface SessionOps {
     entityId: number | string | null,
     processId: number | string | null
   ): Promise<number | string | null> | number | string | null;
+  read?(uuid: string | number | null): Promise<number | string | null> | number | string | null;
 }
 
 export abstract class BaseDriver {

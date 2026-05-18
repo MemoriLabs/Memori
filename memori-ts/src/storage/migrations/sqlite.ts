@@ -224,4 +224,41 @@ export const sqliteMigrations: Record<number, Migration[]> = {
       ],
     },
   ],
+  3: [
+    {
+      description: 'add project_id to memori_conversation',
+      operation: `
+        ALTER TABLE memori_conversation
+        ADD COLUMN project_id TEXT DEFAULT NULL
+      `,
+    },
+    {
+      description: 'add trace to memori_conversation_message',
+      operation: `
+        ALTER TABLE memori_conversation_message
+        ADD COLUMN trace TEXT DEFAULT NULL
+      `,
+    },
+    {
+      description: 'add source to memori_conversation_message',
+      operation: `
+        ALTER TABLE memori_conversation_message
+        ADD COLUMN source TEXT DEFAULT NULL
+      `,
+    },
+    {
+      description: 'add signal to memori_conversation_message',
+      operation: `
+        ALTER TABLE memori_conversation_message
+        ADD COLUMN signal TEXT DEFAULT NULL
+      `,
+    },
+    {
+      description: 'create index on memori_conversation.project_id',
+      operation: `
+        CREATE INDEX IF NOT EXISTS idx_memori_conversation_project_id
+        ON memori_conversation (project_id)
+      `,
+    },
+  ],
 };

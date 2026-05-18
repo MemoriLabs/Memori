@@ -29,13 +29,36 @@ from memori.storage._registry import Registry
 from memori.storage.migrations._mongodb import migrations
 
 
+def _normalize_datetime(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 class Conversation(BaseConversation):
     def __init__(self, conn: BaseStorageAdapter):
         super().__init__(conn)
         self.message = ConversationMessage(conn)
         self.messages = ConversationMessages(conn)
 
-    def create(self, session_id, timeout_minutes: int):
+    def create(self, session_id, timeout_minutes: int, project_id: str | None = None):
         existing = self.conn.execute(
             "memori_conversation", "find_one", {"session_id": session_id}
         )
@@ -58,12 +81,20 @@ class Conversation(BaseConversation):
             minutes_elapsed = (now - last_activity).total_seconds() / 60
 
             if minutes_elapsed <= timeout_minutes:
+                if project_id and existing.get("project_id") != project_id:
+                    self.conn.execute(
+                        "memori_conversation",
+                        "update_one",
+                        {"_id": existing["_id"]},
+                        {"$set": {"project_id": project_id}},
+                    )
                 return existing.get("_id")
 
         conversation_uuid = str(uuid4())
         conversation_doc = {
             "uuid": conversation_uuid,
             "session_id": session_id,
+            "project_id": project_id,
             "summary": None,
             "date_created": datetime.now(timezone.utc),
             "date_updated": None,
@@ -113,15 +144,113 @@ class Conversation(BaseConversation):
             return None
         return existing.get("_id")
 
+    def search_summaries(
+        self,
+        entity_id: int,
+        *,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        date_start: str | None = None,
+        date_end: str | None = None,
+        limit: int = 20,
+    ) -> list[dict]:
+        session_filter = {"entity_id": entity_id}
+        if session_id:
+            session_filter["uuid"] = session_id
+
+        session_rows = list(
+            self.conn.execute(
+                "memori_session",
+                "find",
+                session_filter,
+                {"_id": 1, "uuid": 1},
+            )
+        )
+        if not session_rows:
+            return []
+
+        session_by_id = {row["_id"]: row.get("uuid") for row in session_rows}
+        conversation_filter = {
+            "session_id": {"$in": list(session_by_id)},
+            "summary": {"$nin": [None, ""]},
+        }
+        if project_id:
+            conversation_filter["project_id"] = project_id
+
+        conversations = list(
+            self.conn.execute(
+                "memori_conversation",
+                "find",
+                conversation_filter,
+                {
+                    "_id": 1,
+                    "session_id": 1,
+                    "project_id": 1,
+                    "summary": 1,
+                    "date_created": 1,
+                    "date_updated": 1,
+                },
+            )
+        )
+
+        start_dt = _normalize_datetime(date_start)
+        end_dt = _normalize_datetime(date_end)
+        summaries = []
+        for conversation in conversations:
+            summary = conversation.get("summary")
+            if not isinstance(summary, str) or not summary:
+                continue
+
+            effective_dt = _normalize_datetime(
+                conversation.get("date_updated") or conversation.get("date_created")
+            )
+            if start_dt and (effective_dt is None or effective_dt < start_dt):
+                continue
+            if end_dt and (effective_dt is None or effective_dt > end_dt):
+                continue
+
+            summaries.append(
+                {
+                    "conversation_id": conversation.get("_id"),
+                    "project_id": conversation.get("project_id"),
+                    "session_id": session_by_id.get(conversation.get("session_id")),
+                    "content": summary,
+                    "date_created": conversation.get("date_updated")
+                    or conversation.get("date_created"),
+                }
+            )
+
+        summaries.sort(
+            key=lambda row: (
+                _normalize_datetime(row.get("date_created"))
+                or datetime.min.replace(tzinfo=timezone.utc)
+            ),
+            reverse=True,
+        )
+        return summaries[:limit]
+
 
 class ConversationMessage(BaseConversationMessage):
-    def create(self, conversation_id: int, role: str, type: str, content: str):
+    def create(
+        self,
+        conversation_id: int,
+        role: str,
+        type: str,
+        content: str,
+        *,
+        trace: str | None = None,
+        source: str | None = None,
+        signal: str | None = None,
+    ):
         message_doc = {
             "uuid": str(uuid4()),
             "conversation_id": conversation_id,
             "role": role,
             "type": type,
             "content": content,
+            "trace": trace,
+            "source": source,
+            "signal": signal,
             "date_created": datetime.now(timezone.utc),
             "date_updated": None,
         }
@@ -141,6 +270,40 @@ class ConversationMessages(BaseConversationMessages):
         messages = []
         for result in results:
             messages.append({"content": result["content"], "role": result["role"]})
+
+        return messages
+
+    def read_detailed(self, conversation_id: int):
+        results = self.conn.execute(
+            "memori_conversation_message",
+            "find",
+            {"conversation_id": conversation_id},
+            {
+                "role": 1,
+                "type": 1,
+                "content": 1,
+                "trace": 1,
+                "source": 1,
+                "signal": 1,
+                "date_created": 1,
+                "_id": 0,
+            },
+            sort=[("date_created", 1)],
+        )
+
+        messages = []
+        for result in results:
+            messages.append(
+                {
+                    "content": result.get("content"),
+                    "role": result.get("role"),
+                    "type": result.get("type"),
+                    "trace": result.get("trace"),
+                    "source": result.get("source"),
+                    "signal": result.get("signal"),
+                    "date_created": result.get("date_created"),
+                }
+            )
 
         return messages
 
@@ -346,9 +509,29 @@ class EntityFact(BaseEntityFact):
             "memori_conversation",
             "find",
             {"_id": {"$in": conversation_ids}},
-            {"_id": 1, "summary": 1, "date_created": 1, "date_updated": 1},
+            {
+                "_id": 1,
+                "summary": 1,
+                "project_id": 1,
+                "session_id": 1,
+                "date_created": 1,
+                "date_updated": 1,
+            },
         )
         conversations = {row["_id"]: row for row in conversation_rows}
+
+        session_ids = [
+            row.get("session_id")
+            for row in conversations.values()
+            if row.get("session_id") is not None
+        ]
+        session_rows = self.conn.execute(
+            "memori_session",
+            "find",
+            {"_id": {"$in": session_ids}},
+            {"_id": 1, "uuid": 1},
+        )
+        sessions = {row["_id"]: row.get("uuid") for row in session_rows}
 
         for mention in mentions:
             fact_id = mention.get("fact_id")
@@ -366,6 +549,9 @@ class EntityFact(BaseEntityFact):
                     "content": content,
                     "date_created": conversation.get("date_updated")
                     or conversation.get("date_created"),
+                    "project_id": conversation.get("project_id"),
+                    "session_id": sessions.get(conversation.get("session_id")),
+                    "conversation_id": conversation.get("_id"),
                 }
             )
 

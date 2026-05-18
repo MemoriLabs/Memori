@@ -47,5 +47,6 @@ class Manager:
 
         dialect = self.adapter.get_dialect()
         self.config.storage_config.cockroachdb = dialect == "cockroachdb"
+        self.config.storage_config.dialect = dialect
 
         return self

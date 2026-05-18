@@ -36,6 +36,11 @@ export interface NapiRecallRow {
     dateCreated: string;
     entityFactId?: number | string;
     factId?: number | string;
+    projectId?: string | null;
+    sessionId?: string | null;
+    conversationId?: number | string | null;
+    source?: string | null;
+    signal?: string | null;
   }>;
 }
 
@@ -51,8 +56,13 @@ export type RecallItem = string | RecallObject;
 export interface RecallSummary {
   content: string;
   date_created: string;
-  entity_fact_id: number | string;
-  fact_id: number | string;
+  entity_fact_id?: number | string;
+  fact_id?: number | string;
+  project_id?: string | null;
+  session_id?: string | null;
+  conversation_id?: number | string | null;
+  source?: string | null;
+  signal?: string | null;
 }
 
 /**
@@ -115,6 +125,11 @@ export interface ParsedSummary {
    * Undefined if the backend did not return temporal data.
    */
   dateCreated: string;
+  projectId?: string | null;
+  sessionId?: string | null;
+  conversationId?: number | string | null;
+  source?: string | null;
+  signal?: string | null;
 }
 
 /**
@@ -122,6 +137,8 @@ export interface ParsedSummary {
  * If sessionId is provided, projectId must also be provided.
  */
 export interface AgentRecallParams {
+  /** Optional search query used to rank relevant memories. */
+  query?: string;
   /** Filter results to memories created on or after this date/time (ISO 8601). */
   dateStart?: string;
   /** Filter results to memories created on or before this date/time (ISO 8601). */
@@ -165,6 +182,7 @@ export interface AgentRecallResponse {
   results?: RecallItem[];
   memories?: RecallItem[];
   data?: RecallItem[];
+  messages?: Array<Record<string, unknown>>;
 }
 
 /**

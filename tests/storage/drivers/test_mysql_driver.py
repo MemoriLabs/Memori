@@ -149,9 +149,10 @@ def test_conversation_create(mock_conn, mock_single_result):
     assert "INSERT IGNORE INTO memori_conversation" in insert_call[0][0]
 
     # Verify the UUID is generated and session_id is passed
-    uuid_arg, session_id_arg = insert_call[0][1]
+    uuid_arg, session_id_arg, project_id_arg = insert_call[0][1]
     assert isinstance(uuid_arg, UUID)
     assert session_id_arg == 789
+    assert project_id_arg is None
 
     # Verify SELECT query
     select_call = mock_conn.execute.call_args_list[2]
@@ -234,12 +235,15 @@ def test_conversation_message_create(mock_conn):
     assert "INSERT INTO memori_conversation_message" in insert_call[0][0]
 
     # Verify parameters
-    uuid_arg, conv_id, role, type_, content = insert_call[0][1]
+    uuid_arg, conv_id, role, type_, content, trace, source, signal = insert_call[0][1]
     assert isinstance(uuid_arg, UUID)
     assert conv_id == 101
     assert role == "user"
     assert type_ == "text"
     assert content == "Hello, world!"
+    assert trace is None
+    assert source is None
+    assert signal is None
 
 
 def test_conversation_messages_read(mock_conn, mock_multiple_results):

@@ -399,4 +399,41 @@ migrations = {
             """,
         },
     ],
+    3: [
+        {
+            "description": "add project scope to memori_conversation",
+            "operation": """
+                ALTER TABLE memori_conversation
+                ADD (project_id VARCHAR2(255) DEFAULT NULL)
+            """,
+        },
+        {
+            "description": "add trace to memori_conversation_message",
+            "operation": """
+                ALTER TABLE memori_conversation_message
+                ADD (trace CLOB DEFAULT NULL)
+            """,
+        },
+        {
+            "description": "add source to memori_conversation_message",
+            "operation": """
+                ALTER TABLE memori_conversation_message
+                ADD (source VARCHAR2(255) DEFAULT NULL)
+            """,
+        },
+        {
+            "description": "add signal to memori_conversation_message",
+            "operation": """
+                ALTER TABLE memori_conversation_message
+                ADD (signal VARCHAR2(255) DEFAULT NULL)
+            """,
+        },
+        {
+            "description": "create index on memori_conversation project scope",
+            "operation": """
+                CREATE INDEX idx_memori_conversation_project_id
+                ON memori_conversation (project_id)
+            """,
+        },
+    ],
 }

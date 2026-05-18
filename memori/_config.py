@@ -49,6 +49,7 @@ class Cache:
 class Storage:
     def __init__(self):
         self.cockroachdb = False
+        self.dialect = None
 
 
 class Embeddings:

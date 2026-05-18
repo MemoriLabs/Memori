@@ -3,6 +3,8 @@ import { Registry } from './registry.js';
 import { Builder } from './builder.js';
 import { Config } from '../core/config.js';
 import {
+  ConversationSummaryRow,
+  DetailedConversationMessageRow,
   StorageBridge,
   WriteBatch,
   WriteAck,
@@ -94,6 +96,37 @@ export class StorageManager implements StorageBridge {
     return await this.driver.conversationMessages.read(internalConvId);
   }
 
+  public async getConversationHistoryDetailed(
+    sessionId: string
+  ): Promise<DetailedConversationMessageRow[]> {
+    const existingSessionId =
+      (await this.driver.session.read?.(sessionId)) ??
+      (await this.driver.session.create(sessionId, null, null));
+    if (!existingSessionId) return [];
+
+    const convId =
+      (await this.driver.conversation.create(existingSessionId || sessionId, 30)) ?? null;
+    if (!convId) return [];
+
+    return await this.driver.conversationMessages.readDetailed(convId);
+  }
+
+  public async getConversationSummaries(
+    entityId: string,
+    filters: {
+      projectId?: string | null;
+      sessionId?: string | null;
+      dateStart?: string | null;
+      dateEnd?: string | null;
+      limit?: number;
+    } = {}
+  ): Promise<ConversationSummaryRow[]> {
+    if (!this.driver.conversation.searchSummaries) return [];
+    const internalEntityId = await this.driver.entity.create(entityId);
+    if (!internalEntityId) return [];
+    return await this.driver.conversation.searchSummaries(internalEntityId, filters);
+  }
+
   public writeBatch(batch: WriteBatch): Promise<WriteAck> {
     return this.writeBatchAsync(batch);
   }
@@ -126,18 +159,38 @@ export class StorageManager implements StorageBridge {
         for (const op of batch.ops) {
           switch (op.op_type) {
             case 'conversation_message.create': {
-              const sId = await txDriver.session.create(op.payload.conversation_id, null, null);
+              const internalEntityId = op.payload.entity_id
+                ? await txDriver.entity.create(op.payload.entity_id)
+                : null;
+              const internalProcessId = op.payload.process_id
+                ? await txDriver.process.create(op.payload.process_id)
+                : null;
+              const sId = await txDriver.session.create(
+                op.payload.conversation_id,
+                internalEntityId || op.payload.entity_id || null,
+                internalProcessId || op.payload.process_id || null
+              );
               const convId = await txDriver.conversation.create(
                 sId || op.payload.conversation_id,
-                30
+                30,
+                op.payload.project_id ?? null
               );
               const internalConvId = convId || op.payload.conversation_id;
               for (const message of op.payload.messages) {
+                const trace =
+                  message.trace === undefined || message.trace === null
+                    ? null
+                    : JSON.stringify(message.trace);
                 await txDriver.conversationMessage.create(
                   internalConvId,
                   message.role,
-                  'text',
-                  message.content
+                  message.type ?? 'text',
+                  message.content,
+                  {
+                    trace,
+                    source: message.source ?? null,
+                    signal: message.signal ?? null,
+                  }
                 );
               }
               break;

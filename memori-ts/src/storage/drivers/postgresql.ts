@@ -2,7 +2,12 @@ import { randomUUID, createHash } from 'node:crypto';
 import { StorageAdapter, BaseDriver, SqlBindValue } from '../base.js';
 import { postgresqlMigrations } from '../migrations/postgresql.js';
 import { Registry } from '../registry.js';
-import { CandidateFactRow, SemanticTriplePayload } from '../../types/storage.js';
+import {
+  CandidateFactRow,
+  ConversationSummaryRow,
+  DetailedConversationMessageRow,
+  SemanticTriplePayload,
+} from '../../types/storage.js';
 import { bufferToFloat32Array } from '../../utils/utils.js';
 
 function generateUniq(inputs: string[]): string {
@@ -23,11 +28,25 @@ class ConversationMessage {
     conversationId: number | string,
     role: string,
     type: string | null,
-    content: string
+    content: string,
+    options?: {
+      trace?: string | null;
+      source?: string | null;
+      signal?: string | null;
+    }
   ): Promise<void> {
     await this.conn.execute(
-      `INSERT INTO memori_conversation_message(uuid, conversation_id, role, type, content) VALUES ($1, $2, $3, $4, $5)`,
-      [randomUUID(), conversationId, role, type, content]
+      `INSERT INTO memori_conversation_message(uuid, conversation_id, role, type, content, trace, source, signal) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        randomUUID(),
+        conversationId,
+        role,
+        type,
+        content,
+        options?.trace ?? null,
+        options?.source ?? null,
+        options?.signal ?? null,
+      ]
     );
   }
 }
@@ -38,10 +57,19 @@ class ConversationMessages {
     conversationId: number | string
   ): Promise<Array<{ role: string; content: string }>> {
     const results = await this.conn.execute<{ role: string; content: string }>(
-      `SELECT role, content FROM memori_conversation_message WHERE conversation_id = $1`,
+      `SELECT role, content FROM memori_conversation_message WHERE conversation_id = $1 ORDER BY id`,
       [conversationId]
     );
     return results.map((row) => ({ content: row.content, role: row.role }));
+  }
+
+  public async readDetailed(
+    conversationId: number | string
+  ): Promise<DetailedConversationMessageRow[]> {
+    return await this.conn.execute<DetailedConversationMessageRow>(
+      `SELECT role, type, content, trace, source, signal, date_created FROM memori_conversation_message WHERE conversation_id = $1 ORDER BY id`,
+      [conversationId]
+    );
   }
 }
 
@@ -53,10 +81,15 @@ class Conversation {
   ) {}
   public async create(
     sessionId: number | string,
-    timeoutMinutes: number
+    timeoutMinutes: number,
+    projectId?: string | null
   ): Promise<number | string | null> {
-    const existing = await this.conn.execute<{ id: number | string; last_activity: string }>(
-      `SELECT c.id, COALESCE(MAX(m.date_created), c.date_created) as last_activity FROM memori_conversation c LEFT JOIN memori_conversation_message m ON m.conversation_id = c.id WHERE c.session_id = $1 GROUP BY c.id, c.date_created`,
+    const existing = await this.conn.execute<{
+      id: number | string;
+      project_id: string | null;
+      last_activity: string;
+    }>(
+      `SELECT c.id, c.project_id, COALESCE(MAX(m.date_created), c.date_created) as last_activity FROM memori_conversation c LEFT JOIN memori_conversation_message m ON m.conversation_id = c.id WHERE c.session_id = $1 GROUP BY c.id, c.project_id, c.date_created`,
       [sessionId]
     );
     if (existing.length > 0) {
@@ -64,12 +97,19 @@ class Conversation {
         `SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1::timestamp)) / 60 as minutes_since_activity`,
         [existing[0].last_activity]
       );
-      if (result.length > 0 && result[0].minutes_since_activity <= timeoutMinutes)
+      if (result.length > 0 && result[0].minutes_since_activity <= timeoutMinutes) {
+        if (projectId && existing[0].project_id !== projectId) {
+          await this.conn.execute(`UPDATE memori_conversation SET project_id = $1 WHERE id = $2`, [
+            projectId,
+            existing[0].id,
+          ]);
+        }
         return existing[0].id;
+      }
     }
     await this.conn.execute(
-      `INSERT INTO memori_conversation(uuid, session_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [randomUUID(), sessionId]
+      `INSERT INTO memori_conversation(uuid, session_id, project_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+      [randomUUID(), sessionId, projectId ?? null]
     );
     const newConv = await this.conn.execute<{ id: number | string }>(
       `SELECT id FROM memori_conversation WHERE session_id = $1`,
@@ -84,6 +124,56 @@ class Conversation {
       id,
     ]);
     return this;
+  }
+
+  public async read(id: number | string): Promise<Record<string, unknown> | null> {
+    const rows = await this.conn.execute(
+      `SELECT id, uuid, session_id, project_id, summary, date_created, date_updated FROM memori_conversation WHERE id = $1`,
+      [id]
+    );
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  public async searchSummaries(
+    entityId: number | string,
+    filters: {
+      projectId?: string | null;
+      sessionId?: string | null;
+      dateStart?: string | null;
+      dateEnd?: string | null;
+      limit?: number;
+    } = {}
+  ): Promise<ConversationSummaryRow[]> {
+    const clauses = ['s.entity_id = $1', `c.summary IS NOT NULL`, `c.summary <> ''`];
+    const params: SqlBindValue[] = [entityId];
+
+    if (filters.projectId) {
+      params.push(filters.projectId);
+      clauses.push(`c.project_id = $${params.length}`);
+    }
+    if (filters.sessionId) {
+      params.push(filters.sessionId);
+      clauses.push(`s.uuid = $${params.length}`);
+    }
+    if (filters.dateStart) {
+      params.push(filters.dateStart);
+      clauses.push(`COALESCE(c.date_updated, c.date_created) >= $${params.length}`);
+    }
+    if (filters.dateEnd) {
+      params.push(filters.dateEnd);
+      clauses.push(`COALESCE(c.date_updated, c.date_created) <= $${params.length}`);
+    }
+    params.push(filters.limit ?? 20);
+
+    return await this.conn.execute<ConversationSummaryRow>(
+      `SELECT c.id AS conversation_id, c.project_id AS project_id, s.uuid AS session_id, c.summary AS content, COALESCE(c.date_updated, c.date_created) AS date_created
+         FROM memori_conversation c
+         JOIN memori_session s ON s.id = c.session_id
+        WHERE ${clauses.join(' AND ')}
+        ORDER BY COALESCE(c.date_updated, c.date_created) DESC
+        LIMIT $${params.length}`,
+      params
+    );
   }
 }
 
@@ -245,8 +335,11 @@ class EntityFact {
       fact_id: number | string;
       content: string;
       date_created: string | Date;
+      project_id: string | null;
+      session_id: string | null;
+      conversation_id: number | string;
     }>(
-      `SELECT m.fact_id, c.summary AS content, COALESCE(c.date_updated, c.date_created) AS date_created FROM memori_entity_fact_mention m JOIN memori_conversation c ON c.id = m.conversation_id WHERE m.fact_id IN (${placeholders}) AND c.summary IS NOT NULL AND c.summary <> ''`,
+      `SELECT m.fact_id, c.summary AS content, COALESCE(c.date_updated, c.date_created) AS date_created, c.project_id AS project_id, s.uuid AS session_id, c.id AS conversation_id FROM memori_entity_fact_mention m JOIN memori_conversation c ON c.id = m.conversation_id JOIN memori_session s ON s.id = c.session_id WHERE m.fact_id IN (${placeholders}) AND c.summary IS NOT NULL AND c.summary <> ''`,
       factIds
     );
 
@@ -256,6 +349,9 @@ class EntityFact {
         (fact.summaries ??= []).push({
           content: row.content,
           date_created: row.date_created ? new Date(row.date_created).toISOString() : '',
+          project_id: row.project_id ?? null,
+          session_id: row.session_id ?? null,
+          conversation_id: row.conversation_id,
         });
       }
     }
@@ -355,6 +451,14 @@ class Session {
       `INSERT INTO memori_session(uuid, entity_id, process_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
       [uuid, entityId, processId]
     );
+    const res = await this.conn.execute<{ id: number | string }>(
+      `SELECT id FROM memori_session WHERE uuid = $1`,
+      [uuid]
+    );
+    return res.length > 0 ? res[0].id : null;
+  }
+
+  public async read(uuid: string | number | null): Promise<number | string | null> {
     const res = await this.conn.execute<{ id: number | string }>(
       `SELECT id FROM memori_session WHERE uuid = $1`,
       [uuid]
