@@ -381,11 +381,11 @@ describe('RecallEngine', () => {
       expect(url).toContain('project_id=proj-1');
     });
 
-    it('should throw an error if projectId is not provided', async () => {
+    it('defaults projectId to the current project context when not supplied', async () => {
       (mockApi.get as any).mockResolvedValue(mockCompactionResponse);
-      await expect(recallEngine.agentCompaction()).rejects.toThrow(
-        'projectId is required for agent compaction'
-      );
+      await recallEngine.agentCompaction();
+      const url: string = (mockApi.get as any).mock.calls[0][0];
+      expect(url).toContain('project_id=test-project-id');
     });
 
     it('includes session_id in the query string when provided', async () => {
