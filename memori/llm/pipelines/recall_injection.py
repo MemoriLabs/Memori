@@ -140,28 +140,15 @@ def inject_recalled_facts(invoke, kwargs: dict) -> dict:
     else:
         rust_core = getattr(invoke.config, "rust_core", None)
         if rust_core is not None:
-            try:
-                facts = cast(
-                    list[FactSearchResult | Mapping[str, object] | str],
-                    rust_core.retrieve_facts(
-                        query=user_query,
-                        entity_id=str(resolved_entity_id),
-                        limit=invoke.config.recall_facts_limit,
-                        dense_limit=invoke.config.recall_embeddings_limit,
-                    ),
-                )
-            except Exception:
-                from memori.memory.recall import Recall
-
-                recall = Recall(invoke.config)
-                facts = cast(
-                    list[FactSearchResult | Mapping[str, object] | str],
-                    recall.search_facts(
-                        user_query,
-                        entity_id=resolved_entity_id,
-                        cloud=bool(invoke.config.cloud),
-                    ),
-                )
+            facts = cast(
+                list[FactSearchResult | Mapping[str, object] | str],
+                rust_core.retrieve_facts(
+                    query=user_query,
+                    entity_id=str(resolved_entity_id),
+                    limit=invoke.config.recall_facts_limit,
+                    dense_limit=invoke.config.recall_embeddings_limit,
+                ),
+            )
         else:
             from memori.memory.recall import Recall
 

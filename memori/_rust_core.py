@@ -506,9 +506,7 @@ class RustCoreAdapter:
         try:
             from memori_python import EngineHandle  # ty: ignore[unresolved-import]
         except ImportError as exc:
-            logger.warning(
-                "Rust core unavailable, falling back to Python path: %s", exc
-            )
+            logger.warning("Rust core unavailable: %s", exc)
             raise RustCoreAdapterError("Rust core is unavailable") from exc
         except Exception as exc:  # noqa: BLE001
             logger.exception("Unexpected error importing memori_python EngineHandle")

@@ -200,15 +200,12 @@ class Memori:
             resolved_limit = self.config.recall_facts_limit if limit is None else limit
             if not self.config.entity_id:
                 return []
-            try:
-                return self.config.rust_core.retrieve_facts(
-                    query=query,
-                    entity_id=str(self.config.entity_id),
-                    limit=resolved_limit,
-                    dense_limit=self.config.recall_embeddings_limit,
-                )
-            except Exception:  # noqa: BLE001
-                pass
+            return self.config.rust_core.retrieve_facts(
+                query=query,
+                entity_id=str(self.config.entity_id),
+                limit=resolved_limit,
+                dense_limit=self.config.recall_embeddings_limit,
+            )
         return Recall(self.config).search_facts(query, limit)
 
     def delete_entity_memories(self, entity_id: str | None = None) -> None:

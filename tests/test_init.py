@@ -233,6 +233,30 @@ def test_recall_defaults_to_config_limit_in_cloud(monkeypatch, mocker):
     assert payload["limit"] == 3
 
 
+def test_recall_raises_when_rust_core_errors(mocker):
+    mem = object.__new__(Memori)
+    mem.config = mocker.Mock()
+    mem.config.cloud = False
+    mem.config.entity_id = "entity-id"
+    mem.config.recall_facts_limit = 10
+    mem.config.recall_embeddings_limit = 1000
+    mem.config.rust_core = mocker.Mock()
+    mem.config.rust_core.retrieve_facts.side_effect = RuntimeError("rust error")
+
+    recall = mocker.patch("memori.__init__.Recall")
+
+    with pytest.raises(RuntimeError, match="rust error"):
+        mem.recall("test query")
+
+    mem.config.rust_core.retrieve_facts.assert_called_once_with(
+        query="test query",
+        entity_id="entity-id",
+        limit=10,
+        dense_limit=1000,
+    )
+    recall.assert_not_called()
+
+
 def test_delete_entity_memories_supported_in_explicit_conn_mode(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
