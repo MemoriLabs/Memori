@@ -97,4 +97,106 @@ describe('OpenClawIntegration', () => {
       expect(spy).toHaveBeenCalledWith('this is great');
     });
   });
+
+  describe('agentRecall()', () => {
+    it('should delegate to executeAgentRecall and return the result', async () => {
+      const mockResult = { facts: [{ id: 1, content: 'a memory' }] };
+      const spy = vi.spyOn(openclaw as any, 'executeAgentRecall').mockResolvedValue(mockResult);
+
+      const result = await openclaw.agentRecall({ projectId: 'proj-1' });
+
+      expect(spy).toHaveBeenCalledWith({ projectId: 'proj-1' });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should work when called with no params', async () => {
+      const spy = vi.spyOn(openclaw as any, 'executeAgentRecall').mockResolvedValue({});
+
+      await openclaw.agentRecall();
+
+      expect(spy).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe('agentRecallSummary()', () => {
+    it('should delegate to executeAgentRecallSummary and return the result', async () => {
+      const mockResult = {
+        summaries: [{ content: 'sum', date_created: '2024-01-01', entity_fact_id: 1, fact_id: 1 }],
+      };
+      const spy = vi
+        .spyOn(openclaw as any, 'executeAgentRecallSummary')
+        .mockResolvedValue(mockResult);
+
+      const result = await openclaw.agentRecallSummary({ projectId: 'proj-1' });
+
+      expect(spy).toHaveBeenCalledWith({ projectId: 'proj-1' });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should work when called with no params', async () => {
+      const spy = vi.spyOn(openclaw as any, 'executeAgentRecallSummary').mockResolvedValue({});
+
+      await openclaw.agentRecallSummary();
+
+      expect(spy).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe('agentCompaction()', () => {
+    const mockCompactionResponse = {
+      continuation: { last_action: 'ran tests', next_expected_action: 'open PR' },
+      environment: ['CI=true'],
+      messages: [{ content: 'hi', role: 'user', type: 'text' }],
+      metadata: {
+        date: { execution: '2024-06-01T00:00:00.000Z' },
+        filter: { project: { id: 'proj-1' } },
+      },
+      standing_orders: ['prefer small commits'],
+      state: { active_tasks: ['auth refactor'], open_loops: [], pending_results: [] },
+      workspace_changes: [],
+    };
+
+    it('should delegate to executeAgentCompaction and return the result', async () => {
+      const spy = vi
+        .spyOn(openclaw as any, 'executeAgentCompaction')
+        .mockResolvedValue(mockCompactionResponse);
+
+      const result = await openclaw.agentCompaction({ projectId: 'proj-1' });
+
+      expect(spy).toHaveBeenCalledWith({ projectId: 'proj-1' });
+      expect(result).toEqual(mockCompactionResponse);
+    });
+
+    it('should pass an empty object when called with no params', async () => {
+      const spy = vi
+        .spyOn(openclaw as any, 'executeAgentCompaction')
+        .mockResolvedValue(mockCompactionResponse);
+
+      await openclaw.agentCompaction();
+
+      expect(spy).toHaveBeenCalledWith({});
+    });
+
+    it('should forward all optional params', async () => {
+      const spy = vi
+        .spyOn(openclaw as any, 'executeAgentCompaction')
+        .mockResolvedValue(mockCompactionResponse);
+
+      await openclaw.agentCompaction({ projectId: 'proj-1', sessionId: 'sess-1', numMessages: 15 });
+
+      expect(spy).toHaveBeenCalledWith({
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        numMessages: 15,
+      });
+    });
+
+    it('should return null when executeAgentCompaction returns null', async () => {
+      vi.spyOn(openclaw as any, 'executeAgentCompaction').mockResolvedValue(null);
+
+      const result = await openclaw.agentCompaction({ projectId: 'proj-1' });
+
+      expect(result).toBeNull();
+    });
+  });
 });
