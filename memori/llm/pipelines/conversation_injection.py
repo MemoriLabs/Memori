@@ -11,6 +11,7 @@ from memori.llm._utils import (
     llm_is_anthropic,
     llm_is_bedrock,
     llm_is_google,
+    llm_is_litellm,
     llm_is_openai,
     llm_is_xai,
 )
@@ -95,6 +96,7 @@ def _inject_messages_by_provider(
 
     if (
         llm_is_openai(config.framework.provider, config.llm.provider)
+        or llm_is_litellm(config.framework.provider, config.llm.provider)
         or agno_is_openai(config.framework.provider, config.llm.provider)
         or agno_is_xai(config.framework.provider, config.llm.provider)
     ):
