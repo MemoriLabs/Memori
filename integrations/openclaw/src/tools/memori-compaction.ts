@@ -8,26 +8,44 @@ export function createMemoriCompactionTool(deps: ToolDeps) {
   return {
     name: 'memori_compaction',
     label: 'Compact Agent Memory',
-    description: `Use this tool to retrieve a full structured snapshot of the agent's long-term memory at the START of a new session, after a context reset, or when resuming work from a prior conversation.
-
-The compaction returns:
-- **state**: active_tasks (work in progress), open_loops (unresolved threads), pending_results
-- **standing_orders**: persistent instructions the agent must continue to follow
-- **environment**: environment variable context captured during prior sessions
-- **workspace_changes**: recent file or system changes made by the agent
-- **continuation**: last_action (what the agent did last) and next_expected_action (what it should do next)
-- **messages**: a tail of recent conversation messages for continuity
-- **timeline**: a chronological narrative of agent activity (when available)
+    description: `Use this tool to restore working state after context compaction. Returns a structured snapshot of the agent's long-term memory to enable continuation without replaying the full prior session.
 
 WHEN TO USE:
-- At the start of a new conversation when the user is resuming prior work
-- When the user says "pick up where we left off", "continue the task", "what was I working on?", or similar
-- When context has been compacted or reset and you need to reconstruct the full agent state before proceeding
+- The agent resumes after compaction
+- A long-running workflow has lost conversational detail
+- The agent needs to continue operational work without replaying the full prior session
+- The agent needs durable state, standing instructions, environment details, open loops, or the next expected action
 
 WHEN NOT TO USE:
 - Do NOT call this on every turn — it costs 100 memory credits per execution
 - Do NOT use this for targeted memory search — use memori_recall for that instead
-- Do NOT call this if the user is starting a brand-new task with no prior context`,
+- Do NOT call this if the agent is starting a brand-new task with no prior context
+- Compaction is not a replacement for precise memory retrieval
+
+The compaction result returns:
+- **environment**: environment variable context captured during prior sessions
+- **standing_orders**: persistent instructions the agent must continue to follow
+- **state**: active_tasks (work in progress), open_loops (unresolved threads), pending_results
+- **timeline**: a chronological narrative of agent activity (when available)
+- **workspace_changes**: recent file or system changes made by the agent
+- **continuation**: last_action (what the agent did last) and next_expected_action (what it should do next)
+- **messages**: a tail of recent conversation messages for continuity
+
+HOW TO USE THE RESULT:
+Treat the compaction result as the agent's resume state — use it to understand what environment the agent was operating in, which standing orders must continue to be followed, which tasks are active, what happened across the prior session window, and what the agent should do next.
+
+The compaction result should guide continuation, not override explicit user instructions. Before acting on operational details, verify any state that may have changed since compaction.
+
+Pay special attention to:
+- Standing orders
+- Hard constraints
+- Alerting rules
+- Expected response formats
+- Open loops
+- Staleness warnings
+- Next expected action
+
+If the compaction result contains a required output format, follow it exactly unless the user gives a newer instruction.`,
 
     parameters: {
       type: 'object',
