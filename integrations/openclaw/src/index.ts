@@ -37,9 +37,10 @@ const memoriPlugin = {
     logger.info(`\n=== ${PLUGIN_CONFIG.LOG_PREFIX} INITIALIZING PLUGIN ===`);
     logger.info(`${PLUGIN_CONFIG.LOG_PREFIX} Tracking Entity ID: ${config.entityId}`);
 
-    if (skillsContent) {
-      api.on('before_prompt_build', () => ({ appendSystemContext: skillsContent }));
-    }
+    const configContext = `Memori plugin configuration: projectId="${config.projectId}", entityId="${config.entityId}"`;
+    api.on('before_prompt_build', () => ({
+      appendSystemContext: [skillsContent, configContext].filter(Boolean).join('\n\n'),
+    }));
 
     api.on('agent_end', (event: unknown, ctx: unknown) =>
       handleAugmentation(event as OpenClawEvent, ctx as OpenClawContext, config, logger)
