@@ -148,7 +148,7 @@ The Memori provider operates on two parallel tracks:
 
 | Track | Mechanism | What it does |
 | --- | --- | --- |
-| **Agent-Controlled Intelligent Recall** | Memory Provider Tools | Equips Hermes with `memori_recall`, `memori_recall_summary`, `memori_compaction`, `memori_quota`, `memori_signup`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
+| **Agent-Controlled Intelligent Recall** | Memory Provider Tools | Equips Hermes with `memori_recall`, `memori_recall_summary`, `memori_compaction`, `memori_quota`, `memori_signup`, and `memori_feedback`. The agent retrieves memory explicitly when needed, including post-compaction briefs for restoring working state after context compaction. |
 | **Advanced Augmentation** | Memory Provider Sync | After a completed, non-interrupted turn, Hermes calls its memory sync path. The exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
 
 Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient. Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy and efficiency while avoiding unnecessary token usage.

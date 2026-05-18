@@ -101,9 +101,9 @@ MEMORI_RECALL_SUMMARY_SCHEMA = {
 MEMORI_COMPACTION_SCHEMA = {
     "name": "memori_compaction",
     "description": (
-        "Fetch a structured compaction of Memori long-term memory and current "
-        "agent context, including active tasks, open loops, standing orders, "
-        "workspace changes, and recent message history."
+        "Fetch a structured post-compaction brief to restore working state "
+        "after context compaction, including active tasks, open loops, standing "
+        "orders, workspace changes, continuation hints, and recent history."
     ),
     "parameters": {
         "type": "object",

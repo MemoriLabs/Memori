@@ -36,7 +36,7 @@ Use it to understand:
 
 - `memori_recall`: retrieve precise memories by query, project, session, time range, or an allowed source/signal pair.
 - `memori_recall_summary`: retrieve a state summary for session starts, daily briefs, or broad status checks.
-- `memori_compaction`: retrieve a compact state snapshot after context loss or when resuming active work.
+- `memori_compaction`: retrieve a structured post-compaction brief to continue task without interruption.
 - `memori_feedback`: report irrelevant, missing, stale, or especially useful memory behavior.
 - `memori_signup`: create a Memori account or request an API key when the user explicitly asks.
 - `memori_quota`: check usage, quota, storage, or memory capacity when the user asks or limits appear to be reached.
@@ -132,23 +132,74 @@ Default behavior:
 
 - No date range means Memori's summary default, currently the recent working window.
 
-## Compaction Behavior
+## Post-compaction brief behavior
 
-Compaction is used for context recovery and resuming active work.
+Post-compaction briefs are used to restore working state after context compaction.
+
+Use them when:
+
+- The agent resumes after compaction
+- A long-running workflow has lost conversational detail
+- The agent needs to continue operational work without replaying the full prior session
+- The agent needs durable state, standing instructions, environment details, open loops, or the next expected action
+
+Post-compaction briefs are not a replacement for precise memory retrieval.
 
 Use:
 
 - `memori_compaction`
 
-Supported parameters:
+Supported parameters (post-compaction briefs):
 
-- `project_id`
-- `session_id`
-- `num_messages`
+- `projectId`
+- `sessionId`
+- `numMessages`
 
-Use compaction when the current context was compressed, when a long-running task
-needs a compact state snapshot, or when you need active tasks, open loops,
-standing orders, workspace changes, and recent messages together.
+Post-compaction briefs do not support `source` or `signal`.
+
+Default behavior:
+
+- Retrieve the most recent relevant post-compaction brief for the project or session.
+
+Expected post-compaction brief structure:
+
+- Meta
+- Environment
+- Standing orders
+- State
+- Active tasks
+- Open loops
+- Pending results
+- Timeline
+- Workspace changes
+- Continuation
+- Last action
+- Next expected action
+
+Treat the post-compaction brief as the agent's resume state. Use it to understand:
+
+- What environment the agent was operating in
+- Which standing orders must continue to be followed
+- Which tasks are active
+- Which issues remain unresolved
+- What happened across the prior session window
+- What files, workspace state, or external systems may have changed
+- What the agent did last
+- What the agent should do next
+
+The post-compaction brief should guide continuation, not override explicit user instructions. Before acting on operational details, verify any state that may have changed since compaction.
+
+Pay special attention to:
+
+- Standing orders
+- Hard constraints
+- Alerting rules
+- Expected response formats
+- Open loops
+- Staleness warnings
+- Next expected action
+
+If the post-compaction brief contains a required output format, follow it exactly unless the user gives a newer instruction.
 
 ## Daily Brief Behavior
 
