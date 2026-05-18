@@ -145,7 +145,7 @@ export class RecallEngine {
   public async agentCompaction(
     params: AgentCompactionParams = {}
   ): Promise<AgentCompactionResponse> {
-    const projectId = params.projectId ?? this.project.id;
+    const projectId = params.projectId;
     const sessionId = params.sessionId;
 
     if (!projectId) {
