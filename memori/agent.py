@@ -81,8 +81,6 @@ class Agent:
         """Fetch agent memory compaction from ``GET /v1/agent/compaction``."""
         if not project_id:
             raise ValueError("project_id is required for agent compaction")
-        if session_id and not project_id:
-            raise ValueError("session_id cannot be provided without project_id")
 
         qs = self._query_string(
             {
