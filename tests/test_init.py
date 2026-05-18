@@ -243,7 +243,7 @@ def test_recall_raises_when_rust_core_errors(mocker):
     mem.config.rust_core = mocker.Mock()
     mem.config.rust_core.retrieve_facts.side_effect = RuntimeError("rust error")
 
-    recall = mocker.patch("memori.__init__.Recall")
+    recall = mocker.patch("memori.Recall")
 
     with pytest.raises(RuntimeError, match="rust error"):
         mem.recall("test query")
