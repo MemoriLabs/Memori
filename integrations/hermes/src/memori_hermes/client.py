@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 DEFAULT_TIMEOUT_SECS = 30
 MEMORI_PLATFORM = "hermes"
@@ -96,13 +97,36 @@ class MemoriAgentClient:
 
     def agent_compaction(self, params: dict[str, Any]) -> dict[str, Any]:
         try:
-            return self.memori.agent_compaction(
-                project_id=params.get("projectId")
-                or params.get("project_id")
-                or self.project_id,
-                session_id=params.get("sessionId") or params.get("session_id"),
-                num_messages=params.get("numMessages") or params.get("num_messages"),
+            project_id = (
+                params.get("projectId") or params.get("project_id") or self.project_id
             )
+            session_id = params.get("sessionId") or params.get("session_id")
+            num_messages = params.get("numMessages") or params.get("num_messages")
+
+            agent_compaction = getattr(self.memori, "agent_compaction", None)
+            if callable(agent_compaction):
+                return agent_compaction(
+                    project_id=project_id,
+                    session_id=session_id,
+                    num_messages=num_messages,
+                )
+
+            if not project_id:
+                raise ValueError("project_id is required for agent compaction")
+
+            qs = urlencode(
+                {
+                    k: str(v)
+                    for k, v in {
+                        "project_id": project_id,
+                        "session_id": session_id,
+                        "num_messages": num_messages,
+                    }.items()
+                    if v not in (None, "")
+                }
+            )
+            route = f"agent/compaction?{qs}" if qs else "agent/compaction"
+            return self.memori.agent.default_api.get(route)
         except Exception as exc:  # noqa: BLE001
             raise MemoriApiError(str(exc)) from exc
 
