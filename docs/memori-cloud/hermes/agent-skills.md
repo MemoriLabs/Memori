@@ -13,7 +13,7 @@ prerequisites:
   pip: [memori]
 ---
 
-# Memori Memory
+# Memori skills file
 
 ## Overview
 
