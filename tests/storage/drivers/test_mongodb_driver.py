@@ -286,6 +286,7 @@ def test_conversation_messages_read(mock_conn):
     assert find_call[0][1] == "find"
     assert find_call[0][2] == {"conversation_id": 101}
     assert find_call[0][3] == {"role": 1, "content": 1, "_id": 0}
+    assert find_call[1]["sort"] == [("date_created", 1), ("_id", 1)]
 
 
 def test_conversation_messages_read_empty(mock_conn):

@@ -190,6 +190,7 @@ class Memori:
     def set_session(self, session_id: Any) -> "Memori":
         """Set an explicit session identifier on the current instance."""
         self.config.session_id = session_id
+        self.config.reset_cache()
         return self
 
     def recall(
@@ -299,6 +300,15 @@ class Memori:
         This is especially important for long-running processes (e.g. web servers)
         where you want to explicitly release database connections.
         """
+        thread_pool_executor = getattr(self.config, "thread_pool_executor", None)
+        if thread_pool_executor is not None:
+            try:
+                thread_pool_executor.shutdown(wait=True, cancel_futures=False)
+            except Exception:  # nosec B110
+                pass
+            finally:
+                self.config.thread_pool_executor = None
+
         storage = getattr(self.config, "storage", None)
         adapter = getattr(storage, "adapter", None) if storage is not None else None
         if adapter is None:
