@@ -24,13 +24,11 @@ jobs:
           - os: ubuntu-latest
             artifact-name: linux-x64-gnu
             rust-target: x86_64-unknown-linux-gnu
-            zig-target: x86_64-linux-gnu.2.28
-            use-zig: true
+            container-image: quay.io/pypa/manylinux_2_28_x86_64
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-gnu
             rust-target: aarch64-unknown-linux-gnu
-            zig-target: aarch64-linux-gnu.2.28
-            use-zig: true
+            container-image: quay.io/pypa/manylinux_2_28_aarch64
           - os: ubuntu-latest
             artifact-name: linux-x64-musl
             rust-target: x86_64-unknown-linux-musl
@@ -60,24 +58,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Enter manylinux build container
+        if: ${{ matrix.container-image }}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.container-image }}
+          options: -v ${{ github.workspace }}:/work -w /work
+          run: |
+            set -euo pipefail
+            curl -fsSL https://rpm.nodesource.com/setup_24.x | bash -
+            dnf install -y nodejs perl-core openssl-devel pkgconf-pkg-config
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
+            source "$HOME/.cargo/env"
+            cd core/bindings/node
+            npm install
+            npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
+
       - name: Setup Node.js
+        if: ${{ !matrix.container-image }}
         uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Setup Rust
+        if: ${{ !matrix.container-image }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           target: ${{ matrix.rust-target }}
 
       - name: Setup Zig linker
-        if: ${{ matrix.use-zig == true }}
+        if: ${{ !matrix.container-image && matrix.use-zig == true }}
         uses: goto-bus-stop/setup-zig@v2
 
       - name: Configure Zig linker
-        if: ${{ matrix.use-zig == true }}
+        if: ${{ !matrix.container-image && matrix.use-zig == true }}
         shell: bash
         run: |
           set -euo pipefail
@@ -109,10 +125,12 @@ jobs:
           echo "CXX_${target_cc}=$cxx_wrapper" >> "$GITHUB_ENV"
 
       - uses: Swatinem/rust-cache@v2
+        if: ${{ !matrix.container-image }}
         with:
           workspaces: core
 
       - name: Install NAPI build dependencies
+        if: ${{ !matrix.container-image }}
         working-directory: ./core/bindings/node
         run: npm install
 
@@ -155,6 +173,7 @@ jobs:
         run: echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> "$GITHUB_ENV"
 
       - name: Build Rust bindings
+        if: ${{ !matrix.container-image }}
         working-directory: ./core/bindings/node
         run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
 
