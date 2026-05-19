@@ -36,11 +36,13 @@ jobs:
             rust-target: x86_64-unknown-linux-musl
             container-image: node:24-alpine3.20
             container-kind: alpine
+            cargo-args: --no-default-features --features ort-load-dynamic
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-musl
             rust-target: aarch64-unknown-linux-musl
             container-image: node:24-alpine3.20
             container-kind: alpine
+            cargo-args: --no-default-features --features ort-load-dynamic
           - os: macos-latest
             artifact-name: darwin-arm64
             rust-target: aarch64-apple-darwin
