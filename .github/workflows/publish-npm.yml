@@ -2,6 +2,11 @@ name: Publish to npm (TS)
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, pack, and smoke test the npm package; skip npm publish."
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -233,7 +238,98 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
 
+      - name: Build package for verification
+        working-directory: ./memori-ts
+        run: npm run prepublishOnly
+
+      - name: Verify packed package contents
+        working-directory: ./memori-ts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pack_json="$(npm pack --json)"
+          tarball="$(node -e "const data = JSON.parse(process.argv[1]); console.log(data[0].filename)" "$pack_json")"
+          tarball_path="$PWD/$tarball"
+
+          echo "Created package tarball: $tarball_path"
+          echo "MEMORI_TARBALL=$tarball_path" >> "$GITHUB_ENV"
+
+          tar -tf "$tarball" | sort > /tmp/memori-package-files.txt
+
+          required_files=(
+            "package/dist/index.js"
+            "package/dist/native/index.js"
+            "package/dist/native/index.d.ts"
+            "package/dist/native/package.json"
+            "package/dist/native/memori_node.android-arm64.node"
+            "package/dist/native/memori_node.darwin-arm64.node"
+            "package/dist/native/memori_node.darwin-x64.node"
+            "package/dist/native/memori_node.linux-arm64-gnu.node"
+            "package/dist/native/memori_node.linux-x64-gnu.node"
+            "package/dist/native/memori_node.win32-x64-msvc.node"
+          )
+
+          for file in "${required_files[@]}"; do
+            if ! grep -Fxq "$file" /tmp/memori-package-files.txt; then
+              echo "Missing expected package file: $file" >&2
+              echo "Packaged files:" >&2
+              cat /tmp/memori-package-files.txt >&2
+              exit 1
+            fi
+          done
+
+      - name: Upload verified npm tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: memorilabs-memori-npm-package
+          path: memori-ts/*.tgz
+          if-no-files-found: error
+
+      - name: Smoke test packed package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp_dir="$(mktemp -d)"
+          cd "$tmp_dir"
+
+          npm init -y
+          npm install "$MEMORI_TARBALL"
+
+          node --input-type=module - <<'NODE'
+          const { Memori } = await import('@memorilabs/memori');
+
+          const memori = new Memori();
+          if (memori.engine.hasStorage !== false) {
+            throw new Error('Expected cloud-only Memori construction to avoid storage mode');
+          }
+
+          console.log('cloud import ok');
+          NODE
+
+          node - <<'NODE'
+          const path = require('node:path');
+          const nativePath = path.join(
+            process.cwd(),
+            'node_modules',
+            '@memorilabs',
+            'memori',
+            'dist',
+            'native',
+            'index.js'
+          );
+          const native = require(nativePath);
+
+          if (typeof native.MemoriEngine !== 'function') {
+            throw new Error('Native MemoriEngine export is missing');
+          }
+
+          console.log('linux native binding ok');
+          NODE
+
       - name: Publish @memorilabs/memori
+        if: ${{ inputs.dry_run != true }}
         working-directory: ./memori-ts
         shell: bash
         run: |
@@ -245,4 +341,9 @@ jobs:
             TAG="latest"
           fi
 
-          npm publish --access public --tag "$TAG"
+          npm publish "$MEMORI_TARBALL" --access public --tag "$TAG"
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "::notice::Dry run complete. The npm tarball was built, verified, uploaded as a workflow artifact, and smoke tested without publishing."
