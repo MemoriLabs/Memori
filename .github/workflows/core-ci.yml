@@ -280,12 +280,13 @@ jobs:
           options: -v ${{ github.workspace }}:/work -w /work
           run: |
             set -euo pipefail
-            apk add --no-cache bash build-base curl openssl-dev perl pkgconf
+            apk add --no-cache bash build-base curl openssl-dev openssl-libs-static perl pkgconf
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
             source "$HOME/.cargo/env"
             target_env="$(echo "${{ matrix.rust-target }}" | tr '[:lower:]-' '[:upper:]_')"
             target_cc="$(echo "${{ matrix.rust-target }}" | tr '-' '_')"
             export OPENSSL_NO_ASM=1
+            export OPENSSL_STATIC=1
             export "CARGO_TARGET_${target_env}_LINKER=cc"
             export "CC_${target_cc}=cc"
             export "CXX_${target_cc}=c++"
