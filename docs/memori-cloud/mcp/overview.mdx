@@ -62,6 +62,20 @@ Fetches relevant memories at the start of a user turn.
 
 Returns a structured memory payload with relevant context. When exposed by the client, optional filters may include `projectId`, `sessionId`, `dateStart`, `dateEnd`, `source`, and `signal`.
 
+`source` and `signal` are not independent. They must be set together (or both omitted). Only these pairs are valid:
+
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
+
+Any other combination is invalid and must not be sent to `memori_recall`.
+
 ### `memori_recall_summary`
 
 Fetches broad memory state for session starts, daily briefs, status updates, and project overviews.
