@@ -24,9 +24,23 @@ jobs:
           - os: ubuntu-latest
             artifact-name: linux-x64-gnu
             rust-target: x86_64-unknown-linux-gnu
+            napi-args: --zig --zig-abi-suffix=2.28
+            use-zig: true
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-gnu
             rust-target: aarch64-unknown-linux-gnu
+            napi-args: --zig --zig-abi-suffix=2.28
+            use-zig: true
+          - os: ubuntu-latest
+            artifact-name: linux-x64-musl
+            rust-target: x86_64-unknown-linux-musl
+            napi-args: --zig
+            use-zig: true
+          - os: ubuntu-24.04-arm
+            artifact-name: linux-arm64-musl
+            rust-target: aarch64-unknown-linux-musl
+            napi-args: --zig
+            use-zig: true
           - os: macos-latest
             artifact-name: darwin-arm64
             rust-target: aarch64-apple-darwin
@@ -57,6 +71,10 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.rust-target }}
+
+      - name: Setup Zig linker
+        if: ${{ matrix.use-zig == true }}
+        uses: goto-bus-stop/setup-zig@v2
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -100,9 +118,39 @@ jobs:
           echo "CFLAGS=/MD" >> $env:GITHUB_ENV
           echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
 
+      - name: Set macOS deployment target
+        if: runner.os == 'macOS'
+        run: echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> "$GITHUB_ENV"
+
       - name: Build Rust bindings
         working-directory: ./core/bindings/node
-        run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
+        run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }} ${{ matrix.napi-args || '' }}
+
+      - name: Verify Linux glibc compatibility floor
+        if: ${{ startsWith(matrix.artifact-name, 'linux-') && endsWith(matrix.artifact-name, '-gnu') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          artifact="core/bindings/node/memori_node.${{ matrix.artifact-name }}.node"
+          max_glibc="$(
+            readelf --version-info "$artifact" |
+              sed -n 's/.*Name: GLIBC_\([0-9][0-9.]*\).*/\1/p' |
+              sort -Vu |
+              tail -n 1
+          )"
+
+          if [ -z "$max_glibc" ]; then
+            echo "No GLIBC version references found in $artifact"
+            exit 0
+          fi
+
+          echo "Highest GLIBC version referenced by $artifact: $max_glibc"
+          highest="$(printf '%s\n%s\n' "$max_glibc" "2.28" | sort -V | tail -n 1)"
+          if [ "$highest" != "2.28" ]; then
+            echo "$artifact requires GLIBC_$max_glibc, which is newer than the supported GLIBC_2.28 floor." >&2
+            exit 1
+          fi
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
@@ -240,7 +288,7 @@ jobs:
 
       - name: Build package for verification
         working-directory: ./memori-ts
-        run: npm run prepublishOnly
+        run: node scripts/sync-native.js --skip-build && npm run build
 
       - name: Verify packed package contents
         working-directory: ./memori-ts
@@ -266,7 +314,9 @@ jobs:
             "package/dist/native/memori_node.darwin-arm64.node"
             "package/dist/native/memori_node.darwin-x64.node"
             "package/dist/native/memori_node.linux-arm64-gnu.node"
+            "package/dist/native/memori_node.linux-arm64-musl.node"
             "package/dist/native/memori_node.linux-x64-gnu.node"
+            "package/dist/native/memori_node.linux-x64-musl.node"
             "package/dist/native/memori_node.win32-x64-msvc.node"
           )
 

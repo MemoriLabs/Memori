@@ -10,6 +10,7 @@ const SRC_NATIVE = path.resolve(ROOT, 'src/native');
 
 // CHECK FOR FLAG: Did we run this with "node scripts/sync-native.js --dev"?
 const isDev = process.argv.includes('--dev');
+const skipBuild = process.argv.includes('--skip-build');
 
 // Set target dynamically based on the flag
 const DIST_NATIVE = path.resolve(ROOT, isDev ? 'dist/src/native' : 'dist/native');
@@ -37,8 +38,12 @@ function sync() {
     execSync('npm ci', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
   }
 
-  console.log('Building Rust N-API artifacts...');
-  execSync('npm run build', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
+  if (skipBuild) {
+    console.log('Skipping Rust N-API build; syncing existing artifacts...');
+  } else {
+    console.log('Building Rust N-API artifacts...');
+    execSync('npm run build', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
+  }
 
   console.log('Syncing to src/native...');
   copyFolderSync(RUST_BINDINGS_DIR, SRC_NATIVE);
