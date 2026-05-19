@@ -232,12 +232,12 @@ jobs:
           - os: ubuntu-latest
             artifact-name: linux-x64-musl
             rust-target: x86_64-unknown-linux-musl
-            container-image: alpine:3.20
+            container-image: node:24-alpine3.20
             container-kind: alpine
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-musl
             rust-target: aarch64-unknown-linux-musl
-            container-image: alpine:3.20
+            container-image: node:24-alpine3.20
             container-kind: alpine
           - os: macos-latest
             artifact-name: darwin-arm64
@@ -280,10 +280,15 @@ jobs:
           options: -v ${{ github.workspace }}:/work -w /work
           run: |
             set -euo pipefail
-            apk add --no-cache bash build-base curl nodejs npm openssl-dev perl pkgconf
+            apk add --no-cache bash build-base curl openssl-dev perl pkgconf
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
             source "$HOME/.cargo/env"
+            target_env="$(echo "${{ matrix.rust-target }}" | tr '[:lower:]-' '[:upper:]_')"
+            target_cc="$(echo "${{ matrix.rust-target }}" | tr '-' '_')"
             export OPENSSL_NO_ASM=1
+            export "CARGO_TARGET_${target_env}_LINKER=cc"
+            export "CC_${target_cc}=cc"
+            export "CXX_${target_cc}=c++"
             cd core/bindings/node
             npm install
             npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
