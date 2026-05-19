@@ -103,6 +103,7 @@ jobs:
           chmod +x "$cc_wrapper" "$cxx_wrapper"
 
           echo "ZIG_TARGET=${{ matrix.zig-target }}" >> "$GITHUB_ENV"
+          echo "OPENSSL_NO_ASM=1" >> "$GITHUB_ENV"
           echo "CARGO_TARGET_${target_env}_LINKER=$cc_wrapper" >> "$GITHUB_ENV"
           echo "CC_${target_cc}=$cc_wrapper" >> "$GITHUB_ENV"
           echo "CXX_${target_cc}=$cxx_wrapper" >> "$GITHUB_ENV"
