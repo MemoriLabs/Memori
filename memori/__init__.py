@@ -200,15 +200,12 @@ class Memori:
             resolved_limit = self.config.recall_facts_limit if limit is None else limit
             if not self.config.entity_id:
                 return []
-            try:
-                return self.config.rust_core.retrieve_facts(
-                    query=query,
-                    entity_id=str(self.config.entity_id),
-                    limit=resolved_limit,
-                    dense_limit=self.config.recall_embeddings_limit,
-                )
-            except Exception:  # noqa: BLE001
-                pass
+            return self.config.rust_core.retrieve_facts(
+                query=query,
+                entity_id=str(self.config.entity_id),
+                limit=resolved_limit,
+                dense_limit=self.config.recall_embeddings_limit,
+            )
         return Recall(self.config).search_facts(query, limit)
 
     def delete_entity_memories(self, entity_id: str | None = None) -> None:
@@ -259,6 +256,20 @@ class Memori:
             date_end=date_end,
             project_id=project_id,
             session_id=session_id,
+        )
+
+    def agent_compaction(
+        self,
+        *,
+        project_id: str | None = None,
+        session_id: str | None = None,
+        num_messages: int | None = None,
+    ) -> dict[str, Any]:
+        """Fetch a structured compaction from the Memori Cloud agent endpoint."""
+        return self.agent.compaction(
+            project_id=project_id,
+            session_id=session_id,
+            num_messages=num_messages,
         )
 
     def capture_agent_turn(

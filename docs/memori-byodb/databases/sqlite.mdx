@@ -5,21 +5,29 @@ description: Set up Memori with SQLite — zero install, file-based storage perf
 
 # SQLite
 
-SQLite requires no server setup and stores data in a local file. It is built into Python, so it works out of the box.
+SQLite requires no server setup and stores data in a local file. It is built into Python, and available in TypeScript via `better-sqlite3`.
 
 ## Install
 
-No extra packages needed — SQLite is built into Python.
+<CodeGroup title="Install">
 
-```bash
+```bash {{ title: 'Python' }}
 pip install memori openai
+# SQLite is built into Python — no extra driver needed.
 ```
+
+```bash {{ title: 'TypeScript' }}
+npm install @memorilabs/memori better-sqlite3 openai dotenv
+npm install --save-dev @types/better-sqlite3
+```
+
+</CodeGroup>
 
 ## Quick Start
 
 <CodeGroup title="SQLite Connection">
 
-```python {{ title: 'SQLAlchemy (Recommended)' }}
+```python {{ title: 'Python (SQLAlchemy)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -31,7 +39,7 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'DB API 2.0' }}
+```python {{ title: 'Python (DB API 2.0)' }}
 import sqlite3
 from memori import Memori
 
@@ -42,9 +50,37 @@ mem = Memori(conn=get_connection)
 mem.config.storage.build()
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const db = new Database('memori.db');
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+db.close();
+```
+
 </CodeGroup>
 
-## Connection Strings
+## Connection Strings (Python)
 
 | Path Type     | Connection String                     | Description                  |
 | ------------- | ------------------------------------- | ---------------------------- |
@@ -54,7 +90,9 @@ mem.config.storage.build()
 
 ## Complete Example
 
-```python
+<CodeGroup title="Complete Example">
+
+```python {{ title: 'Python' }}
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -70,7 +108,7 @@ mem.attribution(entity_id="user_123", process_id="my_agent")
 mem.config.storage.build()
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "My favorite language is Python."}]
 )
 print(response.choices[0].message.content)
@@ -80,7 +118,43 @@ facts = mem.recall("favorite programming language")
 print(facts)
 ```
 
-## Multi-Threading
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const db = new Database('memori.db');
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+try {
+  await mem.config.storage.build();
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+  });
+  console.log(response.choices[0]?.message?.content);
+
+  await mem.augmentation.wait();
+
+  const facts = await mem.recall('favorite color');
+  console.log(facts);
+} finally {
+  db.close();
+}
+```
+
+</CodeGroup>
+
+## Multi-Threading (Python)
 
 For web servers or multi-threaded apps, disable the same-thread check:
 
@@ -90,3 +164,9 @@ engine = create_engine(
     connect_args={"check_same_thread": False}
 )
 ```
+
+## Notes (TypeScript)
+
+- `better-sqlite3` runs synchronously, which perfectly matches Memori's low-latency design — no async overhead for local storage.
+- Pass a factory function: `conn: () => db`. Memori calls it once to borrow the database. You own the lifecycle — call `db.close()` yourself when you're done.
+- Set `OPENAI_API_KEY` in your `.env` file.

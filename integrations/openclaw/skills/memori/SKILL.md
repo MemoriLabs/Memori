@@ -57,36 +57,29 @@ Prefer targeted recall over broad queries.
 - `projectId` → project or workspace context
 - `sessionId` → specific session
 - `dateStart` / `dateEnd` → time-bounded recall
-- `source` → type of memory
-- `signal` → how the memory was derived
+- `source` → type of memory (must be paired with `signal` from the allowed combinations below)
+- `signal` → how the memory was derived (must be paired with `source` from the allowed combinations below)
 
 > Note: If a `sessionId` is provided, a `projectId` must also be provided.
 > All timestamps are stored in **UTC**.
 
-### Memory filters
+### Allowed source + signal combinations
 
-- `source`:
-  - constraint
-  - decision
-  - execution
-  - fact
-  - insight
-  - instruction
-  - status
-  - strategy
-  - task
+`source` and `signal` are not independent. They must be set together (or both omitted). Only the following `(source, signal)` pairs are valid:
 
-- `signal`:
-  - commit
-  - discovery
-  - failure
-  - inference
-  - pattern
-  - result
-  - update
-  - verification
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
 
-Use `source` and `signal` to prioritize high-signal memory when possible.
+Any combination of `source` and `signal` not in this list is invalid and must not be sent to `memori_recall`.
+
+Use one of the allowed `(source, signal)` pairs to prioritize high-signal memory when possible; never set `source` or `signal` independently.
 
 ### Default behavior (recall)
 
@@ -97,7 +90,7 @@ Use `source` and `signal` to prioritize high-signal memory when possible.
 
 - Start narrow (entity + project)
 - Add time bounds only when needed
-- Use `source` and `signal` to refine results
+- Use an allowed `(source, signal)` pair to refine results (never set them independently)
 - Expand scope only if needed
 - Do not recall on every turn
 
@@ -161,6 +154,84 @@ Treat this as the working state of the system.
 2. During task → use targeted recall
 3. When memory is missing or incorrect → send feedback
 4. When limits are reached → degrade gracefully
+
+---
+
+## Post-compaction brief behavior
+
+Post-compaction briefs are used to restore working state after context compaction.
+
+Use them when:
+
+- The agent resumes after compaction
+- A long-running workflow has lost conversational detail
+- The agent needs to continue operational work without replaying the full prior session
+- The agent needs durable state, standing instructions, environment details, open loops, or the next expected action
+
+Post-compaction briefs are not a replacement for precise memory retrieval.
+
+### Use:
+
+memori_compaction
+
+Supported parameters (post-compaction briefs)
+
+projectId (required)
+sessionId (optional)
+
+Post-compaction briefs do not support source or signal.
+
+### Default behavior (post-compaction briefs)
+
+Retrieve the most recent relevant post-compaction brief for the project or session.
+
+Expected post-compaction brief structure
+
+- Meta
+- Environment
+- Standing orders
+- State
+- Active tasks
+- Open loops
+- Pending results
+- Timeline
+- Workspace changes
+- Continuation
+- Last action
+- Next expected action
+
+### How to use a post-compaction brief
+
+Treat the post-compaction brief as the agent's resume state.
+
+Use it to understand:
+
+- What environment the agent was operating in
+- Which standing orders must continue to be followed
+- Which tasks are active
+- Which issues remain unresolved
+- What happened across the prior session window
+- What files, workspace state, or external systems may have changed
+- What the agent did last
+- What the agent should do next
+
+### Important behavior
+
+The post-compaction brief should guide continuation, not override explicit user instructions.
+
+Before acting on operational details, verify any state that may have changed since compaction.
+
+Pay special attention to:
+
+- Standing orders
+- Hard constraints
+- Alerting rules
+- Expected response formats
+- Open loops
+- Staleness warnings
+- Next expected action
+
+If the post-compaction brief contains a required output format, follow it exactly unless the user gives a newer instruction.
 
 ---
 

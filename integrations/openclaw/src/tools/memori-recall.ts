@@ -12,11 +12,6 @@ export function createMemoriRecallTool(deps: ToolDeps) {
     parameters: {
       type: 'object',
       properties: {
-        query: {
-          type: 'string',
-          description:
-            'REQUIRED: The natural language search query to find specific facts (e.g., "What database did we decide to use?", "Ryan\'s dogs"). DO NOT use wildcards like "*" or regex. This is a semantic search, so use real words.',
-        },
         dateStart: {
           type: 'string',
           description:
@@ -38,7 +33,8 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         },
         signal: {
           type: 'string',
-          description: 'Filter to a specific fact signal. MUST be one of the allowed enum values.',
+          description:
+            'Filter by how the memory was derived. MUST be set together with `source` using one of the allowed (source, signal) pairs — never set independently. Valid pairs: (constraint, discovery), (decision, commit), (fact, verification), (execution, failure), (instruction, discovery), (insight, inference), (status, update), (strategy, pattern), (task, result).',
           enum: [
             'commit',
             'discovery',
@@ -53,7 +49,7 @@ export function createMemoriRecallTool(deps: ToolDeps) {
         source: {
           type: 'string',
           description:
-            'Filter to a specific source origin. MUST be one of the allowed enum values.',
+            'Filter by memory type. MUST be set together with `signal` using one of the allowed (source, signal) pairs — never set independently. Valid pairs: (constraint, discovery), (decision, commit), (fact, verification), (execution, failure), (instruction, discovery), (insight, inference), (status, update), (strategy, pattern), (task, result).',
           enum: [
             'constraint',
             'decision',
@@ -67,14 +63,11 @@ export function createMemoriRecallTool(deps: ToolDeps) {
           ],
         },
       },
-      // Force the LLM to ALWAYS provide a search query
-      required: ['query'],
     },
 
     async execute(
       _toolCallId: string,
       params: {
-        query: string;
         dateStart?: string;
         dateEnd?: string;
         projectId?: string;
@@ -90,6 +83,42 @@ export function createMemoriRecallTool(deps: ToolDeps) {
 
         if (finalParams.sessionId && !finalParams.projectId) {
           const errorResult = { error: 'sessionId cannot be provided without projectId' };
+          logger.warn(`memori_recall rejected: ${JSON.stringify(errorResult)}`);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
+            details: null,
+          };
+        }
+
+        const hasSource = finalParams.source != null;
+        const hasSignal = finalParams.signal != null;
+        if (hasSource !== hasSignal) {
+          const errorResult = {
+            error: 'source and signal must be provided together or both omitted',
+          };
+          logger.warn(`memori_recall rejected: ${JSON.stringify(errorResult)}`);
+          return {
+            content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],
+            details: null,
+          };
+        }
+
+        const VALID_PAIRS: Record<string, string> = {
+          constraint: 'discovery',
+          decision: 'commit',
+          fact: 'verification',
+          execution: 'failure',
+          instruction: 'discovery',
+          insight: 'inference',
+          status: 'update',
+          strategy: 'pattern',
+          task: 'result',
+        };
+        const source = finalParams.source;
+        if (hasSource && source != null && VALID_PAIRS[source] !== finalParams.signal) {
+          const errorResult = {
+            error: `Invalid (source, signal) pair: (${source}, ${finalParams.signal}). Expected signal for source "${source}" is "${VALID_PAIRS[source]}".`,
+          };
           logger.warn(`memori_recall rejected: ${JSON.stringify(errorResult)}`);
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(errorResult) }],

@@ -1,6 +1,8 @@
 import { LLMRequest, LLMResponse, CallContext } from '@memorilabs/axon';
 import { MemoriCore, IntegrationRequest } from '../types/integrations.js';
 import {
+  AgentCompactionParams,
+  AgentCompactionResponse,
   AgentRecallParams,
   AgentRecallResponse,
   AgentRecallSummaryParams,
@@ -155,6 +157,24 @@ export abstract class BaseIntegration {
     } catch (e) {
       console.warn('Memori Integration Recall failed:', e);
       return undefined;
+    }
+  }
+
+  /**
+   * Internal helper: Fetches a structured compaction of the agent's memory and context.
+   *
+   * @param params - projectId (defaults to project context), sessionId and numMessages optional
+   * @returns Compaction response, or null on failure
+   * @internal
+   */
+  protected async executeAgentCompaction(
+    params: AgentCompactionParams
+  ): Promise<AgentCompactionResponse | null> {
+    try {
+      return await this.core.recall.agentCompaction(params);
+    } catch (e) {
+      console.warn('Memori Agent Compaction failed:', e);
+      return null;
     }
   }
 

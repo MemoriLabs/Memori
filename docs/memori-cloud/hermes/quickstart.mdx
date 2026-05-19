@@ -23,10 +23,12 @@ This means Hermes can remember what happened during prior work — tool usage, w
 
 ```bash
 pip install hermes-memori
+hermes-memori install
 ```
 
-If `memori` does not appear in Hermes' memory setup flow, install
-`hermes-memori` in the same Python environment that Hermes uses.
+Install `hermes-memori` in the same Python environment that Hermes uses.
+The `hermes-memori install` command registers the provider in Hermes' memory
+plugin directory at `$HERMES_HOME/plugins/memori`.
 
 ## 2. Configure
 
@@ -108,6 +110,7 @@ You should see `memori` configured as the active memory provider.
 If the provider is unavailable, confirm that:
 
 - `hermes-memori` is installed in the same Python environment as Hermes
+- `hermes-memori install` has been run for the same `HERMES_HOME`
 - `memory.provider` is set to `memori`
 - `MEMORI_API_KEY` and `MEMORI_ENTITY_ID` are set
 
@@ -145,7 +148,7 @@ The Memori provider operates on two parallel tracks:
 
 | Track | Mechanism | What it does |
 | --- | --- | --- |
-| **Agent-Controlled Intelligent Recall** | Memory Provider Tools | Equips Hermes with `memori_recall`, `memori_recall_summary`, `memori_quota`, `memori_signup`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
+| **Agent-Controlled Intelligent Recall** | Memory Provider Tools | Equips Hermes with `memori_recall`, `memori_recall_summary`, `memori_compaction`, `memori_quota`, `memori_signup`, and `memori_feedback`. The agent retrieves memory explicitly when needed, including post-compaction briefs for restoring working state after context compaction. |
 | **Advanced Augmentation** | Memory Provider Sync | After a completed, non-interrupted turn, Hermes calls its memory sync path. The exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
 
 Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient. Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy and efficiency while avoiding unnecessary token usage.

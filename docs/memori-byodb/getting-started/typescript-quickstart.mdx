@@ -16,7 +16,7 @@ In this example we'll use Memori with OpenAI and SQLite. Check out the [LLM prov
 
 ## Prerequisites
 
-- Node.js 18 or higher
+- Node.js 20 or higher
 - An OpenAI API key
 
 ## Step 1: Install Libraries
@@ -58,7 +58,7 @@ Create a new file `quickstart.ts` and add the following code:
 
 Import libraries, open a SQLite database, and initialize Memori with your OpenAI client.
 
-- `conn` accepts the raw database connection (a `better-sqlite3` `Database` instance, `pg` Pool, `mysql2` connection, or an ORM handle)
+- `conn` accepts a factory function that returns the database connection (a `better-sqlite3` `Database` instance, `pg` Pool, or `mysql2` Pool)
 - `llm.register()` wraps your LLM client for automatic memory capture
 - `attribution()` links memories to a specific user and process
 - `await mem.config.storage.build()` creates the Memori schema tables in your database
@@ -75,6 +75,9 @@ const client = new OpenAI();
 const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'test-ai-agent');
 
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
 await mem.config.storage.build();
 ```
 
@@ -86,7 +89,7 @@ Since augmentation runs asynchronously, call `mem.augmentation.wait()` in short-
 
 ```typescript
 const response1 = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: 'My favorite color is blue.' }],
 });
 console.log(response1.choices[0].message.content + '\n');
@@ -109,12 +112,10 @@ const mem2 = new Memori({ conn: () => db2 }).llm.register(client2);
 mem2.attribution('user_123', 'test-ai-agent');
 
 const response2 = await client2.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log(response2.choices[0].message.content + '\n');
-
-await mem2.config.storage.close();
 ```
 
 ### Full Quickstart File
@@ -134,16 +135,18 @@ const client = new OpenAI();
 const mem = new Memori({ conn: () => db }).llm.register(client);
 mem.attribution('user_123', 'test-ai-agent');
 
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
 await mem.config.storage.build();
 
 const response1 = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: 'My favorite color is blue.' }],
 });
 console.log('AI:', response1.choices[0].message.content + '\n');
 
 await mem.augmentation.wait();
-await mem.config.storage.close();
 
 // --- Step 2: Test Recall (fresh instance, no prior context) ---
 const db2 = new Database('memori.db');
@@ -153,12 +156,13 @@ const mem2 = new Memori({ conn: () => db2 }).llm.register(client2);
 mem2.attribution('user_123', 'test-ai-agent');
 
 const response2 = await client2.chat.completions.create({
-  model: 'gpt-4o-mini',
+  model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: "What's my favorite color?" }],
 });
 console.log('AI:', response2.choices[0].message.content + '\n');
 
-await mem2.config.storage.close();
+db.close();
+db2.close();
 ```
 
 ## Step 4: Run the Application

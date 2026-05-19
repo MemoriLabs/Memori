@@ -12,6 +12,7 @@ Memori supports AWS Bedrock through `langchain-aws`. Register using the `chatbed
   [app.memorilabs.ai](https://app.memorilabs.ai).
 </Note>
 
+
 ## Quick Start
 
 <CodeGroup title="Bedrock Integration">
@@ -26,7 +27,7 @@ engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
 client = ChatBedrock(
-    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     region_name="us-east-1"
 )
 
@@ -49,7 +50,7 @@ engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
 client = ChatBedrock(
-    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     region_name="us-east-1"
 )
 
@@ -74,7 +75,7 @@ engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
 client = ChatBedrock(
-    model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+    model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     region_name="us-east-1"
 )
 
@@ -100,7 +101,7 @@ for chunk in client.stream("Hello!"):
 
 | Model                 | Model ID                                    |
 | --------------------- | ------------------------------------------- |
-| **Claude 3.5 Sonnet** | `anthropic.claude-3-5-sonnet-20241022-v2:0` |
-| **Claude 3 Haiku**    | `anthropic.claude-3-haiku-20240307-v1:0`    |
+| **Claude 3.7 Sonnet** | `us.anthropic.claude-3-7-sonnet-20250219-v1:0`  |
+| **Claude 3.5 Haiku**  | `us.anthropic.claude-3-5-haiku-20241022-v1:0`   |
 | **Llama 3.1 70B**     | `meta.llama3-1-70b-instruct-v1:0`           |
 | **Mistral Large**     | `mistral.mistral-large-2407-v1:0`           |

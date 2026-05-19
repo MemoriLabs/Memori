@@ -11,9 +11,9 @@ def extract_text_from_parts(parts: list) -> str:
     for part in parts:
         if isinstance(part, str):
             text_parts.append(part)
-        elif isinstance(part, dict) and "text" in part:
+        elif isinstance(part, dict) and isinstance(part.get("text"), str):
             text_parts.append(part["text"])
-        elif hasattr(part, "text") and part.text:
+        elif hasattr(part, "text") and isinstance(getattr(part, "text", None), str):
             text_parts.append(part.text)
     return " ".join(text_parts) if text_parts else ""
 
@@ -45,7 +45,12 @@ def extract_user_query(kwargs: dict) -> str:
     if "messages" in kwargs and kwargs["messages"]:
         for msg in reversed(kwargs["messages"]):
             if msg.get("role") == "user":
-                return msg.get("content", "")
+                content = msg.get("content", "")
+                if isinstance(content, str):
+                    return content
+                if isinstance(content, list):
+                    return extract_text_from_parts(content)
+                return ""
 
     if "input" in kwargs:
         input_val = kwargs.get("input", "")

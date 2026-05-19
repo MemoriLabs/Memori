@@ -1,24 +1,26 @@
 ---
 title: Async Patterns
-description: Best practices for using Memori with async/await — AsyncOpenAI, AsyncAnthropic, FastAPI, and thread safety.
+description: Best practices for using Memori with async/await — AsyncOpenAI, AsyncAnthropic, FastAPI, Express, Fastify, and thread safety.
 ---
 
 # Async Patterns
 
-Memori works with Python's async/await out of the box. Use `AsyncOpenAI` or `AsyncAnthropic` instead of their sync counterparts — everything else stays the same.
+Memori works with async/await in both Python and TypeScript. This page covers patterns for the runtimes you're most likely to use.
 
 ## When to Use Async
 
-| Scenario                 | Async? | Why                         |
-| ------------------------ | ------ | --------------------------- |
-| Web servers (FastAPI)    | Yes    | Concurrent request handling |
-| Chatbots with many users | Yes    | Non-blocking I/O            |
-| CLI scripts              | No     | Sync is simpler             |
-| Jupyter notebooks        | No     | Event loop already running  |
+| Scenario                 | Python Async? | TypeScript Async? | Why                         |
+| ------------------------ | ------------- | ----------------- | --------------------------- |
+| Web servers              | Yes           | Yes               | Concurrent request handling |
+| Chatbots with many users | Yes           | Yes               | Non-blocking I/O            |
+| CLI scripts              | No            | Yes (always)      | TypeScript is always async  |
+| Jupyter notebooks        | No            | —                 | Event loop already running  |
 
-## Basic Async Setup
+## Basic Setup
 
-```python
+<CodeGroup title="Async Setup">
+
+```python {{ title: 'Python' }}
 import os
 import asyncio
 from sqlalchemy import create_engine
@@ -36,7 +38,7 @@ async def main():
     mem.config.storage.build()
 
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-mini",
         messages=[{"role": "user", "content": "I prefer async Python."}]
     )
     print(response.choices[0].message.content)
@@ -45,9 +47,42 @@ async def main():
 asyncio.run(main())
 ```
 
-Works identically with `AsyncAnthropic` — just swap the client.
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
 
-## FastAPI Example
+const db = new Database('memori.db');
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user_123', 'my-script');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+// Required in short-lived scripts — augmentation runs in the background
+await mem.augmentation.wait();
+db.close();
+```
+
+</CodeGroup>
+
+Works identically with `AsyncAnthropic` or other async clients — just swap the client.
+
+## Web Server Examples
+
+### FastAPI (Python)
 
 ```python
 import os
@@ -73,13 +108,92 @@ async def chat(user_id: str, req: ChatRequest):
     mem.attribution(entity_id=user_id, process_id="fastapi_async")
 
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-mini",
         messages=[{"role": "user", "content": req.message}]
     )
     return {"response": response.choices[0].message.content}
 ```
 
-## Thread Safety
+### Express (TypeScript)
+
+In a long-running server, omit `augmentation.wait()` — augmentation continues in the background without blocking the response. Create a new Memori instance per request so each request gets its own attribution and session.
+
+```typescript
+import 'dotenv/config';
+import express from 'express';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const app = express();
+app.use(express.json());
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const client = new OpenAI();
+
+// Run once on startup
+const bootstrapMem = new Memori({ conn: () => pool });
+if (!bootstrapMem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+await bootstrapMem.config.storage.build();
+
+app.post('/chat/:userId', async (req, res) => {
+  const mem = new Memori({ conn: () => pool }).llm.register(client);
+  mem.attribution(req.params.userId, 'express-chat');
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [{ role: 'user', content: req.body.message }],
+  });
+
+  // Don't await augmentation — let it run in the background
+  res.json({ response: response.choices[0]?.message?.content });
+});
+
+app.listen(3000);
+```
+
+### Fastify (TypeScript)
+
+```typescript
+import 'dotenv/config';
+import Fastify from 'fastify';
+import pg from 'pg';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const fastify = Fastify();
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const client = new OpenAI();
+
+fastify.addHook('onReady', async () => {
+  const mem = new Memori({ conn: () => pool });
+  if (!mem.config.storage) {
+    throw new Error('Storage not initialized');
+  }
+  await mem.config.storage.build();
+});
+
+fastify.post<{ Params: { userId: string }; Body: { message: string } }>(
+  '/chat/:userId',
+  async (request, reply) => {
+    const mem = new Memori({ conn: () => pool }).llm.register(client);
+    mem.attribution(request.params.userId, 'fastify-chat');
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [{ role: 'user', content: request.body.message }],
+    });
+
+    return { response: response.choices[0]?.message?.content };
+  }
+);
+
+await fastify.listen({ port: 3000 });
+```
+
+## Thread Safety (Python)
 
 | Pattern                         | Safe? | Why                       |
 | ------------------------------- | ----- | ------------------------- |
@@ -97,3 +211,22 @@ engine = create_engine(
     pool_recycle=300
 )
 ```
+
+## Connection Factory Pattern (TypeScript)
+
+The `conn` option takes a factory function — not a connection directly. Memori calls it once per `StorageManager` instance to borrow the connection.
+
+| Pattern                       | Safe? | Why                                                               |
+| ----------------------------- | ----- | ----------------------------------------------------------------- |
+| `conn: () => pool`            | Yes   | Pool manages concurrent borrows internally                        |
+| `conn: () => db`              | Yes   | Pre-opened `Database`; pass by reference, not recreated each call |
+| `conn: () => sharedClient`    | No    | Single client shared across concurrent calls                      |
+
+## When to Call `augmentation.wait()`
+
+| Context              | Python                      | TypeScript                                    |
+| -------------------- | --------------------------- | --------------------------------------------- |
+| Short-lived script   | `mem.augmentation.wait()`   | `await mem.augmentation.wait()`               |
+| Web server           | Not needed                  | Not needed                                    |
+| Test suite           | `mem.augmentation.wait()`   | `await mem.augmentation.wait()`               |
+| Serverless function  | `mem.augmentation.wait()`   | `await mem.augmentation.wait()`               |

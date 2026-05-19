@@ -15,14 +15,18 @@ If your infrastructure already runs MySQL, you can use it directly with Memori w
 
 ## Install
 
-<CodeGroup title="Install MySQL Driver">
+<CodeGroup title="Install">
 
-```bash {{ title: 'PyMySQL (Pure Python)' }}
+```bash {{ title: 'Python (PyMySQL)' }}
 pip install memori pymysql
 ```
 
-```bash {{ title: 'mysqlclient (C Extension)' }}
+```bash {{ title: 'Python (mysqlclient)' }}
 pip install memori mysqlclient
+```
+
+```bash {{ title: 'TypeScript' }}
+npm install @memorilabs/memori mysql2 openai dotenv
 ```
 
 </CodeGroup>
@@ -31,7 +35,7 @@ pip install memori mysqlclient
 
 <CodeGroup title="MySQL Connection">
 
-```python {{ title: 'PyMySQL' }}
+```python {{ title: 'Python (PyMySQL)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -46,7 +50,7 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
-```python {{ title: 'mysqlclient' }}
+```python {{ title: 'Python (mysqlclient)' }}
 from memori import Memori
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -61,9 +65,40 @@ mem = Memori(conn=SessionLocal)
 mem.config.storage.build()
 ```
 
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import * as mysql from 'mysql2/promise';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+await pool.end();
+```
+
 </CodeGroup>
 
-## Connection Strings
+## Connection Strings (Python)
 
 | Driver           | Connection String                                                     |
 | ---------------- | --------------------------------------------------------------------- |
@@ -74,7 +109,9 @@ mem.config.storage.build()
 
 ## Complete Example
 
-```python
+<CodeGroup title="Complete Example">
+
+```python {{ title: 'Python' }}
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -97,7 +134,7 @@ mem.attribution(entity_id="user_123", process_id="my_agent")
 mem.config.storage.build()
 
 response = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-4.1-mini",
     messages=[{"role": "user", "content": "I work at Acme Corp as a designer."}]
 )
 print(response.choices[0].message.content)
@@ -106,3 +143,50 @@ mem.augmentation.wait()
 facts = mem.recall("workplace")
 print(facts)
 ```
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import * as mysql from 'mysql2/promise';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_CONNECTION_STRING,
+});
+
+const client = new OpenAI();
+
+const mem = new Memori({ conn: () => pool }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+try {
+  await mem.config.storage.build();
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+  });
+  console.log(response.choices[0]?.message?.content);
+
+  await mem.augmentation.wait();
+
+  const facts = await mem.recall('favorite color');
+  console.log(facts);
+} finally {
+  await pool.end();
+}
+```
+
+</CodeGroup>
+
+## Notes (TypeScript)
+
+- Import from `mysql2/promise`, not `mysql2` — Memori expects the modern, promise-based interface.
+- Pass a factory function: `conn: () => pool`. Memori never closes the pool — you own its lifecycle and call `pool.end()` when you're done.
+- Use `mysql.createPool()`, not `mysql.createConnection()` — a pool safely handles the concurrent reads, writes, and background augmentation that Memori performs.
+- `mysql2` ships with built-in TypeScript types — no separate `@types/mysql2` package is needed.
+- Set `DATABASE_CONNECTION_STRING` in your `.env` file.

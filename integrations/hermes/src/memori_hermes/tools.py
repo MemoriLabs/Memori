@@ -98,6 +98,33 @@ MEMORI_RECALL_SUMMARY_SCHEMA = {
     },
 }
 
+MEMORI_COMPACTION_SCHEMA = {
+    "name": "memori_compaction",
+    "description": (
+        "Fetch a structured post-compaction brief to restore working state "
+        "after context compaction, including active tasks, open loops, standing "
+        "orders, workspace changes, continuation hints, and recent history."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "projectId": {
+                "type": "string",
+                "description": "Override the configured Memori project only when requested.",
+            },
+            "sessionId": {
+                "type": "string",
+                "description": "Filter to a specific session. Requires projectId.",
+            },
+            "numMessages": {
+                "type": "integer",
+                "description": "Number of recent conversation messages to include.",
+                "minimum": 1,
+            },
+        },
+    },
+}
+
 MEMORI_QUOTA_SCHEMA = {
     "name": "memori_quota",
     "description": "Check the configured Memori account quota and memory usage.",
@@ -137,6 +164,7 @@ MEMORI_FEEDBACK_SCHEMA = {
 TOOL_SCHEMAS = [
     MEMORI_RECALL_SCHEMA,
     MEMORI_RECALL_SUMMARY_SCHEMA,
+    MEMORI_COMPACTION_SCHEMA,
     MEMORI_QUOTA_SCHEMA,
     MEMORI_SIGNUP_SCHEMA,
     MEMORI_FEEDBACK_SCHEMA,

@@ -12,6 +12,7 @@ Memori integrates at the agent level — register the `Agent` instance and Memor
   [app.memorilabs.ai](https://app.memorilabs.ai).
 </Note>
 
+
 ## Quick Start
 
 ```python
@@ -23,7 +24,7 @@ from sqlalchemy.orm import sessionmaker
 engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
-agent = Agent("openai:gpt-4o-mini")
+agent = Agent("openai:gpt-4.1-mini")
 
 mem = Memori(conn=SessionLocal).llm.register(agent)
 mem.config.storage.build()
@@ -45,7 +46,7 @@ from sqlalchemy.orm import sessionmaker
 engine = create_engine("sqlite:///memori.db")
 SessionLocal = sessionmaker(bind=engine)
 
-agent = Agent("openai:gpt-4o-mini")
+agent = Agent("openai:gpt-4.1-mini")
 
 mem = Memori(conn=SessionLocal).llm.register(agent)
 mem.config.storage.build()
@@ -65,17 +66,17 @@ Pydantic AI supports multiple providers via model strings. Registration is ident
 <CodeGroup title="Pydantic AI Providers">
 
 ```python {{ title: 'OpenAI' }}
-agent = Agent("openai:gpt-4o-mini")
+agent = Agent("openai:gpt-4.1-mini")
 mem = Memori(conn=SessionLocal).llm.register(agent)
 ```
 
 ```python {{ title: 'Anthropic' }}
-agent = Agent("anthropic:claude-3-5-sonnet-20241022")
+agent = Agent("anthropic:claude-sonnet-4-6")
 mem = Memori(conn=SessionLocal).llm.register(agent)
 ```
 
 ```python {{ title: 'Google Gemini' }}
-agent = Agent("google-gla:gemini-2.0-flash-exp")
+agent = Agent("google-gla:gemini-2.5-flash")
 mem = Memori(conn=SessionLocal).llm.register(agent)
 ```
 

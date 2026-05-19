@@ -110,30 +110,21 @@ This allows agents to retrieve the most relevant facts, decisions, constraints, 
 
 **Supported parameters:** `entity_id`, `project_id`, `session_id`, `date_start`, `date_end`, `source`, `signal`
 
-**Memory classification schema**
+**Memory classification schema (allowed source + signal combinations)**
 
-*Sources*
+`source` and `signal` are not independent. They must be set together (or both omitted). Only the following `(source, signal)` pairs are valid:
 
-- `constraint`
-- `decision`
-- `execution`
-- `fact`
-- `insight`
-- `instruction`
-- `status`
-- `strategy`
-- `task`
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
 
-*Signals*
-
-- `commit`
-- `discovery`
-- `failure`
-- `inference`
-- `pattern`
-- `result`
-- `update`
-- `verification`
+Any combination of `source` and `signal` not in this list is invalid and must not be sent to `memori_recall`.
 
 **Default behavior:** If no date range is provided, recall returns all-time memories.
 
@@ -153,6 +144,8 @@ Available tools:
   decisions, outcomes, and patterns
 - **`memori_recall_summary`** - retrieve summaries and daily-brief-style state
   awareness
+- **`memori_compaction`** - retrieve a structured post-compaction brief to
+  continue active work without replaying the full prior session
 - **`memori_quota`** - check Memori quota and limits
 - **`memori_signup`** - request a Memori API key
 - **`memori_feedback`** - report memory quality issues or wins
@@ -172,6 +165,7 @@ Available tools:
 
 ```bash
 pip install hermes-memori
+hermes-memori install
 ```
 
 For local development from this repository:
@@ -179,7 +173,12 @@ For local development from this repository:
 ```bash
 pip install -e .
 pip install -e integrations/hermes
+hermes-memori install --force
 ```
+
+The `hermes-memori install` command registers the provider in Hermes' memory
+plugin directory at `$HERMES_HOME/plugins/memori`, which is where Hermes scans
+for user-installed memory providers.
 
 ### 2. Configure
 
