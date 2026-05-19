@@ -24,22 +24,22 @@ jobs:
           - os: ubuntu-latest
             artifact-name: linux-x64-gnu
             rust-target: x86_64-unknown-linux-gnu
-            napi-args: --zig --zig-abi-suffix=2.28
+            zig-target: x86_64-linux-gnu.2.28
             use-zig: true
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-gnu
             rust-target: aarch64-unknown-linux-gnu
-            napi-args: --zig --zig-abi-suffix=2.28
+            zig-target: aarch64-linux-gnu.2.28
             use-zig: true
           - os: ubuntu-latest
             artifact-name: linux-x64-musl
             rust-target: x86_64-unknown-linux-musl
-            napi-args: --zig
+            zig-target: x86_64-linux-musl
             use-zig: true
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-musl
             rust-target: aarch64-unknown-linux-musl
-            napi-args: --zig
+            zig-target: aarch64-linux-musl
             use-zig: true
           - os: macos-latest
             artifact-name: darwin-arm64
@@ -75,6 +75,37 @@ jobs:
       - name: Setup Zig linker
         if: ${{ matrix.use-zig == true }}
         uses: goto-bus-stop/setup-zig@v2
+
+      - name: Configure Zig linker
+        if: ${{ matrix.use-zig == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          target_env="$(echo "${{ matrix.rust-target }}" | tr '[:lower:]-' '[:upper:]_')"
+          target_cc="$(echo "${{ matrix.rust-target }}" | tr '-' '_')"
+          wrapper_dir="$RUNNER_TEMP/zig-linkers"
+          cc_wrapper="$wrapper_dir/zig-cc-${{ matrix.rust-target }}"
+          cxx_wrapper="$wrapper_dir/zig-cxx-${{ matrix.rust-target }}"
+
+          mkdir -p "$wrapper_dir"
+
+          cat > "$cc_wrapper" <<'EOF'
+          #!/usr/bin/env bash
+          exec zig cc -target "${ZIG_TARGET}" "$@"
+          EOF
+
+          cat > "$cxx_wrapper" <<'EOF'
+          #!/usr/bin/env bash
+          exec zig c++ -target "${ZIG_TARGET}" "$@"
+          EOF
+
+          chmod +x "$cc_wrapper" "$cxx_wrapper"
+
+          echo "ZIG_TARGET=${{ matrix.zig-target }}" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_${target_env}_LINKER=$cc_wrapper" >> "$GITHUB_ENV"
+          echo "CC_${target_cc}=$cc_wrapper" >> "$GITHUB_ENV"
+          echo "CXX_${target_cc}=$cxx_wrapper" >> "$GITHUB_ENV"
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -124,7 +155,7 @@ jobs:
 
       - name: Build Rust bindings
         working-directory: ./core/bindings/node
-        run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }} ${{ matrix.napi-args || '' }}
+        run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
 
       - name: Verify Linux glibc compatibility floor
         if: ${{ startsWith(matrix.artifact-name, 'linux-') && endsWith(matrix.artifact-name, '-gnu') }}
