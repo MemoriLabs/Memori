@@ -47,7 +47,9 @@ def test_litellm_register_requires_completion_attr() -> None:
     bogus_module = types.ModuleType("not_litellm")
 
     client = LiteLLM(config)
-    with pytest.raises(RuntimeError, match="expected the litellm module or a LiteLLM Router"):
+    with pytest.raises(
+        RuntimeError, match="expected the litellm module or a LiteLLM Router"
+    ):
         client.register(bogus_module)
 
 
