@@ -37,9 +37,6 @@ env/
 *.db-shm
 *.db-wal
 
-# UV
-uv.lock
-
 # Python packaging
 *.egg-info/
 dist/
@@ -66,7 +63,18 @@ results/
 
 # Node / TypeScript
 node_modules/
-dist/
+dist/  uv sync --dev
+  shell: /usr/bin/bash -e {0}
+  env:
+    UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+    UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+Using CPython 3.11.15
+Creating virtual environment at: .venv
+Resolved 230 packages in 771ms
+error: Distribution `yarl==1.24.0 @ registry+https://pypi.org/simple` can't be installed because it doesn't have a source distribution or wheel for the current platform
+
+hint: You're using CPython 3.11 (`cp311`), but `yarl` (v1.24.0) only has wheels with the following Python ABI tag: `cp310`
+Error: Process completed with exit code 2.
 *.tsbuildinfo
 coverage
 !package-lock.json
