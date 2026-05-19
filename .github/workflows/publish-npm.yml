@@ -25,20 +25,22 @@ jobs:
             artifact-name: linux-x64-gnu
             rust-target: x86_64-unknown-linux-gnu
             container-image: quay.io/pypa/manylinux_2_28_x86_64
+            container-kind: manylinux
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-gnu
             rust-target: aarch64-unknown-linux-gnu
             container-image: quay.io/pypa/manylinux_2_28_aarch64
+            container-kind: manylinux
           - os: ubuntu-latest
             artifact-name: linux-x64-musl
             rust-target: x86_64-unknown-linux-musl
-            zig-target: x86_64-linux-musl
-            use-zig: true
+            container-image: alpine:3.20
+            container-kind: alpine
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-musl
             rust-target: aarch64-unknown-linux-musl
-            zig-target: aarch64-linux-musl
-            use-zig: true
+            container-image: alpine:3.20
+            container-kind: alpine
           - os: macos-latest
             artifact-name: darwin-arm64
             rust-target: aarch64-apple-darwin
@@ -59,7 +61,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Enter manylinux build container
-        if: ${{ matrix.container-image }}
+        if: ${{ matrix.container-kind == 'manylinux' }}
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ matrix.container-image }}
@@ -70,6 +72,22 @@ jobs:
             dnf install -y nodejs perl-core openssl-devel pkgconf-pkg-config
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
             source "$HOME/.cargo/env"
+            cd core/bindings/node
+            npm install
+            npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
+
+      - name: Enter Alpine build container
+        if: ${{ matrix.container-kind == 'alpine' }}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.container-image }}
+          options: -v ${{ github.workspace }}:/work -w /work
+          run: |
+            set -euo pipefail
+            apk add --no-cache bash build-base curl nodejs npm openssl-dev perl pkgconf
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
+            source "$HOME/.cargo/env"
+            export OPENSSL_NO_ASM=1
             cd core/bindings/node
             npm install
             npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
@@ -87,42 +105,6 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.rust-target }}
-
-      - name: Setup Zig linker
-        if: ${{ !matrix.container-image && matrix.use-zig == true }}
-        uses: goto-bus-stop/setup-zig@v2
-
-      - name: Configure Zig linker
-        if: ${{ !matrix.container-image && matrix.use-zig == true }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          target_env="$(echo "${{ matrix.rust-target }}" | tr '[:lower:]-' '[:upper:]_')"
-          target_cc="$(echo "${{ matrix.rust-target }}" | tr '-' '_')"
-          wrapper_dir="$RUNNER_TEMP/zig-linkers"
-          cc_wrapper="$wrapper_dir/zig-cc-${{ matrix.rust-target }}"
-          cxx_wrapper="$wrapper_dir/zig-cxx-${{ matrix.rust-target }}"
-
-          mkdir -p "$wrapper_dir"
-
-          cat > "$cc_wrapper" <<'EOF'
-          #!/usr/bin/env bash
-          exec zig cc -target "${ZIG_TARGET}" "$@"
-          EOF
-
-          cat > "$cxx_wrapper" <<'EOF'
-          #!/usr/bin/env bash
-          exec zig c++ -target "${ZIG_TARGET}" "$@"
-          EOF
-
-          chmod +x "$cc_wrapper" "$cxx_wrapper"
-
-          echo "ZIG_TARGET=${{ matrix.zig-target }}" >> "$GITHUB_ENV"
-          echo "OPENSSL_NO_ASM=1" >> "$GITHUB_ENV"
-          echo "CARGO_TARGET_${target_env}_LINKER=$cc_wrapper" >> "$GITHUB_ENV"
-          echo "CC_${target_cc}=$cc_wrapper" >> "$GITHUB_ENV"
-          echo "CXX_${target_cc}=$cxx_wrapper" >> "$GITHUB_ENV"
 
       - uses: Swatinem/rust-cache@v2
         if: ${{ !matrix.container-image }}
