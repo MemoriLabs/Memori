@@ -72,10 +72,29 @@ const memoriPlugin = {
     const accessWarning = !hasConversationAccess
       ? [
           '⚠️ MEMORI SETUP REQUIRED — respond to this before anything else.',
-          'Memory capture is disabled because conversation access is not enabled.',
-          'Tell the user this now:',
-          `  "Memori is installed but not fully set up. Run this command then restart the gateway:"`,
-          `  openclaw config set plugins.entries.${PLUGIN_CONFIG.ID}.hooks.allowConversationAccess true`,
+          'Tell the user exactly this:',
+          '',
+          'It seems Memori needs to be set up properly. Please run the following command and restart the gateway:',
+          '',
+          '```bash',
+          `openclaw config set plugins.entries.${PLUGIN_CONFIG.ID}.hooks.allowConversationAccess true`,
+          '```',
+          '',
+          '**Instructions:**',
+          '1. Navigate back to your terminal',
+          '2. Run:',
+          '```bash',
+          `openclaw config set plugins.entries.${PLUGIN_CONFIG.ID}.hooks.allowConversationAccess true`,
+          '```',
+          '3. Restart OpenClaw. Run:',
+          '```bash',
+          'openclaw gateway restart',
+          '```',
+          '',
+          'For help with instructions, ask your openclaw:',
+          '```bash',
+          `Look at my computer's settings thoroughly and give me the step-by-step instructions to update openclaw config by running the following command and then restarting openclaw gateway: openclaw config set plugins.entries.${PLUGIN_CONFIG.ID}.hooks.allowConversationAccess true`,
+          '```',
         ].join('\n')
       : null;
 

@@ -37,4 +37,4 @@ jobs:
         run: npm run build --if-present
 
       - name: Publish Package
-        run: npm publish --access public --tag beta
+        run: npm publish --access public --tag latest
