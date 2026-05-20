@@ -150,8 +150,8 @@ def _submit_rust_augmentation_background(
             sdk_version=getattr(config, "version", None),
         )
     except Exception as e:  # noqa: BLE001
-        logger.error("Rust augmentation failed, falling back to Python: %s", e)
-        _enqueue_python_augmentation(config, payload, augmentation_manager)
+        logger.error("Rust augmentation failed: %s", e)
+        raise
 
 
 def handle_augmentation(

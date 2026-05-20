@@ -1,5 +1,7 @@
 import { IntegrationRequest } from 'src/types/integrations.js';
 import {
+  AgentCompactionParams,
+  AgentCompactionResponse,
   AgentRecallParams,
   AgentRecallResponse,
   AgentRecallSummaryParams,
@@ -90,6 +92,22 @@ export class OpenClawIntegration extends BaseIntegration {
     params?: AgentRecallSummaryParams
   ): Promise<AgentRecallSummaryResponse> {
     return this.executeAgentRecallSummary(params);
+  }
+
+  /**
+   * Fetches a structured compaction of the agent's long-term memory and context.
+   * Returns active tasks, open loops, environment variables, standing orders, and
+   * recent message history in a single consolidated snapshot.
+   *
+   * @param params - projectId (defaults to current project context), sessionId and numMessages optional
+   * @returns Compaction response, or null on failure
+   *
+   * @throws Does not throw - errors are logged but swallowed to prevent disrupting the agent
+   */
+  public async agentCompaction(
+    params?: AgentCompactionParams
+  ): Promise<AgentCompactionResponse | null> {
+    return this.executeAgentCompaction(params ?? {});
   }
 
   /**

@@ -427,7 +427,7 @@ def test_inject_recalled_facts_uses_rust_core_when_available():
     assert "User likes rust-first recall" in result["messages"][0]["content"]
 
 
-def test_inject_recalled_facts_falls_back_when_rust_core_errors():
+def test_inject_recalled_facts_raises_when_rust_core_errors():
     config = Config()
     config.storage = Mock()
     config.storage.driver = Mock()
@@ -438,15 +438,14 @@ def test_inject_recalled_facts_falls_back_when_rust_core_errors():
     invoke = BaseInvoke(config, "test_method")
     kwargs = {"messages": [{"role": "user", "content": "Hello"}]}
 
-    with patch("memori.memory.recall.Recall") as mock_recall:
-        mock_recall.return_value.search_facts.return_value = [
-            {"content": "fallback recall result", "similarity": 0.9}
-        ]
-        result = inject_recalled_facts(invoke, kwargs)
+    with (
+        patch("memori.memory.recall.Recall") as mock_recall,
+        pytest.raises(RuntimeError, match="rust error"),
+    ):
+        inject_recalled_facts(invoke, kwargs)
 
     config.rust_core.retrieve_facts.assert_called_once()
-    mock_recall.return_value.search_facts.assert_called_once()
-    assert "fallback recall result" in result["messages"][0]["content"]
+    mock_recall.assert_not_called()
 
 
 def test_inject_recalled_facts_success():

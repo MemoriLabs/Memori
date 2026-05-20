@@ -1,4 +1,5 @@
-import { MemoriEngine } from '../native/index.js';
+import type { MemoriEngine } from '../native/index.js';
+import { createRequire } from 'node:module';
 import {
   StorageBridge,
   WriteBatch,
@@ -115,7 +116,16 @@ export class NativeEngine {
 
   private getEngine(): MemoriEngine {
     if (!this.memoriEngine) {
-      this.memoriEngine = new MemoriEngine(
+      const require = createRequire(import.meta.url);
+      const native = require('../native/index.js') as {
+        MemoriEngine: new (
+          modelName: string | null,
+          fetchEmbeddings: BridgeCb,
+          fetchFacts: BridgeCb,
+          writeBatch: BridgeCb
+        ) => MemoriEngine;
+      };
+      this.memoriEngine = new native.MemoriEngine(
         this.modelName,
         this.fetchEmbeddingsCb,
         this.fetchFactsCb,

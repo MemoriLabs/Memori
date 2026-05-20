@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
+from bson import ObjectId
 
 from memori import _rust_core
 from memori._config import Config
@@ -50,6 +51,67 @@ def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
     )
     driver.entity.create.assert_called_once_with("entity-abc")
     driver.entity_fact.get_embeddings.assert_called_once_with(42, 10)
+
+
+def test_fetch_embeddings_callback_preserves_mongodb_object_id(mocker):
+    class MongoDriver:
+        pass
+
+    MongoDriver.__module__ = "memori.storage.drivers.mongodb._driver"
+
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    entity_id = ObjectId()
+    driver = MongoDriver()
+    driver.entity = SimpleNamespace(create=mocker.Mock(return_value=entity_id))
+    driver.entity_fact = SimpleNamespace(get_embeddings=mocker.Mock(return_value=[]))
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+
+    callback = _rust_core.RustCoreAdapter._fetch_embeddings_cb(config)
+    output = json.loads(callback(json.dumps({"entity_id": "entity-abc", "limit": 10})))
+
+    assert output == []
+    driver.entity.create.assert_called_once_with("entity-abc")
+    driver.entity_fact.get_embeddings.assert_called_once_with(entity_id, 10)
+
+
+def test_fetch_facts_by_ids_callback_rehydrates_mongodb_object_ids(mocker):
+    class MongoDriver:
+        pass
+
+    MongoDriver.__module__ = "memori.storage.drivers.mongodb._driver"
+
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    fact_id = ObjectId()
+    driver = MongoDriver()
+    driver.entity_fact = SimpleNamespace(
+        get_facts_by_ids=mocker.Mock(
+            return_value=[
+                {
+                    "id": fact_id,
+                    "content": "The user likes MongoDB.",
+                    "date_created": "2026-05-20",
+                    "summaries": [],
+                }
+            ]
+        )
+    )
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+
+    callback = _rust_core.RustCoreAdapter._fetch_facts_by_ids_cb(config)
+    output = json.loads(callback(json.dumps({"ids": [str(fact_id)]})))
+
+    assert output[0]["id"] == str(fact_id)
+    driver.entity_fact.get_facts_by_ids.assert_called_once_with([fact_id])
 
 
 def test_write_batch_callback_maps_process_attribute_dict(mocker):
@@ -136,6 +198,97 @@ def test_write_batch_callback_embeds_entity_facts(mocker):
         ["The user's favorite color is blue."],
         fact_embeddings=[[0.1, 0.2]],
         conversation_id=5,
+    )
+
+
+def test_write_batch_callback_rehydrates_mongodb_conversation_id(mocker):
+    class MongoDriver:
+        pass
+
+    MongoDriver.__module__ = "memori.storage.drivers.mongodb._driver"
+
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    config.embeddings = SimpleNamespace(model="")
+    entity_id = ObjectId()
+    conversation_id = ObjectId()
+    driver = MongoDriver()
+    driver.entity = SimpleNamespace(create=mocker.Mock(return_value=entity_id))
+    driver.entity_fact = SimpleNamespace(create=mocker.Mock())
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+
+    callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
+    response = json.loads(
+        callback(
+            json.dumps(
+                {
+                    "ops": [
+                        {
+                            "op_type": "entity_fact.create",
+                            "payload": {
+                                "entity_id": "entity-1",
+                                "facts": ["The user's favorite database is MongoDB."],
+                                "conversation_id": str(conversation_id),
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    assert response["written_ops"] == 1
+    driver.entity_fact.create.assert_called_once_with(
+        entity_id,
+        ["The user's favorite database is MongoDB."],
+        fact_embeddings=None,
+        conversation_id=conversation_id,
+    )
+
+
+def test_write_batch_callback_updates_mongodb_conversation(mocker):
+    class MongoDriver:
+        pass
+
+    MongoDriver.__module__ = "memori.storage.drivers.mongodb._driver"
+
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    conversation_id = ObjectId()
+    driver = MongoDriver()
+    driver.conversation = SimpleNamespace(update=mocker.Mock())
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+
+    callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
+    response = json.loads(
+        callback(
+            json.dumps(
+                {
+                    "ops": [
+                        {
+                            "op_type": "conversation.update",
+                            "payload": {
+                                "conversation_id": str(conversation_id),
+                                "summary": "A short summary.",
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    assert response["written_ops"] == 1
+    driver.conversation.update.assert_called_once_with(
+        conversation_id, "A short summary."
     )
 
 

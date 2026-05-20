@@ -10,11 +10,14 @@ r"""
 
 from memori.llm._base import BaseLlmAdaptor
 from memori.llm._registry import Registry
-from memori.llm._utils import agno_is_openai, llm_is_openai
+from memori.llm._utils import agno_is_openai, llm_is_litellm, llm_is_openai
 
 
+# LiteLLM normalizes every backing's response to OpenAI shape, so the same
+# Adapter handles `llm.provider == "litellm"` payloads without code duplication.
 @Registry.register_adapter(llm_is_openai)
 @Registry.register_adapter(agno_is_openai)
+@Registry.register_adapter(llm_is_litellm)
 class Adapter(BaseLlmAdaptor):
     def get_formatted_query(self, payload):
         """

@@ -5,7 +5,7 @@ description: Use the Model Context Protocol (MCP) to connect AI agents directly 
 
 # Memori MCP (Model Context Protocol)
 
-**memori-mcp** is the official [Memori](https://memorilabs.ai) MCP server. Connect it to your AI agent to give it long-term memory: recall relevant facts before answering, store durable preferences after responding, and maintain context across sessions.
+**memori-mcp** is the official [Memori](https://memorilabs.ai) MCP server. Connect it to your AI agent to give it long-term memory: recall relevant facts, retrieve broad state summaries, store durable preferences after responding, and maintain context across sessions.
 
 ## Why Memori MCP?
 
@@ -50,7 +50,7 @@ Memori is **state infrastructure for production agents** — enabling persistent
 
 ## Tools
 
-### `recall`
+### `memori_recall`
 
 Fetches relevant memories at the start of a user turn.
 
@@ -60,9 +60,29 @@ Fetches relevant memories at the start of a user turn.
   </Property>
 </Properties>
 
-`entity_id` is read from MCP headers. `process_id` is read when provided. Returns a structured memory payload with relevant context.
+Returns a structured memory payload with relevant context. When exposed by the client, optional filters may include `projectId`, `sessionId`, `dateStart`, `dateEnd`, `source`, and `signal`.
 
-### `advanced_augmentation`
+`source` and `signal` are not independent. They must be set together (or both omitted). Only these pairs are valid:
+
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
+
+Any other combination is invalid and must not be sent to `memori_recall`.
+
+### `memori_recall_summary`
+
+Fetches broad memory state for session starts, daily briefs, status updates, and project overviews.
+
+When exposed by the client, optional filters may include `projectId`, `sessionId`, `dateStart`, and `dateEnd`.
+
+### `memori_advanced_augmentation`
 
 Stores durable memory after the agent has drafted a response.
 
@@ -75,16 +95,28 @@ Stores durable memory after the agent has drafted a response.
   </Property>
 </Properties>
 
-`entity_id` is read from MCP headers. `process_id` is read when provided. Returns a confirmation: `memory being created`.
+Optional fields may include `projectId`, `sessionId`, `summary`, and `trace` when the client/tool supports them.
+
+### `memori_feedback`
+
+Reports irrelevant, missing, stale, or especially useful memory behavior.
+
+### `memori_signup`
+
+Requests a Memori account/API key when the user explicitly asks and provides an email address.
+
+### `memori_quota`
+
+Checks current memory usage and limits when the user asks or quota errors appear.
 
 ## Example Agent Flow
 
 Given the user message: _"I prefer Python and use uv for dependency management."_
 
-1. Agent calls `recall` with the user message as `query`
+1. Agent calls `memori_recall` with the user message as `query`
 2. Agent composes a response using any returned facts
 3. Agent sends the response to the user
-4. Agent calls `advanced_augmentation` with the `user_message` and `assistant_response`
+4. Agent calls `memori_advanced_augmentation` with the `user_message` and `assistant_response`
 
 On a later turn like _"Write a hello world script"_, the agent recalls the Python + uv preference and personalizes its response.
 
@@ -93,7 +125,7 @@ On a later turn like _"Write a hello world script"_, the agent recalls the Pytho
 After configuring your client, verify the setup:
 
 - MCP server shows as connected and healthy in your client UI
-- Tools list includes `recall` and `advanced_augmentation`
+- Tools list includes `memori_recall`, `memori_recall_summary`, and `memori_advanced_augmentation`
 - Calls return non-401 responses
-- `recall` returns memories for known entities
-- `advanced_augmentation` returns `memory being created`
+- `memori_recall` returns memories for known entities
+- `memori_advanced_augmentation` accepts durable user/assistant turn data
