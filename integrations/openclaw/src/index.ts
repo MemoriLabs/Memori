@@ -43,7 +43,14 @@ const memoriPlugin = {
     // bypasses) and the schema validator temporarily rejected the key, crashing the app.
     // The platform stabilized the plugin loader in 2026.5.7 and re-clarified the rule in 5.9.
     // Therefore, we only enforce the warning on 2026.5.7 and newer.
-    const ocVersion = api.runtime.version.replace(/^v/, '');
+    // `api.runtime` is typed as non-nullable but the loader passes `{}` during
+    // non-`full` registration modes (e.g. cli-metadata). Cast so we can guard.
+    const rawVersion =
+      (api.runtime as { version?: string } | undefined)?.version ??
+      api.version ??
+      process.env.OPENCLAW_VERSION ??
+      '2026.5.18';
+    const ocVersion = rawVersion.replace(/^v/, '');
     const [ocYear = 0, ocMonth = 0, ocDay = 0] = ocVersion
       .split('.')
       .map((s) => parseInt(s, 10) || 0);

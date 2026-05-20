@@ -193,6 +193,35 @@ describe('plugin index', () => {
       const result = handler?.();
       expect(result).not.toHaveProperty('prependContext');
     });
+
+    it('should not crash when runtime is an empty object (cli-metadata mode)', () => {
+      mockApi.runtime = {} as any;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      expect(() => memoriPlugin.register(mockApi)).not.toThrow();
+      expect(mockApi.registerCli).toHaveBeenCalled();
+    });
+
+    it('should not crash when runtime is undefined', () => {
+      mockApi.runtime = undefined as any;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      expect(() => memoriPlugin.register(mockApi)).not.toThrow();
+      expect(mockApi.registerCli).toHaveBeenCalled();
+    });
+
+    it('should default conservatively (require allowConversationAccess) when version cannot be resolved', () => {
+      mockApi.runtime = {} as any;
+      (mockApi as any).version = undefined;
+      delete process.env.OPENCLAW_VERSION;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+    });
   });
 
   describe('hook handlers', () => {
