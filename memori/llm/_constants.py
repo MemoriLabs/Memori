@@ -2,10 +2,10 @@ r"""
  __  __                           _
 |  \/  | ___ _ __ ___   ___  _ __(_)
 | |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
-| |  | |  __/ | | | | | (_) | |  | |
+| |  | |  __| | | | | | (_) | |  | |
 |_|  |_|\___|_| |_| |_|\___/|_|  |_|
-                  perfectam memoriam
-                       memorilabs.ai
+                   perfectam memoriam
+                        memorilabs.ai
 """
 
 AGNO_ANTHROPIC_LLM_PROVIDER = "anthropic"
@@ -14,6 +14,8 @@ AGNO_GOOGLE_LLM_PROVIDER = "google"
 AGNO_OPENAI_LLM_PROVIDER = "openai"
 AGNO_XAI_LLM_PROVIDER = "xai"
 ANTHROPIC_LLM_PROVIDER = "anthropic"
+CREWAI_FRAMEWORK_PROVIDER = "crewai"
+CREWAI_LLM_PROVIDER = "crewai-llm"
 GOOGLE_LLM_PROVIDER = "google"
 LANGCHAIN_CHATBEDROCK_LLM_PROVIDER = "chatbedrock"
 LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER = "chatgooglegenai"

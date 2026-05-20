@@ -2,10 +2,10 @@ r"""
  __  __                           _
 |  \/  | ___ _ __ ___   ___  _ __(_)
 | |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
-| |  | |  __/ | | | | | (_) | |  | |
+| |  | |  __| | | | | | (_) | |  | |
 |_|  |_|\___|_| |_| |_|\___/|_|  |_|
-                  perfectam memoriam
-                       memorilabs.ai
+                   perfectam memoriam
+                        memorilabs.ai
 """
 
 import os
@@ -102,8 +102,8 @@ class Memori:
             conn: Database connection factory or managed connection instance.
             debug_truncate: When True, truncate long content in debug logging.
             api_key: Optional Memori Cloud API key. Defaults to `MEMORI_API_KEY`.
-            base_url: Optional Memori Cloud API base URL. Defaults to `MEMORI_API_URL_BASE`.
-            use_rust_core: When not None, overrides env for BYODB Rust engine use.
+            base_url: Optional Memori Cloud API base URL.
+            use_rust_core: When not None, overrides env for BYODB Rust use.
         """
         from memori._logging import set_truncate_enabled
 
@@ -139,8 +139,15 @@ class Memori:
         self.pydantic_ai = LlmProviderPydanticAi(self)
         self.xai = LlmProviderXAi(self)
 
+        # CrewAI integration
+        from memori.llm.clients.crewai import CrewAIMemory
+
+        self.crewai = CrewAIMemory(self.config)
+
     def _get_default_connection(self) -> Callable[[], Any] | None:
-        connection_string = os.environ.get("MEMORI_COCKROACHDB_CONNECTION_STRING", None)
+        connection_string = os.environ.get(
+            "MEMORI_COCKROACHDB_CONNECTION_STRING", None
+        )
         if connection_string:
             try:
                 import psycopg
@@ -163,7 +170,7 @@ class Memori:
         entity_id: str,
         process_id: str | None = None,
     ) -> "Memori":
-        """Set attribution identifiers used when persisting and recalling memory."""
+        """Set attribution identifiers for memory persistence and recall."""
         if not isinstance(entity_id, str):
             raise TypeError("entity_id must be a string")
 
@@ -174,7 +181,9 @@ class Memori:
             raise TypeError("process_id must be a string or None")
 
         if process_id is not None and len(process_id) > 100:
-            raise RuntimeError("process_id cannot be greater than 100 characters")
+            raise RuntimeError(
+                "process_id cannot be greater than 100 characters"
+            )
 
         self.config.entity_id = entity_id
         self.config.process_id = process_id
@@ -182,7 +191,7 @@ class Memori:
         return self
 
     def new_session(self) -> "Memori":
-        """Start a new session and clear in-memory caches for this instance."""
+        """Start a new session and clear in-memory caches."""
         self.config.session_id = uuid4()
         self.config.reset_cache()
         return self
@@ -197,7 +206,9 @@ class Memori:
     ) -> list[RecallFact] | CloudRecallResponse:
         """Return relevant memories for a query."""
         if self.config.cloud is False and self.config.rust_core is not None:
-            resolved_limit = self.config.recall_facts_limit if limit is None else limit
+            resolved_limit = (
+                self.config.recall_facts_limit if limit is None else limit
+            )
             if not self.config.entity_id:
                 return []
             return self.config.rust_core.retrieve_facts(
@@ -209,14 +220,18 @@ class Memori:
         return Recall(self.config).search_facts(query, limit)
 
     def delete_entity_memories(self, entity_id: str | None = None) -> None:
-        """Delete memory records for an entity while preserving conversations."""
+        """Delete memory records for an entity."""
         if not self.config.byodb:
-            raise RuntimeError("delete_entity_memories is only available in BYODB mode")
+            raise RuntimeError(
+                "delete_entity_memories is only available in BYODB mode"
+            )
 
         if entity_id is not None and not isinstance(entity_id, str):
             raise TypeError("entity_id must be a string or None")
         if entity_id is not None and len(entity_id) > 100:
-            raise RuntimeError("entity_id cannot be greater than 100 characters")
+            raise RuntimeError(
+                "entity_id cannot be greater than 100 characters"
+            )
 
         Recall(self.config).delete_entity_memories(entity_id)
 
@@ -250,7 +265,7 @@ class Memori:
         project_id: str | None = None,
         session_id: str | None = None,
     ) -> dict[str, Any]:
-        """Fetch summaries from the Memori Cloud agent recall summary endpoint."""
+        """Fetch summaries from the Memori Cloud agent recall endpoint."""
         return self.agent.recall_summary(
             date_start=date_start,
             date_end=date_end,
@@ -265,7 +280,7 @@ class Memori:
         session_id: str | None = None,
         num_messages: int | None = None,
     ) -> dict[str, Any]:
-        """Fetch a structured compaction from the Memori Cloud agent endpoint."""
+        """Fetch a structured compaction from the Memori Cloud endpoint."""
         return self.agent.compaction(
             project_id=project_id,
             session_id=session_id,
@@ -286,7 +301,7 @@ class Memori:
         model: str | None = None,
         provider_sdk_version: str | None = None,
     ) -> None:
-        """Capture an agent conversation turn for persistence and augmentation."""
+        """Capture an agent conversation turn for persistence."""
         self.agent.capture_turn(
             user_content=user_content,
             assistant_content=assistant_content,
@@ -305,11 +320,7 @@ class Memori:
         self.agent.feedback(content)
 
     def close(self) -> None:
-        """Close the underlying storage connection/session, if any.
-
-        This is especially important for long-running processes (e.g. web servers)
-        where you want to explicitly release database connections.
-        """
+        """Close the underlying storage connection/session, if any."""
         storage = getattr(self.config, "storage", None)
         adapter = getattr(storage, "adapter", None) if storage is not None else None
         if adapter is None:
