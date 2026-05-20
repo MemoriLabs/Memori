@@ -9,7 +9,7 @@ In addition to the MCP server config, we strongly recommend adding an **Agent Sk
 
 ## Why Add a Skills File
 
-- **Reliability** — the agent consistently chooses between precise recall, broad summaries, durable augmentation, feedback, signup, and quota checks
+- **Reliability** — the agent consistently chooses between precise recall, broad summaries, post-compaction briefs, durable augmentation, feedback, signup, and quota checks
 - **Lower prompt friction** — you don't need to re-explain the memory workflow every session
 - **Focused context** — most clients only load the full skill instructions when the skill is triggered
 
@@ -23,6 +23,7 @@ This file teaches the agent the current Memori MCP workflow:
 
 - Use `memori_recall` for exact prior facts, preferences, decisions, and constraints.
 - Use `memori_recall_summary` for broad session state, daily briefs, project overviews, and status recovery.
+- Use `memori_compaction` after context compaction to restore working state, active tasks, open loops, and the next expected action.
 - Use `memori_advanced_augmentation` after a response only for durable facts, preferences, or project context.
 - Use `memori_feedback`, `memori_signup`, and `memori_quota` only when the user request or a Memori error makes them relevant.
 - Set `source` and `signal` only as allowed pairs (never independently).
@@ -120,7 +121,7 @@ This ensures that regardless of which workspace or page the user is on, the AI a
 
 Once both the MCP config and skills file are installed:
 
-- The **MCP config** ensures the Memori tools exist (`memori_recall`, `memori_recall_summary`, `memori_advanced_augmentation`, `memori_feedback`, `memori_signup`, and `memori_quota`)
+- The **MCP config** ensures the Memori tools exist (`memori_recall`, `memori_recall_summary`, `memori_compaction`, `memori_advanced_augmentation`, `memori_feedback`, `memori_signup`, and `memori_quota`)
 - The **skills file** ensures the agent uses them _consistently and correctly_ — recall or summarize when prior context matters, augment only durable context, and skip memory for ephemeral turns
 
 <Admonition type="tip" title="Test Your Setup">

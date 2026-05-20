@@ -1,11 +1,11 @@
 ---
 name: memori-mcp-usage
-description: Use when an MCP-connected agent should use Memori tools for targeted recall, summaries, durable memory augmentation, quota checks, signup, feedback, preferences, prior context, or cross-session continuity.
-version: 0.4.0
+description: Use when an MCP-connected agent should use Memori tools for targeted recall, summaries, post-compaction briefs, durable memory augmentation, quota checks, signup, feedback, preferences, prior context, or cross-session continuity.
+version: 0.5.0
 author: Memori Labs
 license: MIT
 metadata:
-  tags: [Memori, MCP, Memory, Recall, Summary, Advanced Augmentation]
+  tags: [Memori, MCP, Memory, Recall, Summary, Compaction, Advanced Augmentation]
   homepage: https://memorilabs.ai/
 ---
 
@@ -36,6 +36,7 @@ Current user instructions, verified local context, and tool results outrank reca
 
 - `memori_recall`: retrieve precise memories by query, project, session, time range, or an allowed source/signal pair.
 - `memori_recall_summary`: retrieve a state summary for session starts, daily briefs, or broad status checks.
+- `memori_compaction`: retrieve a structured post-compaction brief to continue work after context compaction.
 - `memori_advanced_augmentation`: store durable memory from a completed user/assistant turn.
 - `memori_feedback`: report irrelevant, missing, stale, or especially useful memory behavior.
 - `memori_signup`: create a Memori account or request an API key when the user explicitly asks.
@@ -163,6 +164,77 @@ Useful daily brief shape:
 
 Treat summaries as working state, not unquestionable truth. If the answer depends on one specific decision, preference, or prior outcome, use `memori_recall` or verify against current sources.
 
+## Post-Compaction Brief Behavior
+
+Post-compaction briefs are used to restore working state after context compaction.
+
+Use them when:
+
+- The agent resumes after compaction
+- A long-running workflow has lost conversational detail
+- The agent needs to continue operational work without replaying the full prior session
+- The agent needs durable state, standing instructions, environment details, open loops, or the next expected action
+
+Post-compaction briefs are not a replacement for precise memory retrieval.
+
+Use:
+
+- `memori_compaction`
+
+Supported parameters:
+
+- `projectId`: project or workspace context; required when the tool schema requires it
+- `sessionId`: specific session, only with `projectId`
+- `numMessages`: number of recent conversation messages to include
+
+Post-compaction briefs do not support `source` or `signal`.
+
+Default behavior:
+
+- Retrieve the most recent relevant post-compaction brief for the project or session.
+- Include a small tail of recent conversation messages unless more context is explicitly needed.
+
+Expected post-compaction brief structure:
+
+- Meta
+- Environment
+- Standing orders
+- State
+- Active tasks
+- Open loops
+- Pending results
+- Timeline
+- Workspace changes
+- Continuation
+- Last action
+- Next expected action
+- Messages
+
+Treat the post-compaction brief as the agent's resume state. Use it to understand:
+
+- What environment the agent was operating in
+- Which standing orders must continue to be followed
+- Which tasks are active
+- Which issues remain unresolved
+- What happened across the prior session window
+- What files, workspace state, or external systems may have changed
+- What the agent did last
+- What the agent should do next
+
+The post-compaction brief should guide continuation, not override explicit user instructions. Before acting on operational details, verify any state that may have changed since compaction.
+
+Pay special attention to:
+
+- Standing orders
+- Hard constraints
+- Alerting rules
+- Expected response formats
+- Open loops
+- Staleness warnings
+- Next expected action
+
+If the post-compaction brief contains a required output format, follow it exactly unless the user gives a newer instruction.
+
 ## Advanced Augmentation
 
 Through MCP, durable memory is stored explicitly with `memori_advanced_augmentation` after you draft a response.
@@ -204,17 +276,19 @@ Rule of thumb: if the information describes what happened in this session rather
 ## Procedure
 
 1. If the message is trivial or the user opts out of storage, skip augmentation (and usually recall).
-2. Start of a meaningful session: retrieve a summary with `memori_recall_summary`.
-3. During the task: use targeted `memori_recall` when prior context would materially improve the answer.
-4. Answer using useful recalled context, but verify anything stale, surprising, or high stakes.
-5. After drafting the final response: call `memori_advanced_augmentation` only for durable facts, preferences, or project context.
-6. When memory is missing or incorrect: send `memori_feedback`.
-7. When limits are reached: check `memori_quota` if needed and degrade gracefully.
+2. After context compaction: retrieve resume state with `memori_compaction`.
+3. Start of a meaningful session: retrieve a summary with `memori_recall_summary`.
+4. During the task: use targeted `memori_recall` when prior context would materially improve the answer.
+5. Answer using useful recalled context, but verify anything stale, surprising, or high stakes.
+6. After drafting the final response: call `memori_advanced_augmentation` only for durable facts, preferences, or project context.
+7. When memory is missing or incorrect: send `memori_feedback`.
+8. When limits are reached: check `memori_quota` if needed and degrade gracefully.
 
 ## Common Pitfalls
 
 - Do not use broad recall when the user needs one specific fact, decision, or prior outcome.
 - Do not treat summaries as authoritative when exact details matter; use targeted recall or verify against current sources.
+- Do not use compaction for targeted memory search or routine turns.
 - Do not call signup, quota, or feedback tools unless the user's request or a Memori error makes them relevant.
 - Do not provide a `sessionId` without also providing a `projectId`.
 - Do not invent entity, process, project, or session identifiers; MCP headers supply attribution context.
@@ -307,7 +381,7 @@ When an update is exposed through the system, tool metadata, or user-provided do
 
 Confirm the skill is working in a fresh MCP client session:
 
-1. Verify the Memori MCP server is connected and lists `memori_recall`, `memori_recall_summary`, and `memori_advanced_augmentation`.
+1. Verify the Memori MCP server is connected and lists `memori_recall`, `memori_recall_summary`, `memori_compaction`, and `memori_advanced_augmentation`.
 2. Tell the agent a durable preference such as "I always use tabs over spaces."
 3. After augmentation completes, start a later session and ask it to write code.
 
