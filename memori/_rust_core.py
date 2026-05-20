@@ -729,10 +729,10 @@ def _resolve_entity_id(driver: Any, raw_entity_id: Any) -> Any:
             raise RustCoreAdapterError("entity_id cannot be empty")
         if stripped.isdigit():
             return int(stripped)
-        return driver.entity.create(stripped)
+        return _normalize_created_id(driver, driver.entity.create(stripped))
     if raw_entity_id is None:
         raise RustCoreAdapterError("entity_id is required")
-    return driver.entity.create(str(raw_entity_id))
+    return _normalize_created_id(driver, driver.entity.create(str(raw_entity_id)))
 
 
 def _normalize_fact_ids(ids: list[Any], driver: Any | None = None) -> list[Any]:
@@ -808,6 +808,12 @@ def _coerce_driver_id(driver: Any | None, value: Any) -> Any:
         if object_id is not None:
             return object_id
     return value
+
+
+def _normalize_created_id(driver: Any | None, value: Any) -> Any:
+    if _is_mongodb_driver(driver):
+        return value
+    return int(value)
 
 
 def _is_mongodb_driver(driver: Any | None) -> bool:
