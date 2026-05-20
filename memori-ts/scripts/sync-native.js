@@ -10,6 +10,7 @@ const SRC_NATIVE = path.resolve(ROOT, 'src/native');
 
 // CHECK FOR FLAG: Did we run this with "node scripts/sync-native.js --dev"?
 const isDev = process.argv.includes('--dev');
+const skipBuild = process.argv.includes('--skip-build');
 
 // Set target dynamically based on the flag
 const DIST_NATIVE = path.resolve(ROOT, isDev ? 'dist/src/native' : 'dist/native');
@@ -28,7 +29,40 @@ function copyFolderSync(from, to) {
     }
   }
 
-  fs.writeFileSync(path.join(to, 'package.json'), JSON.stringify({ type: 'commonjs' }, null, 2));
+  fs.writeFileSync(
+    path.join(to, 'package.json'),
+    `${JSON.stringify({ type: 'commonjs' }, null, 2)}\n`
+  );
+}
+
+function copyFilesByExtension(from, to, extensions) {
+  if (!fs.existsSync(from)) return;
+  fs.mkdirSync(to, { recursive: true });
+
+  for (const file of fs.readdirSync(from)) {
+    if (extensions.some((ext) => file.endsWith(ext))) {
+      fs.copyFileSync(path.join(from, file), path.join(to, file));
+    }
+  }
+}
+
+function removeFilesByExtension(from, extensions) {
+  if (!fs.existsSync(from)) return;
+
+  for (const file of fs.readdirSync(from)) {
+    if (extensions.some((ext) => file.endsWith(ext))) {
+      fs.rmSync(path.join(from, file), { force: true });
+    }
+  }
+}
+
+function ensureNativeEntrypoints() {
+  const requiredFiles = ['index.js', 'index.d.ts'];
+  const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(SRC_NATIVE, file)));
+
+  if (missing.length > 0) {
+    throw new Error(`Missing native entrypoint files in src/native: ${missing.join(', ')}`);
+  }
 }
 
 function sync() {
@@ -37,11 +71,25 @@ function sync() {
     execSync('npm ci', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
   }
 
-  console.log('Building Rust N-API artifacts...');
-  execSync('npm run build', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
+  if (skipBuild) {
+    console.log('Skipping Rust N-API build; syncing existing artifacts...');
+  } else {
+    console.log('Building Rust N-API artifacts...');
+    execSync('npm run build', { cwd: RUST_BINDINGS_DIR, stdio: 'inherit' });
+  }
 
   console.log('Syncing to src/native...');
-  copyFolderSync(RUST_BINDINGS_DIR, SRC_NATIVE);
+  if (skipBuild) {
+    ensureNativeEntrypoints();
+    removeFilesByExtension(SRC_NATIVE, ['.node']);
+    copyFilesByExtension(RUST_BINDINGS_DIR, SRC_NATIVE, ['.node']);
+    fs.writeFileSync(
+      path.join(SRC_NATIVE, 'package.json'),
+      `${JSON.stringify({ type: 'commonjs' }, null, 2)}\n`
+    );
+  } else {
+    copyFolderSync(RUST_BINDINGS_DIR, SRC_NATIVE);
+  }
 
   // Copy to the single correct distribution folder
   console.log(`Syncing to ${isDev ? 'dist/src/native (Dev)' : 'dist/native (Prd)'}...`);

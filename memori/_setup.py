@@ -8,8 +8,6 @@ r"""
                        memorilabs.ai
 """
 
-from sentence_transformers import SentenceTransformer
-
 from memori._cli import Cli
 from memori._config import Config
 
@@ -19,6 +17,14 @@ class Manager:
         self.config = config
 
     def execute(self):
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise ImportError(
+                "The setup command requires the optional embeddings dependency. "
+                "Install it with `pip install 'memori[embeddings]'`."
+            ) from exc
+
         cli = Cli(self.config)
 
         cli.notice("Installing model all-mpnet-base-v2")
