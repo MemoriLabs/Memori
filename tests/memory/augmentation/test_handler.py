@@ -1,3 +1,5 @@
+import pytest
+
 from memori._config import Config
 from memori.memory.augmentation._handler import handle_augmentation
 from memori.memory.augmentation.augmentations.memori.models import (
@@ -139,7 +141,7 @@ def test_handle_augmentation_non_cloud_uses_rust_core(mocker):
     aug.enqueue.assert_not_called()
 
 
-def test_handle_augmentation_non_cloud_falls_back_when_rust_fails(mocker):
+def test_handle_augmentation_non_cloud_raises_when_rust_fails(mocker):
     cfg = Config()
     cfg.cloud = False
     cfg.entity_id = "abc"
@@ -169,9 +171,10 @@ def test_handle_augmentation_non_cloud_falls_back_when_rust_fails(mocker):
 
     cfg.thread_pool_executor.submit.assert_called_once()
     fn, cfg_arg, payload_arg, aug_arg = cfg.thread_pool_executor.submit.call_args.args
-    fn(cfg_arg, payload_arg, aug_arg)
+    with pytest.raises(RuntimeError, match="rust unavailable"):
+        fn(cfg_arg, payload_arg, aug_arg)
     cfg.rust_core.submit_augmentation.assert_called_once()
-    aug.enqueue.assert_called_once()
+    aug.enqueue.assert_not_called()
     error_log.assert_called_once()
 
 

@@ -1,4 +1,11 @@
-from memori.llm.clients.direct import Anthropic, Google, OpenAi, PydanticAi, XAi
+from memori.llm.clients.direct import (
+    Anthropic,
+    Google,
+    LiteLLM,
+    OpenAi,
+    PydanticAi,
+    XAi,
+)
 from memori.llm.clients.frameworks import Agno, LangChain
 
 __all__ = [
@@ -6,6 +13,7 @@ __all__ = [
     "Anthropic",
     "Google",
     "LangChain",
+    "LiteLLM",
     "OpenAi",
     "PydanticAi",
     "XAi",

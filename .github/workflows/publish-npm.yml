@@ -2,6 +2,11 @@ name: Publish to npm (TS)
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build, pack, and smoke test the npm package; skip npm publish."
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -19,16 +24,31 @@ jobs:
           - os: ubuntu-latest
             artifact-name: linux-x64-gnu
             rust-target: x86_64-unknown-linux-gnu
+            container-image: quay.io/pypa/manylinux_2_28_x86_64
+            container-kind: manylinux
           - os: ubuntu-24.04-arm
             artifact-name: linux-arm64-gnu
             rust-target: aarch64-unknown-linux-gnu
+            container-image: quay.io/pypa/manylinux_2_28_aarch64
+            container-kind: manylinux
+          - os: ubuntu-latest
+            artifact-name: linux-x64-musl
+            rust-target: x86_64-unknown-linux-musl
+            container-image: node:24-alpine3.20
+            container-kind: alpine
+            cargo-args: --no-default-features --features ort-load-dynamic
+          - os: ubuntu-24.04-arm
+            artifact-name: linux-arm64-musl
+            rust-target: aarch64-unknown-linux-musl
+            container-image: node:24-alpine3.20
+            container-kind: alpine
+            cargo-args: --no-default-features --features ort-load-dynamic
           - os: macos-latest
             artifact-name: darwin-arm64
             rust-target: aarch64-apple-darwin
           - os: macos-15-intel
             artifact-name: darwin-x64
             rust-target: x86_64-apple-darwin
-            cargo-args: --no-default-features --features ort-load-dynamic
           - os: windows-latest
             artifact-name: win32-x64-msvc
             rust-target: x86_64-pc-windows-msvc
@@ -41,23 +61,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Enter manylinux build container
+        if: ${{ matrix.container-kind == 'manylinux' }}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.container-image }}
+          options: -v ${{ github.workspace }}:/work -w /work
+          run: |
+            set -euo pipefail
+            curl -fsSL https://rpm.nodesource.com/setup_24.x | bash -
+            dnf install -y nodejs perl-core openssl-devel pkgconf-pkg-config
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
+            source "$HOME/.cargo/env"
+            cd core/bindings/node
+            npm install
+            npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
+
+      - name: Enter Alpine build container
+        if: ${{ matrix.container-kind == 'alpine' }}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.container-image }}
+          options: -v ${{ github.workspace }}:/work -w /work
+          run: |
+            set -euo pipefail
+            apk add --no-cache bash build-base curl openssl-dev openssl-libs-static perl pkgconf
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target ${{ matrix.rust-target }}
+            source "$HOME/.cargo/env"
+            target_env="$(echo "${{ matrix.rust-target }}" | tr '[:lower:]-' '[:upper:]_')"
+            target_cc="$(echo "${{ matrix.rust-target }}" | tr '-' '_')"
+            export OPENSSL_NO_ASM=1
+            export OPENSSL_STATIC=1
+            export "CARGO_TARGET_${target_env}_LINKER=cc"
+            export "CC_${target_cc}=cc"
+            export "CXX_${target_cc}=c++"
+            cd core/bindings/node
+            npm install
+            npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
+
       - name: Setup Node.js
+        if: ${{ !matrix.container-image }}
         uses: actions/setup-node@v6
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Setup Rust
+        if: ${{ !matrix.container-image }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           target: ${{ matrix.rust-target }}
 
       - uses: Swatinem/rust-cache@v2
+        if: ${{ !matrix.container-image }}
         with:
           workspaces: core
 
       - name: Install NAPI build dependencies
+        if: ${{ !matrix.container-image }}
         working-directory: ./core/bindings/node
         run: npm install
 
@@ -95,9 +157,40 @@ jobs:
           echo "CFLAGS=/MD" >> $env:GITHUB_ENV
           echo "CXXFLAGS=/MD" >> $env:GITHUB_ENV
 
+      - name: Set macOS deployment target
+        if: runner.os == 'macOS'
+        run: echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> "$GITHUB_ENV"
+
       - name: Build Rust bindings
+        if: ${{ !matrix.container-image }}
         working-directory: ./core/bindings/node
         run: npm run build -- --target ${{ matrix.rust-target }} ${{ matrix.cargo-args || '' }}
+
+      - name: Verify Linux glibc compatibility floor
+        if: ${{ startsWith(matrix.artifact-name, 'linux-') && endsWith(matrix.artifact-name, '-gnu') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          artifact="core/bindings/node/memori_node.${{ matrix.artifact-name }}.node"
+          max_glibc="$(
+            readelf --version-info "$artifact" |
+              sed -n 's/.*Name: GLIBC_\([0-9][0-9.]*\).*/\1/p' |
+              sort -Vu |
+              tail -n 1
+          )"
+
+          if [ -z "$max_glibc" ]; then
+            echo "No GLIBC version references found in $artifact"
+            exit 0
+          fi
+
+          echo "Highest GLIBC version referenced by $artifact: $max_glibc"
+          highest="$(printf '%s\n%s\n' "$max_glibc" "2.28" | sort -V | tail -n 1)"
+          if [ "$highest" != "2.28" ]; then
+            echo "$artifact requires GLIBC_$max_glibc, which is newer than the supported GLIBC_2.28 floor." >&2
+            exit 1
+          fi
 
       - name: Upload native artifact
         uses: actions/upload-artifact@v4
@@ -233,7 +326,100 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "export const SDK_VERSION = '${VERSION}';" > src/version.ts
 
+      - name: Build package for verification
+        working-directory: ./memori-ts
+        run: node scripts/sync-native.js --skip-build && npm run build
+
+      - name: Verify packed package contents
+        working-directory: ./memori-ts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pack_json="$(npm pack --json)"
+          tarball="$(node -e "const data = JSON.parse(process.argv[1]); console.log(data[0].filename)" "$pack_json")"
+          tarball_path="$PWD/$tarball"
+
+          echo "Created package tarball: $tarball_path"
+          echo "MEMORI_TARBALL=$tarball_path" >> "$GITHUB_ENV"
+
+          tar -tf "$tarball" | sort > /tmp/memori-package-files.txt
+
+          required_files=(
+            "package/dist/index.js"
+            "package/dist/native/index.js"
+            "package/dist/native/index.d.ts"
+            "package/dist/native/package.json"
+            "package/dist/native/memori_node.android-arm64.node"
+            "package/dist/native/memori_node.darwin-arm64.node"
+            "package/dist/native/memori_node.darwin-x64.node"
+            "package/dist/native/memori_node.linux-arm64-gnu.node"
+            "package/dist/native/memori_node.linux-arm64-musl.node"
+            "package/dist/native/memori_node.linux-x64-gnu.node"
+            "package/dist/native/memori_node.linux-x64-musl.node"
+            "package/dist/native/memori_node.win32-x64-msvc.node"
+          )
+
+          for file in "${required_files[@]}"; do
+            if ! grep -Fxq "$file" /tmp/memori-package-files.txt; then
+              echo "Missing expected package file: $file" >&2
+              echo "Packaged files:" >&2
+              cat /tmp/memori-package-files.txt >&2
+              exit 1
+            fi
+          done
+
+      - name: Upload verified npm tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: memorilabs-memori-npm-package
+          path: memori-ts/*.tgz
+          if-no-files-found: error
+
+      - name: Smoke test packed package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tmp_dir="$(mktemp -d)"
+          cd "$tmp_dir"
+
+          npm init -y
+          npm install "$MEMORI_TARBALL"
+
+          node --input-type=module - <<'NODE'
+          const { Memori } = await import('@memorilabs/memori');
+
+          const memori = new Memori();
+          if (memori.engine.hasStorage !== false) {
+            throw new Error('Expected cloud-only Memori construction to avoid storage mode');
+          }
+
+          console.log('cloud import ok');
+          NODE
+
+          node - <<'NODE'
+          const path = require('node:path');
+          const nativePath = path.join(
+            process.cwd(),
+            'node_modules',
+            '@memorilabs',
+            'memori',
+            'dist',
+            'native',
+            'index.js'
+          );
+          const native = require(nativePath);
+
+          if (typeof native.MemoriEngine !== 'function') {
+            throw new Error('Native MemoriEngine export is missing');
+          }
+
+          console.log('linux native binding ok');
+          NODE
+
       - name: Publish @memorilabs/memori
+        if: ${{ inputs.dry_run != true }}
         working-directory: ./memori-ts
         shell: bash
         run: |
@@ -245,4 +431,9 @@ jobs:
             TAG="latest"
           fi
 
-          npm publish --access public --tag "$TAG"
+          npm publish "$MEMORI_TARBALL" --access public --tag "$TAG"
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "::notice::Dry run complete. The npm tarball was built, verified, uploaded as a workflow artifact, and smoke tested without publishing."

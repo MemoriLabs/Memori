@@ -25,7 +25,18 @@ describe('plugin index', () => {
       pluginConfig: {
         apiKey: 'test-api-key',
         entityId: 'test-entity-id',
+        projectId: 'test-project-id',
       },
+      config: {
+        plugins: {
+          entries: {
+            'openclaw-memori': {
+              hooks: { allowConversationAccess: true },
+            },
+          },
+        },
+      },
+      runtime: { version: '2026.5.15' },
       logger: {
         info: vi.fn(),
         warn: vi.fn(),
@@ -140,6 +151,50 @@ describe('plugin index', () => {
     });
   });
 
+  describe('conversation access warning', () => {
+    it('should warn and inject prependContext when allowConversationAccess is not set on OC >= 2026.5.12', () => {
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const result = handler?.();
+      expect(result).toHaveProperty('prependContext');
+      expect(result.prependContext).toContain('MEMORI SETUP REQUIRED');
+    });
+
+    it('should not warn on OC < 2026.5.12 even if allowConversationAccess is not set', () => {
+      mockApi.runtime = { version: '2026.5.3' } as any;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const result = handler?.();
+      expect(result).not.toHaveProperty('prependContext');
+    });
+
+    it('should not warn when allowConversationAccess is true', () => {
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const result = handler?.();
+      expect(result).not.toHaveProperty('prependContext');
+    });
+  });
+
   describe('hook handlers', () => {
     it('should inject skills content via before_prompt_build handler', () => {
       memoriPlugin.register(mockApi);
@@ -147,7 +202,10 @@ describe('plugin index', () => {
       const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
 
       expect(handler).toBeDefined();
-      expect(handler?.()).toEqual({ appendSystemContext: 'mock skills content' });
+      expect(handler?.()).toEqual({
+        appendSystemContext:
+          'mock skills content\n\nMemori plugin configuration: projectId="test-project-id", entityId="test-entity-id"',
+      });
     });
 
     it('should call handleAugmentation for agent_end event', async () => {
@@ -167,7 +225,7 @@ describe('plugin index', () => {
       expect(handleAugmentation).toHaveBeenCalledWith(
         mockEvent,
         mockCtx,
-        { apiKey: 'test-api-key', entityId: 'test-entity-id' },
+        { apiKey: 'test-api-key', entityId: 'test-entity-id', projectId: 'test-project-id' },
         expect.any(Object)
       );
     });

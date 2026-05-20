@@ -12,6 +12,8 @@ import {
   stringifyContent,
 } from '../utils/utils.js';
 import {
+  AgentCompactionParams,
+  AgentCompactionResponse,
   AgentRecallParams,
   AgentRecallResponse,
   AgentRecallSummaryParams,
@@ -133,6 +135,34 @@ export class RecallEngine {
     });
 
     return this.api.get<AgentRecallSummaryResponse>(`agent/recall/summary${qs}`);
+  }
+
+  /**
+   * Fetches a structured compaction of the agent's long-term memory and context
+   * from GET /v1/agent/compaction. Project ID defaults to the current project context.
+   * Session ID must be explicitly provided and requires a project ID to be present.
+   */
+  public async agentCompaction(
+    params: AgentCompactionParams = {}
+  ): Promise<AgentCompactionResponse> {
+    const projectId = params.projectId ?? this.project.id;
+    const sessionId = params.sessionId;
+
+    if (!projectId) {
+      throw new Error('projectId is required for agent compaction');
+    }
+
+    if (sessionId && !projectId) {
+      throw new Error('sessionId cannot be provided without projectId');
+    }
+
+    const qs = this.buildQueryString({
+      project_id: projectId,
+      session_id: sessionId,
+      num_messages: params.numMessages,
+    });
+
+    return this.api.get<AgentCompactionResponse>(`agent/compaction${qs}`);
   }
 
   private buildQueryString(

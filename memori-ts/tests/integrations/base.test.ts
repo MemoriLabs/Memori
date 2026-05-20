@@ -14,6 +14,18 @@ class TestIntegration extends BaseIntegration {
   public testAgentFeedback(content: string) {
     return this.executeAgentFeedback(content);
   }
+  public testAgentAugmentation(req: IntegrationRequest) {
+    return this.executeAgentAugmentation(req);
+  }
+  public testAgentRecall(params?: Parameters<typeof this.executeAgentRecall>[0]) {
+    return this.executeAgentRecall(params);
+  }
+  public testAgentRecallSummary(params?: Parameters<typeof this.executeAgentRecallSummary>[0]) {
+    return this.executeAgentRecallSummary(params);
+  }
+  public testAgentCompaction(params: Parameters<typeof this.executeAgentCompaction>[0]) {
+    return this.executeAgentCompaction(params);
+  }
 }
 
 describe('BaseIntegration', () => {
@@ -23,9 +35,14 @@ describe('BaseIntegration', () => {
 
   beforeEach(() => {
     mockCore = {
-      recall: { handleRecall: vi.fn() },
+      recall: {
+        handleRecall: vi.fn(),
+        agentRecall: vi.fn(),
+        agentRecallSummary: vi.fn(),
+        agentCompaction: vi.fn(),
+      },
       persistence: { handlePersistence: vi.fn() },
-      augmentation: { handleAugmentation: vi.fn() },
+      augmentation: { handleAugmentation: vi.fn(), handleAgentAugmentation: vi.fn() },
       config: { entityId: 'test-user', processId: 'test-process' },
       session: { id: 'test-session-id' },
       project: { id: 'test-project-id', set: vi.fn() },
@@ -192,6 +209,156 @@ describe('BaseIntegration', () => {
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Memori Agent Feedback failed:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('executeAgentAugmentation()', () => {
+    const req: IntegrationRequest = {
+      userMessage: { role: 'user', content: 'hello bot', type: 'text' },
+      agentResponse: { role: 'assistant', content: 'hello human', type: 'text' },
+      trace: { tools: [{ name: 'search', args: { query: 'hello' }, result: 'found' }] },
+    };
+
+    it('should silently abort if no session ID is present', async () => {
+      (mockCore.session as any).id = undefined;
+
+      await integration.testAgentAugmentation(req);
+
+      expect(mockCore.persistence.handlePersistence).not.toHaveBeenCalled();
+      expect(mockCore.augmentation.handleAgentAugmentation).not.toHaveBeenCalled();
+    });
+
+    it('should call handlePersistence and handleAgentAugmentation with correct payloads', async () => {
+      await integration.testAgentAugmentation(req);
+
+      expect(mockCore.persistence.handlePersistence).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [{ role: 'user', content: 'hello bot', type: 'text' }],
+        }),
+        expect.objectContaining({ content: 'hello human', type: 'text' }),
+        expect.objectContaining({ traceId: expect.stringContaining('integration-trace-') })
+      );
+      expect(mockCore.augmentation.handleAgentAugmentation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        req.trace,
+        req.summary
+      );
+    });
+
+    it('should swallow errors and log a warning if engines fail', async () => {
+      (mockCore.persistence.handlePersistence as any).mockRejectedValue(
+        new Error('Persistence failed')
+      );
+
+      await expect(integration.testAgentAugmentation(req)).resolves.toBeUndefined();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Memori Integration Capture failed:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('executeAgentRecall()', () => {
+    it('should delegate to core.recall.agentRecall and return the result', async () => {
+      const mockResult = { facts: [{ id: 1, content: 'memory' }] };
+      (mockCore.recall.agentRecall as any).mockResolvedValue(mockResult);
+
+      const result = await integration.testAgentRecall({ projectId: 'proj-1' });
+
+      expect(mockCore.recall.agentRecall).toHaveBeenCalledWith({ projectId: 'proj-1' });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should return an empty object and log a warning when agentRecall throws', async () => {
+      (mockCore.recall.agentRecall as any).mockRejectedValue(new Error('API error'));
+
+      const result = await integration.testAgentRecall({ projectId: 'proj-1' });
+
+      expect(result).toEqual({});
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Memori Agent Recall failed:', expect.any(Error));
+    });
+  });
+
+  describe('executeAgentRecallSummary()', () => {
+    it('should delegate to core.recall.agentRecallSummary and return the result', async () => {
+      const mockResult = {
+        summaries: [
+          { content: 'summary', date_created: '2024-01-01', entity_fact_id: 1, fact_id: 1 },
+        ],
+      };
+      (mockCore.recall.agentRecallSummary as any).mockResolvedValue(mockResult);
+
+      const result = await integration.testAgentRecallSummary({ projectId: 'proj-1' });
+
+      expect(mockCore.recall.agentRecallSummary).toHaveBeenCalledWith({ projectId: 'proj-1' });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should return an empty object and log a warning when agentRecallSummary throws', async () => {
+      (mockCore.recall.agentRecallSummary as any).mockRejectedValue(new Error('API error'));
+
+      const result = await integration.testAgentRecallSummary();
+
+      expect(result).toEqual({});
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Memori Agent Recall Summary failed:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('executeAgentCompaction()', () => {
+    const mockCompactionResponse = {
+      continuation: { last_action: 'ran tests', next_expected_action: 'open PR' },
+      environment: ['CI=true'],
+      messages: [{ content: 'hi', role: 'user', type: 'text' }],
+      metadata: {
+        date: { execution: '2024-06-01T00:00:00.000Z' },
+        filter: { project: { id: 'proj-1' } },
+      },
+      standing_orders: ['prefer small commits'],
+      state: { active_tasks: ['auth refactor'], open_loops: [], pending_results: [] },
+      workspace_changes: [],
+    };
+
+    it('should delegate to core.recall.agentCompaction and return the result', async () => {
+      (mockCore.recall.agentCompaction as any).mockResolvedValue(mockCompactionResponse);
+
+      const result = await integration.testAgentCompaction({ projectId: 'proj-1' });
+
+      expect(mockCore.recall.agentCompaction).toHaveBeenCalledWith({ projectId: 'proj-1' });
+      expect(result).toEqual(mockCompactionResponse);
+    });
+
+    it('should forward sessionId and numMessages params', async () => {
+      (mockCore.recall.agentCompaction as any).mockResolvedValue(mockCompactionResponse);
+
+      await integration.testAgentCompaction({
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        numMessages: 10,
+      });
+
+      expect(mockCore.recall.agentCompaction).toHaveBeenCalledWith({
+        projectId: 'proj-1',
+        sessionId: 'sess-1',
+        numMessages: 10,
+      });
+    });
+
+    it('should return null and log a warning when agentCompaction throws', async () => {
+      (mockCore.recall.agentCompaction as any).mockRejectedValue(new Error('API error'));
+
+      const result = await integration.testAgentCompaction({ projectId: 'proj-1' });
+
+      expect(result).toBeNull();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Memori Agent Compaction failed:',
         expect.any(Error)
       );
     });

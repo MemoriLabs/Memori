@@ -506,9 +506,7 @@ class RustCoreAdapter:
         try:
             from memori_python import EngineHandle  # ty: ignore[unresolved-import]
         except ImportError as exc:
-            logger.warning(
-                "Rust core unavailable, falling back to Python path: %s", exc
-            )
+            logger.warning("Rust core unavailable: %s", exc)
             raise RustCoreAdapterError("Rust core is unavailable") from exc
         except Exception as exc:  # noqa: BLE001
             logger.exception("Unexpected error importing memori_python EngineHandle")
@@ -672,12 +670,12 @@ class RustCoreAdapter:
             ids = request.get("ids", [])
             if not isinstance(ids, list):
                 raise RustCoreAdapterError("fetch_facts_by_ids.ids must be a list")
-            fact_ids = _normalize_fact_ids(ids)
             with connection_context(config.storage.conn_factory) as (
                 _conn,
                 _adapter,
                 driver,
             ):
+                fact_ids = _normalize_fact_ids(ids, driver)
                 rows = driver.entity_fact.get_facts_by_ids(fact_ids)
                 out = []
                 for row in rows:
@@ -722,7 +720,7 @@ class RustCoreAdapter:
         return _callback
 
 
-def _resolve_entity_id(driver: Any, raw_entity_id: Any) -> int:
+def _resolve_entity_id(driver: Any, raw_entity_id: Any) -> Any:
     if isinstance(raw_entity_id, int):
         return raw_entity_id
     if isinstance(raw_entity_id, str):
@@ -731,13 +729,13 @@ def _resolve_entity_id(driver: Any, raw_entity_id: Any) -> int:
             raise RustCoreAdapterError("entity_id cannot be empty")
         if stripped.isdigit():
             return int(stripped)
-        return int(driver.entity.create(stripped))
+        return _normalize_created_id(driver, driver.entity.create(stripped))
     if raw_entity_id is None:
         raise RustCoreAdapterError("entity_id is required")
-    return int(driver.entity.create(str(raw_entity_id)))
+    return _normalize_created_id(driver, driver.entity.create(str(raw_entity_id)))
 
 
-def _normalize_fact_ids(ids: list[Any]) -> list[Any]:
+def _normalize_fact_ids(ids: list[Any], driver: Any | None = None) -> list[Any]:
     normalized: list[Any] = []
     for fact_id in ids:
         if isinstance(fact_id, int):
@@ -745,7 +743,7 @@ def _normalize_fact_ids(ids: list[Any]) -> list[Any]:
         elif isinstance(fact_id, str) and fact_id.isdigit():
             normalized.append(int(fact_id))
         else:
-            normalized.append(fact_id)
+            normalized.append(_coerce_driver_id(driver, fact_id))
     return normalized
 
 
@@ -804,6 +802,40 @@ def _normalize_embedding_row(fact_id: Any, embedding: Any) -> dict[str, Any] | N
     return None
 
 
+def _coerce_driver_id(driver: Any | None, value: Any) -> Any:
+    if _is_mongodb_driver(driver):
+        object_id = _to_mongodb_object_id(value)
+        if object_id is not None:
+            return object_id
+    return value
+
+
+def _normalize_created_id(driver: Any | None, value: Any) -> Any:
+    if _is_mongodb_driver(driver):
+        return value
+    return int(value)
+
+
+def _is_mongodb_driver(driver: Any | None) -> bool:
+    if driver is None:
+        return False
+    module = getattr(driver.__class__, "__module__", "")
+    return module == "memori.storage.drivers.mongodb._driver"
+
+
+def _to_mongodb_object_id(value: Any) -> Any | None:
+    try:
+        from bson import ObjectId
+    except ImportError:
+        return None
+
+    if isinstance(value, ObjectId):
+        return value
+    if isinstance(value, str) and ObjectId.is_valid(value):
+        return ObjectId(value)
+    return None
+
+
 def _resolve_storage_dialect(config: Any, explicit_dialect: str | None) -> str | None:
     if isinstance(explicit_dialect, str):
         candidate = explicit_dialect.strip()
@@ -845,7 +877,7 @@ def _apply_write_op(
         if not facts_str:
             return False
         conversation_id = payload.get("conversation_id")
-        conversation_id_int = _to_optional_int(conversation_id)
+        conversation_id_driver_id = _to_optional_driver_id(driver, conversation_id)
         embeddings: list[list[float]] | None = None
         try:
             embeddings_model = getattr(
@@ -861,7 +893,7 @@ def _apply_write_op(
             entity_id,
             facts_str,
             fact_embeddings=embeddings,
-            conversation_id=conversation_id_int,
+            conversation_id=conversation_id_driver_id,
         )
         return True
 
@@ -890,11 +922,13 @@ def _apply_write_op(
         return True
 
     if op_type == "conversation.update":
-        conversation_id_int = _to_optional_int(payload.get("conversation_id"))
+        conversation_id_driver_id = _to_optional_driver_id(
+            driver, payload.get("conversation_id")
+        )
         summary = payload.get("summary")
-        if conversation_id_int is None or summary is None:
+        if conversation_id_driver_id is None or summary is None:
             return False
-        driver.conversation.update(conversation_id_int, str(summary))
+        driver.conversation.update(conversation_id_driver_id, str(summary))
         return True
 
     if op_type == "upsert_fact":
@@ -968,6 +1002,16 @@ def _to_optional_int(value: Any) -> int | None:
     if isinstance(value, str) and value.isdigit():
         return int(value)
     return None
+
+
+def _to_optional_driver_id(driver: Any, value: Any) -> Any | None:
+    if value is None:
+        return None
+    if _is_mongodb_driver(driver):
+        object_id = _to_mongodb_object_id(value)
+        if object_id is not None:
+            return object_id
+    return _to_optional_int(value)
 
 
 def _parse_json(raw: str, context: str) -> Any:

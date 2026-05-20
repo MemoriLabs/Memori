@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from memori.llm._constants import OPENAI_LLM_PROVIDER
+from memori.llm._constants import LITELLM_LLM_PROVIDER, OPENAI_LLM_PROVIDER
 from memori.llm.pipelines.conversation_injection import (
     _inject_messages_by_provider,
     _sanitize_history_for_openai_compat,
@@ -146,3 +146,30 @@ def test_sanitize_handles_missing_role_and_content():
         {"role": "user", "content": "no role defaults to user"},
         {"role": "user", "content": ""},
     ]
+
+
+def _litellm_config():
+    return SimpleNamespace(
+        framework=SimpleNamespace(provider=None),
+        llm=SimpleNamespace(provider=LITELLM_LLM_PROVIDER),
+    )
+
+
+def test_litellm_provider_injects_openai_style_messages():
+    """LiteLLM uses OpenAI-compatible messages format, so history injection
+    should follow the same path as OpenAI."""
+    messages = [
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "hello"},
+    ]
+    kwargs = {"messages": [{"role": "user", "content": "next"}]}
+
+    kwargs, injected_count = _inject_messages_by_provider(
+        _litellm_config(), kwargs, messages
+    )
+
+    assert injected_count == 2
+    assert len(kwargs["messages"]) == 3
+    assert kwargs["messages"][0] == {"role": "user", "content": "hi"}
+    assert kwargs["messages"][1] == {"role": "assistant", "content": "hello"}
+    assert kwargs["messages"][2] == {"role": "user", "content": "next"}

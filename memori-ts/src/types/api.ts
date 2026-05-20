@@ -191,3 +191,63 @@ export interface AgentRecallResponse {
 export interface AgentRecallSummaryResponse {
   summaries?: RecallSummary[];
 }
+
+/**
+ * Filter parameters for the agent compaction endpoint (GET /v1/agent/compaction).
+ * If sessionId is provided, projectId must also be provided.
+ */
+export interface AgentCompactionParams {
+  /** The external ID of the project to compact. Defaults to the current project context. */
+  projectId?: string;
+  /** The external ID of a specific agent session to scope the compaction to. */
+  sessionId?: string;
+  /** Number of recent conversation messages to include in the result. Defaults to 5. */
+  numMessages?: number;
+}
+
+/** Continuation hints indicating what the agent last did and what it should do next. */
+export interface CompactionContinuation {
+  last_action: string;
+  next_expected_action: string;
+}
+
+/** A single message from the agent's recent conversation history. */
+export interface CompactionMessage {
+  content: string;
+  role: string;
+  trace?: unknown;
+  type: string;
+}
+
+/** Metadata describing when and how the compaction was generated. */
+export interface CompactionMetadata {
+  date: {
+    execution: string;
+  };
+  filter: {
+    project: { id: string };
+    session?: { id: string };
+  };
+}
+
+/** The structured state of ongoing work captured at compaction time. */
+export interface CompactionState {
+  active_tasks: string[];
+  open_loops: string[];
+  pending_results: string[];
+}
+
+/**
+ * Response from the agent compaction endpoint (GET /v1/agent/compaction).
+ * Contains a consolidated snapshot of the agent's long-term memory and context.
+ */
+export interface AgentCompactionResponse {
+  continuation: CompactionContinuation;
+  environment: string[];
+  messages: CompactionMessage[];
+  metadata: CompactionMetadata;
+  standing_orders: string[];
+  state: CompactionState;
+  timeline?: string;
+  workspace_changes: string[];
+}
