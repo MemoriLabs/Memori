@@ -21,6 +21,7 @@ def test_parse_tidb_zero_response_full_payload():
         provider="tidb-zero",
         family="mysql",
         dsn="mysql://user:pass@example.tidbcloud.com/db",
+        connect_args={"ssl": {}},
         claim_url="https://tidbcloud.com/tidbs/claim/abc",
         expires_at="2026-06-01T00:00:00Z",
         metadata={
@@ -57,6 +58,7 @@ def test_parse_tidb_zero_response_missing_optional_claim_and_expiry():
 
     assert result.provider == "tidb-zero"
     assert result.family == "mysql"
+    assert result.connect_args == {"ssl": {}}
     assert result.claim_url is None
     assert result.expires_at is None
 

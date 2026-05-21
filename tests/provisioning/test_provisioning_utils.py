@@ -8,6 +8,29 @@ from memori._exceptions import MissingPyMySQLError
 from memori.provisioning._utils import mysql_connection_factory, redact_dsn
 
 
+class FakeCursor:
+    def __init__(self):
+        self.operations = []
+
+    def execute(self, operation):
+        self.operations.append(operation)
+
+    def close(self):
+        self.operations.append("close")
+
+
+class FakeConnection:
+    def __init__(self):
+        self.cursor_obj = FakeCursor()
+        self.committed = False
+
+    def cursor(self):
+        return self.cursor_obj
+
+    def commit(self):
+        self.committed = True
+
+
 @pytest.mark.parametrize(
     ("dsn", "expected"),
     [
@@ -49,6 +72,41 @@ def test_mysql_connection_factory_parses_tidb_dsn(monkeypatch):
             "charset": "utf8mb4",
         }
     ]
+
+
+def test_mysql_connection_factory_bootstraps_default_database_for_empty_path(
+    monkeypatch,
+):
+    calls = []
+    connection = FakeConnection()
+
+    def connect(**kwargs):
+        calls.append(kwargs)
+        return connection
+
+    monkeypatch.setitem(sys.modules, "pymysql", SimpleNamespace(connect=connect))
+
+    factory = mysql_connection_factory(
+        "mysql://user:secret@example.com:4000/",
+        connect_args={"ssl": {}},
+    )
+
+    assert factory() is connection
+    assert calls == [
+        {
+            "host": "example.com",
+            "port": 4000,
+            "user": "user",
+            "password": "secret",
+            "ssl": {},
+        }
+    ]
+    assert connection.cursor_obj.operations == [
+        "CREATE DATABASE IF NOT EXISTS `memori`",
+        "USE `memori`",
+        "close",
+    ]
+    assert connection.committed is True
 
 
 def test_mysql_connection_factory_missing_pymysql(monkeypatch):

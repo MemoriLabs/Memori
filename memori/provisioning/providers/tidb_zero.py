@@ -53,7 +53,7 @@ def parse_tidb_zero_response(data: dict[str, Any]) -> ProvisionResult:
         provider="tidb-zero",
         family="mysql",
         dsn=dsn,
-        connect_args={},
+        connect_args={"ssl": {}},
         claim_url=claim_url if isinstance(claim_url, str) else None,
         expires_at=expires_at if isinstance(expires_at, str) else None,
         metadata={

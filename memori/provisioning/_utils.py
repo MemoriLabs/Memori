@@ -6,6 +6,8 @@ from urllib.parse import parse_qs, quote, unquote, urlparse, urlunparse
 
 from memori._exceptions import MissingPyMySQLError
 
+DEFAULT_MYSQL_DATABASE = "memori"
+
 
 def redact_dsn(dsn: str) -> str:
     parsed = urlparse(dsn)
@@ -43,8 +45,19 @@ def mysql_connection_factory(
 
     kwargs = _mysql_kwargs_from_dsn(dsn)
     kwargs.update(connect_args or {})
+    bootstrap_database = None
+    if not kwargs.get("database"):
+        kwargs.pop("database", None)
+        bootstrap_database = DEFAULT_MYSQL_DATABASE
 
-    return lambda: pymysql.connect(**kwargs)
+    return lambda: _connect_mysql(pymysql, kwargs, bootstrap_database)
+
+
+def _connect_mysql(pymysql: Any, kwargs: dict[str, Any], database: str | None) -> Any:
+    conn = pymysql.connect(**kwargs)
+    if database is not None:
+        _ensure_database(conn, database)
+    return conn
 
 
 def _mysql_kwargs_from_dsn(dsn: str) -> dict[str, Any]:
@@ -73,6 +86,17 @@ def _mysql_kwargs_from_dsn(dsn: str) -> dict[str, Any]:
         kwargs["charset"] = charset
 
     return kwargs
+
+
+def _ensure_database(conn: Any, database: str) -> None:
+    escaped = database.replace("`", "``")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{escaped}`")
+        cursor.execute(f"USE `{escaped}`")
+        conn.commit()
+    finally:
+        cursor.close()
 
 
 def _first(query: dict[str, list[str]], key: str) -> str | None:
