@@ -427,6 +427,55 @@ class TestApiPostAsyncGenericException:
                     await api.post_async("test/endpoint")
 
 
+class TestApiTimeout:
+    @pytest.mark.asyncio
+    async def test_request_async_uses_configured_timeout(self, api):
+        custom_timeout = 42
+        api.config.request_secs_timeout = custom_timeout
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json = AsyncMock(return_value={})
+
+        mock_response_ctx = MagicMock()
+        mock_response_ctx.__aenter__.return_value = mock_response
+        mock_response_ctx.__aexit__.return_value = None
+
+        mock_session = MagicMock()
+        mock_session.request.return_value = mock_response_ctx
+        mock_session.__aenter__.return_value = mock_session
+        mock_session.__aexit__.return_value = None
+
+        with patch("aiohttp.ClientSession", return_value=mock_session):
+            with patch("aiohttp.ClientTimeout") as mock_timeout:
+                await api.post_async("test/endpoint")
+                mock_timeout.assert_called_once_with(total=custom_timeout)
+
+    @pytest.mark.asyncio
+    async def test_augmentation_async_uses_configured_timeout(self, api):
+        custom_timeout = 42
+        api.config.request_secs_timeout = custom_timeout
+
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={})
+        mock_response.raise_for_status = MagicMock()
+
+        mock_response_ctx = MagicMock()
+        mock_response_ctx.__aenter__.return_value = mock_response
+        mock_response_ctx.__aexit__.return_value = None
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response_ctx
+        mock_session.__aenter__.return_value = mock_session
+        mock_session.__aexit__.return_value = None
+
+        with patch("aiohttp.ClientSession", return_value=mock_session):
+            with patch("aiohttp.ClientTimeout") as mock_timeout:
+                await api.augmentation_async({"test": "payload"})
+                mock_timeout.assert_called_with(total=custom_timeout)
+
+
 class TestApiSession:
     def test_session_creates_session_with_retry_adapter(self, api):
         """Test that __session creates a properly configured requests Session."""
