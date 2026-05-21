@@ -27,9 +27,9 @@ const API_KEY = process.env.MEMORI_API_KEY;
 const ENTITY_ID = process.env.MEMORI_ENTITY_ID;
 const DEFAULT_PROJECT_ID = process.env.MEMORI_PROJECT_ID;
 
-const BASE_URL = "https://staging-api.memorilabs.ai/v1";
-const COLLECTOR_URL = "https://staging-collector.memorilabs.ai/v1";
-const X_API_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0";
+const BASE_URL = "https://api.memorilabs.ai/v1";
+const COLLECTOR_URL = "https://collector.memorilabs.ai/v1";
+const X_API_KEY = "96a7ea3e-11c2-428c-b9ae-5a168363dc80";
 
 type HttpMethod = "GET" | "POST";
 
