@@ -74,6 +74,7 @@ class TestCliEntrypoint:
         output = captured.out.lower()
         assert "usage" in output
         assert "cockroachdb" in output
+        assert "provision" in output
         assert "quota" in output
         assert "sign-up" in output
         assert "setup" in output
@@ -84,6 +85,7 @@ class TestCliEntrypoint:
         output = captured.out.lower()
         assert "usage" in output
         assert "cockroachdb" in output
+        assert "provision" in output
         assert "sign-up" in output
 
     def test_branding_displayed(self, capsys):
@@ -98,6 +100,57 @@ class TestCliEntrypoint:
         assert exit_code != 0
         captured = capsys.readouterr()
         assert "usage" in captured.out.lower()
+
+    @mock.patch("memori.provisioning._manager.provision_memori")
+    def test_provision_provider_dispatches_and_redacts_output(
+        self, mock_provision_memori, capsys
+    ):
+        result = mock.Mock(
+            provider="tidb-zero",
+            family="mysql",
+            dsn="mysql://user:secret@example.com:4000/memori?ssl-mode=REQUIRED",
+            claim_url="https://tidbcloud.com/tidbs/claim/abc",
+            expires_at="2026-06-01T00:00:00Z",
+        )
+        mock_provision_memori.return_value.config.provision_result = result
+
+        exit_code = self.run_main_with_args(["provision", "tidb-zero"])
+
+        assert exit_code in (0, None)
+        mock_provision_memori.assert_called_once_with(
+            provider="tidb-zero",
+            build=True,
+        )
+        output = capsys.readouterr().out
+        assert "tidb-zero" in output
+        assert "mysql://user:****@example.com:4000/memori?ssl-mode=REQUIRED" in output
+        assert "secret" not in output
+        assert "https://tidbcloud.com/tidbs/claim/abc" in output
+        assert "2026-06-01T00:00:00Z" in output
+
+    @mock.patch("memori.provisioning._manager.provision_memori")
+    def test_provision_provider_flag_dispatches(self, mock_provision_memori):
+        result = mock.Mock(
+            provider="tidb-zero",
+            family="mysql",
+            dsn="mysql://user:secret@example.com/memori",
+            claim_url=None,
+            expires_at=None,
+        )
+        mock_provision_memori.return_value.config.provision_result = result
+
+        exit_code = self.run_main_with_args(["provision", "--provider", "tidb-zero"])
+
+        assert exit_code in (0, None)
+        mock_provision_memori.assert_called_once_with(
+            provider="tidb-zero",
+            build=True,
+        )
+
+    def test_provision_missing_provider_shows_usage(self, capsys):
+        exit_code = self.run_main_with_args(["provision"])
+        assert exit_code != 0
+        assert "usage: python -m memori provision" in capsys.readouterr().out
 
     @mock.patch("memori.__main__.CockroachDBClusterManager")
     def test_cockroachdb_cluster_start_dispatches_correctly(

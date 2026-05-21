@@ -70,6 +70,16 @@ class MissingPsycopgError(ImportError):
         )
 
 
+class MissingPyMySQLError(ImportError):
+    """Raised when PyMySQL is required but not installed."""
+
+    def __init__(self, database: str = "MySQL/TiDB"):
+        super().__init__(
+            f"PyMySQL is required for {database} provisioning support. "
+            "Install it with: pip install 'memori[tidb-zero]'"
+        )
+
+
 class UnsupportedLLMProviderError(RuntimeError):
     """Raised when an unsupported LLM provider is used."""
 
@@ -77,6 +87,23 @@ class UnsupportedLLMProviderError(RuntimeError):
         super().__init__(
             f"Unsupported LLM provider: {provider}. Please see the documentation for supported providers: https://memorilabs.ai/docs/features/llm"
         )
+
+
+class UnsupportedProvisioningProviderError(RuntimeError):
+    """Raised when an unsupported provisioning provider is used."""
+
+    def __init__(self, provider: str, supported: str):
+        super().__init__(
+            f"Unsupported provisioning provider: {provider}. "
+            f"Supported providers: {supported}."
+        )
+
+
+class UnsupportedProvisionedDatabaseFamilyError(RuntimeError):
+    """Raised when a provisioned database family cannot be used by Memori."""
+
+    def __init__(self, family: str):
+        super().__init__(f"Unsupported provisioned database family: {family}")
 
 
 class UnsupportedDatabaseError(RuntimeError):

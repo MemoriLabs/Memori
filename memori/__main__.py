@@ -16,6 +16,7 @@ from memori._config import Config
 from memori._setup import Manager as SetupManager
 from memori.api._quota import Manager as ApiQuotaManager
 from memori.api._sign_up import Manager as ApiSignUpManager
+from memori.provisioning._manager import Manager as ProvisioningManager
 from memori.storage.cockroachdb._cluster_manager import (
     ClusterManager as CockroachDBClusterManager,
 )
@@ -35,6 +36,11 @@ def main():
             "description": "Check your quota",
             "params": [],
             "obj": ApiQuotaManager,
+        },
+        "provision": {
+            "description": "Provision a BYODB database",
+            "params": [],
+            "obj": ProvisioningManager,
         },
         "setup": {
             "description": "Execute suggested setup steps",
@@ -65,6 +71,7 @@ def main():
         option = options[sys.argv[1]]
         params = option["params"]
         obj_cls = option["obj"]
+
         if len(params) > 0:
             if len(sys.argv) != 2 + len(params):
                 obj_cls(Config()).usage()

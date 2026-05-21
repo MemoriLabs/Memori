@@ -138,6 +138,8 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 > [!TIP]
 > Want to use your own database? Check out docs for Memori BYODB here:
 > [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
+> For disposable BYODB development databases, see the TiDB Zero provisioning
+> guide: [docs/memori-byodb/databases/tidb.mdx](docs/memori-byodb/databases/tidb.mdx).
 
 ## LoCoMo Benchmark
 

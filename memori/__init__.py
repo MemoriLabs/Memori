@@ -87,6 +87,29 @@ class LlmRegistry:
 class Memori:
     """Primary SDK entry point for memory collection and recall operations."""
 
+    @classmethod
+    def provision(
+        cls,
+        *,
+        provider: str,
+        build: bool = True,
+        cache: bool = True,
+        tag: str = "memori",
+        cache_key: str | None = None,
+        **kwargs: Any,
+    ) -> "Memori":
+        """Provision a BYODB database and return a ready `Memori` instance."""
+        from memori.provisioning import provision_memori
+
+        return provision_memori(
+            provider=provider,
+            build=build,
+            cache=cache,
+            tag=tag,
+            cache_key=cache_key,
+            **kwargs,
+        )
+
     def __init__(
         self,
         conn: Callable[[], Any] | Any | None = None,

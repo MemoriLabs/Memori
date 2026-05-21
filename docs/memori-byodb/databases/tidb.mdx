@@ -48,6 +48,40 @@ mem.config.storage.build()
 
 </CodeGroup>
 
+## TiDB Cloud Zero Provisioning
+
+For disposable development databases, Memori can provision a TiDB Cloud Zero
+instance and then use the existing TiDB/MySQL BYODB path:
+
+```bash
+pip install "memori[tidb-zero]"
+```
+
+```python
+from memori import Memori
+
+mem = Memori.provision(provider="tidb-zero", build=True)
+```
+
+You can also use the CLI:
+
+```bash
+python -m memori provision tidb-zero
+python -m memori provision --provider tidb-zero
+```
+
+The provider defaults to `https://zero.tidbapi.com/v1beta1/instances`. You can
+override it with `MEMORI_TIDB_ZERO_URL` if TiDB changes the preview endpoint,
+and pass `TIDB_ZERO_API_KEY` if bearer authentication is required.
+
+<Note>
+  Provisioned results are cached in
+  `$MEMORI_HOME/.memori/provisioning.json` or `~/.memori/provisioning.json`.
+  This file contains the full database DSN, including credentials. Memori writes
+  it with owner-only permissions where supported, but you should treat it as a
+  secrets file and rotate or delete it when the database is no longer needed.
+</Note>
+
 ## Connection Strings
 
 | Environment        | Connection String                                                                  |

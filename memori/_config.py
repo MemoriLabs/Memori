@@ -8,9 +8,15 @@ r"""
                        memorilabs.ai
 """
 
+from __future__ import annotations
+
 import os
 from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import version
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from memori.provisioning import ProvisionResult
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -75,6 +81,7 @@ class Config:
         self.platform = Platform()
         self.entity_id = None
         self.process_id = None
+        self.provision_result: ProvisionResult | None = None
         self.raise_final_request_attempt = True
         self.recall_embeddings_limit = _env_int("MEMORI_RECALL_EMBEDDINGS_LIMIT", 1000)
         self.recall_facts_limit = 5

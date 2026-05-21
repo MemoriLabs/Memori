@@ -2286,6 +2286,9 @@ embeddings = [
 sqlalchemy = [
     { name = "sqlalchemy" },
 ]
+tidb-zero = [
+    { name = "pymysql" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -2334,13 +2337,14 @@ requires-dist = [
     { name = "protobuf", specifier = ">=4.25.0,<6.0.0" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'cockroachdb'", specifier = ">=3.1.0" },
     { name = "pyfiglet", specifier = ">=0.8.0" },
+    { name = "pymysql", marker = "extra == 'tidb-zero'", specifier = ">=1.1.2" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "sentence-transformers", marker = "extra == 'embeddings'", specifier = ">=3.0.0" },
     { name = "sqlalchemy", marker = "extra == 'cockroachdb'", specifier = ">=2.0.44" },
     { name = "sqlalchemy", marker = "extra == 'sqlalchemy'", specifier = ">=2.0.44" },
     { name = "sqlalchemy-cockroachdb", marker = "extra == 'cockroachdb'", specifier = ">=1.4.0" },
 ]
-provides-extras = ["embeddings", "sqlalchemy", "cockroachdb"]
+provides-extras = ["embeddings", "sqlalchemy", "tidb-zero", "cockroachdb"]
 
 [package.metadata.requires-dev]
 dev = [
