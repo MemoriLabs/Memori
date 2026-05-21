@@ -184,7 +184,7 @@ async function advancedAugmentation(
   const { sessionId, userMessage, assistantMessage, model, summary } = flags;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
   const processId = flags.processId ?? process.env.MEMORI_PROCESS_ID;
-  const trace = parseJsonFlag("trace", flags.trace);
+  const trace = parseJsonFlag("trace", flags.trace) ?? { tools: [] };
 
   if (!sessionId || !userMessage || !assistantMessage) {
     console.error(

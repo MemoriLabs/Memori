@@ -38,9 +38,11 @@ outrank recalled memory.
 
 ## Quick Reference
 
-- `recall.summary`: use at the start of a meaningful session for recent state.
-- `recall`: use for prior decisions, preferences, constraints, facts, and
-  memory questions.
+- `recall`: primary retrieval command. Use `recall --query "<latest user intent>"`
+  for memory questions, prior decisions, preferences, constraints, facts, and
+  project history.
+- `recall.summary`: use only at the start of a meaningful session, after a long
+  gap, or when the user asks for broad state/status.
 - `advanced-augmentation`: use before ending every non-trivial assistant turn.
 - `compaction`: use only after context compaction or context loss.
 - `feedback`: use when the user asks to report memory quality issues.
@@ -53,9 +55,12 @@ tool names.
 
 ## Required Procedure
 
-1. At session start, run `recall.summary`.
+1. At session start, run `recall.summary` once for broad orientation.
 2. If resuming after compaction, run `compaction`.
-3. During a task, run `recall` only when prior context materially helps.
+3. If the user asks what you remember, references prior sessions/context, or
+   needs prior preferences/decisions/constraints, run `recall --query` using the
+   latest user request or a short precise query. Do not substitute
+   `recall.summary` for targeted recall.
 4. Answer using recalled memory only when relevant; verify stale or high-risk
    details against current context.
 5. Before ending every non-trivial assistant turn, run `advanced-augmentation`
@@ -69,6 +74,9 @@ tool names.
 ## `recall.summary` — Recent State
 
 Use for session starts, daily briefs, broad status checks, and reorientation.
+Do not use `recall.summary` as the default memory lookup. If the user asks
+"what do you remember", "what do you know about me", or refers to a specific
+prior preference/decision/fact, use `recall --query` instead.
 
 ```bash
 bun .claude/skills/memori/index.ts recall.summary \
@@ -85,8 +93,9 @@ current workspace verification for exact facts.
 
 ## `recall` — Targeted Memory Retrieval
 
-Use when the user asks what you remember, refers to previous sessions, or when
-prior preferences, decisions, constraints, facts, or project history matter.
+Use as the default memory lookup. Use when the user asks what you remember,
+refers to previous sessions, or when prior preferences, decisions, constraints,
+facts, or project history matter.
 
 ```bash
 bun .claude/skills/memori/index.ts recall \
@@ -103,6 +112,8 @@ Rules:
 
 - `MEMORI_ENTITY_ID` is always used as the entity scope.
 - `--query` is supported and maps to the SDK/API `query` parameter.
+- Always include `--query` for natural-language memory questions unless you are
+  intentionally listing/filtering by source/signal/date only.
 - `--sessionId` cannot be provided without `--projectId` or
   `MEMORI_PROJECT_ID`.
 - `source` and `signal` must always be omitted together or provided together.
@@ -156,11 +167,15 @@ Behavior:
 - Passes `--trace` through to the top-level augmentation payload and the
   assistant message trace, matching the `memori-ts` SDK. The user message trace
   remains `null`.
+- If `--trace` is omitted, the CLI sends an empty SDK-compatible trace:
+  `{ "tools": [] }`. Prefer passing a real trace when tools were used.
 - Passes `--summary` through as `session.summary`.
 - Passes `--processId` through as `attribution.process.id`; if omitted,
   `MEMORI_PROCESS_ID` is used when present.
 
-`--trace` must be a JSON string.
+`--trace` must be a JSON string shaped like `{ "tools": [...] }`. When tools
+were used, include safe tool names, arguments, and summarized results. Do not
+include secrets, credentials, or large raw logs.
 
 Do not augment if the user explicitly says not to remember/store/save/log/keep
 the turn, or if the turn contains secrets, API keys, tokens, passwords, or
@@ -222,6 +237,7 @@ Do not guess or invent an email. This maps to `POST /sdk/account` with
 ## Safety Rules
 
 - Do not answer memory questions from Claude's built-in/native memory.
+- Do not use `recall.summary` as a substitute for targeted `recall --query`.
 - Do not call unsupported commands or MCP tool names from this Bash skill.
 - Do not use `compaction` for normal recall.
 - Do not call `signup`, `quota`, or `feedback` unless the user's request or a
