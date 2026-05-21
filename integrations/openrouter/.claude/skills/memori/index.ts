@@ -31,6 +31,19 @@ const VALID_SOURCE_SIGNAL: Record<string, string> = {
   task: "result",
 };
 
+function parseJsonFlag(name: string, value: string | undefined): unknown {
+  if (value == null || value === "") return null;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    throw new Error(`Invalid JSON for --${name}: ${(e as Error).message}`);
+  }
+}
+
+function parseBooleanFlag(value: string | undefined): boolean {
+  return value === "1" || value === "true" || value === "yes";
+}
+
 function parseArgs(argv: string[]): {
   command: string;
   flags: Record<string, string>;
@@ -137,8 +150,10 @@ async function recallSummary(flags: Record<string, string>): Promise<void> {
 async function advancedAugmentation(
   flags: Record<string, string>
 ): Promise<void> {
-  const { sessionId, userMessage, assistantMessage, model } = flags;
+  const { sessionId, userMessage, assistantMessage, model, summary } = flags;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
+  const processId = flags.processId ?? process.env.MEMORI_PROCESS_ID;
+  const trace = parseJsonFlag("trace", flags.trace);
 
   if (!sessionId || !userMessage || !assistantMessage) {
     console.error(
@@ -149,11 +164,17 @@ async function advancedAugmentation(
 
   const attribution = {
     entity: { id: ENTITY_ID },
+    ...(processId ? { process: { id: processId } } : {}),
   };
 
   const messages = [
     { role: "user", content: userMessage, type: "text", trace: null },
-    { role: "assistant", content: assistantMessage, type: "text", trace: null },
+    {
+      role: "assistant",
+      content: assistantMessage,
+      type: "text",
+      trace,
+    },
   ];
 
   const turnPayload = {
@@ -169,22 +190,24 @@ async function advancedAugmentation(
     attribution,
     conversation: { messages },
     meta: {
-      attribution,
-      sdk: { lang: "javascript", version: "openrouter-skill" },
-      framework: { provider: null },
+      sdk: { lang: "javascript", version: flags.sdkVersion ?? "openrouter-skill" },
+      framework: { provider: flags.frameworkProvider ?? null },
       llm: {
         model: {
-          provider: "openrouter",
-          sdk: { version: null },
+          provider: flags.provider ?? "openrouter",
+          sdk: { version: flags.providerSdkVersion ?? null },
           version: model ?? null,
         },
       },
-      platform: { provider: "openrouter" },
-      storage: { cockroachdb: false, dialect: null },
+      platform: { provider: flags.platform ?? "openrouter" },
+      storage: {
+        cockroachdb: parseBooleanFlag(flags.cockroachdb),
+        dialect: flags.storageDialect ?? null,
+      },
     },
     ...(projectId ? { project: { id: projectId } } : {}),
-    session: { id: sessionId, summary: null },
-    trace: null,
+    session: { id: sessionId, summary: summary ?? null },
+    trace,
   };
 
   await post(`${COLLECTOR_URL}/agent/augmentation`, augPayload);

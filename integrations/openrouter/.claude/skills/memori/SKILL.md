@@ -123,7 +123,17 @@ bun .claude/skills/memori/index.ts advanced-augmentation \
   --userMessage "$USER_MESSAGE" \
   --assistantMessage "$ASSISTANT_MESSAGE" \
   [--projectId ID] \
-  [--model openai/gpt-4o]
+  [--model openai/gpt-4o] \
+  [--summary "$SESSION_SUMMARY"] \
+  [--trace "$TRACE_JSON"] \
+  [--processId ID] \
+  [--provider openrouter] \
+  [--platform openrouter] \
+  [--frameworkProvider claude-code] \
+  [--sdkVersion openrouter-skill] \
+  [--providerSdkVersion VERSION] \
+  [--storageDialect DIALECT] \
+  [--cockroachdb true]
 ```
 
 Behavior:
@@ -132,6 +142,14 @@ Behavior:
 - Calls Advanced Augmentation through the collector.
 - Waits for the augmentation response.
 - Returns `{"success": true, "augmentation": true}` after both calls succeed.
+- Passes `--trace` through to the top-level augmentation payload and the
+  assistant message trace, matching the `memori-ts` SDK. The user message trace
+  remains `null`.
+- Passes `--summary` through as `session.summary`.
+- Passes `--processId` through as `attribution.process.id`; if omitted,
+  `MEMORI_PROCESS_ID` is used when present.
+
+`--trace` must be a JSON string.
 
 Do not augment if the user explicitly says not to remember/store/save/log/keep
 the turn, or if the turn contains secrets, API keys, tokens, passwords, or
