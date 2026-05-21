@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added MCP client setup guidance for project-scoped attribution using workspace-derived values for `X-Memori-Entity-Id` and `X-Memori-Process-Id` to prevent memory mixing across projects. (Refs #404)
+- Added native CrewAI integration via `CrewAIMemory` (`memori.llm.clients.crewai`) with sync/async trace capture, recall helpers, a working example, and dedicated unit tests.
 - **CrewAI Framework Integration**: New native support for CrewAI agents to
   enable seamless memory persistence. CrewAI agents can now automatically
   capture execution traces, agent decisions, and contextual information via

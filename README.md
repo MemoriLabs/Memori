@@ -267,6 +267,7 @@ _(unstreamed, streamed, synchronous and asynchronous)_
 ## Supported Frameworks
 
 - Agno
+- CrewAI
 - LangChain
 - Pydantic AI
 
