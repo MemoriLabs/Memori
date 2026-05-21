@@ -1,10 +1,10 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import { createRequire } from 'module';
 import type { ToolDeps } from './types.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 
 export function createMemoriQuotaTool(deps: ToolDeps) {
@@ -26,7 +26,7 @@ export function createMemoriQuotaTool(deps: ToolDeps) {
 
         const sdkEntry = require.resolve('@memorilabs/memori');
         const binPath = path.join(path.dirname(sdkEntry), 'bin/cli.js');
-        const { stdout } = await execAsync(`${process.execPath} ${binPath} quota`, {
+        const { stdout } = await execFileAsync(process.execPath, [binPath, 'quota'], {
           env: { ...process.env, MEMORI_API_KEY: config.apiKey },
         });
 

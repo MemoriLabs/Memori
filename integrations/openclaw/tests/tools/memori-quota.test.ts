@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { createMemoriQuotaTool } from '../../src/tools/memori-quota.js';
 import type { ToolDeps } from '../../src/tools/types.js';
 
 vi.mock('child_process', () => ({
-  exec: vi.fn(),
+  execFile: vi.fn(),
 }));
 
 describe('tools/memori-quota', () => {
-  const mockExec = vi.mocked(exec) as any;
+  const mockExec = vi.mocked(execFile) as any;
   let deps: ToolDeps;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+    mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
       cb(null, { stdout: 'default output', stderr: '' });
       return {} as any;
     });
@@ -60,28 +60,28 @@ describe('tools/memori-quota', () => {
     it('should run the quota command via the local SDK binary', async () => {
       const tool = createMemoriQuotaTool(deps);
       await tool.execute('call-1');
-      const cmd: string = mockExec.mock.calls[0][0];
-      expect(cmd).toContain('@memorilabs/memori');
-      expect(cmd).toContain('quota');
+      const args: string[] = mockExec.mock.calls[0][1];
+      expect(mockExec.mock.calls[0][0]).toBe(process.execPath);
+      expect(args.some((a) => a.includes('@memorilabs/memori'))).toBe(true);
+      expect(args).toContain('quota');
     });
 
     it('should invoke the binary with node and the cli.js path', async () => {
       const tool = createMemoriQuotaTool(deps);
       await tool.execute('call-1');
-      const cmd: string = mockExec.mock.calls[0][0];
-      expect(cmd).toContain(process.execPath);
-      expect(cmd).toContain('cli.js');
+      const args: string[] = mockExec.mock.calls[0][1];
+      expect(args.some((a) => a.includes('cli.js'))).toBe(true);
     });
 
     it('should pass the API key in env', async () => {
       const tool = createMemoriQuotaTool(deps);
       await tool.execute('call-1');
-      const options = mockExec.mock.calls[0][1];
+      const options = mockExec.mock.calls[0][2];
       expect(options.env.MEMORI_API_KEY).toBe('test-key');
     });
 
     it('should return success: true with trimmed CLI stdout', async () => {
-      mockExec.mockImplementationOnce((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementationOnce((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(null, { stdout: '  Used: 42 / 1000  \n', stderr: '' });
         return {} as any;
       });
@@ -115,7 +115,7 @@ describe('tools/memori-quota', () => {
 
   describe('error handling', () => {
     it('should return error JSON and log warn on exec failure', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(new Error('exec failed'));
         return {} as any;
       });
@@ -129,7 +129,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should use error.stdout when present', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(Object.assign(new Error(), { stdout: 'stdout detail', stderr: '' }));
         return {} as any;
       });
@@ -140,7 +140,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should fall back to error.stderr when stdout is empty', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(Object.assign(new Error(), { stdout: '', stderr: 'stderr detail' }));
         return {} as any;
       });
@@ -151,7 +151,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should fall back to error.message when stdout and stderr are empty', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(Object.assign(new Error('message detail'), { stdout: '', stderr: '' }));
         return {} as any;
       });
@@ -162,7 +162,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should use a default message when the error has no useful fields', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb({});
         return {} as any;
       });
@@ -173,7 +173,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should handle a plain string error', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb('plain string error');
         return {} as any;
       });
@@ -184,7 +184,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should trim whitespace from error.stdout', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(Object.assign(new Error(), { stdout: '  trimmed error  \n', stderr: '' }));
         return {} as any;
       });
@@ -195,7 +195,7 @@ describe('tools/memori-quota', () => {
     });
 
     it('should return details: null on error', async () => {
-      mockExec.mockImplementation((_cmd: string, _options: any, cb: Function) => {
+      mockExec.mockImplementation((_cmd: string, _args: any, _options: any, cb: Function) => {
         cb(new Error('failed'));
         return {} as any;
       });
