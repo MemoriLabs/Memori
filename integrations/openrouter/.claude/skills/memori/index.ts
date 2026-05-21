@@ -31,21 +31,24 @@ const VALID_SOURCE_SIGNAL: Record<string, string> = {
   task: "result",
 };
 
-// --- arg parsing ---
-
-function parseArgs(argv: string[]): { command: string; flags: Record<string, string> } {
+function parseArgs(argv: string[]): {
+  command: string;
+  flags: Record<string, string>;
+} {
   const command = argv[0] ?? "";
   const flags: Record<string, string> = {};
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg.startsWith("--") && i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+    if (
+      arg.startsWith("--") &&
+      i + 1 < argv.length &&
+      !argv[i + 1].startsWith("--")
+    ) {
       flags[arg.slice(2)] = argv[++i];
     }
   }
   return { command, flags };
 }
-
-// --- http helpers ---
 
 function headers(): Record<string, string> {
   return {
@@ -57,8 +60,8 @@ function headers(): Record<string, string> {
 
 function buildQS(params: Record<string, string | undefined>): string {
   const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v != null && v !== "") qs.set(k, v);
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null && value !== "") qs.set(key, value);
   }
   const str = qs.toString();
   return str ? `?${str}` : "";
@@ -87,9 +90,7 @@ async function post(url: string, body: unknown): Promise<unknown> {
   return res.json();
 }
 
-// --- commands ---
-
-async function recall(flags: Record<string, string>) {
+async function recall(flags: Record<string, string>): Promise<void> {
   const source = flags.source;
   const signal = flags.signal;
 
@@ -113,7 +114,6 @@ async function recall(flags: Record<string, string>) {
     date_end: flags.dateEnd,
     source,
     signal,
-
   });
 
   const result = await get(`${BASE_URL}/agent/recall${qs}`);
@@ -121,7 +121,7 @@ async function recall(flags: Record<string, string>) {
   process.exit(0);
 }
 
-async function recallSummary(flags: Record<string, string>) {
+async function recallSummary(flags: Record<string, string>): Promise<void> {
   const qs = buildQS({
     project_id: flags.projectId ?? DEFAULT_PROJECT_ID,
     session_id: flags.sessionId,
@@ -134,7 +134,9 @@ async function recallSummary(flags: Record<string, string>) {
   process.exit(0);
 }
 
-async function advancedAugmentation(flags: Record<string, string>) {
+async function advancedAugmentation(
+  flags: Record<string, string>
+): Promise<void> {
   const { sessionId, userMessage, assistantMessage, model } = flags;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
@@ -191,7 +193,7 @@ async function advancedAugmentation(flags: Record<string, string>) {
   process.exit(0);
 }
 
-async function compaction(flags: Record<string, string>) {
+async function compaction(flags: Record<string, string>): Promise<void> {
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
   if (!projectId) {
@@ -210,7 +212,7 @@ async function compaction(flags: Record<string, string>) {
   process.exit(0);
 }
 
-async function feedback(flags: Record<string, string>) {
+async function feedback(flags: Record<string, string>): Promise<void> {
   if (!flags.content) {
     console.error("feedback requires --content");
     process.exit(1);
@@ -220,8 +222,6 @@ async function feedback(flags: Record<string, string>) {
   console.log(JSON.stringify({ success: true }));
   process.exit(0);
 }
-
-// --- dispatch ---
 
 const { command, flags } = parseArgs(process.argv.slice(2));
 
@@ -239,11 +239,14 @@ try {
   } else if (command === "feedback") {
     await feedback(flags);
   } else {
-    console.error(`Unknown command: "${command}". Valid commands: recall, recall.summary, advanced-augmentation, compaction, feedback`);
+    console.error(
+      `Unknown command: "${command}". Valid commands: recall, recall.summary, advanced-augmentation, compaction, feedback`
+    );
     process.exit(1);
   }
 } catch (e) {
   console.error((e as Error).message ?? String(e));
   process.exit(1);
 }
-export { };
+
+export {};
