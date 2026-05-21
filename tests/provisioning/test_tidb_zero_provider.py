@@ -70,6 +70,7 @@ def test_provision_tidb_zero_propagates_http_errors(mocker):
         "memori.provisioning.providers.tidb_zero.requests.post",
         return_value=response,
     )
+    # TEST
 
     with pytest.raises(requests.HTTPError):
         provision_tidb_zero()
