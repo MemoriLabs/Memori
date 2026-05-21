@@ -139,6 +139,7 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REPO: ${{ github.repository }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Download review output
         uses: actions/download-artifact@v4
@@ -150,16 +151,38 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "$(jq -r '.submit' review-output.json)" != "true" ]; then
-            echo "Review generation requested no post; skipping."
+          set -euo pipefail
+
+          artifact_head="$(jq -r '.commit_id' review-output.json)"
+          if [ -z "$artifact_head" ] || [ "$artifact_head" = "null" ]; then
+            echo "Review artifact is missing commit_id; aborting."
+            exit 1
+          fi
+          if [ "$artifact_head" != "$PR_HEAD_SHA" ]; then
+            echo "Review artifact commit_id ${artifact_head} does not match labeled ${PR_HEAD_SHA}; aborting."
+            exit 1
+          fi
+
+          current_head="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid -q .headRefOid)"
+          if [ "$current_head" != "$PR_HEAD_SHA" ]; then
+            echo "PR head moved from labeled commit ${PR_HEAD_SHA} to ${current_head}; aborting publish."
+            exit 1
+          fi
+
+          prior_count="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --paginate --slurp \
+            --jq "[.[][] | select(.user.login == \"github-actions[bot]\" and .commit_id == \"${PR_HEAD_SHA}\")] | length")"
+          if [ "$prior_count" -gt 0 ]; then
+            echo "Automated review already posted for ${PR_HEAD_SHA}; skipping."
             exit 0
           fi
 
           comment_count="$(jq '.comments | length' review-output.json)"
           if [ "$comment_count" -eq 0 ]; then
-            jq '{event: "COMMENT", body: .summary}' review-output.json | \
+            jq --arg commit_id "$PR_HEAD_SHA" \
+              '{event: "COMMENT", commit_id: $commit_id, body: .summary}' review-output.json | \
               gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input -
           else
-            jq '{event: "COMMENT", body: .summary, comments: .comments}' review-output.json | \
+            jq --arg commit_id "$PR_HEAD_SHA" \
+              '{event: "COMMENT", commit_id: $commit_id, body: .summary, comments: .comments}' review-output.json | \
               gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input -
           fi

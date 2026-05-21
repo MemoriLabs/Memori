@@ -60,8 +60,18 @@ def _read_optional(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def _read_metadata(context_dir: Path) -> str:
+    metadata_path = context_dir / "pr-metadata.json"
+    if not metadata_path.is_file():
+        return ""
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if isinstance(metadata, dict):
+        metadata.pop("comments", None)
+    return json.dumps(metadata, indent=2)
+
+
 def _build_prompt(context_dir: Path) -> str:
-    metadata = _read_optional(context_dir / "pr-metadata.json")
+    metadata = _read_metadata(context_dir)
     diff = _read_optional(context_dir / "diff.patch")
     files_json = _read_optional(context_dir / "files.json")
     contributing = _read_optional(context_dir / "CONTRIBUTING.md")
@@ -101,12 +111,9 @@ Procedure:
 - Use pr-metadata.json, diff.patch, and files.json only.
 - Use patch hunks in files.json to compute GitHub review comment positions.
 - Max 10 inline comments; one issue per comment.
-- If a prior automation summary already says no blocking issues were found,
-  set submit to false.
 
 Return exactly one JSON object with this shape:
 {{
-  "submit": true,
   "summary": "markdown summary body",
   "comments": [
     {{"path": "relative/file/path", "position": 1, "body": "comment text"}}
@@ -114,8 +121,6 @@ Return exactly one JSON object with this shape:
 }}
 
 Rules:
-- submit: false only when you intentionally skip posting a duplicate
-  no-issues summary; otherwise true
 - summary markdown structure:
 
   **Findings**
@@ -130,7 +135,7 @@ Rules:
 
 - comments: empty array when there are no inline findings
 - each comment.position must be the diff position from the file patch
-- do not include any fields other than submit, summary, and comments
+- do not include any fields other than summary and comments
 
 === pr-metadata.json ===
 {metadata}
@@ -227,24 +232,92 @@ def _extract_review_json(text: str) -> dict[str, Any]:
     raise ValueError("Could not parse review JSON from Cursor output") from last_error
 
 
-def _validate_review(review: dict[str, Any]) -> None:
-    if not isinstance(review.get("submit"), bool):
-        raise ValueError("review-output.submit must be a boolean")
+def _max_patch_position(patch: str) -> int:
+    seen_hunk = False
+    position = 0
+    for line in patch.splitlines():
+        if line.startswith("@@"):
+            seen_hunk = True
+            continue
+        if seen_hunk:
+            position += 1
+    return position
+
+
+def _load_patch_limits(context_dir: Path) -> dict[str, int]:
+    files_path = context_dir / "files.json"
+    if not files_path.is_file():
+        return {}
+
+    files = json.loads(files_path.read_text(encoding="utf-8"))
+    if not isinstance(files, list):
+        raise ValueError("review-context/files.json must be an array")
+
+    limits: dict[str, int] = {}
+    for file in files:
+        if not isinstance(file, dict):
+            continue
+        filename = file.get("filename")
+        patch = file.get("patch")
+        if isinstance(filename, str) and isinstance(patch, str) and patch:
+            limits[filename] = _max_patch_position(patch)
+    return limits
+
+
+def _sanitize_comments(
+    comments: list[Any],
+    patch_limits: dict[str, int],
+) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
+    for comment in comments:
+        if not isinstance(comment, dict):
+            print("Dropping non-object review comment.", file=sys.stderr)
+            continue
+
+        path = comment.get("path")
+        body = comment.get("body")
+        position = comment.get("position")
+        max_position = patch_limits.get(path) if isinstance(path, str) else None
+
+        if (
+            not isinstance(path, str)
+            or not isinstance(body, str)
+            or not isinstance(position, int)
+            or max_position is None
+            or position < 1
+            or position > max_position
+        ):
+            print(
+                f"Dropping invalid review comment for path={path!r} position={position!r}.",
+                file=sys.stderr,
+            )
+            continue
+
+        sanitized.append({"path": path, "position": position, "body": body})
+        if len(sanitized) >= 10:
+            break
+
+    return sanitized
+
+
+def _validate_review(review: dict[str, Any], context_dir: Path) -> dict[str, Any]:
     if not isinstance(review.get("summary"), str):
         raise ValueError("review-output.summary must be a string")
     comments = review.get("comments")
     if not isinstance(comments, list):
         raise ValueError("review-output.comments must be an array")
-    if len(comments) > 10:
-        raise ValueError("review-output contained more than 10 inline comments")
-    for comment in comments:
-        if not isinstance(comment, dict):
-            raise ValueError("each review comment must be an object")
-        for key in ("path", "body"):
-            if not isinstance(comment.get(key), str):
-                raise ValueError(f"review comment {key} must be a string")
-        if not isinstance(comment.get("position"), int):
-            raise ValueError("review comment position must be a number")
+
+    patch_limits = _load_patch_limits(context_dir)
+    sanitized_comments = _sanitize_comments(comments, patch_limits)
+    commit_id = os.environ.get("PR_HEAD_SHA", "")
+    if not commit_id:
+        raise ValueError("PR_HEAD_SHA is required to publish a pinned review")
+
+    return {
+        "commit_id": commit_id,
+        "summary": review["summary"],
+        "comments": sanitized_comments,
+    }
 
 
 def main() -> int:
@@ -269,7 +342,7 @@ def main() -> int:
     try:
         assistant_text = _collect_run_output(agent_id, run_id, api_key)
         review = _extract_review_json(assistant_text)
-        _validate_review(review)
+        review = _validate_review(review, context_dir)
         Path("review-output.json").write_text(
             json.dumps(review, indent=2) + "\n",
             encoding="utf-8",
