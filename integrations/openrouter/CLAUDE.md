@@ -12,13 +12,17 @@ bun .claude/skills/memori/index.ts recall.summary
 bun .claude/skills/memori/index.ts recall
 ```
 
-## When the user asks to save or capture something:
+## At the end of every assistant turn:
 ```bash
-bun .claude/skills/memori/index.ts capture \
+bun .claude/skills/memori/index.ts advanced-augmentation \
   --sessionId <sessionId> \
   --userMessage "<what the user said>" \
   --assistantMessage "<your response>"
 ```
+
+This stores the turn and waits for the augmentation response. Do this every turn
+so advanced augmentation runs consistently. Also use this immediately when the
+user asks to save or remember something.
 
 ## When resuming after compaction:
 ```bash

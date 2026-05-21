@@ -18,23 +18,23 @@ echo "MEMORI_ENTITY_ID:  $MEMORI_ENTITY_ID"
 echo "MEMORI_PROJECT_ID: ${MEMORI_PROJECT_ID:-<not set>}"
 echo ""
 
-echo "--- [capture] turn 1 ---"
+echo "--- [advanced-augmentation] turn 1 ---"
 echo "  sessionId:        $SESSION_ID"
 echo "  userMessage:      $USER_MSG_1"
 echo "  assistantMessage: $ASSISTANT_MSG_1"
 echo ""
-bun --env-file=.env index.ts capture \
+bun --env-file=.env index.ts advanced-augmentation \
   --sessionId "$SESSION_ID" \
   --userMessage "$USER_MSG_1" \
   --assistantMessage "$ASSISTANT_MSG_1"
 
 echo ""
-echo "--- [capture] turn 2 ---"
+echo "--- [advanced-augmentation] turn 2 ---"
 echo "  sessionId:        $SESSION_ID"
 echo "  userMessage:      $USER_MSG_2"
 echo "  assistantMessage: $ASSISTANT_MSG_2"
 echo ""
-bun --env-file=.env index.ts capture \
+bun --env-file=.env index.ts advanced-augmentation \
   --sessionId "$SESSION_ID" \
   --userMessage "$USER_MSG_2" \
   --assistantMessage "$ASSISTANT_MSG_2"

@@ -1,7 +1,7 @@
 ---
 name: memori
 description: >
-  Memori long-term memory — recall, summarize, capture, and compact memories across sessions.
+  Memori long-term memory — recall, summarize, run Advanced Augmentation, and compact memories across sessions.
   TRIGGER when: user asks about past sessions, prior decisions, preferences, constraints,
   or anything you should already know. Also trigger at session start for a daily brief,
   when resuming after context compaction, or when the user asks to send feedback about memory.
@@ -12,7 +12,7 @@ allowed-tools: Bash
 
 # Memori Skill
 
-Long-term memory for agents. Captures conversation turns and recalls structured memories across sessions.
+Long-term memory for agents. Runs Advanced Augmentation for conversation turns and recalls structured memories across sessions.
 
 ## Setup
 
@@ -57,16 +57,16 @@ bun .claude/skills/memori/index.ts recall.summary \
 ```
 Defaults to last 24 hours when no date range is given.
 
-### `capture` — save a conversation turn to memory
+### `advanced-augmentation` — save and augment a conversation turn
 ```bash
-bun .claude/skills/memori/index.ts capture \
+bun .claude/skills/memori/index.ts advanced-augmentation \
   --sessionId ID \
   --userMessage "..." \
   --assistantMessage "..." \
   [--projectId ID] \
   [--model openai/gpt-4o]
 ```
-Writes the turn to the conversation DB, then fires memory extraction asynchronously. Call this at the end of each agent turn.
+Writes the turn to the conversation DB, then calls memory extraction and waits for the augmentation response. Call this at the end of each agent turn.
 
 ### `compaction` — restore working state after context reset
 ```bash
@@ -86,7 +86,7 @@ bun .claude/skills/memori/index.ts feedback --content "recall missed a pricing c
 
 - At session start, call `recall.summary` for a brief of recent activity
 - Use `recall` for targeted retrieval — prefer narrow queries, add filters only when needed
-- Call `capture` at the end of each turn to persist the conversation
+- Call `advanced-augmentation` at the end of each turn to persist and augment the conversation
 - After context compaction, call `compaction` to restore working state
 - Do not recall on every turn — only when prior context is actually needed
 - Do not invent memory; treat recent user instructions as higher priority than recalled memory

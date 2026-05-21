@@ -1,5 +1,11 @@
 #!/usr/bin/env bun
 
+declare const process: {
+  env: Record<string, string | undefined>;
+  exit(code?: number): never;
+  argv: string[];
+};
+
 const API_KEY = process.env.MEMORI_API_KEY;
 const ENTITY_ID = process.env.MEMORI_ENTITY_ID;
 const DEFAULT_PROJECT_ID = process.env.MEMORI_PROJECT_ID;
@@ -128,12 +134,14 @@ async function recallSummary(flags: Record<string, string>) {
   process.exit(0);
 }
 
-async function capture(flags: Record<string, string>) {
+async function advancedAugmentation(flags: Record<string, string>) {
   const { sessionId, userMessage, assistantMessage, model } = flags;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
   if (!sessionId || !userMessage || !assistantMessage) {
-    console.error("capture requires --sessionId, --userMessage, and --assistantMessage");
+    console.error(
+      "advanced-augmentation requires --sessionId, --userMessage, and --assistantMessage"
+    );
     process.exit(1);
   }
 
@@ -177,9 +185,9 @@ async function capture(flags: Record<string, string>) {
     trace: null,
   };
 
-  post(`${COLLECTOR_URL}/agent/augmentation`, augPayload).catch(() => {});
+  await post(`${COLLECTOR_URL}/agent/augmentation`, augPayload);
 
-  console.log(JSON.stringify({ success: true }));
+  console.log(JSON.stringify({ success: true, augmentation: true }));
   process.exit(0);
 }
 
@@ -224,14 +232,14 @@ try {
     await recall(flags);
   } else if (command === "recall.summary") {
     await recallSummary(flags);
-  } else if (command === "capture") {
-    await capture(flags);
+  } else if (command === "advanced-augmentation") {
+    await advancedAugmentation(flags);
   } else if (command === "compaction") {
     await compaction(flags);
   } else if (command === "feedback") {
     await feedback(flags);
   } else {
-    console.error(`Unknown command: "${command}". Valid commands: recall, recall.summary, capture, compaction, feedback`);
+    console.error(`Unknown command: "${command}". Valid commands: recall, recall.summary, advanced-augmentation, compaction, feedback`);
     process.exit(1);
   }
 } catch (e) {
@@ -239,4 +247,3 @@ try {
   process.exit(1);
 }
 export { };
-
