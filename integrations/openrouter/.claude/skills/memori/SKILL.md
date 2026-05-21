@@ -173,9 +173,27 @@ Behavior:
 - Passes `--processId` through as `attribution.process.id`; if omitted,
   `MEMORI_PROCESS_ID` is used when present.
 
-`--trace` must be a JSON string shaped like `{ "tools": [...] }`. When tools
-were used, include safe tool names, arguments, and summarized results. Do not
-include secrets, credentials, or large raw logs.
+`--trace` must be a JSON string matching the `Trace` type from the Memori SDK:
+
+```json
+{
+  "tools": [
+    {
+      "name": "tool_name",
+      "args": { "key": "value" },
+      "result": "summarized result"
+    }
+  ]
+}
+```
+
+- `tools` — required array, empty (`[]`) when no tools were used.
+- `name` — required string, the tool or function name.
+- `args` — required object (`Record<string, unknown>`), the arguments passed to the tool.
+- `result` — required, the tool's return value. Use a summarized string for large outputs.
+
+When tools were used, include each tool call in order. Do not include secrets,
+credentials, or large raw logs in `args` or `result`.
 
 Do not augment if the user explicitly says not to remember/store/save/log/keep
 the turn, or if the turn contains secrets, API keys, tokens, passwords, or
