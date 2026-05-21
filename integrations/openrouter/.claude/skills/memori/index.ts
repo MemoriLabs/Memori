@@ -10,11 +10,6 @@ const API_KEY = process.env.MEMORI_API_KEY;
 const ENTITY_ID = process.env.MEMORI_ENTITY_ID;
 const DEFAULT_PROJECT_ID = process.env.MEMORI_PROJECT_ID;
 
-if (!API_KEY || !ENTITY_ID) {
-  console.error("MEMORI_API_KEY and MEMORI_ENTITY_ID are required");
-  process.exit(1);
-}
-
 const BASE_URL = "https://staging-api.memorilabs.ai/v1";
 const COLLECTOR_URL = "https://staging-collector.memorilabs.ai/v1";
 const X_API_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0";
@@ -44,6 +39,22 @@ function parseBooleanFlag(value: string | undefined): boolean {
   return value === "1" || value === "true" || value === "yes";
 }
 
+function requireApiKey(): string {
+  if (!API_KEY) {
+    console.error("MEMORI_API_KEY is required");
+    process.exit(1);
+  }
+  return API_KEY;
+}
+
+function requireEntityId(): string {
+  if (!ENTITY_ID) {
+    console.error("MEMORI_ENTITY_ID is required");
+    process.exit(1);
+  }
+  return ENTITY_ID;
+}
+
 function parseArgs(argv: string[]): {
   command: string;
   flags: Record<string, string>;
@@ -64,11 +75,12 @@ function parseArgs(argv: string[]): {
 }
 
 function headers(): Record<string, string> {
-  return {
+  const result: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Memori-API-Key": X_API_KEY,
-    Authorization: `Bearer ${API_KEY}`,
   };
+  if (API_KEY) result.Authorization = `Bearer ${API_KEY}`;
+  return result;
 }
 
 function buildQS(params: Record<string, string | undefined>): string {
@@ -104,8 +116,16 @@ async function post(url: string, body: unknown): Promise<unknown> {
 }
 
 async function recall(flags: Record<string, string>): Promise<void> {
+  requireApiKey();
+  const entityId = requireEntityId();
   const source = flags.source;
   const signal = flags.signal;
+  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
+
+  if (flags.sessionId && !projectId) {
+    console.error("sessionId cannot be provided without projectId");
+    process.exit(1);
+  }
 
   if ((source == null) !== (signal == null)) {
     console.error("source and signal must be provided together");
@@ -120,8 +140,9 @@ async function recall(flags: Record<string, string>): Promise<void> {
   }
 
   const qs = buildQS({
-    entity_id: ENTITY_ID,
-    project_id: flags.projectId ?? DEFAULT_PROJECT_ID,
+    query: flags.query,
+    entity_id: entityId,
+    project_id: projectId,
     session_id: flags.sessionId,
     date_start: flags.dateStart,
     date_end: flags.dateEnd,
@@ -135,8 +156,16 @@ async function recall(flags: Record<string, string>): Promise<void> {
 }
 
 async function recallSummary(flags: Record<string, string>): Promise<void> {
+  requireApiKey();
+  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
+
+  if (flags.sessionId && !projectId) {
+    console.error("sessionId cannot be provided without projectId");
+    process.exit(1);
+  }
+
   const qs = buildQS({
-    project_id: flags.projectId ?? DEFAULT_PROJECT_ID,
+    project_id: projectId,
     session_id: flags.sessionId,
     date_start: flags.dateStart,
     date_end: flags.dateEnd,
@@ -150,6 +179,8 @@ async function recallSummary(flags: Record<string, string>): Promise<void> {
 async function advancedAugmentation(
   flags: Record<string, string>
 ): Promise<void> {
+  requireApiKey();
+  const entityId = requireEntityId();
   const { sessionId, userMessage, assistantMessage, model, summary } = flags;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
   const processId = flags.processId ?? process.env.MEMORI_PROCESS_ID;
@@ -163,7 +194,7 @@ async function advancedAugmentation(
   }
 
   const attribution = {
-    entity: { id: ENTITY_ID },
+    entity: { id: entityId },
     ...(processId ? { process: { id: processId } } : {}),
   };
 
@@ -217,6 +248,7 @@ async function advancedAugmentation(
 }
 
 async function compaction(flags: Record<string, string>): Promise<void> {
+  requireApiKey();
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
   if (!projectId) {
@@ -236,6 +268,7 @@ async function compaction(flags: Record<string, string>): Promise<void> {
 }
 
 async function feedback(flags: Record<string, string>): Promise<void> {
+  requireApiKey();
   if (!flags.content) {
     console.error("feedback requires --content");
     process.exit(1);
@@ -243,6 +276,31 @@ async function feedback(flags: Record<string, string>): Promise<void> {
 
   await post(`${BASE_URL}/agent/feedback`, { content: flags.content });
   console.log(JSON.stringify({ success: true }));
+  process.exit(0);
+}
+
+async function quota(): Promise<void> {
+  requireApiKey();
+  const result = await get(`${BASE_URL}/sdk/quota`);
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
+
+async function signup(flags: Record<string, string>): Promise<void> {
+  const email = flags.email;
+  if (!email) {
+    console.error("signup requires --email");
+    process.exit(1);
+  }
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    console.error(`The email you provided "${email}" is not valid.`);
+    process.exit(1);
+  }
+
+  const result = await post(`${BASE_URL}/sdk/account`, { email });
+  console.log(JSON.stringify(result, null, 2));
   process.exit(0);
 }
 
@@ -261,9 +319,13 @@ try {
     await compaction(flags);
   } else if (command === "feedback") {
     await feedback(flags);
+  } else if (command === "quota") {
+    await quota();
+  } else if (command === "signup") {
+    await signup(flags);
   } else {
     console.error(
-      `Unknown command: "${command}". Valid commands: recall, recall.summary, advanced-augmentation, compaction, feedback`
+      `Unknown command: "${command}". Valid commands: recall, recall.summary, advanced-augmentation, compaction, feedback, quota, signup`
     );
     process.exit(1);
   }

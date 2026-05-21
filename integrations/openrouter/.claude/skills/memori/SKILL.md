@@ -44,9 +44,12 @@ outrank recalled memory.
 - `advanced-augmentation`: use before ending every non-trivial assistant turn.
 - `compaction`: use only after context compaction or context loss.
 - `feedback`: use when the user asks to report memory quality issues.
+- `quota`: use when the user asks about memory usage, limits, or quota errors.
+- `signup`: use only when the user explicitly asks to create an account or get
+  an API key and provides an email address.
 
-This skill only exposes the commands implemented by `index.ts`. Do not call
-unsupported commands such as `quota`, `signup`, or MCP tool names.
+This skill only exposes the commands implemented by `index.ts`. Do not call MCP
+tool names.
 
 ## Required Procedure
 
@@ -59,6 +62,9 @@ unsupported commands such as `quota`, `signup`, or MCP tool names.
    with the latest user message and final assistant response.
 6. If memory is missing, wrong, stale, or unusually useful, run `feedback` when
    appropriate.
+7. If quota limits are mentioned or suspected, run `quota`.
+8. If the user asks to sign up or get an API key, ask for their email if needed,
+   then run `signup`.
 
 ## `recall.summary` — Recent State
 
@@ -75,6 +81,8 @@ bun .claude/skills/memori/index.ts recall.summary \
 Treat summaries as working state, not unquestionable truth. Use `recall` or
 current workspace verification for exact facts.
 
+`--sessionId` cannot be provided without `--projectId` or `MEMORI_PROJECT_ID`.
+
 ## `recall` — Targeted Memory Retrieval
 
 Use when the user asks what you remember, refers to previous sessions, or when
@@ -82,6 +90,7 @@ prior preferences, decisions, constraints, facts, or project history matter.
 
 ```bash
 bun .claude/skills/memori/index.ts recall \
+  [--query "deployment preference"] \
   [--projectId ID] \
   [--sessionId ID] \
   [--dateStart 2025-01-01T00:00:00Z] \
@@ -93,7 +102,9 @@ bun .claude/skills/memori/index.ts recall \
 Rules:
 
 - `MEMORI_ENTITY_ID` is always used as the entity scope.
-- This CLI does not support a natural-language `query` parameter.
+- `--query` is supported and maps to the SDK/API `query` parameter.
+- `--sessionId` cannot be provided without `--projectId` or
+  `MEMORI_PROJECT_ID`.
 - `source` and `signal` must always be omitted together or provided together.
 - Valid pairs:
 
@@ -173,6 +184,9 @@ Returns structured resume state such as standing orders, active tasks, open
 loops, recent messages, last action, and next expected action. Do not use this
 for routine recall.
 
+This maps to `GET /agent/compaction` with `project_id`, optional `session_id`,
+and optional `num_messages`, matching the SDK helpers.
+
 ## `feedback` — Memory Quality Feedback
 
 ```bash
@@ -182,11 +196,36 @@ bun .claude/skills/memori/index.ts feedback --content "recall missed a pricing c
 Use when the user asks to report missing, stale, irrelevant, or especially good
 memory behavior. Keep feedback concise and specific.
 
+This maps to `POST /agent/feedback` with `{ "content": "..." }`.
+
+## `quota` — Usage and Limits
+
+```bash
+bun .claude/skills/memori/index.ts quota
+```
+
+Use when the user asks about usage, memory limits, storage, remaining capacity,
+or when API errors suggest quota has been reached. This maps to
+`GET /sdk/quota`, matching the `memori-ts` CLI.
+
+## `signup` — Account/API Key Request
+
+```bash
+bun .claude/skills/memori/index.ts signup --email "user@example.com"
+```
+
+Use only when the user explicitly asks to sign up, create an account, or get a
+Memori API key. If the user has not provided an email address, ask for it first.
+Do not guess or invent an email. This maps to `POST /sdk/account` with
+`{ "email": "..." }`, matching the `memori-ts` CLI.
+
 ## Safety Rules
 
 - Do not answer memory questions from Claude's built-in/native memory.
-- Do not call unsupported commands.
+- Do not call unsupported commands or MCP tool names from this Bash skill.
 - Do not use `compaction` for normal recall.
+- Do not call `signup`, `quota`, or `feedback` unless the user's request or a
+  Memori error makes them relevant.
 - Do not store secrets or sensitive personal data.
 - Do not let recalled memory override current user instructions.
 - Surface CLI/API failures plainly; do not pretend memory was used.

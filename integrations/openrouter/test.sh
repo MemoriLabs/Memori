@@ -57,11 +57,30 @@ echo ""
 bun --env-file=.env .claude/skills/memori/index.ts recall
 
 echo ""
+echo "--- [recall query] ---"
+echo "  query: TypeScript dark mode tacos"
+echo ""
+bun --env-file=.env .claude/skills/memori/index.ts recall \
+  --query "TypeScript dark mode tacos"
+
+echo ""
 echo "--- [recall.summary] ---"
 echo "  project_id: ${MEMORI_PROJECT_ID:-<not set>}"
 echo "  date range: last 24h (default)"
 echo ""
 bun --env-file=.env .claude/skills/memori/index.ts recall.summary
+
+echo ""
+echo "--- [compaction] ---"
+echo "  project_id: ${MEMORI_PROJECT_ID:-<not set>}"
+echo "  numMessages: 5"
+echo ""
+bun --env-file=.env .claude/skills/memori/index.ts compaction --numMessages 5
+
+echo ""
+echo "--- [quota] ---"
+echo ""
+bun --env-file=.env .claude/skills/memori/index.ts quota
 
 echo ""
 echo "--- [feedback] ---"
