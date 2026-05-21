@@ -331,6 +331,8 @@ npm run build
 
 Memori provides CLI commands for managing your account and quota:
 
+The CLI uses exported environment variables first, then fills missing values from a `.env` file in the directory where you run the command.
+
 ```bash
 # Check your API quota
 python3 -m memori quota

@@ -1,5 +1,7 @@
+import os
 import subprocess
 import sys
+from contextlib import nullcontext
 from unittest import mock
 
 import pytest
@@ -26,10 +28,11 @@ def test_cli_banner_contains_key_elements(capsys, mock_config):
 
 
 @pytest.mark.integration
-def test_entrypoint_smoke_run():
+def test_entrypoint_smoke_run(tmp_path):
     result = subprocess.run(
         [sys.executable, "-m", "memori", "--help"],
         capture_output=True,
+        cwd=tmp_path,
         text=True,
         timeout=30,
     )
@@ -38,8 +41,13 @@ def test_entrypoint_smoke_run():
 
 
 class TestCliEntrypoint:
-    def run_main_with_args(self, args):
-        with mock.patch.object(sys, "argv", ["memori"] + args):
+    def run_main_with_args(self, args, load_env_file=False):
+        env_loader = (
+            nullcontext()
+            if load_env_file
+            else mock.patch("memori.__main__._load_env_file")
+        )
+        with mock.patch.object(sys, "argv", ["memori"] + args), env_loader:
             try:
                 main()
             except SystemExit as e:
@@ -85,6 +93,36 @@ class TestCliEntrypoint:
         assert "usage" in output
         assert "cockroachdb" in output
         assert "sign-up" in output
+
+    @mock.patch("memori.__main__.ApiQuotaManager")
+    def test_cli_loads_dotenv_from_cwd(self, mock_manager_cls, monkeypatch, tmp_path):
+        dotenv = tmp_path / ".env"
+        dotenv.write_text("MEMORI_API_KEY=dotenv-key\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("MEMORI_API_KEY", raising=False)
+
+        mock_manager_cls.return_value.execute.return_value = None
+
+        self.run_main_with_args(["quota"], load_env_file=True)
+
+        assert os.environ["MEMORI_API_KEY"] == "dotenv-key"
+        mock_manager_cls.assert_called_once()
+
+    @mock.patch("memori.__main__.ApiQuotaManager")
+    def test_cli_dotenv_does_not_override_exported_env(
+        self, mock_manager_cls, monkeypatch, tmp_path
+    ):
+        dotenv = tmp_path / ".env"
+        dotenv.write_text("MEMORI_API_KEY=dotenv-key\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("MEMORI_API_KEY", "exported-key")
+
+        mock_manager_cls.return_value.execute.return_value = None
+
+        self.run_main_with_args(["quota"], load_env_file=True)
+
+        assert os.environ["MEMORI_API_KEY"] == "exported-key"
+        mock_manager_cls.assert_called_once()
 
     def test_branding_displayed(self, capsys):
         self.run_main_with_args([])
