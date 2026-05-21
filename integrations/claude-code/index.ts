@@ -396,7 +396,6 @@ try {
     process.exit(1);
   }
 
-  console.log(JSON.stringify(result, null, 2));
   process.exit(0);
 } catch (e) {
   console.error((e as Error).message ?? String(e));
