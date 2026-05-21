@@ -2,8 +2,8 @@
 set -e
 
 SESSION_ID="test-session-1"
-SESSION_SUMMARY="OpenRouter skill smoke test for Memori Advanced Augmentation."
-TRACE_JSON='{"tools":[{"name":"openrouter-smoke-test","result":"ok"}]}'
+SESSION_SUMMARY="Claude Code skill smoke test for Memori Advanced Augmentation."
+TRACE_JSON='{"tools":[{"name":"claude-code-smoke-test","result":"ok"}]}'
 USER_MSG_1="My name is Ryan. I'm a software engineer who loves TypeScript and hates standups."
 ASSISTANT_MSG_1="Got it — you're Ryan, a software engineer. TypeScript fan, standup hater. Noted."
 USER_MSG_2="I also prefer dark mode and my favorite food is tacos."
@@ -13,7 +13,7 @@ ASSISTANT_MSG_2="Dark mode and tacos. I'll remember that."
 source .env 2>/dev/null || true
 
 echo "======================================"
-echo "  MEMORI OPENROUTER SKILL SMOKE TEST"
+echo "  MEMORI CLAUDE CODE SKILL SMOKE TEST"
 echo "======================================"
 echo "MEMORI_API_KEY:    ${MEMORI_API_KEY:0:8}..."
 echo "MEMORI_ENTITY_ID:  $MEMORI_ENTITY_ID"
@@ -57,13 +57,6 @@ echo ""
 bun --env-file=.env .claude/skills/memori/index.ts recall
 
 echo ""
-echo "--- [recall query] ---"
-echo "  query: TypeScript dark mode tacos"
-echo ""
-bun --env-file=.env .claude/skills/memori/index.ts recall \
-  --query "TypeScript dark mode tacos"
-
-echo ""
 echo "--- [recall.summary] ---"
 echo "  project_id: ${MEMORI_PROJECT_ID:-<not set>}"
 echo "  date range: last 24h (default)"
@@ -84,9 +77,9 @@ bun --env-file=.env .claude/skills/memori/index.ts quota
 
 echo ""
 echo "--- [feedback] ---"
-echo "  content: test feedback from openrouter skill smoke test"
+echo "  content: test feedback from claude code skill smoke test"
 echo ""
-bun --env-file=.env .claude/skills/memori/index.ts feedback --content "test feedback from openrouter skill smoke test"
+bun --env-file=.env .claude/skills/memori/index.ts feedback --content "test feedback from claude code skill smoke test"
 
 echo ""
 echo "======================================"

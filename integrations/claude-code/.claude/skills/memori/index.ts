@@ -1,5 +1,22 @@
 #!/usr/bin/env bun
 
+/**
+ * Memori Claude Code skill CLI.
+ *
+ * Usage (flags accept either --flag value or --flag=value):
+ *
+ *   bun .claude/skills/memori/index.ts recall [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO] [--source SOURCE --signal SIGNAL]
+ *   bun .claude/skills/memori/index.ts recall.summary [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO]
+ *   bun .claude/skills/memori/index.ts advanced-augmentation --sessionId ID --userMessage "..." --assistantMessage "..." [--projectId ID] [--model MODEL] [--summary "..."] [--trace '{"tools":[]}']
+ *   bun .claude/skills/memori/index.ts compaction --projectId ID [--sessionId ID] [--numMessages 5]
+ *   bun .claude/skills/memori/index.ts feedback --content "..."
+ *   bun .claude/skills/memori/index.ts quota
+ *   bun .claude/skills/memori/index.ts signup --email user@example.com
+ *
+ * On success: exits 0 and prints JSON to stdout.
+ * On failure: exits 1 and prints error to stderr.
+ */
+
 declare const process: {
   env: Record<string, string | undefined>;
   exit(code?: number): never;
@@ -13,6 +30,16 @@ const DEFAULT_PROJECT_ID = process.env.MEMORI_PROJECT_ID;
 const BASE_URL = "https://staging-api.memorilabs.ai/v1";
 const COLLECTOR_URL = "https://staging-collector.memorilabs.ai/v1";
 const X_API_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0";
+
+type HttpMethod = "GET" | "POST";
+
+type ToolTrace = {
+  tools: Array<{
+    name: string;
+    args: Record<string, unknown>;
+    result: unknown;
+  }>;
+};
 
 const VALID_SOURCE_SIGNAL: Record<string, string> = {
   constraint: "discovery",
@@ -33,6 +60,35 @@ function parseJsonFlag(name: string, value: string | undefined): unknown {
   } catch (e) {
     throw new Error(`Invalid JSON for --${name}: ${(e as Error).message}`);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseTraceFlag(value: string | undefined): ToolTrace {
+  const parsed = parseJsonFlag("trace", value);
+  if (parsed == null) return { tools: [] };
+  if (!isRecord(parsed) || !Array.isArray(parsed.tools)) {
+    throw new Error('--trace must be JSON shaped like {"tools":[]}');
+  }
+
+  for (const tool of parsed.tools) {
+    if (!isRecord(tool)) {
+      throw new Error("--trace tools entries must be objects");
+    }
+    if (typeof tool.name !== "string") {
+      throw new Error("--trace tools entries require string name");
+    }
+    if (!isRecord(tool.args)) {
+      throw new Error("--trace tools entries require object args");
+    }
+    if (!("result" in tool)) {
+      throw new Error("--trace tools entries require result");
+    }
+  }
+
+  return parsed as ToolTrace;
 }
 
 function parseBooleanFlag(value: string | undefined): boolean {
@@ -63,15 +119,33 @@ function parseArgs(argv: string[]): {
   const flags: Record<string, string> = {};
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i];
-    if (
-      arg.startsWith("--") &&
-      i + 1 < argv.length &&
-      !argv[i + 1].startsWith("--")
-    ) {
-      flags[arg.slice(2)] = argv[++i];
+    if (!arg.startsWith("--")) continue;
+
+    const raw = arg.slice(2);
+    const equalsIndex = raw.indexOf("=");
+    if (equalsIndex >= 0) {
+      flags[raw.slice(0, equalsIndex)] = raw.slice(equalsIndex + 1);
+    } else if (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+      flags[raw] = argv[++i];
+    } else {
+      flags[raw] = "true";
     }
   }
   return { command, flags };
+}
+
+function requireFlags(
+  flags: Record<string, string>,
+  command: string,
+  ...names: string[]
+): void {
+  const missing = names.filter((name) => !flags[name]);
+  if (missing.length === 0) return;
+
+  console.error(
+    `${command} requires ${missing.map((name) => `--${name}`).join(", ")}`
+  );
+  process.exit(1);
 }
 
 function headers(): Record<string, string> {
@@ -92,35 +166,43 @@ function buildQS(params: Record<string, string | undefined>): string {
   return str ? `?${str}` : "";
 }
 
-async function get(url: string): Promise<unknown> {
-  const res = await fetch(url, { headers: headers() });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
-  }
-  return res.json();
-}
-
-async function post(url: string, body: unknown): Promise<unknown> {
+async function request(
+  url: string,
+  method: HttpMethod,
+  body?: unknown
+): Promise<unknown> {
   const res = await fetch(url, {
-    method: "POST",
+    method,
     headers: headers(),
-    body: JSON.stringify(body),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    const body = await res.text();
+    throw new Error(`Memori API error (${res.status} ${res.statusText}): ${body}`);
   }
   if (res.status === 204) return {};
   return res.json();
 }
 
-async function recall(flags: Record<string, string>): Promise<void> {
+function get(url: string): Promise<unknown> {
+  return request(url, "GET");
+}
+
+function post(url: string, body: unknown): Promise<unknown> {
+  return request(url, "POST", body);
+}
+
+async function recall(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
   const entityId = requireEntityId();
   const source = flags.source;
   const signal = flags.signal;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
+
+  if (flags.query != null) {
+    console.error("recall does not support --query");
+    process.exit(1);
+  }
 
   if (flags.sessionId && !projectId) {
     console.error("sessionId cannot be provided without projectId");
@@ -140,7 +222,6 @@ async function recall(flags: Record<string, string>): Promise<void> {
   }
 
   const qs = buildQS({
-    query: flags.query,
     entity_id: entityId,
     project_id: projectId,
     session_id: flags.sessionId,
@@ -150,12 +231,10 @@ async function recall(flags: Record<string, string>): Promise<void> {
     signal,
   });
 
-  const result = await get(`${BASE_URL}/agent/recall${qs}`);
-  console.log(JSON.stringify(result, null, 2));
-  process.exit(0);
+  return get(`${BASE_URL}/agent/recall${qs}`);
 }
 
-async function recallSummary(flags: Record<string, string>): Promise<void> {
+async function recallSummary(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
@@ -171,27 +250,26 @@ async function recallSummary(flags: Record<string, string>): Promise<void> {
     date_end: flags.dateEnd,
   });
 
-  const result = await get(`${BASE_URL}/agent/recall/summary${qs}`);
-  console.log(JSON.stringify(result, null, 2));
-  process.exit(0);
+  return get(`${BASE_URL}/agent/recall/summary${qs}`);
 }
 
 async function advancedAugmentation(
   flags: Record<string, string>
-): Promise<void> {
+): Promise<unknown> {
   requireApiKey();
   const entityId = requireEntityId();
   const { sessionId, userMessage, assistantMessage, model, summary } = flags;
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
   const processId = flags.processId ?? process.env.MEMORI_PROCESS_ID;
-  const trace = parseJsonFlag("trace", flags.trace) ?? { tools: [] };
+  const trace = parseTraceFlag(flags.trace);
 
-  if (!sessionId || !userMessage || !assistantMessage) {
-    console.error(
-      "advanced-augmentation requires --sessionId, --userMessage, and --assistantMessage"
-    );
-    process.exit(1);
-  }
+  requireFlags(
+    flags,
+    "advanced-augmentation",
+    "sessionId",
+    "userMessage",
+    "assistantMessage"
+  );
 
   const attribution = {
     entity: { id: entityId },
@@ -221,16 +299,16 @@ async function advancedAugmentation(
     attribution,
     conversation: { messages },
     meta: {
-      sdk: { lang: "javascript", version: flags.sdkVersion ?? "openrouter-skill" },
+      sdk: { lang: "javascript", version: flags.sdkVersion ?? "claude-code-skill" },
       framework: { provider: flags.frameworkProvider ?? null },
       llm: {
         model: {
-          provider: flags.provider ?? "openrouter",
+          provider: flags.provider ?? "claude-code",
           sdk: { version: flags.providerSdkVersion ?? null },
           version: model ?? null,
         },
       },
-      platform: { provider: flags.platform ?? "openrouter" },
+      platform: { provider: flags.platform ?? "claude-code" },
       storage: {
         cockroachdb: parseBooleanFlag(flags.cockroachdb),
         dialect: flags.storageDialect ?? null,
@@ -243,11 +321,10 @@ async function advancedAugmentation(
 
   await post(`${COLLECTOR_URL}/agent/augmentation`, augPayload);
 
-  console.log(JSON.stringify({ success: true, augmentation: true }));
-  process.exit(0);
+  return { success: true, augmentation: true };
 }
 
-async function compaction(flags: Record<string, string>): Promise<void> {
+async function compaction(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
@@ -262,36 +339,25 @@ async function compaction(flags: Record<string, string>): Promise<void> {
     num_messages: flags.numMessages,
   });
 
-  const result = await get(`${BASE_URL}/agent/compaction${qs}`);
-  console.log(JSON.stringify(result, null, 2));
-  process.exit(0);
+  return get(`${BASE_URL}/agent/compaction${qs}`);
 }
 
-async function feedback(flags: Record<string, string>): Promise<void> {
+async function feedback(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
-  if (!flags.content) {
-    console.error("feedback requires --content");
-    process.exit(1);
-  }
+  requireFlags(flags, "feedback", "content");
 
   await post(`${BASE_URL}/agent/feedback`, { content: flags.content });
-  console.log(JSON.stringify({ success: true }));
-  process.exit(0);
+  return { success: true };
 }
 
-async function quota(): Promise<void> {
+async function quota(): Promise<unknown> {
   requireApiKey();
-  const result = await get(`${BASE_URL}/sdk/quota`);
-  console.log(JSON.stringify(result, null, 2));
-  process.exit(0);
+  return get(`${BASE_URL}/sdk/quota`);
 }
 
-async function signup(flags: Record<string, string>): Promise<void> {
+async function signup(flags: Record<string, string>): Promise<unknown> {
+  requireFlags(flags, "signup", "email");
   const email = flags.email;
-  if (!email) {
-    console.error("signup requires --email");
-    process.exit(1);
-  }
 
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
@@ -299,9 +365,7 @@ async function signup(flags: Record<string, string>): Promise<void> {
     process.exit(1);
   }
 
-  const result = await post(`${BASE_URL}/sdk/account`, { email });
-  console.log(JSON.stringify(result, null, 2));
-  process.exit(0);
+  return post(`${BASE_URL}/sdk/account`, { email });
 }
 
 const { command, flags } = parseArgs(process.argv.slice(2));
@@ -309,26 +373,31 @@ const { command, flags } = parseArgs(process.argv.slice(2));
 console.error(`[memori] command="${command}" flags=${JSON.stringify(flags)}`);
 
 try {
+  let result: unknown;
+
   if (command === "recall") {
-    await recall(flags);
+    result = await recall(flags);
   } else if (command === "recall.summary") {
-    await recallSummary(flags);
+    result = await recallSummary(flags);
   } else if (command === "advanced-augmentation") {
-    await advancedAugmentation(flags);
+    result = await advancedAugmentation(flags);
   } else if (command === "compaction") {
-    await compaction(flags);
+    result = await compaction(flags);
   } else if (command === "feedback") {
-    await feedback(flags);
+    result = await feedback(flags);
   } else if (command === "quota") {
-    await quota();
+    result = await quota();
   } else if (command === "signup") {
-    await signup(flags);
+    result = await signup(flags);
   } else {
     console.error(
       `Unknown command: "${command}". Valid commands: recall, recall.summary, advanced-augmentation, compaction, feedback, quota, signup`
     );
     process.exit(1);
   }
+
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
 } catch (e) {
   console.error((e as Error).message ?? String(e));
   process.exit(1);
