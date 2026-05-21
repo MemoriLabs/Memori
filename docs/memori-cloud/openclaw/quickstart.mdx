@@ -35,6 +35,9 @@ openclaw memori init \
   --api-key "YOUR_MEMORI_API_KEY" \
   --entity-id "your-app-user-id" \
   --project-id "my-project"
+
+# Enable conversation access for OpenClaw versions 2026.5.7+
+openclaw config set plugins.entries.openclaw-memori.hooks.allowConversationAccess true
 ```
 
 ### Option B: Via `openclaw.json`
@@ -51,12 +54,17 @@ Add the following to `~/.openclaw/openclaw.json`:
           "apiKey": "your-memori-api-key",
           "entityId": "your-app-user-id",
           "projectId": "my-project"
+        },
+        "hooks": {
+          "allowConversationAccess": true
         }
       }
     }
   }
 }
 ```
+
+*If installing a version prior to OpenClaw `v2026.5.7`, remove the hooks sections from configuration. Else OpenClaw `v2026.5.7+` follow instructions above.
 
 ### Configuration Options
 
@@ -122,7 +130,7 @@ The Memori plugin operates on two parallel tracks:
 
 | Track | Mechanism | What it does |
 | --- | --- | --- |
-| **Agent-Controlled Intelligent Recall** | Plugin Tools | Equips the agent with `memori_recall`, `memori_recall_summary`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
+| **Agent-Controlled Intelligent Recall** | Plugin Tools | Equips the agent with `memori_recall`, `memori_recall_summary`, `memori_compaction`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
 | **Advanced Augmentation** | `agent_end` Hook | After the agent responds, the exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
 
 Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient.
