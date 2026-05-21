@@ -1,6 +1,6 @@
 {
   "name": "@memorilabs/memori",
-  "version": "0.1.23-beta",
+  "version": "0.1.24-beta",
   "description": "The official TypeScript SDK for Memori",
   "type": "module",
   "main": "./dist/index.js",
@@ -126,7 +126,7 @@
     "vitest": "^2.1.9"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.12.0"
   },
   "dependencies": {
     "@memorilabs/axon": "^0.1.5"
