@@ -1,13 +1,14 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import * as os from 'os';
 import * as path from 'path';
+import { createRequire } from 'module';
 import type { ToolDeps } from './types.js';
 
 const execAsync = promisify(exec);
+const require = createRequire(import.meta.url);
 
 export function createMemoriQuotaTool(deps: ToolDeps) {
-  const { logger } = deps;
+  const { logger, config } = deps;
 
   return {
     name: 'memori_quota',
@@ -23,12 +24,11 @@ export function createMemoriQuotaTool(deps: ToolDeps) {
       try {
         logger.info('memori_quota checking usage...');
 
-        const tmpDir = os.tmpdir();
-
-        await execAsync(`npm install --prefix ${tmpDir} --no-save @memorilabs/memori@0.1.12-beta`);
-
-        const binPath = path.join(tmpDir, 'node_modules', '.bin', 'memori');
-        const { stdout } = await execAsync(`${binPath} quota`);
+        const sdkEntry = require.resolve('@memorilabs/memori');
+        const binPath = path.join(path.dirname(sdkEntry), 'bin/cli.js');
+        const { stdout } = await execAsync(`${process.execPath} ${binPath} quota`, {
+          env: { ...process.env, MEMORI_API_KEY: config.apiKey },
+        });
 
         const result = {
           success: true,
