@@ -9,7 +9,6 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 ```
 <your-project>/
 └── .claude/
-    ├── settings.local.json     # permissions (allow Bash(bun *) + Skill(memori))
     └── skills/
         └── memori/
             ├── SKILL.md        # skill definition + procedure
@@ -27,20 +26,7 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 ## Install
 
 1. Copy `.claude/skills/memori/` (both `SKILL.md` and `index.ts`) into your target project's `.claude/skills/` directory, or into `~/.claude/skills/` to make it available everywhere.
-2. Allow the skill in `.claude/settings.local.json` (project) or `~/.claude/settings.json` (global):
-
-   ```json
-   {
-     "permissions": {
-       "allow": [
-         "Bash(bun *)",
-         "Skill(memori)"
-       ]
-     }
-   }
-   ```
-
-3. Provide credentials (see below).
+2. Provide credentials (see below).
 
 ## Configuration
 
@@ -50,7 +36,6 @@ Set these environment variables before launching Claude Code:
 export MEMORI_API_KEY=your_memori_api_key
 export MEMORI_ENTITY_ID=your_entity_id
 export MEMORI_PROJECT_ID=your_default_project_id   # optional
-export MEMORI_PROCESS_ID=your_process_id           # optional, for attribution
 ```
 
 Put them in your shell profile, a tool like `direnv`, or a project-local `.env` file. If you use `.env`, invoke the CLI with `bun --env-file=.env ...` (Claude Code itself does not auto-load `.env`).
@@ -60,7 +45,6 @@ Put them in your shell profile, a tool like `direnv`, or a project-local `.env` 
 | `MEMORI_API_KEY` | yes | Authenticates to Memori Cloud |
 | `MEMORI_ENTITY_ID` | yes | Per-user / per-agent memory namespace |
 | `MEMORI_PROJECT_ID` | no | Default project scope; can be overridden per call with `--projectId` |
-| `MEMORI_PROCESS_ID` | no | Attribution tag for the calling process |
 
 ## How the skill is used
 
@@ -104,14 +88,6 @@ Flags accept both `--flag value` and `--flag=value`. On success, commands print 
 
 Each entry requires `name` (string), `args` (object), and `result` (any — key must be present). Never include secrets, credentials, or large raw logs in trace fields.
 
-## Smoke test
-
-A `test.sh` in this folder exercises `advanced-augmentation`, `recall`, `recall.summary`, `compaction`, `quota`, and `feedback` end-to-end. Run it from a directory containing a `.env` with your credentials and a `.claude/skills/memori/` install:
-
-```bash
-./test.sh
-```
-
 ## Troubleshooting
 
 - **`MEMORI_API_KEY is required`** — credentials not in the environment. Export the variables in your shell or invoke the CLI with `bun --env-file=.env ...`.
@@ -122,5 +98,5 @@ A `test.sh` in this folder exercises `advanced-augmentation`, `recall`, `recall.
 
 ## Reference
 
-- Skill behavior and source/signal taxonomy: [`.claude/skills/memori/SKILL.md`](.claude/skills/memori/SKILL.md)
-- CLI source: [`.claude/skills/memori/index.ts`](.claude/skills/memori/index.ts)
+- Skill behavior and source/signal taxonomy: [`SKILL.md`](SKILL.md)
+- CLI source: [`index.ts`](index.ts)

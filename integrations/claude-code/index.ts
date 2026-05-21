@@ -319,7 +319,11 @@ async function advancedAugmentation(
     trace,
   };
 
-  await post(`${COLLECTOR_URL}/agent/augmentation`, augPayload);
+  try {
+    await post(`${COLLECTOR_URL}/agent/augmentation`, augPayload);
+  } catch (e) {
+    console.error(`[memori] collector augmentation failed (non-fatal): ${(e as Error).message}`);
+  }
 
   return { success: true, augmentation: true };
 }
@@ -396,6 +400,7 @@ try {
     process.exit(1);
   }
 
+  console.log(JSON.stringify(result, null, 2));
   process.exit(0);
 } catch (e) {
   console.error((e as Error).message ?? String(e));
