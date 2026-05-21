@@ -94,7 +94,6 @@ Each entry requires `name` (string), `args` (object), and `result` (any — key 
 - **`--sessionId requires --projectId or MEMORI_PROJECT_ID`** — set `MEMORI_PROJECT_ID` or pass `--projectId`.
 - **Claude prompts on every Bash call** — confirm `Bash(bun *)` and `Skill(memori)` are in your `settings.local.json` / `settings.json`.
 - **Skill never fires** — confirm Claude Code can see it: `claude` → `/skills` should list `memori`.
-- **No memories returned** — first session against a new entity has nothing to recall. Run `test.sh` to seed.
 
 ## Reference
 
