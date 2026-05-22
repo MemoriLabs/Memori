@@ -21,7 +21,7 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 
 - [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code/setup)
-- A Memori Cloud account with an API key and entity ID
+- A Memori Cloud account with an API key, entity ID, and project ID
 
 ## Install
 
@@ -95,7 +95,7 @@ Each entry requires `name` (string), `args` (object), and `result` (any — key 
 ## Troubleshooting
 
 - **`MEMORI_API_KEY is required`** — credentials not in the environment. Export the variables in your shell or invoke the CLI with `bun --env-file=.env ...`.
-- **`--sessionId requires --projectId or MEMORI_PROJECT_ID`** — set `MEMORI_PROJECT_ID` or pass `--projectId`.
+- **`MEMORI_PROJECT_ID is required (set in .env or pass --projectId)`** — set `MEMORI_PROJECT_ID` in `.env` or pass `--projectId` on the command.
 - **Claude prompts on every Bash call** — confirm `Bash(bun *)` and `Skill(memori)` are in your `settings.local.json` / `settings.json`.
 - **Skill never fires** — confirm Claude Code can see it: `claude` → `/skills` should list `memori`.
 
