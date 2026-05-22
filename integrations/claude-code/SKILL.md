@@ -37,13 +37,18 @@ Flags accept `--flag value` or `--flag=value`.
 
 ## Setup
 
-Set:
+Required configured values:
 
-- `MEMORI_API_KEY` (required)
-- `MEMORI_ENTITY_ID` (required)
-- `MEMORI_PROJECT_ID` (required default project; can be overridden per call
-  with `--projectId`)
-- `MEMORI_PROCESS_ID` (optional process attribution)
+- `MEMORI_API_KEY`
+- `MEMORI_ENTITY_ID`
+- `MEMORI_PROJECT_ID`
+
+These are not examples if present in `.env`; they are the active runtime
+config.
+
+`MEMORI_PROJECT_ID` is the default project for every command; pass
+`--projectId` only to override it for a specific call. `MEMORI_PROCESS_ID` is
+optional process attribution.
 
 ## Commands
 
@@ -106,9 +111,6 @@ Source and signal must be provided together:
 | Failure or error | `--source execution --signal failure` |
 | Strategy or pattern | `--source strategy --signal pattern` |
 | Inferred lesson | `--source insight --signal inference` |
-
-`MEMORI_PROJECT_ID` (from `.env`) is the default project for every command.
-Pass `--projectId` only when overriding it for a specific call.
 
 ## Advanced Augmentation
 
