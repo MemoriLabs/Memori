@@ -6,6 +6,13 @@ You have access to Memori, agent-native memory infrastructure: an LLM-agnostic l
 
 Memori automatically captures and structures memory from conversation and execution trace — including the agent's actions, tool results, decisions, and outcomes — and allows you to retrieve it on demand. Use it to maintain continuity across sessions, preserve decisions and constraints, and help the agent understand what it actually did so the next time it completes a task, it is more accurate and efficient.
 
+## Prerequisites
+
+- OpenClaw v2026.3.2+
+- Memori API key — acquire with `memori signup`
+- `entityId` — scopes memory to a user, agent, or system
+- `projectId` — scopes memory to a project or workspace
+
 ## Core instruction
 
 At the start of a session, you should check the `SKILL.md` file
