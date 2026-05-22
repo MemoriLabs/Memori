@@ -1,0 +1,97 @@
+---
+title: Quickstart
+description: Add ambient long-term memory to Claude Code in minutes.
+---
+
+# Claude Code Quickstart
+
+Add structured, persistent memory to Claude Code in three steps.
+
+## Prerequisites
+
+- [Bun](https://bun.sh) — `curl -fsSL https://bun.sh/install | bash`
+- [Claude Code](https://claude.ai/code)
+- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+
+## 1. Install the Skill
+
+Copy both `SKILL.md` and `index.ts` from `integrations/claude-code` into your target project's `.claude/skills/memori/` directory, or into `~/.claude/skills/memori/` to make it available across all projects.
+
+```
+<your-project>/
+└── .claude/
+    └── skills/
+        └── memori/
+            ├── SKILL.md
+            └── index.ts
+```
+
+## 2. Configure
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+```bash
+MEMORI_API_KEY=your_memori_api_key
+MEMORI_ENTITY_ID=your_entity_id
+MEMORI_PROJECT_ID=your_default_project_id
+MEMORI_PROCESS_ID=your_process_id           # optional
+```
+
+Place `.env` next to `index.ts` or in the project root — it loads automatically. Real environment variables override `.env`.
+
+<Properties>
+  <Property name="MEMORI_API_KEY" type="string" required>
+    Authenticates to Memori Cloud. Available from [app.memorilabs.ai](https://app.memorilabs.ai).
+  </Property>
+  <Property name="MEMORI_ENTITY_ID" type="string" required>
+    Per-user or per-agent memory namespace.
+  </Property>
+  <Property name="MEMORI_PROJECT_ID" type="string" required>
+    Default project scope. Can be overridden per call with `--projectId`.
+  </Property>
+  <Property name="MEMORI_PROCESS_ID" type="string">
+    Optional process attribution for advanced augmentation.
+  </Property>
+</Properties>
+
+## 3. Verify
+
+Start Claude Code. Run `/skills` to confirm `memori` is listed, then send a non-trivial message. Claude will automatically run `recall` before responding and `advanced-augmentation` after — no manual invocation needed.
+
+Check the logs for:
+
+```
+[memori] command="recall" flags={...}
+[memori] command="advanced-augmentation" flags={...}
+```
+
+## CLI Reference
+
+The skill is invoked by Claude Code automatically, but you can also run commands directly:
+
+```bash
+bun .claude/skills/memori/index.ts <command> [--flag value ...]
+```
+
+| Command | Purpose |
+|---|---|
+| `recall` | Targeted retrieval. Use with `--source` and `--signal` (see source/signal table). |
+| `recall.summary` | Broad session summary or orientation. |
+| `advanced-augmentation` | Record a user/assistant turn. Required: `--sessionId`, `--userMessage`, `--assistantMessage`. |
+| `compaction` | Restore context after Claude Code compaction. Uses `MEMORI_PROJECT_ID` by default; pass `--projectId` to override. |
+| `feedback` | Send free-form feedback. `--content "..."` |
+| `quota` | Show remaining quota for the API key. |
+| `signup` | Create a new account. `--email user@example.com` |
+
+Flags accept both `--flag value` and `--flag=value`. On success, commands print JSON to stdout and exit 0. On failure, they print to stderr and exit 1.
+
+## Troubleshooting
+
+- **`MEMORI_API_KEY is required`** — credentials not in the environment. Place `.env` next to `index.ts` or in the project root — it loads automatically.
+- **`MEMORI_PROJECT_ID is required (set in .env or pass --projectId)`** — set `MEMORI_PROJECT_ID` in `.env` or pass `--projectId` on the command.
+- **Claude prompts on every Bash call** — add `Bash(bun *)` and `Skill(memori)` to your `settings.local.json`.
+- **Skill never fires** — confirm Claude Code can see it: `/skills` should list `memori`.
