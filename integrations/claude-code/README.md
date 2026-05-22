@@ -31,9 +31,7 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 ## Configuration
 
 The recommended setup is `.claude/settings.local.json` — Claude Code injects every entry under `env` into the environment of every Bash subprocess, including this skill, and Claude Code auto-gitignores this file when it creates it.
-${workspaceFolderBasename}",
-        "X-Memori-Process-Id": "${workspaceFolderBasename}"
-```jsonc
+```json
 // .claude/settings.local.json
 {
   "env": {
