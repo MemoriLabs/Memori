@@ -63,9 +63,13 @@ Auto-resolved (no setup required, override with flags or env if needed):
 - `MEMORI_PROJECT_ID` — defaults to `basename($CLAUDE_PROJECT_DIR)`, the
   Claude Code workspace folder name. Override per call with `--projectId`,
   or pin it by adding `MEMORI_PROJECT_ID` to the `env` block.
-- `MEMORI_SESSION_ID` — defaults to `$CLAUDE_CODE_SESSION_ID`, the current
-  Claude Code session (resets on `/clear`). Override per call with
-  `--sessionId`, or pin it by adding `MEMORI_SESSION_ID` to the `env` block.
+- `MEMORI_SESSION_ID` — defaults to `$CLAUDE_CODE_SESSION_ID` for writes
+  (`advanced-augmentation`) and for `compaction` (which by definition
+  restores the current session). **Reads (`recall`, `recall.summary`) do
+  not auto-apply session_id** — it is a narrowing filter on the agent
+  recall API, so the default keeps retrieval project-scoped across new
+  Claude Code sessions and `/clear`. Pass `--sessionId` explicitly when
+  you want a single-session recall.
 
 Optional:
 

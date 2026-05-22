@@ -31,8 +31,10 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 ## Configuration
 
 The recommended setup is `.claude/settings.local.json` — Claude Code injects every entry under `env` into the environment of every Bash subprocess, including this skill, and Claude Code auto-gitignores this file when it creates it.
+
+Paste the following into `.claude/settings.local.json`:
+
 ```json
-// .claude/settings.local.json
 {
   "env": {
     "MEMORI_API_KEY": "your_memori_api_key",
@@ -41,14 +43,14 @@ The recommended setup is `.claude/settings.local.json` — Claude Code injects e
 }
 ```
 
-That's the full required setup. Project ID and session ID auto-resolve from Claude Code's own runtime context, so they don't need to be configured.
+That's the full required setup. `MEMORI_PROJECT_ID` auto-resolves from the current Claude Code workspace, and the current Claude Code session ID is supplied to write paths automatically. Read paths (`recall`, `recall.summary`) intentionally stay project-scoped — pass `--sessionId` explicitly when you want a single-session recall.
 
 | Variable | Required | Purpose |
 |---|---|---|
 | `MEMORI_API_KEY` | yes | Authenticates to Memori Cloud. |
-| `MEMORI_ENTITY_ID` | yes | Stable per-user / per-agent memory namespace. Any string. If missing, Claude Code is instructed by `SKILL.md` to pick a sensible default (hostname, or a UUID) and persist it to `.claude/settings.local.json`. If no default can be inferred, the agent asks the user. |
+| `MEMORI_ENTITY_ID` | yes | Stable per-user / per-agent memory namespace. Any string. If missing, Claude Code is instructed by `SKILL.md` to pick a sensible default (slugified `git user.email`, hostname, or a UUID) and persist it to `.claude/settings.local.json`. If no default can be inferred, the agent asks the user. |
 | `MEMORI_PROJECT_ID` | no | Defaults to `basename($CLAUDE_PROJECT_DIR)` (the Claude Code workspace folder name). Override per call with `--projectId`, or pin it by adding it to the `env` block. |
-| `MEMORI_SESSION_ID` | no | Defaults to `$CLAUDE_CODE_SESSION_ID` (the current Claude Code session; resets on `/clear`). Override per call with `--sessionId`, or pin it by adding it to the `env` block. |
+| `MEMORI_SESSION_ID` | no | Used by `advanced-augmentation` (write) and `compaction` (restore current session). Defaults to `$CLAUDE_CODE_SESSION_ID` (resets on `/clear`). **Not** auto-applied to `recall` / `recall.summary` — those stay project-scoped unless `--sessionId` is passed. Override per call with `--sessionId`, or pin it in the `env` block. |
 | `MEMORI_PROCESS_ID` | no | Process attribution for `advanced-augmentation`. |
 
 ### Alternative: shell env or `.env` file
@@ -58,7 +60,7 @@ If you prefer not to use `settings.local.json`, the skill also reads from:
 1. Real environment variables exported in your shell, shell profile, or `direnv`.
 2. A `.env` file colocated next to `index.ts` (works regardless of cwd, including global installs at `~/.claude/skills/memori/`). Copy `.env.example` to `.env` and fill in the values.
 
-Precedence (highest wins): per-call `--flag` → real env var → `.env` file. `MEMORI_PROJECT_ID` and `MEMORI_SESSION_ID` fall through to the Claude Code defaults when none of the above are set.
+Precedence (highest wins): per-call `--flag` → real env var → `.env` file. `MEMORI_PROJECT_ID` falls through to `basename($CLAUDE_PROJECT_DIR)` when none of the above are set. `MEMORI_SESSION_ID` falls through to `$CLAUDE_CODE_SESSION_ID` only for `advanced-augmentation` and `compaction`; `recall` / `recall.summary` require an explicit `--sessionId` to scope to a session.
 
 ## How the skill is used
 

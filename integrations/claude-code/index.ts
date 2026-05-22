@@ -19,7 +19,11 @@
  *   MEMORI_API_KEY    (required) Memori Cloud API key
  *   MEMORI_ENTITY_ID  (required) stable per-user/agent namespace string
  *   MEMORI_PROJECT_ID (optional) defaults to basename($CLAUDE_PROJECT_DIR)
- *   MEMORI_SESSION_ID (optional) defaults to $CLAUDE_CODE_SESSION_ID
+ *   MEMORI_SESSION_ID (optional) used by writes (advanced-augmentation) and
+ *                     by compaction; defaults to $CLAUDE_CODE_SESSION_ID.
+ *                     Reads (recall, recall.summary) intentionally do NOT
+ *                     default session_id so retrieval stays project-scoped
+ *                     across new Claude Code sessions and /clear.
  *   MEMORI_PROCESS_ID (optional) process attribution
  *
  * --projectId and --sessionId override the defaults per call.
@@ -78,7 +82,9 @@ const ENTITY_ID = process.env.MEMORI_ENTITY_ID;
 
 // Dynamic defaults from Claude Code's auto-injected subprocess env.
 // CLAUDE_PROJECT_DIR -> default Memori project ID (basename of workspace).
-// CLAUDE_CODE_SESSION_ID -> default Memori session ID (resets on /clear).
+// CLAUDE_CODE_SESSION_ID -> default Memori session ID for writes and for
+// compaction (which restores the current session). Read paths (recall,
+// recall.summary) do NOT auto-apply this — see comments in those functions.
 const CLAUDE_PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR;
 const CLAUDE_SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID;
 
@@ -316,10 +322,14 @@ async function recall(flags: Record<string, string>): Promise<unknown> {
     process.exit(1);
   }
 
+  // session_id narrows results to a single session on the agent recall API;
+  // leave it unset by default so ambient recall stays project-scoped across
+  // new Claude Code sessions and /clear. Pass --sessionId explicitly when
+  // you want to scope to a specific session.
   const qs = buildQS({
     entity_id: entityId,
     project_id: projectId,
-    session_id: resolveSessionId(flags),
+    session_id: flags.sessionId,
     date_start: flags.dateStart,
     date_end: flags.dateEnd,
     source,
@@ -333,9 +343,11 @@ async function recallSummary(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
   const projectId = requireProjectId(flags);
 
+  // See note in recall: session_id is a narrowing filter, so the default
+  // here is also project-scoped. Pass --sessionId for single-session summaries.
   const qs = buildQS({
     project_id: projectId,
-    session_id: resolveSessionId(flags),
+    session_id: flags.sessionId,
     date_start: flags.dateStart,
     date_end: flags.dateEnd,
   });
