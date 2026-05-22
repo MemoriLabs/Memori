@@ -8,10 +8,13 @@
  *   bun .claude/skills/memori/index.ts recall [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO] [--source SOURCE --signal SIGNAL]
  *   bun .claude/skills/memori/index.ts recall.summary [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO]
  *   bun .claude/skills/memori/index.ts advanced-augmentation --sessionId ID --userMessage "..." --assistantMessage "..." [--projectId ID] [--model MODEL] [--summary "..."] [--trace '{"tools":[]}']
- *   bun .claude/skills/memori/index.ts compaction --projectId ID [--sessionId ID] [--numMessages 5]
+ *   bun .claude/skills/memori/index.ts compaction [--projectId ID] [--sessionId ID] [--numMessages 5]
  *   bun .claude/skills/memori/index.ts feedback --content "..."
  *   bun .claude/skills/memori/index.ts quota
  *   bun .claude/skills/memori/index.ts signup --email user@example.com
+ *
+ * MEMORI_API_KEY, MEMORI_ENTITY_ID, and MEMORI_PROJECT_ID are required.
+ * --projectId can override MEMORI_PROJECT_ID per call.
  *
  * On success: exits 0 and prints JSON to stdout.
  * On failure: exits 1 and prints error to stderr.
@@ -111,6 +114,17 @@ function requireEntityId(): string {
   return ENTITY_ID;
 }
 
+function requireProjectId(flags: Record<string, string>): string {
+  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
+  if (!projectId) {
+    console.error(
+      "MEMORI_PROJECT_ID is required (set in .env or pass --projectId)"
+    );
+    process.exit(1);
+  }
+  return projectId;
+}
+
 function parseArgs(argv: string[]): {
   command: string;
   flags: Record<string, string>;
@@ -195,17 +209,12 @@ function post(url: string, body: unknown): Promise<unknown> {
 async function recall(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
   const entityId = requireEntityId();
+  const projectId = requireProjectId(flags);
   const source = flags.source;
   const signal = flags.signal;
-  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
 
   if (flags.query != null) {
     console.error("recall does not support --query");
-    process.exit(1);
-  }
-
-  if (flags.sessionId && !projectId) {
-    console.error("sessionId cannot be provided without projectId");
     process.exit(1);
   }
 
@@ -236,12 +245,7 @@ async function recall(flags: Record<string, string>): Promise<unknown> {
 
 async function recallSummary(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
-  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
-
-  if (flags.sessionId && !projectId) {
-    console.error("sessionId cannot be provided without projectId");
-    process.exit(1);
-  }
+  const projectId = requireProjectId(flags);
 
   const qs = buildQS({
     project_id: projectId,
@@ -258,8 +262,8 @@ async function advancedAugmentation(
 ): Promise<unknown> {
   requireApiKey();
   const entityId = requireEntityId();
+  const projectId = requireProjectId(flags);
   const { sessionId, userMessage, assistantMessage, model, summary } = flags;
-  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
   const processId = flags.processId ?? process.env.MEMORI_PROCESS_ID;
   const trace = parseTraceFlag(flags.trace);
 
@@ -289,7 +293,7 @@ async function advancedAugmentation(
   const turnPayload = {
     attribution,
     messages,
-    ...(projectId ? { project: { id: projectId } } : {}),
+    project: { id: projectId },
     session: { id: sessionId },
   };
 
@@ -314,7 +318,7 @@ async function advancedAugmentation(
         dialect: flags.storageDialect ?? null,
       },
     },
-    ...(projectId ? { project: { id: projectId } } : {}),
+    project: { id: projectId },
     session: { id: sessionId, summary: summary ?? null },
     trace,
   };
@@ -330,12 +334,7 @@ async function advancedAugmentation(
 
 async function compaction(flags: Record<string, string>): Promise<unknown> {
   requireApiKey();
-  const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
-
-  if (!projectId) {
-    console.error("compaction requires --projectId or MEMORI_PROJECT_ID env var");
-    process.exit(1);
-  }
+  const projectId = requireProjectId(flags);
 
   const qs = buildQS({
     project_id: projectId,

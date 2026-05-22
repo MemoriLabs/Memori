@@ -39,10 +39,11 @@ Flags accept `--flag value` or `--flag=value`.
 
 Set:
 
-- `MEMORI_API_KEY`
-- `MEMORI_ENTITY_ID`
-- `MEMORI_PROJECT_ID` optional default project
-- `MEMORI_PROCESS_ID` optional process attribution
+- `MEMORI_API_KEY` (required)
+- `MEMORI_ENTITY_ID` (required)
+- `MEMORI_PROJECT_ID` (required default project; can be overridden per call
+  with `--projectId`)
+- `MEMORI_PROCESS_ID` (optional process attribution)
 
 ## Commands
 
@@ -50,7 +51,7 @@ Set:
 bun .claude/skills/memori/index.ts recall [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO] [--source SOURCE --signal SIGNAL]
 bun .claude/skills/memori/index.ts recall.summary [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO]
 bun .claude/skills/memori/index.ts advanced-augmentation --sessionId ID --userMessage "$USER_MESSAGE" --assistantMessage "$ASSISTANT_MESSAGE" [--projectId ID] [--model MODEL] [--summary "$SUMMARY"] [--trace "$TRACE_JSON"] [--processId ID]
-bun .claude/skills/memori/index.ts compaction --projectId ID [--sessionId ID] [--numMessages 5]
+bun .claude/skills/memori/index.ts compaction [--projectId ID] [--sessionId ID] [--numMessages 5]
 bun .claude/skills/memori/index.ts feedback --content "feedback text"
 bun .claude/skills/memori/index.ts quota
 bun .claude/skills/memori/index.ts signup --email "user@example.com"
@@ -106,7 +107,8 @@ Source and signal must be provided together:
 | Strategy or pattern | `--source strategy --signal pattern` |
 | Inferred lesson | `--source insight --signal inference` |
 
-`--sessionId` requires `--projectId` or `MEMORI_PROJECT_ID`.
+`MEMORI_PROJECT_ID` (from `.env`) is the default project for every command.
+Pass `--projectId` only when overriding it for a specific call.
 
 ## Advanced Augmentation
 

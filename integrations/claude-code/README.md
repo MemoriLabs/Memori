@@ -30,12 +30,16 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 
 ## Configuration
 
-Set these environment variables before launching Claude Code:
+Copy `.env.example` to `.env` and fill in your values:
 
 ```bash
-export MEMORI_API_KEY=your_memori_api_key
-export MEMORI_ENTITY_ID=your_entity_id
-export MEMORI_PROJECT_ID=your_default_project_id   # optional
+cp .env.example .env
+```
+
+```bash
+MEMORI_API_KEY=your_memori_api_key
+MEMORI_ENTITY_ID=your_entity_id
+MEMORI_PROJECT_ID=your_default_project_id
 ```
 
 Put them in your shell profile, a tool like `direnv`, or a project-local `.env` file. If you use `.env`, invoke the CLI with `bun --env-file=.env ...` (Claude Code itself does not auto-load `.env`).
@@ -44,7 +48,7 @@ Put them in your shell profile, a tool like `direnv`, or a project-local `.env` 
 |---|---|---|
 | `MEMORI_API_KEY` | yes | Authenticates to Memori Cloud |
 | `MEMORI_ENTITY_ID` | yes | Per-user / per-agent memory namespace |
-| `MEMORI_PROJECT_ID` | no | Default project scope; can be overridden per call with `--projectId` |
+| `MEMORI_PROJECT_ID` | yes | Default project scope; can be overridden per call with `--projectId` |
 
 ## How the skill is used
 
