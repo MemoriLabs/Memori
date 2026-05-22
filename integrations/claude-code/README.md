@@ -48,9 +48,9 @@ That's the full required setup. `MEMORI_PROJECT_ID` auto-resolves from the curre
 | Variable | Required | Purpose |
 |---|---|---|
 | `MEMORI_API_KEY` | yes | Authenticates to Memori Cloud. |
-| `MEMORI_ENTITY_ID` | yes | Stable per-user / per-agent memory namespace. Any string. If missing, Claude Code is instructed by `SKILL.md` to pick a sensible default (slugified `git user.email`, hostname, or a UUID) and persist it to `.claude/settings.local.json`. If no default can be inferred, the agent asks the user. |
+| `MEMORI_ENTITY_ID` | yes | Stable per-user / per-agent memory namespace. Any string. If missing, `SKILL.md` directs Claude Code to pick a sensible default (the machine hostname, or a generated UUID) and persist it to `.claude/settings.local.json`. The agent only asks the user when no default can be inferred. |
 | `MEMORI_PROJECT_ID` | no | Defaults to `basename($CLAUDE_PROJECT_DIR)` (the Claude Code workspace folder name). Override per call with `--projectId`, or pin it by adding it to the `env` block. |
-| `MEMORI_SESSION_ID` | no | Used by `advanced-augmentation` (write) and `compaction` (restore current session). Defaults to `$CLAUDE_CODE_SESSION_ID` (resets on `/clear`). **Not** auto-applied to `recall` / `recall.summary` — those stay project-scoped unless `--sessionId` is passed. Override per call with `--sessionId`, or pin it in the `env` block. |
+| `MEMORI_SESSION_ID` | no | Used by `advanced-augmentation` (write) and `compaction` (restores the current session). Defaults to `$CLAUDE_CODE_SESSION_ID` (resets on `/clear`). **Not** auto-applied to `recall` / `recall.summary` — those stay project-scoped unless `--sessionId` is passed. Override per call with `--sessionId`, or pin it in the `env` block. |
 | `MEMORI_PROCESS_ID` | no | Process attribution for `advanced-augmentation`. |
 
 ### Alternative: shell env or `.env` file
@@ -85,7 +85,7 @@ bun .claude/skills/memori/index.ts <command> [--flag value ...]
 | `recall` | Targeted retrieval. Use with `--source` and `--signal` (see source/signal table in `SKILL.md`). |
 | `recall.summary` | Broad session summary / orientation. |
 | `advanced-augmentation` | Record a user/assistant turn. Required: `--userMessage`, `--assistantMessage`. Optional: `--sessionId` (defaults to `$CLAUDE_CODE_SESSION_ID`), `--trace`, `--summary`, `--model`, `--projectId`, `--processId`. |
-| `compaction` | Replace lost context after Claude Code compaction. Uses the same project/session defaults. |
+| `compaction` | Restore context after Claude Code compaction. Defaults to the current workspace and session; override with `--projectId` / `--sessionId`. |
 | `feedback` | Send free-form feedback. `--content "..."` |
 | `quota` | Show remaining quota for the API key. |
 | `signup` | Create a new account. `--email user@example.com` |
@@ -107,7 +107,7 @@ Each entry requires `name` (string), `args` (object), and `result` (any — key 
 ## Troubleshooting
 
 - **`MEMORI_API_KEY is required`** — credentials not in the environment. Add `MEMORI_API_KEY` to the `env` block of `.claude/settings.local.json`, export it in your shell, or place it in a `.env` file next to `index.ts`.
-- **`MEMORI_ENTITY_ID is required`** — namespace not configured. Add `MEMORI_ENTITY_ID` to the `env` block of `.claude/settings.local.json` with any stable string (e.g. hostname, or a UUID). Claude Code reads `SKILL.md` and is instructed to do this automatically on first failure if it can infer a value.
+- **`MEMORI_ENTITY_ID is required`** — namespace not configured. Add `MEMORI_ENTITY_ID` to the `env` block of `.claude/settings.local.json` with any stable string (e.g. the machine hostname, or a generated UUID). On first failure, `SKILL.md` directs Claude Code to do this automatically when a sensible value can be inferred.
 - **`MEMORI_PROJECT_ID could not be resolved`** — neither `MEMORI_PROJECT_ID` nor `CLAUDE_PROJECT_DIR` was set. Pass `--projectId`, set it in the `env` block, or run from inside a Claude Code workspace.
 - **Claude prompts on every Bash call** — confirm `Bash(bun *)` and `Skill(memori)` are in your `settings.local.json` / `settings.json`.
 - **Skill never fires** — confirm Claude Code can see it: `claude` → `/skills` should list `memori`.

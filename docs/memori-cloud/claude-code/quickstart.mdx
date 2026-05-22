@@ -11,7 +11,7 @@ Add structured, persistent memory to Claude Code in three steps.
 
 - [Bun](https://bun.sh) — `curl -fsSL https://bun.sh/install | bash`
 - [Claude Code](https://claude.ai/code)
-- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+- A Memori API Key which is available via the memori signup command/tool.
 
 ## 1. Install the Skill
 
@@ -92,14 +92,14 @@ bun .claude/skills/memori/index.ts <command> [--flag value ...]
 | `compaction` | Restore context after Claude Code compaction. Defaults to the current workspace and session; override with `--projectId` / `--sessionId`. |
 | `feedback` | Send free-form feedback. `--content "..."` |
 | `quota` | Show remaining quota for the API key. |
-| `signup` | Create a new account. `--email user@example.com` |
+| `signup` | Create a new account and acquire an API key. `--email user@example.com` |
 
 Flags accept both `--flag value` and `--flag=value`. On success, commands print JSON to stdout and exit 0. On failure, they print to stderr and exit 1.
 
 ## Troubleshooting
 
 - **`MEMORI_API_KEY is required`** — credentials not in the environment. Add `MEMORI_API_KEY` to the `env` block of `.claude/settings.local.json`, export it in your shell, or place it in a `.env` file next to `index.ts`.
-- **`MEMORI_ENTITY_ID is required`** — namespace not configured. Add `MEMORI_ENTITY_ID` to the `env` block of `.claude/settings.local.json` with any stable string (e.g. slugified `git config user.email`, hostname, or a UUID). On first failure Claude Code is instructed by `SKILL.md` to do this automatically when it can infer a value.
+- **`MEMORI_ENTITY_ID is required`** — namespace not configured. Add `MEMORI_ENTITY_ID` to the `env` block of `.claude/settings.local.json` with any stable string (e.g. slugified `git config user.email`, the machine hostname, or a generated UUID). On first failure, `SKILL.md` directs Claude Code to do this automatically when a sensible value can be inferred.
 - **`MEMORI_PROJECT_ID could not be resolved`** — neither `MEMORI_PROJECT_ID` nor `CLAUDE_PROJECT_DIR` was set. Pass `--projectId`, set it in the `env` block, or run from inside a Claude Code workspace.
 - **Claude prompts on every Bash call** — add `Bash(bun *)` and `Skill(memori)` to your `settings.local.json`.
 - **Skill never fires** — confirm Claude Code can see it: `/skills` should list `memori`.
