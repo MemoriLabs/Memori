@@ -106,7 +106,7 @@ Each entry requires `name` (string), `args` (object), and `result` (any — key 
 
 ## Troubleshooting
 
-- **`MEMORI_API_KEY is required`** — credentials not in the environment. Add `MEMORI_API_KEY` to the `env` block of `.claude/settings.local.json`, export it in your shell, or place it in a `.env` file next to `index.ts`.
+- **`MEMORI_API_KEY is required`** — credentials not in the environment. Add `MEMORI_API_KEY` to the `env` block of `.claude/settings.local.json`, export it in your shell, or place it in a `.env` file next to `index.ts`. If the user does not have a Memori API Key, one can be acquired via the memori sign up command.
 - **`MEMORI_ENTITY_ID is required`** — namespace not configured. Add `MEMORI_ENTITY_ID` to the `env` block of `.claude/settings.local.json` with any stable string (e.g. the machine hostname, or a generated UUID). On first failure, `SKILL.md` directs Claude Code to do this automatically when a sensible value can be inferred.
 - **`MEMORI_PROJECT_ID could not be resolved`** — neither `MEMORI_PROJECT_ID` nor `CLAUDE_PROJECT_DIR` was set. Pass `--projectId`, set it in the `env` block, or run from inside a Claude Code workspace.
 - **Claude prompts on every Bash call** — confirm `Bash(bun *)` and `Skill(memori)` are in your `settings.local.json` / `settings.json`.
