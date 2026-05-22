@@ -7,14 +7,22 @@
  *
  *   bun .claude/skills/memori/index.ts recall [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO] [--source SOURCE --signal SIGNAL]
  *   bun .claude/skills/memori/index.ts recall.summary [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO]
- *   bun .claude/skills/memori/index.ts advanced-augmentation --sessionId ID --userMessage "..." --assistantMessage "..." [--projectId ID] [--model MODEL] [--summary "..."] [--trace '{"tools":[]}']
+ *   bun .claude/skills/memori/index.ts advanced-augmentation --userMessage "..." --assistantMessage "..." [--sessionId ID] [--projectId ID] [--model MODEL] [--summary "..."] [--trace '{"tools":[]}']
  *   bun .claude/skills/memori/index.ts compaction [--projectId ID] [--sessionId ID] [--numMessages 5]
  *   bun .claude/skills/memori/index.ts feedback --content "..."
  *   bun .claude/skills/memori/index.ts quota
  *   bun .claude/skills/memori/index.ts signup --email user@example.com
  *
- * MEMORI_API_KEY, MEMORI_ENTITY_ID, and MEMORI_PROJECT_ID are required.
- * --projectId can override MEMORI_PROJECT_ID per call.
+ * Configuration (set in .claude/settings.local.json under "env", or as real
+ * environment variables; a colocated .env file is also loaded as a fallback):
+ *
+ *   MEMORI_API_KEY    (required) Memori Cloud API key
+ *   MEMORI_ENTITY_ID  (required) stable per-user/agent namespace string
+ *   MEMORI_PROJECT_ID (optional) defaults to basename($CLAUDE_PROJECT_DIR)
+ *   MEMORI_SESSION_ID (optional) defaults to $CLAUDE_CODE_SESSION_ID
+ *   MEMORI_PROCESS_ID (optional) process attribution
+ *
+ * --projectId and --sessionId override the defaults per call.
  *
  * On success: exits 0 and prints JSON to stdout.
  * On failure: exits 1 and prints error to stderr.
@@ -59,9 +67,26 @@ try {
   // Non-fatal: fall through to env-var validation below.
 }
 
+function basename(path: string): string {
+  const trimmed = path.replace(/[/\\]+$/, "");
+  const lastSlash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  return lastSlash >= 0 ? trimmed.slice(lastSlash + 1) : trimmed;
+}
+
 const API_KEY = process.env.MEMORI_API_KEY;
 const ENTITY_ID = process.env.MEMORI_ENTITY_ID;
-const DEFAULT_PROJECT_ID = process.env.MEMORI_PROJECT_ID;
+
+// Dynamic defaults from Claude Code's auto-injected subprocess env.
+// CLAUDE_PROJECT_DIR -> default Memori project ID (basename of workspace).
+// CLAUDE_CODE_SESSION_ID -> default Memori session ID (resets on /clear).
+const CLAUDE_PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR;
+const CLAUDE_SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID;
+
+const DEFAULT_PROJECT_ID =
+  process.env.MEMORI_PROJECT_ID ??
+  (CLAUDE_PROJECT_DIR ? basename(CLAUDE_PROJECT_DIR) : undefined);
+
+const DEFAULT_SESSION_ID = process.env.MEMORI_SESSION_ID ?? CLAUDE_SESSION_ID;
 
 const BASE_URL = "https://api.memorilabs.ai/v1";
 const COLLECTOR_URL = "https://collector.memorilabs.ai/v1";
@@ -141,7 +166,13 @@ function requireApiKey(): string {
 
 function requireEntityId(): string {
   if (!ENTITY_ID) {
-    console.error("MEMORI_ENTITY_ID is required");
+    console.error(
+      "MEMORI_ENTITY_ID is required. Pick any stable string that namespaces " +
+        "memory for this user/agent (e.g. " +
+        "hostname, or a generated UUID), then add it to " +
+        '.claude/settings.local.json: { "env": { "MEMORI_ENTITY_ID": "<value>" } }. ' +
+        "If no sensible default is available, ask the user."
+    );
     process.exit(1);
   }
   return ENTITY_ID;
@@ -151,11 +182,33 @@ function requireProjectId(flags: Record<string, string>): string {
   const projectId = flags.projectId ?? DEFAULT_PROJECT_ID;
   if (!projectId) {
     console.error(
-      "MEMORI_PROJECT_ID is required (set in .env or pass --projectId)"
+      "MEMORI_PROJECT_ID could not be resolved. It normally defaults to " +
+        "basename($CLAUDE_PROJECT_DIR). Pass --projectId, or set MEMORI_PROJECT_ID " +
+        "in .claude/settings.local.json under env."
     );
     process.exit(1);
   }
   return projectId;
+}
+
+function resolveSessionId(flags: Record<string, string>): string | undefined {
+  return flags.sessionId ?? DEFAULT_SESSION_ID;
+}
+
+function requireSessionId(
+  flags: Record<string, string>,
+  command: string
+): string {
+  const sessionId = resolveSessionId(flags);
+  if (!sessionId) {
+    console.error(
+      `${command} requires a session ID. It normally defaults to ` +
+        "$CLAUDE_CODE_SESSION_ID. Pass --sessionId, or set MEMORI_SESSION_ID " +
+        "in .claude/settings.local.json under env."
+    );
+    process.exit(1);
+  }
+  return sessionId;
 }
 
 function parseArgs(argv: string[]): {
@@ -266,7 +319,7 @@ async function recall(flags: Record<string, string>): Promise<unknown> {
   const qs = buildQS({
     entity_id: entityId,
     project_id: projectId,
-    session_id: flags.sessionId,
+    session_id: resolveSessionId(flags),
     date_start: flags.dateStart,
     date_end: flags.dateEnd,
     source,
@@ -282,7 +335,7 @@ async function recallSummary(flags: Record<string, string>): Promise<unknown> {
 
   const qs = buildQS({
     project_id: projectId,
-    session_id: flags.sessionId,
+    session_id: resolveSessionId(flags),
     date_start: flags.dateStart,
     date_end: flags.dateEnd,
   });
@@ -296,17 +349,18 @@ async function advancedAugmentation(
   requireApiKey();
   const entityId = requireEntityId();
   const projectId = requireProjectId(flags);
-  const { sessionId, userMessage, assistantMessage, model, summary } = flags;
+  const { userMessage, assistantMessage, model, summary } = flags;
   const processId = flags.processId ?? process.env.MEMORI_PROCESS_ID;
   const trace = parseTraceFlag(flags.trace);
 
   requireFlags(
     flags,
     "advanced-augmentation",
-    "sessionId",
     "userMessage",
     "assistantMessage"
   );
+
+  const sessionId = requireSessionId(flags, "advanced-augmentation");
 
   const attribution = {
     entity: { id: entityId },
@@ -371,7 +425,7 @@ async function compaction(flags: Record<string, string>): Promise<unknown> {
 
   const qs = buildQS({
     project_id: projectId,
-    session_id: flags.sessionId,
+    session_id: resolveSessionId(flags),
     num_messages: flags.numMessages,
   });
 

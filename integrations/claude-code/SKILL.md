@@ -37,29 +37,49 @@ Flags accept `--flag value` or `--flag=value`.
 
 ## Setup
 
-Required configured values:
+Configure credentials in `.claude/settings.local.json` (per-project, not
+checked into source control). Claude Code injects everything under `env`
+into every Bash subprocess, including this skill:
 
-- `MEMORI_API_KEY`
-- `MEMORI_ENTITY_ID`
-- `MEMORI_PROJECT_ID`
+```json
+{
+  "env": {
+    "MEMORI_API_KEY": "your_memori_api_key",
+    "MEMORI_ENTITY_ID": "stable_identifier_for_this_user"
+  }
+}
+```
 
-These are not examples if present in `.env`; they are the active runtime
-config.
+Required:
 
-Place `.env` next to `index.ts` (loads regardless of cwd, including global
-installs at `~/.claude/skills/memori/`) or in the project root. Real
-environment variables override either `.env`.
+- `MEMORI_API_KEY` — Memori Cloud API key.
+- `MEMORI_ENTITY_ID` — any stable string that namespaces memory for this
+  user/agent. If it is missing on the first command, pick a sensible default
+  yourself (the machine hostname, or a generated UUID), write it to `.claude/settings.local.json` so it persists,
+  and continue. If no sensible default can be inferred, ask the user.
 
-`MEMORI_PROJECT_ID` is the default project for every command; pass
-`--projectId` only to override it for a specific call. `MEMORI_PROCESS_ID` is
-optional process attribution.
+Auto-resolved (no setup required, override with flags or env if needed):
+
+- `MEMORI_PROJECT_ID` — defaults to `basename($CLAUDE_PROJECT_DIR)`, the
+  Claude Code workspace folder name. Override per call with `--projectId`,
+  or pin it by adding `MEMORI_PROJECT_ID` to the `env` block.
+- `MEMORI_SESSION_ID` — defaults to `$CLAUDE_CODE_SESSION_ID`, the current
+  Claude Code session (resets on `/clear`). Override per call with
+  `--sessionId`, or pin it by adding `MEMORI_SESSION_ID` to the `env` block.
+
+Optional:
+
+- `MEMORI_PROCESS_ID` — process attribution for `advanced-augmentation`.
+
+A colocated `.env` file next to `index.ts` is loaded as a fallback when
+`settings.local.json` is not used.
 
 ## Commands
 
 ```bash
 bun .claude/skills/memori/index.ts recall [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO] [--source SOURCE --signal SIGNAL]
 bun .claude/skills/memori/index.ts recall.summary [--projectId ID] [--sessionId ID] [--dateStart ISO] [--dateEnd ISO]
-bun .claude/skills/memori/index.ts advanced-augmentation --sessionId ID --userMessage "$USER_MESSAGE" --assistantMessage "$ASSISTANT_MESSAGE" [--projectId ID] [--model MODEL] [--summary "$SUMMARY"] [--trace "$TRACE_JSON"] [--processId ID]
+bun .claude/skills/memori/index.ts advanced-augmentation --userMessage "$USER_MESSAGE" --assistantMessage "$ASSISTANT_MESSAGE" [--sessionId ID] [--projectId ID] [--model MODEL] [--summary "$SUMMARY"] [--trace "$TRACE_JSON"] [--processId ID]
 bun .claude/skills/memori/index.ts compaction [--projectId ID] [--sessionId ID] [--numMessages 5]
 bun .claude/skills/memori/index.ts feedback --content "feedback text"
 bun .claude/skills/memori/index.ts quota
@@ -122,11 +142,13 @@ Run after drafting the final assistant response for every non-trivial turn:
 
 ```bash
 bun .claude/skills/memori/index.ts advanced-augmentation \
-  --sessionId "$SESSION_ID" \
   --userMessage "$USER_MESSAGE" \
   --assistantMessage "$ASSISTANT_MESSAGE" \
   --trace "$TRACE_JSON"
 ```
+
+`--sessionId` defaults to `$CLAUDE_CODE_SESSION_ID`; pass it explicitly only
+when correlating with a session other than the current Claude Code one.
 
 Trace is JSON shaped like `{ "tools": [...] }`. If omitted, the CLI sends
 `{ "tools": [] }`. Each tool entry must include:

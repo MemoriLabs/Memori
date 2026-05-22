@@ -21,7 +21,7 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 
 - [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code/setup)
-- A Memori Cloud account with an API key, entity ID, and project ID
+- A Memori Cloud account with an API key
 
 ## Install
 
@@ -30,25 +30,37 @@ This folder is a reference implementation. The skill is just two files (`SKILL.m
 
 ## Configuration
 
-Copy `.env.example` to `.env` and fill in your values:
-
-```bash
-cp .env.example .env
+The recommended setup is `.claude/settings.local.json` — Claude Code injects every entry under `env` into the environment of every Bash subprocess, including this skill, and Claude Code auto-gitignores this file when it creates it.
+${workspaceFolderBasename}",
+        "X-Memori-Process-Id": "${workspaceFolderBasename}"
+```jsonc
+// .claude/settings.local.json
+{
+  "env": {
+    "MEMORI_API_KEY": "your_memori_api_key",
+    "MEMORI_ENTITY_ID": "stable_identifier_for_this_user"
+  }
+}
 ```
 
-```bash
-MEMORI_API_KEY=your_memori_api_key
-MEMORI_ENTITY_ID=your_entity_id
-MEMORI_PROJECT_ID=your_default_project_id
-```
-
-Put them in your shell profile, a tool like `direnv`, or a project-local `.env` file. If you use `.env`, invoke the CLI with `bun --env-file=.env ...` (Claude Code itself does not auto-load `.env`).
+That's the full required setup. Project ID and session ID auto-resolve from Claude Code's own runtime context, so they don't need to be configured.
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `MEMORI_API_KEY` | yes | Authenticates to Memori Cloud |
-| `MEMORI_ENTITY_ID` | yes | Per-user / per-agent memory namespace |
-| `MEMORI_PROJECT_ID` | yes | Default project scope; can be overridden per call with `--projectId` |
+| `MEMORI_API_KEY` | yes | Authenticates to Memori Cloud. |
+| `MEMORI_ENTITY_ID` | yes | Stable per-user / per-agent memory namespace. Any string. If missing, Claude Code is instructed by `SKILL.md` to pick a sensible default (hostname, or a UUID) and persist it to `.claude/settings.local.json`. If no default can be inferred, the agent asks the user. |
+| `MEMORI_PROJECT_ID` | no | Defaults to `basename($CLAUDE_PROJECT_DIR)` (the Claude Code workspace folder name). Override per call with `--projectId`, or pin it by adding it to the `env` block. |
+| `MEMORI_SESSION_ID` | no | Defaults to `$CLAUDE_CODE_SESSION_ID` (the current Claude Code session; resets on `/clear`). Override per call with `--sessionId`, or pin it by adding it to the `env` block. |
+| `MEMORI_PROCESS_ID` | no | Process attribution for `advanced-augmentation`. |
+
+### Alternative: shell env or `.env` file
+
+If you prefer not to use `settings.local.json`, the skill also reads from:
+
+1. Real environment variables exported in your shell, shell profile, or `direnv`.
+2. A `.env` file colocated next to `index.ts` (works regardless of cwd, including global installs at `~/.claude/skills/memori/`). Copy `.env.example` to `.env` and fill in the values.
+
+Precedence (highest wins): per-call `--flag` → real env var → `.env` file. `MEMORI_PROJECT_ID` and `MEMORI_SESSION_ID` fall through to the Claude Code defaults when none of the above are set.
 
 ## How the skill is used
 
@@ -72,8 +84,8 @@ bun .claude/skills/memori/index.ts <command> [--flag value ...]
 |---|---|
 | `recall` | Targeted retrieval. Use with `--source` and `--signal` (see source/signal table in `SKILL.md`). |
 | `recall.summary` | Broad session summary / orientation. |
-| `advanced-augmentation` | Record a user/assistant turn. Required: `--sessionId`, `--userMessage`, `--assistantMessage`. Optional: `--trace`, `--summary`, `--model`, `--projectId`, `--processId`. |
-| `compaction` | Replace lost context after Claude Code compaction. Requires `--projectId` (or env). |
+| `advanced-augmentation` | Record a user/assistant turn. Required: `--userMessage`, `--assistantMessage`. Optional: `--sessionId` (defaults to `$CLAUDE_CODE_SESSION_ID`), `--trace`, `--summary`, `--model`, `--projectId`, `--processId`. |
+| `compaction` | Replace lost context after Claude Code compaction. Uses the same project/session defaults. |
 | `feedback` | Send free-form feedback. `--content "..."` |
 | `quota` | Show remaining quota for the API key. |
 | `signup` | Create a new account. `--email user@example.com` |
@@ -94,8 +106,9 @@ Each entry requires `name` (string), `args` (object), and `result` (any — key 
 
 ## Troubleshooting
 
-- **`MEMORI_API_KEY is required`** — credentials not in the environment. Export the variables in your shell or invoke the CLI with `bun --env-file=.env ...`.
-- **`MEMORI_PROJECT_ID is required (set in .env or pass --projectId)`** — set `MEMORI_PROJECT_ID` in `.env` or pass `--projectId` on the command.
+- **`MEMORI_API_KEY is required`** — credentials not in the environment. Add `MEMORI_API_KEY` to the `env` block of `.claude/settings.local.json`, export it in your shell, or place it in a `.env` file next to `index.ts`.
+- **`MEMORI_ENTITY_ID is required`** — namespace not configured. Add `MEMORI_ENTITY_ID` to the `env` block of `.claude/settings.local.json` with any stable string (e.g. hostname, or a UUID). Claude Code reads `SKILL.md` and is instructed to do this automatically on first failure if it can infer a value.
+- **`MEMORI_PROJECT_ID could not be resolved`** — neither `MEMORI_PROJECT_ID` nor `CLAUDE_PROJECT_DIR` was set. Pass `--projectId`, set it in the `env` block, or run from inside a Claude Code workspace.
 - **Claude prompts on every Bash call** — confirm `Bash(bun *)` and `Skill(memori)` are in your `settings.local.json` / `settings.json`.
 - **Skill never fires** — confirm Claude Code can see it: `claude` → `/skills` should list `memori`.
 
