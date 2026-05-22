@@ -14,7 +14,7 @@ description: >
   the final response for every non-trivial turn, as the last memory step. Use
   recall.summary only for broad session summaries/orientation, compaction
   after context loss, feedback for memory quality, quota for limits, and
-  signup only when explicitly requested or when you need a Memori API key.
+  signup only when explicitly requested.
 argument-hint: '<command> [--flags ...]'
 allowed-tools: Bash
 ---
