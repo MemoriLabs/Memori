@@ -101,7 +101,7 @@ Alternatively, configure it directly via JSON:
 
 ### Configuration Options
 
-- **apiKey** (required): Your Memori API key from [memorilabs.ai](https://app.memorilabs.ai/signup)
+- **apiKey** (required): Memori API key — acquire with `memori signup`
 - **entityId** (required): Unique identifier for this user's memories
 - **projectId** (required): Scopes all memories to a specific project or workspace
 

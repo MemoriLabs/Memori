@@ -10,7 +10,7 @@ Get a structured, long-term memory system running in your OpenClaw gateway in th
 ## Prerequisites
 
 - [OpenClaw](https://openclaw.ai) `v2026.3.2` or later
-- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+- Memori API key — acquire with `memori signup`
 - An Entity ID to scope memory to a specific user, agent, or system
 - A Project ID to scope memory to a specific project or workspace
 
@@ -70,13 +70,13 @@ Add the following to `~/.openclaw/openclaw.json`:
 
 <Properties>
   <Property name="apiKey" type="string" required>
-    Your Memori API key, available from [app.memorilabs.ai](https://app.memorilabs.ai).
+    Your Memori API key — acquire with `memori signup`.
   </Property>
   <Property name="entityId" type="string" required>
-    A unique identifier for the entity (user, agent, or tenant) to attribute memories to.
+    A unique identifier for the entity (user, agent, or tenant) to attribute memories to. This scopes memory storage to a specific user, application, or system.
   </Property>
   <Property name="projectId" type="string" required>
-    A project or workspace ID used to scope all extracted facts and summaries.
+    A project or workspace ID used to scope all extracted facts and summaries. This isolates memory within a particular project or workspace boundary.
   </Property>
 </Properties>
 
