@@ -26,6 +26,39 @@ declare const process: {
   argv: string[];
 };
 
+declare const Bun: {
+  file(input: string | URL): {
+    exists(): Promise<boolean>;
+    text(): Promise<string>;
+  };
+};
+
+// Load colocated .env so the skill works regardless of cwd.
+// Real env vars and Bun's cwd-.env loading both take precedence.
+try {
+  const envFile = Bun.file(new URL("./.env", import.meta.url));
+  if (await envFile.exists()) {
+    const text = await envFile.text();
+    for (const rawLine of text.split("\n")) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq === -1) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (process.env[key] == null) process.env[key] = value;
+    }
+  }
+} catch {
+  // Non-fatal: fall through to env-var validation below.
+}
+
 const API_KEY = process.env.MEMORI_API_KEY;
 const ENTITY_ID = process.env.MEMORI_ENTITY_ID;
 const DEFAULT_PROJECT_ID = process.env.MEMORI_PROJECT_ID;

@@ -46,6 +46,10 @@ Required configured values:
 These are not examples if present in `.env`; they are the active runtime
 config.
 
+Place `.env` next to `index.ts` (loads regardless of cwd, including global
+installs at `~/.claude/skills/memori/`) or in the project root. Real
+environment variables override either `.env`.
+
 `MEMORI_PROJECT_ID` is the default project for every command; pass
 `--projectId` only to override it for a specific call. `MEMORI_PROCESS_ID` is
 optional process attribution.
