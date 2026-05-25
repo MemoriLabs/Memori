@@ -1,10 +1,17 @@
 # Memori skills file
 
+## Overview
+
 You have access to Memori, agent-native memory infrastructure: an LLM-agnostic layer that structures memory from not just natural language, but also from agent trace that comes from execution.
 
 Memori automatically captures and structures memory from conversation and execution trace — including the agent's actions, tool results, decisions, and outcomes — and allows you to retrieve it on demand. Use it to maintain continuity across sessions, preserve decisions and constraints, and help the agent understand what it actually did so the next time it completes a task, it is more accurate and efficient.
 
----
+## Prerequisites
+
+- OpenClaw v2026.3.2+
+- Memori API key — acquire with `memori signup`
+- `entityId` — scopes memory to a user, agent, or system
+- `projectId` — scopes memory to a project or workspace
 
 ## Core instruction
 
@@ -18,7 +25,6 @@ Use it to understand:
 
 Treat `SKILL.md` as a source of truth for what you can do before taking action.
 
----
 
 ## Quick Reference
 
@@ -29,7 +35,6 @@ Treat `SKILL.md` as a source of truth for what you can do before taking action.
 - `memori_signup`: create a Memori account or request an API key when the user explicitly asks.
 - `memori_quota`: check usage, quota, storage, or memory capacity when the user asks or limits appear to be reached.
 
----
 
 ## When to use Memori
 
@@ -41,7 +46,6 @@ Use Memori when:
 - You are starting a session and need current state
 - You want to understand what has already been done
 
----
 
 ## When not to use Memori
 
@@ -54,7 +58,6 @@ Do not use Memori when:
 
 Avoid unnecessary recall.
 
----
 
 ## Recall behavior
 
@@ -105,7 +108,6 @@ Use one of the allowed `(source, signal)` pairs to prioritize high-signal memory
 - Expand scope only if needed
 - Do not recall on every turn
 
----
 
 ## Summary behavior
 
@@ -128,7 +130,6 @@ Use:
 
 - No date range → **last 24 hours**
 
----
 
 ## Daily brief behavior
 
@@ -157,7 +158,6 @@ Use the daily brief to understand:
 
 Treat this as the working state of the system.
 
----
 
 ## Typical workflow
 
@@ -166,7 +166,6 @@ Treat this as the working state of the system.
 3. When memory is missing or incorrect → send feedback
 4. When limits are reached → degrade gracefully
 
----
 
 ## Post-compaction briefs are used to restore working state after context compaction.
 
@@ -242,7 +241,6 @@ Pay special attention to:
 
 If the post-compaction brief contains a required output format, follow it exactly unless the user gives a newer instruction.
 
----
 
 ## Safety and correctness
 
@@ -251,13 +249,11 @@ If the post-compaction brief contains a required output format, follow it exactl
 - Verify before acting when needed
 - Treat recent instructions as higher priority than recalled memory
 
----
 
 ## Memori system guidance
 
 This section defines how you should interact with Memori beyond basic recall.
 
----
 
 ### 1. Feedback (`memori_feedback`)
 
@@ -286,7 +282,6 @@ Feedback improves:
 - Recall relevance
 - Summary accuracy
 
----
 
 ### 2. Updates
 
@@ -303,7 +298,6 @@ When an update is detected:
 - Use improved summaries or classification outputs
 - Continue operating normally if no changes are required
 
----
 
 ### 3. Account Creation and Onboarding (`memori_signup`)
 
@@ -321,7 +315,6 @@ Use this tool when:
 - **Follow-up:** The tool will trigger the underlying CLI and return a success or error message. Relay that message to the user, remind them to check their inbox for the API key, and instruct them to add it to their configuration (`~/.openclaw/openclaw.json` or `.env` file).
 - **Troubleshooting Errors:** If the tool fails with a `Permission denied`, `EACCES`, or `command not found` error, do not ask the user for permission to troubleshoot. Instead, immediately tell them that their CLI installation is broken or missing, and explicitly instruct them to run `npm install -g @memorilabs/memori` in their terminal to fix it.
 
----
 
 ### 4. Quota Awareness and Upgrades (`memori_quota`)
 
@@ -361,4 +354,3 @@ Example:
 - Avoid repetitive or disruptive messaging
 - Keep messaging neutral and helpful
 
----

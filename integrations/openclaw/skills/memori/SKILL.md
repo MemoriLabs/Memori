@@ -6,6 +6,17 @@ Memori automatically captures and structures memory from conversation and execut
 
 ---
 
+## Quick reference
+
+- `memori_recall`: retrieve precise memories by query, project, session, time range, or an allowed source/signal pair.
+- `memori_recall_summary`: retrieve a state summary for session starts, daily briefs, or broad status checks.
+- `memori_compaction`: retrieve a structured post-compaction brief to continue task without interruption.
+- `memori_feedback`: report irrelevant, missing, stale, or especially useful memory behavior.
+- `memori_signup`: create a Memori account or request an API key when the user explicitly asks.
+- `memori_quota`: check usage, quota, storage, or memory capacity when the user asks or limits appear to be reached.
+
+---
+
 ## Core instruction
 
 At the start of a session, you should check the `SKILL.md` file
