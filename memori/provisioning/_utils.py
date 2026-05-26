@@ -9,6 +9,11 @@ from memori._exceptions import MissingPyMySQLError
 DEFAULT_MYSQL_DATABASE = "memori"
 
 
+def mysql_tls_connect_args() -> dict[str, Any]:
+    # PyMySQL treats ssl={} as disabled, so keep the TLS config truthy.
+    return {"ssl": {"verify_mode": "required"}}
+
+
 def redact_dsn(dsn: str) -> str:
     parsed = urlparse(dsn)
     if not parsed.scheme or not parsed.netloc:
@@ -45,6 +50,8 @@ def mysql_connection_factory(
 
     kwargs = _mysql_kwargs_from_dsn(dsn)
     kwargs.update(connect_args or {})
+    if kwargs.get("ssl") == {}:
+        kwargs.update(mysql_tls_connect_args())
     bootstrap_database = None
     if not kwargs.get("database"):
         kwargs.pop("database", None)
@@ -79,7 +86,7 @@ def _mysql_kwargs_from_dsn(dsn: str) -> dict[str, Any]:
     query = parse_qs(parsed.query, keep_blank_values=True)
     ssl_mode = _first(query, "ssl-mode") or _first(query, "sslmode")
     if ssl_mode is not None and ssl_mode.lower() not in {"disable", "disabled"}:
-        kwargs["ssl"] = {}
+        kwargs.update(mysql_tls_connect_args())
 
     charset = _first(query, "charset")
     if charset:

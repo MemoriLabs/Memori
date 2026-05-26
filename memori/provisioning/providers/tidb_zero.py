@@ -7,6 +7,7 @@ import requests
 
 from memori.provisioning._models import ProvisionResult
 from memori.provisioning._registry import Registry
+from memori.provisioning._utils import mysql_tls_connect_args
 
 DEFAULT_TIDB_ZERO_URL = "https://zero.tidbapi.com/v1beta1/instances"
 
@@ -53,7 +54,7 @@ def parse_tidb_zero_response(data: dict[str, Any]) -> ProvisionResult:
         provider="tidb-zero",
         family="mysql",
         dsn=dsn,
-        connect_args={"ssl": {}},
+        connect_args=mysql_tls_connect_args(),
         claim_url=claim_url if isinstance(claim_url, str) else None,
         expires_at=expires_at if isinstance(expires_at, str) else None,
         metadata={

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from memori.provisioning._models import ProvisionResult
+from memori.provisioning._utils import mysql_tls_connect_args
 from memori.provisioning.providers.tidb_zero import parse_tidb_zero_response
 
 
@@ -21,7 +22,7 @@ def test_parse_tidb_zero_response_full_payload():
         provider="tidb-zero",
         family="mysql",
         dsn="mysql://user:pass@example.tidbcloud.com/db",
-        connect_args={"ssl": {}},
+        connect_args=mysql_tls_connect_args(),
         claim_url="https://tidbcloud.com/tidbs/claim/abc",
         expires_at="2026-06-01T00:00:00Z",
         metadata={
@@ -58,7 +59,8 @@ def test_parse_tidb_zero_response_missing_optional_claim_and_expiry():
 
     assert result.provider == "tidb-zero"
     assert result.family == "mysql"
-    assert result.connect_args == {"ssl": {}}
+    assert result.connect_args == mysql_tls_connect_args()
+    assert result.connect_args["ssl"]
     assert result.claim_url is None
     assert result.expires_at is None
 

@@ -1,6 +1,7 @@
 import pytest
 import requests
 
+from memori.provisioning._utils import mysql_tls_connect_args
 from memori.provisioning.providers.tidb_zero import (
     DEFAULT_TIDB_ZERO_URL,
     provision_tidb_zero,
@@ -31,7 +32,8 @@ def test_provision_tidb_zero_posts_to_v1beta1_endpoint(mocker):
     )
     response.raise_for_status.assert_called_once_with()
     assert result.dsn == "mysql://user:secret@example.com/memori"
-    assert result.connect_args == {"ssl": {}}
+    assert result.connect_args == mysql_tls_connect_args()
+    assert result.connect_args["ssl"]
     assert result.claim_url == "https://tidbcloud.com/tidbs/claim/abc"
 
 

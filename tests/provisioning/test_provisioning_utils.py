@@ -5,7 +5,11 @@ from types import SimpleNamespace
 import pytest
 
 from memori._exceptions import MissingPyMySQLError
-from memori.provisioning._utils import mysql_connection_factory, redact_dsn
+from memori.provisioning._utils import (
+    mysql_connection_factory,
+    mysql_tls_connect_args,
+    redact_dsn,
+)
 
 
 class FakeCursor:
@@ -68,7 +72,7 @@ def test_mysql_connection_factory_parses_tidb_dsn(monkeypatch):
             "user": "user",
             "password": "secret",
             "database": "memori",
-            "ssl": {},
+            **mysql_tls_connect_args(),
             "charset": "utf8mb4",
         }
     ]
@@ -98,7 +102,7 @@ def test_mysql_connection_factory_bootstraps_default_database_for_empty_path(
             "port": 4000,
             "user": "user",
             "password": "secret",
-            "ssl": {},
+            **mysql_tls_connect_args(),
         }
     ]
     assert connection.cursor_obj.operations == [
