@@ -63,14 +63,43 @@ def test_provision_tidb_zero_supports_url_override_and_bearer_token(mocker):
     )
 
 
-def test_provision_tidb_zero_propagates_http_errors(mocker):
+def test_provision_tidb_zero_propagates_http_errors_as_runtime_error(mocker):
     response = mocker.Mock()
     response.raise_for_status.side_effect = requests.HTTPError("500")
     mocker.patch(
         "memori.provisioning.providers.tidb_zero.requests.post",
         return_value=response,
     )
-    # TEST
 
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(RuntimeError, match="TiDB Zero API request failed"):
+        provision_tidb_zero()
+
+
+def test_provision_tidb_zero_raises_on_invalid_response(mocker):
+    response = mocker.Mock()
+    response.json.return_value = {"not_instance": True}
+    mocker.patch(
+        "memori.provisioning.providers.tidb_zero.requests.post",
+        return_value=response,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="TiDB Zero API returned invalid response: TiDB Zero response did not include an instance",
+    ):
+        provision_tidb_zero()
+
+
+def test_provision_tidb_zero_raises_on_missing_connection_string(mocker):
+    response = mocker.Mock()
+    response.json.return_value = {"instance": {"connectionString": None}}
+    mocker.patch(
+        "memori.provisioning.providers.tidb_zero.requests.post",
+        return_value=response,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="TiDB Zero API returned invalid response: TiDB Zero response did not include a connection string",
+    ):
         provision_tidb_zero()

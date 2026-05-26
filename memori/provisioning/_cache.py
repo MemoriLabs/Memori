@@ -54,13 +54,25 @@ class ProvisionCache:
 
 
 def cache_key(
-    provider: str, tag: str | None = None, cache_key: str | None = None
+    provider: str,
+    tag: str | None = None,
+    cache_key_override: str | None = None,
+    **kwargs: Any,
 ) -> str:
-    if cache_key:
-        return f"{provider}:{cache_key}"
+    if cache_key_override:
+        return f"{provider}:{cache_key_override}"
+
+    base = provider
     if tag:
-        return f"{provider}:{tag}"
-    return provider
+        base = f"{provider}:{tag}"
+
+    if kwargs:
+        import hashlib
+
+        extras_blob = json.dumps(kwargs, sort_keys=True, default=str)
+        extras_hash = hashlib.sha256(extras_blob.encode()).hexdigest()[:12]
+        return f"{base}:{extras_hash}"
+    return base
 
 
 def default_cache_path() -> Path:

@@ -26,7 +26,7 @@ def get_provision_result(
     cache_key_override: str | None = None,
     **kwargs: Any,
 ) -> ProvisionResult:
-    resolved_cache_key = cache_key(provider, tag, cache_key_override)
+    resolved_cache_key = cache_key(provider, tag, cache_key_override, **kwargs)
     provision_cache = ProvisionCache()
     if cache:
         cached = provision_cache.get(resolved_cache_key)

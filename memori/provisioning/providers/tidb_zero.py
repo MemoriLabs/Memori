@@ -25,14 +25,19 @@ def provision_tidb_zero(
     if resolved_api_key:
         headers["Authorization"] = f"Bearer {resolved_api_key}"
 
-    response = requests.post(
-        url or os.environ.get("MEMORI_TIDB_ZERO_URL") or DEFAULT_TIDB_ZERO_URL,
-        headers=headers,
-        json={"tag": tag},
-        timeout=timeout,
-    )
-    response.raise_for_status()
-    return parse_tidb_zero_response(response.json())
+    try:
+        response = requests.post(
+            url or os.environ.get("MEMORI_TIDB_ZERO_URL") or DEFAULT_TIDB_ZERO_URL,
+            headers=headers,
+            json={"tag": tag},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        return parse_tidb_zero_response(response.json())
+    except requests.RequestException as exc:
+        raise RuntimeError(f"TiDB Zero API request failed: {exc}") from exc
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError(f"TiDB Zero API returned invalid response: {exc}") from exc
 
 
 def parse_tidb_zero_response(data: dict[str, Any]) -> ProvisionResult:

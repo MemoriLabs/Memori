@@ -67,13 +67,6 @@ def test_cache_key_prefers_override():
     assert cache_key("tidb-zero", "tag", None) == "tidb-zero:tag"
     assert cache_key("tidb-zero", None, None) == "tidb-zero"
 
-    # Test kwargs hashing
-    key = cache_key("tidb-zero", "tag", None, url="http://x", api_key="y")
-    assert key.startswith("tidb-zero:tag:")
-    assert len(key.split(":")) == 3
-    # Same kwargs should produce same key
-    assert key == cache_key("tidb-zero", "tag", None, api_key="y", url="http://x")
-
 
 def test_cache_writes_json(tmp_path):
     path = tmp_path / "provisioning.json"

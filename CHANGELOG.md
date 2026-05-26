@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added TiDB Zero provisioning support for BYODB workflows in the Python SDK.
 - Added MCP client setup guidance for project-scoped attribution using workspace-derived values for `X-Memori-Entity-Id` and `X-Memori-Process-Id` to prevent memory mixing across projects. (Refs #404)
 
 ## [3.3.2] - 2026-04-28
