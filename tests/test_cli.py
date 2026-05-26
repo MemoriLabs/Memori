@@ -88,7 +88,8 @@ class TestCliEntrypoint:
         assert "setup" in output
 
     def test_invalid_command_shows_help(self, capsys):
-        self.run_main_with_args(["invalid-command"])
+        exit_code = self.run_main_with_args(["invalid-command"])
+        assert exit_code != 0
         captured = capsys.readouterr()
         output = captured.out.lower()
         assert "usage" in output

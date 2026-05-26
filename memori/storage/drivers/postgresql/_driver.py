@@ -185,6 +185,7 @@ class ConversationMessages(BaseConversationMessages):
                        content
                   FROM memori_conversation_message
                  WHERE conversation_id = %s
+                 ORDER BY id
                 """,
                 (conversation_id,),
             )
