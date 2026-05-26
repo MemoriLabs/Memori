@@ -48,7 +48,6 @@ class MemoriCrewAIAdapter:
                 description = _extract(task_output, "description", "Unknown Task")
                 raw_output = _extract(task_output, "raw", str(task_output))
 
-                message = f"Task completed: {description}\nOutput: {raw_output}"
                 self.client.capture_agent_turn(
                     user_content=description,
                     assistant_content=raw_output,
