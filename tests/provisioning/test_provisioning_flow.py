@@ -33,6 +33,24 @@ def test_get_provision_result_reuses_cache(monkeypatch, tmp_path):
     assert calls == ["tidb-zero"]
 
 
+def test_get_provision_result_cache_disabled_does_not_require_home(monkeypatch):
+    monkeypatch.delenv("HOME", raising=False)
+    monkeypatch.delenv("MEMORI_HOME", raising=False)
+
+    def provider(name, **_kwargs):
+        return ProvisionResult(
+            provider=name,
+            family="mysql",
+            dsn="mysql://user:pass@host/db",
+        )
+
+    monkeypatch.setattr(provisioning, "provision", provider)
+
+    result = get_provision_result(provider="tidb-zero", cache=False)
+
+    assert result.provider == "tidb-zero"
+
+
 def test_get_provision_result_rejects_unsupported_family_before_caching(
     monkeypatch, tmp_path
 ):
