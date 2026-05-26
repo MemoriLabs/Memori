@@ -1,3 +1,4 @@
+from memori.llm.clients.crewai import CrewAIMemory
 from memori.llm.clients.direct import (
     Anthropic,
     Google,
@@ -11,6 +12,7 @@ from memori.llm.clients.frameworks import Agno, LangChain
 __all__ = [
     "Agno",
     "Anthropic",
+    "CrewAIMemory",
     "Google",
     "LangChain",
     "LiteLLM",
