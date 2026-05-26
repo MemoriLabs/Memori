@@ -47,7 +47,7 @@ Install the Memori SDK and your preferred LLM client using your package manager 
 npm install @memorilabs/memori
 ```
 
-_(Memori supports `openai`, `@anthropic-ai/sdk`, and `@google/genai` as peer dependencies. Requires Node.js 18 or higher.)_
+_(Memori supports `openai`, `@anthropic-ai/sdk`, and `@google/genai` as peer dependencies. Requires Node.js 20.12.0 or higher.)_
 
 ## Quickstart
 
@@ -211,6 +211,8 @@ Once you've obtained an API key, set the following environment variable:
 ```bash
 export MEMORI_API_KEY=[api_key]
 ```
+
+The Memori CLI uses your exported environment first, then fills missing values from a `.env` file in the directory where you run the command.
 
 ## Sign Up and Managing Your Quota
 

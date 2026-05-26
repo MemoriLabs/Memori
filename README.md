@@ -317,6 +317,8 @@ Once you've obtained an API key, set the following environment variable (used by
 export MEMORI_API_KEY=[api_key]
 ```
 
+The Memori CLI uses your exported environment first, then fills missing values from a `.env` file in the directory where you run the command.
+
 ## Managing Your Quota
 
 At any time, you can check your quota using the Memori CLI (works for both SDKs):
