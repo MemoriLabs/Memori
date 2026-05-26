@@ -80,6 +80,9 @@ and pass `TIDB_ZERO_API_KEY` if bearer authentication is required.
   This file contains the full database DSN, including credentials. Memori writes
   it with owner-only permissions where supported, but you should treat it as a
   secrets file and rotate or delete it when the database is no longer needed.
+  If you switch TiDB Zero endpoints, accounts, or projects on the same machine,
+  pass a distinct `tag` / `cache_key` or set `cache=False` so Memori does not
+  reuse a cached development database from another context.
 </Note>
 
 ## Connection Strings

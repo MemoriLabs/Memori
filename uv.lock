@@ -2287,6 +2287,7 @@ sqlalchemy = [
     { name = "sqlalchemy" },
 ]
 tidb-zero = [
+    { name = "certifi" },
     { name = "pymysql" },
 ]
 
@@ -2331,6 +2332,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.2" },
     { name = "botocore", specifier = ">=1.34.0" },
+    { name = "certifi", marker = "extra == 'tidb-zero'", specifier = ">=2024.0.0" },
     { name = "faiss-cpu", specifier = ">=1.7.0" },
     { name = "grpcio", specifier = ">=1.60.0" },
     { name = "numpy", specifier = ">=1.24.0" },

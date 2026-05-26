@@ -4,14 +4,21 @@ from collections.abc import Callable
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse, urlunparse
 
+import certifi
+
 from memori._exceptions import MissingPyMySQLError
 
 DEFAULT_MYSQL_DATABASE = "memori"
 
 
 def mysql_tls_connect_args() -> dict[str, Any]:
-    # PyMySQL treats ssl={} as disabled, so keep the TLS config truthy.
-    return {"ssl": {"verify_mode": "required"}}
+    return {
+        "ssl": {
+            "ca": certifi.where(),
+            "check_hostname": True,
+            "verify_mode": "required",
+        }
+    }
 
 
 def require_mysql_driver(database: str = "TiDB Zero") -> Any:

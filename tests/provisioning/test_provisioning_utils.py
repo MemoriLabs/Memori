@@ -2,6 +2,7 @@ import builtins
 import sys
 from types import SimpleNamespace
 
+import certifi
 import pytest
 
 from memori._exceptions import MissingPyMySQLError
@@ -48,6 +49,14 @@ class FakeConnection:
 )
 def test_redact_dsn(dsn, expected):
     assert redact_dsn(dsn) == expected
+
+
+def test_mysql_tls_connect_args_enables_ca_backed_hostname_verification():
+    ssl_args = mysql_tls_connect_args()["ssl"]
+
+    assert ssl_args["ca"] == certifi.where()
+    assert ssl_args["check_hostname"] is True
+    assert ssl_args["verify_mode"] == "required"
 
 
 def test_mysql_connection_factory_parses_tidb_dsn(monkeypatch):
