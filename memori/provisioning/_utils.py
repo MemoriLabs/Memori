@@ -14,6 +14,14 @@ def mysql_tls_connect_args() -> dict[str, Any]:
     return {"ssl": {"verify_mode": "required"}}
 
 
+def require_mysql_driver(database: str = "TiDB Zero") -> Any:
+    try:
+        import pymysql
+    except ImportError as e:
+        raise MissingPyMySQLError(database) from e
+    return pymysql
+
+
 def redact_dsn(dsn: str) -> str:
     parsed = urlparse(dsn)
     if not parsed.scheme or not parsed.netloc:
@@ -43,10 +51,7 @@ def mysql_connection_factory(
     dsn: str,
     connect_args: dict[str, Any] | None = None,
 ) -> Callable[[], Any]:
-    try:
-        import pymysql
-    except ImportError as e:
-        raise MissingPyMySQLError("TiDB Zero") from e
+    pymysql = require_mysql_driver("TiDB Zero")
 
     kwargs = _mysql_kwargs_from_dsn(dsn)
     kwargs.update(connect_args or {})

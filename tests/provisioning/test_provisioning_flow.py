@@ -1,7 +1,10 @@
 import pytest
 
 import memori.provisioning as provisioning
-from memori._exceptions import UnsupportedProvisionedDatabaseFamilyError
+from memori._exceptions import (
+    MissingPyMySQLError,
+    UnsupportedProvisionedDatabaseFamilyError,
+)
 from memori.provisioning import ProvisionResult, get_provision_result, provision_memori
 from memori.provisioning._cache import ProvisionCache
 
@@ -86,3 +89,17 @@ def test_provision_memori_rejects_unsupported_family(mocker):
 
     with pytest.raises(UnsupportedProvisionedDatabaseFamilyError):
         provision_memori(provider="neon-launchpad")
+
+
+def test_provision_memori_checks_driver_before_provider_or_cache(mocker):
+    require_driver = mocker.patch(
+        "memori.provisioning.require_mysql_driver",
+        side_effect=MissingPyMySQLError("TiDB Zero"),
+    )
+    get_result = mocker.patch("memori.provisioning.get_provision_result")
+
+    with pytest.raises(MissingPyMySQLError):
+        provision_memori(provider="tidb-zero")
+
+    require_driver.assert_called_once_with("TiDB Zero")
+    get_result.assert_not_called()

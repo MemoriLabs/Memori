@@ -7,7 +7,11 @@ from memori._exceptions import UnsupportedProvisionedDatabaseFamilyError
 from memori.provisioning._cache import ProvisionCache, cache_key
 from memori.provisioning._models import ProvisionResult
 from memori.provisioning._registry import provision
-from memori.provisioning._utils import mysql_connection_factory, redact_dsn
+from memori.provisioning._utils import (
+    mysql_connection_factory,
+    redact_dsn,
+    require_mysql_driver,
+)
 
 # Import providers to trigger registration decorators.
 importlib.import_module("memori.provisioning.providers")
@@ -16,6 +20,7 @@ if TYPE_CHECKING:
     from memori import Memori
 
 SUPPORTED_FAMILIES = {"mysql"}
+MYSQL_PROVIDERS = {"tidb-zero"}
 
 
 def get_provision_result(
@@ -50,6 +55,9 @@ def provision_memori(
     **kwargs: Any,
 ) -> Memori:
     from memori import Memori
+
+    if provider in MYSQL_PROVIDERS:
+        require_mysql_driver("TiDB Zero")
 
     result = get_provision_result(
         provider=provider,
