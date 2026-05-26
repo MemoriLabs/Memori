@@ -35,7 +35,7 @@ def test_setup_crew(mock_memory_client):
     agent2 = DummyAgent(role="writer")
     crew = DummyCrew(agents=[agent1, agent2])
 
-    adapter.setup_crew(crew, user_id="test_user", run_id="test_run")
+    adapter.setup_crew(crew, project_id="test_user", session_id="test_run")
 
     assert crew.task_callback is not None
     assert agent1.step_callback is not None
@@ -52,18 +52,18 @@ def test_task_callback_invokes_memory_client(mock_memory_client):
         task_callback_called = True
 
     crew = DummyCrew(agents=[], task_callback=original_task_callback)
-    adapter.setup_crew(crew, user_id="test_user", run_id="test_run")
+    adapter.setup_crew(crew, project_id="test_user", session_id="test_run")
 
     task_output = DummyTaskOutput(agent="researcher", description="Research AI", raw="Found facts")
     crew.task_callback(task_output)
 
     assert task_callback_called
-    mock_memory_client.add.assert_called_once()
-    call_args = mock_memory_client.add.call_args[1]
-    assert call_args["user_id"] == "test_user"
-    assert call_args["agent_id"] == "researcher"
-    assert call_args["run_id"] == "test_run"
-    assert call_args["metadata"]["event_type"] == "task_completion"
+    mock_memory_client.capture_agent_turn.assert_called_once()
+    call_args = mock_memory_client.capture_agent_turn.call_args[1]
+    assert call_args["project_id"] == "test_user"
+    assert call_args["session_id"] == "test_run"
+    assert call_args["trace"]["event_type"] == "task_completion"
+    assert call_args["trace"]["agent_role"] == "researcher"
 
 
 def test_step_callback_invokes_memory_client(mock_memory_client):
@@ -77,17 +77,17 @@ def test_step_callback_invokes_memory_client(mock_memory_client):
 
     agent = DummyAgent(role="writer", step_callback=original_step_callback)
     crew = DummyCrew(agents=[agent])
-    adapter.setup_crew(crew, user_id="test_user", run_id="test_run")
+    adapter.setup_crew(crew, project_id="test_user", session_id="test_run")
 
     agent.step_callback("Step output")
 
     assert step_callback_called
-    mock_memory_client.add.assert_called_once()
-    call_args = mock_memory_client.add.call_args[1]
-    assert call_args["user_id"] == "test_user"
-    assert call_args["agent_id"] == "writer"
-    assert call_args["run_id"] == "test_run"
-    assert call_args["metadata"]["event_type"] == "agent_step"
+    mock_memory_client.capture_agent_turn.assert_called_once()
+    call_args = mock_memory_client.capture_agent_turn.call_args[1]
+    assert call_args["project_id"] == "test_user"
+    assert call_args["session_id"] == "test_run"
+    assert call_args["trace"]["event_type"] == "agent_step"
+    assert call_args["trace"]["agent_role"] == "writer"
 
 
 def test_async_client_rejection():
@@ -101,27 +101,27 @@ def test_async_client_rejection():
 def test_malformed_task_output(mock_memory_client):
     adapter = MemoriCrewAIAdapter(memori_client=mock_memory_client)
     crew = DummyCrew(agents=[], task_callback=None)
-    adapter.setup_crew(crew, user_id="test_user")
+    adapter.setup_crew(crew, project_id="test_user")
 
     # Dict payload (malformed for typical crewai, but handled robustly)
     crew.task_callback({"agent": "system", "description": "dict task", "raw": "dict raw"})
-    mock_memory_client.add.assert_called_once()
-    assert mock_memory_client.add.call_args[1]["agent_id"] == "system"
-    assert mock_memory_client.add.call_args[1]["metadata"]["task_description"] == "dict task"
+    mock_memory_client.capture_agent_turn.assert_called_once()
+    assert mock_memory_client.capture_agent_turn.call_args[1]["trace"]["agent_role"] == "system"
+    assert mock_memory_client.capture_agent_turn.call_args[1]["trace"]["task_description"] == "dict task"
 
     mock_memory_client.reset_mock()
 
     # Null payload
     crew.task_callback(None)
-    mock_memory_client.add.assert_not_called()
+    mock_memory_client.capture_agent_turn.assert_not_called()
 
 
 def test_exception_propagation_safety(mock_memory_client, caplog):
     adapter = MemoriCrewAIAdapter(memori_client=mock_memory_client)
-    mock_memory_client.add.side_effect = Exception("Simulated network failure")
+    mock_memory_client.capture_agent_turn.side_effect = Exception("Simulated network failure")
 
     crew = DummyCrew(agents=[], task_callback=None)
-    adapter.setup_crew(crew, user_id="test_user")
+    adapter.setup_crew(crew, project_id="test_user")
 
     # This should NOT raise an exception despite the mock throwing one
     crew.task_callback(DummyTaskOutput("agent", "desc", "raw"))

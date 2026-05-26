@@ -27,7 +27,7 @@ Import required modules and set up configurations:
 ```python
 import os
 from memori.proxy.crewai import MemoriCrewAIAdapter
-from memori import MemoryClient
+from memori import Memori
 from crewai import Agent, Task, Crew, Process
 from crewai_tools import SerperDevTool
 
@@ -37,7 +37,7 @@ os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 os.environ["SERPER_API_KEY"] = "your-serper-api-key"
 
 # Initialize Memori client and adapter
-client = MemoryClient()
+client = Memori()
 adapter = MemoriCrewAIAdapter(client)
 ```
 
@@ -46,9 +46,16 @@ adapter = MemoriCrewAIAdapter(client)
 Set up initial conversation and preferences storage:
 
 ```python
-def store_user_preferences(user_id: str, conversation: list):
+def store_user_preferences(project_id: str, conversation: list):
     """Store user preferences from conversation history"""
-    client.add(conversation, user_id=user_id)
+    # Capture agent turns from conversation pairs
+    for i in range(0, len(conversation) - 1, 2):
+        if conversation[i]["role"] == "user" and conversation[i+1]["role"] == "assistant":
+            client.capture_agent_turn(
+                user_content=conversation[i]["content"],
+                assistant_content=conversation[i+1]["content"],
+                project_id=project_id,
+            )
 
 # Example conversation storage
 messages = [
@@ -116,13 +123,9 @@ def setup_crew(agents: list, tasks: list):
         tasks=tasks,
         process=Process.sequential,
         memory=True,
-        memory_config={
-            "provider": "mem0",
-            "config": {"user_id": "crew_user_1"},
-        }
     )
     # Inject Memori telemetry / observability adapter to capture tasks and reasoning
-    return adapter.setup_crew(crew, user_id="crew_user_1")
+    return adapter.setup_crew(crew, project_id="crew_user_1")
 ```
 
 ## Main Execution Function
@@ -167,10 +170,10 @@ By combining CrewAI with Memori, you can create sophisticated AI systems that ma
 
 <CardGroup cols={2}>
   <Card title="AutoGen Integration" icon="users" href="/integrations/autogen">
-    Build multi-agent systems with AutoGen and Mem0
+    Build multi-agent systems with AutoGen and Memori
   </Card>
   <Card title="LangGraph Integration" icon="diagram-project" href="/integrations/langgraph">
-    Create stateful agent workflows with memory
+    Create stateful agent workflows with Memori
   </Card>
 </CardGroup>
 

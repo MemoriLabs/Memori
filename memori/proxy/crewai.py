@@ -1,8 +1,8 @@
 import logging
 import uuid
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
-from memori import Memory, MemoryClient
+from memori import Memori
 
 logger = logging.getLogger(__name__)
 
@@ -13,27 +13,23 @@ class MemoriCrewAIAdapter:
     Captures agent conversations, tool calls, tool outputs, reasoning, and task results.
     """
 
-    def __init__(self, memori_client: Optional[Union[Memory, MemoryClient]] = None, **kwargs):
+    def __init__(self, memori_client: Optional[Memori] = None, **kwargs):
         if memori_client:
             self.client = memori_client
         else:
-            api_key = kwargs.get("api_key")
-            if api_key:
-                self.client = MemoryClient(**kwargs)
-            else:
-                self.client = Memory(**kwargs)
+            self.client = Memori(**kwargs)
 
         # CrewAI callbacks are synchronous, so we must reject async clients to prevent silent coroutine failures.
         client_name = self.client.__class__.__name__
         if "Async" in client_name:
             raise ValueError(f"MemoriCrewAIAdapter only supports synchronous clients, but received {client_name}.")
 
-    def setup_crew(self, crew: Any, user_id: str, run_id: Optional[str] = None):
+    def setup_crew(self, crew: Any, project_id: str, session_id: Optional[str] = None):
         """
         Injects callbacks into the CrewAI Crew and its Agents to capture events.
         """
-        if run_id is None:
-            run_id = str(uuid.uuid4())
+        if session_id is None:
+            session_id = str(uuid.uuid4())
 
         # Inject into Crew tasks
         original_task_callback = crew.task_callback
@@ -53,12 +49,12 @@ class MemoriCrewAIAdapter:
                 raw_output = _extract(task_output, "raw", str(task_output))
 
                 message = f"Task completed: {description}\nOutput: {raw_output}"
-                self.client.add(
-                    messages=[{"role": "user", "content": message}],
-                    user_id=user_id,
-                    agent_id=str(agent_role),
-                    run_id=run_id,
-                    metadata={"event_type": "task_completion", "task_description": str(description)},
+                self.client.capture_agent_turn(
+                    user_content=description,
+                    assistant_content=raw_output,
+                    project_id=project_id,
+                    session_id=session_id,
+                    trace={"event_type": "task_completion", "task_description": str(description), "agent_role": str(agent_role)},
                 )
             except Exception as e:
                 logger.error(f"MemoriCrewAIAdapter task_callback error: {e}")
@@ -80,13 +76,12 @@ class MemoriCrewAIAdapter:
                                 return
 
                             # Capture agent step reasoning or tool execution
-                            message = f"Agent reasoning/tool execution: {str(step_output)}"
-                            self.client.add(
-                                messages=[{"role": "assistant", "content": message}],
-                                user_id=user_id,
-                                agent_id=str(role),
-                                run_id=run_id,
-                                metadata={"event_type": "agent_step"},
+                            self.client.capture_agent_turn(
+                                user_content="Agent step executed",
+                                assistant_content=str(step_output),
+                                project_id=project_id,
+                                session_id=session_id,
+                                trace={"event_type": "agent_step", "agent_role": str(role)},
                             )
                         except Exception as e:
                             logger.error(f"MemoriCrewAIAdapter step_callback error: {e}")

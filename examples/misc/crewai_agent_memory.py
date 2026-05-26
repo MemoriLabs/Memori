@@ -41,9 +41,9 @@ def main():
     crew = Crew(agents=[researcher, writer], tasks=[research_task, writing_task], process=Process.sequential)
 
     # 4. Inject Memori telemetry / observability adapter
-    user_id = "test_user_crew"
+    project_id = "test_user_crew"
     session_id = "run_001"
-    crew = adapter.setup_crew(crew, user_id=user_id, run_id=session_id)
+    crew = adapter.setup_crew(crew, project_id=project_id, session_id=session_id)
 
     # 5. Kickoff the crew
     print("Starting Crew execution...")
@@ -53,9 +53,8 @@ def main():
 
     # 6. Retrieve the automatically captured memories
     print("\n--- Memori Captured Memories ---")
-    memories = adapter.client.get_all(user_id=user_id, run_id=session_id)
-    for mem in memories:
-        print(f"- [Agent: {mem.get('agent_id')}] {mem.get('memory')}")
+    memories = adapter.client.agent_recall(project_id=project_id, session_id=session_id)
+    print(memories)
 
 
 if __name__ == "__main__":
