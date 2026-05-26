@@ -9,7 +9,6 @@ Memori gives OpenClaw agents a structured, long-term memory system. It automatic
 
 Instead of relying solely on natural-language memory, Memori structures persistent memory from both conversation and agent trace — the agent's actions, tool results, decisions, and outcomes — so it can recall what actually happened when it matters.
 
----
 
 ## The Problem with OpenClaw's Built-In Memory
 
@@ -24,7 +23,6 @@ OpenClaw ships with a basic memory layer, but it has fundamental limitations tha
 | **Cross-project noise** | When working across multiple projects, memories are not isolated. Searches return irrelevant results from other contexts, polluting the agent's responses. |
 | **No user isolation** | Users do not have their own isolated memories. Memories bleed across users and data is mixed, creating privacy and relevance issues. |
 
----
 
 ## What Changes When You Add Memori?
 
@@ -42,7 +40,6 @@ Memories are organized using four core identifiers:
 > Note: If a `session_id` is provided, a `project_id` must also be provided.
 > All timestamps are stored in **UTC**.
 
----
 
 ## Core Capabilities
 
@@ -76,7 +73,6 @@ Memori incorporates tool calls and execution traces alongside conversation data.
 
 By structuring memory from actions, tool results, decisions, and outcomes, the system gives the agent a fuller understanding of prior task execution so the next time it acts, it can be more accurate and efficient.
 
----
 
 ### 2. Advanced Augmentation (automatic)
 
@@ -92,7 +88,6 @@ This is how structured memory is continuously built and updated over time.
 
 It runs **after the agent responds** and does not impact latency.
 
----
 
 ### 3. Agent-Controlled Intelligent Recall
 
@@ -163,7 +158,6 @@ Any combination of `source` and `signal` not in this list is invalid and must no
 - Execution outcomes
 - Known failure modes
 
----
 
 ### 4. Summaries and daily briefs
 
@@ -206,7 +200,6 @@ Supported parameters:
 
 - If no date range is provided → returns **last 24 hours**
 
----
 
 ### 5. Production-ready observability
 
@@ -219,7 +212,6 @@ Memori Cloud provides full visibility into memory behavior:
 - Top entities and subjects
 - Retrieval performance metrics
 
----
 
 ## How it Works
 
@@ -240,7 +232,6 @@ Memori separates memory into two systems:
 
 This runs in the background and **never blocks the agent's response**.
 
----
 
 ### 2. Agent-Controlled Intelligent Recall (plugin tools)
 
@@ -260,7 +251,6 @@ Available tools:
 - **`memori_feedback`**
   Report on memory quality to improve the system
 
----
 
 ### 3. Retrieval model
 

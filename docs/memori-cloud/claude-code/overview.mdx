@@ -1,0 +1,69 @@
+---
+title: Claude Code Overview
+description: Give Claude Code structured, persistent memory from conversation and agent trace across every session.
+---
+
+# Claude Code Overview
+
+Memori gives Claude Code long-term persistent memory via a local Bash-invoked skill. It captures what happens during coding sessions and lets Claude recall it on demand so context, decisions, preferences, and prior work are kept across sessions without having to reinject everything.
+
+Instead of relying on Claude's context window alone, Memori structures persistent memory from both conversation and agent trace, the tool calls, file edits, decisions, and outcomes, so Claude can recall what it actually did when it matters.
+
+## How It Works
+
+The integration is two files dropped into `.claude/skills/memori/`:
+
+- **`SKILL.md`** — instructs Claude Code how and when to use memory
+- **`index.ts`** — a TypeScript CLI (`bun`) that talks to Memori Cloud
+
+Memori then exposes explicit commands for recall, session summaries, post-compaction briefs, augmentation, quota checks, signup, and feedback.
+
+## Core Behavior
+
+- Recall runs before drafting any substantive response or external lookup including general coding tasks, debugging, code review, and research. Claude does not wait to be asked.
+- Advanced augmentation runs after the final response for every non-trivial turn, recording the turn and its trace in the background.
+- Compaction is used after Claude Code context compaction to restore working state.
+- Account helpers are available through `signup`, `quota`, and `feedback` commands.
+
+## Why Agent Trace Matters
+
+Conversation history captures what was said. Agent trace captures what was done.
+
+For Claude Code, that distinction matters. Long coding sessions involve file edits, tool calls, build results, errors encountered and decisions made.
+
+Memori turns that trace into structured memory Claude can recall later, scoped by project, session, or entity. Without memories from agent trace and execution, Claude can repeat mistakes, lose project specific context, and reprocess long histories unnecessarily.
+
+## Skill Layout
+
+```
+<your-project>/
+└── .claude/
+    └── skills/
+        └── memori/
+            ├── SKILL.md        # skill definition and procedure
+            └── index.ts        # CLI wrapper around Memori Cloud
+```
+
+`.claude/` can live at the project root or globally at `~/.claude/`. Claude Code discovers skills automatically from either location.
+
+## How Recall Works
+
+`recall` is targeted retrieval using source and signal filters — no free-text query. Memori returns structured memories scoped by entity, project, session, and time.
+
+| Use case | Source | Signal |
+|---|---|---|
+| Fact or preference | `fact` | `verification` |
+| Prior decision | `decision` | `commit` |
+| Constraint or requirement | `constraint` | `discovery` |
+| Standing instruction | `instruction` | `discovery` |
+| Status or progress | `status` | `update` |
+| Completed task or result | `task` | `result` |
+| Failure or error | `execution` | `failure` |
+| Strategy or pattern | `strategy` | `pattern` |
+| Inferred lesson | `insight` | `inference` |
+
+Source and signal must always be provided together or both omitted.
+
+## Package
+
+The integration lives in `integrations/claude-code` and is distributed as two files: `SKILL.md` and `index.ts`. Drop them into any `.claude/skills/memori/` directory and they work the same way.
