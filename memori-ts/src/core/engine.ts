@@ -1,5 +1,14 @@
 import { MemoriEngine } from '../native/index.js';
 import { WriteBatch, WriteAck } from '../types/storage.js';
+import type { MemoriEngine } from '../native/index.js';
+import { createRequire } from 'node:module';
+import {
+  StorageBridge,
+  WriteBatch,
+  EmbeddingRow,
+  CandidateFactRow,
+  WriteAck,
+} from '../types/storage.js';
 import { RetrievalRequest, RecallObject, NapiRecallRow } from '../types/api.js';
 import { AugmentationInput } from '../types/integrations.js';
 import { StorageManager } from '../storage/manager.js';
@@ -48,6 +57,21 @@ export class NativeEngine {
         };
         this.memoriEngine = new MemoriEngine(this.modelName, noopCb, 'sqlite');
       }
+      const require = createRequire(import.meta.url);
+      const native = require('../native/index.js') as {
+        MemoriEngine: new (
+          modelName: string | null,
+          fetchEmbeddings: BridgeCb,
+          fetchFacts: BridgeCb,
+          writeBatch: BridgeCb
+        ) => MemoriEngine;
+      };
+      this.memoriEngine = new native.MemoriEngine(
+        this.modelName,
+        this.fetchEmbeddingsCb,
+        this.fetchFactsCb,
+        this.writeBatchCb
+      );
     }
     return this.memoriEngine;
   }

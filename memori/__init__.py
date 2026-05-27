@@ -87,6 +87,29 @@ class LlmRegistry:
 class Memori:
     """Primary SDK entry point for memory collection and recall operations."""
 
+    @classmethod
+    def provision(
+        cls,
+        *,
+        provider: str,
+        build: bool = True,
+        cache: bool = True,
+        tag: str = "memori",
+        cache_key: str | None = None,
+        **kwargs: Any,
+    ) -> "Memori":
+        """Provision a BYODB database and return a ready `Memori` instance."""
+        from memori.provisioning import provision_memori
+
+        return provision_memori(
+            provider=provider,
+            build=build,
+            cache=cache,
+            tag=tag,
+            cache_key=cache_key,
+            **kwargs,
+        )
+
     def __init__(
         self,
         conn: Callable[[], Any] | Any | None = None,
@@ -200,15 +223,12 @@ class Memori:
             resolved_limit = self.config.recall_facts_limit if limit is None else limit
             if not self.config.entity_id:
                 return []
-            try:
-                return self.config.rust_core.retrieve_facts(
-                    query=query,
-                    entity_id=str(self.config.entity_id),
-                    limit=resolved_limit,
-                    dense_limit=self.config.recall_embeddings_limit,
-                )
-            except Exception:  # noqa: BLE001
-                pass
+            return self.config.rust_core.retrieve_facts(
+                query=query,
+                entity_id=str(self.config.entity_id),
+                limit=resolved_limit,
+                dense_limit=self.config.recall_embeddings_limit,
+            )
         return Recall(self.config).search_facts(query, limit)
 
     def delete_entity_memories(self, entity_id: str | None = None) -> None:

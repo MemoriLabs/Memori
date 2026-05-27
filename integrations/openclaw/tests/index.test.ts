@@ -27,6 +27,16 @@ describe('plugin index', () => {
         entityId: 'test-entity-id',
         projectId: 'test-project-id',
       },
+      config: {
+        plugins: {
+          entries: {
+            'openclaw-memori': {
+              hooks: { allowConversationAccess: true },
+            },
+          },
+        },
+      },
+      runtime: { version: '2026.5.15' },
       logger: {
         info: vi.fn(),
         warn: vi.fn(),
@@ -138,6 +148,79 @@ describe('plugin index', () => {
         expect.stringContaining('Missing apiKey or entityId')
       );
       expect(mockOn.mock.calls).toHaveLength(0);
+    });
+  });
+
+  describe('conversation access warning', () => {
+    it('should warn and inject prependContext when allowConversationAccess is not set on OC >= 2026.5.12', () => {
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const result = handler?.();
+      expect(result).toHaveProperty('prependContext');
+      expect(result.prependContext).toContain('MEMORI SETUP REQUIRED');
+    });
+
+    it('should not warn on OC < 2026.5.12 even if allowConversationAccess is not set', () => {
+      mockApi.runtime = { version: '2026.5.3' } as any;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const result = handler?.();
+      expect(result).not.toHaveProperty('prependContext');
+    });
+
+    it('should not warn when allowConversationAccess is true', () => {
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
+
+      const handler = mockOn.mock.calls.find((call) => call[0] === 'before_prompt_build')?.[1];
+      const result = handler?.();
+      expect(result).not.toHaveProperty('prependContext');
+    });
+
+    it('should not crash when runtime is an empty object (cli-metadata mode)', () => {
+      mockApi.runtime = {} as any;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      expect(() => memoriPlugin.register(mockApi)).not.toThrow();
+      expect(mockApi.registerCli).toHaveBeenCalled();
+    });
+
+    it('should not crash when runtime is undefined', () => {
+      mockApi.runtime = undefined as any;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      expect(() => memoriPlugin.register(mockApi)).not.toThrow();
+      expect(mockApi.registerCli).toHaveBeenCalled();
+    });
+
+    it('should default conservatively (require allowConversationAccess) when version cannot be resolved', () => {
+      mockApi.runtime = {} as any;
+      (mockApi as any).version = undefined;
+      delete process.env.OPENCLAW_VERSION;
+      mockApi.config = { plugins: { entries: { 'openclaw-memori': {} } } } as any;
+
+      memoriPlugin.register(mockApi);
+
+      expect(mockApi.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Conversation access is not enabled')
+      );
     });
   });
 

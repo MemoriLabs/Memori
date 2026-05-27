@@ -5,7 +5,7 @@ description: Use the Model Context Protocol (MCP) to connect AI agents directly 
 
 # Memori MCP (Model Context Protocol)
 
-**memori-mcp** is the official [Memori](https://memorilabs.ai) MCP server. Connect it to your AI agent to give it long-term memory: recall relevant facts, retrieve broad state summaries, store durable preferences after responding, and maintain context across sessions.
+**memori-mcp** is the official [Memori](https://memorilabs.ai) MCP server. Connect it to your AI agent to give it long-term memory: recall relevant facts, retrieve broad state summaries, restore working state after context compaction, store durable preferences after responding, and maintain context across sessions.
 
 ## Why Memori MCP?
 
@@ -62,11 +62,35 @@ Fetches relevant memories at the start of a user turn.
 
 Returns a structured memory payload with relevant context. When exposed by the client, optional filters may include `projectId`, `sessionId`, `dateStart`, `dateEnd`, `source`, and `signal`.
 
+`source` and `signal` are not independent. They must be set together (or both omitted). Only these pairs are valid:
+
+- `source=constraint`, `signal=discovery`
+- `source=decision`, `signal=commit`
+- `source=fact`, `signal=verification`
+- `source=execution`, `signal=failure`
+- `source=instruction`, `signal=discovery`
+- `source=insight`, `signal=inference`
+- `source=status`, `signal=update`
+- `source=strategy`, `signal=pattern`
+- `source=task`, `signal=result`
+
+Any other combination is invalid and must not be sent to `memori_recall`.
+
 ### `memori_recall_summary`
 
 Fetches broad memory state for session starts, daily briefs, status updates, and project overviews.
 
 When exposed by the client, optional filters may include `projectId`, `sessionId`, `dateStart`, and `dateEnd`.
+
+### `memori_compaction`
+
+Fetches a structured post-compaction brief so an agent can resume operational work after context compaction or a long-running workflow loses conversational detail.
+
+When exposed by the client, parameters may include `projectId`, `sessionId`, and `numMessages`. `projectId` scopes the compaction to the correct workspace. `sessionId` narrows the result to a specific agent session, and `numMessages` controls how many recent conversation messages are included for continuity.
+
+Compaction is not a replacement for precise memory retrieval. Use `memori_recall` for targeted memory search and `memori_recall_summary` for broad state awareness at session start.
+
+The compaction result may include environment context, standing orders, active tasks, open loops, pending results, timeline, workspace changes, last action, next expected action, and recent messages. Treat it as resume state that guides continuation, while still verifying operational details that may have changed since compaction.
 
 ### `memori_advanced_augmentation`
 
@@ -111,7 +135,7 @@ On a later turn like _"Write a hello world script"_, the agent recalls the Pytho
 After configuring your client, verify the setup:
 
 - MCP server shows as connected and healthy in your client UI
-- Tools list includes `memori_recall`, `memori_recall_summary`, and `memori_advanced_augmentation`
+- Tools list includes `memori_recall`, `memori_recall_summary`, `memori_compaction`, and `memori_advanced_augmentation`
 - Calls return non-401 responses
 - `memori_recall` returns memories for known entities
 - `memori_advanced_augmentation` accepts durable user/assistant turn data

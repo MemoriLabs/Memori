@@ -138,6 +138,8 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 > [!TIP]
 > Want to use your own database? Check out docs for Memori BYODB here:
 > [https://memorilabs.ai/docs/memori-byodb/](https://memorilabs.ai/docs/memori-byodb/).
+> For disposable BYODB development databases, see the TiDB Zero provisioning
+> guide: [docs/memori-byodb/databases/tidb.mdx](docs/memori-byodb/databases/tidb.mdx).
 
 ## LoCoMo Benchmark
 
@@ -314,6 +316,8 @@ Once you've obtained an API key, set the following environment variable (used by
 ```bash
 export MEMORI_API_KEY=[api_key]
 ```
+
+The Memori CLI uses your exported environment first, then fills missing values from a `.env` file in the directory where you run the command.
 
 ## Managing Your Quota
 

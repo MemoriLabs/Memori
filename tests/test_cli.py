@@ -1,5 +1,7 @@
+import os
 import subprocess
 import sys
+from contextlib import nullcontext
 from unittest import mock
 
 import pytest
@@ -26,10 +28,11 @@ def test_cli_banner_contains_key_elements(capsys, mock_config):
 
 
 @pytest.mark.integration
-def test_entrypoint_smoke_run():
+def test_entrypoint_smoke_run(tmp_path):
     result = subprocess.run(
         [sys.executable, "-m", "memori", "--help"],
         capture_output=True,
+        cwd=tmp_path,
         text=True,
         timeout=30,
     )
@@ -38,8 +41,13 @@ def test_entrypoint_smoke_run():
 
 
 class TestCliEntrypoint:
-    def run_main_with_args(self, args):
-        with mock.patch.object(sys, "argv", ["memori"] + args):
+    def run_main_with_args(self, args, load_env_file=False):
+        env_loader = (
+            nullcontext()
+            if load_env_file
+            else mock.patch("memori.__main__._load_env_file")
+        )
+        with mock.patch.object(sys, "argv", ["memori"] + args), env_loader:
             try:
                 main()
             except SystemExit as e:
@@ -74,6 +82,7 @@ class TestCliEntrypoint:
         output = captured.out.lower()
         assert "usage" in output
         assert "cockroachdb" in output
+        assert "provision" in output
         assert "quota" in output
         assert "sign-up" in output
         assert "setup" in output
@@ -84,7 +93,38 @@ class TestCliEntrypoint:
         output = captured.out.lower()
         assert "usage" in output
         assert "cockroachdb" in output
+        assert "provision" in output
         assert "sign-up" in output
+
+    @mock.patch("memori.__main__.ApiQuotaManager")
+    def test_cli_loads_dotenv_from_cwd(self, mock_manager_cls, monkeypatch, tmp_path):
+        dotenv = tmp_path / ".env"
+        dotenv.write_text("MEMORI_API_KEY=dotenv-key\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("MEMORI_API_KEY", raising=False)
+
+        mock_manager_cls.return_value.execute.return_value = None
+
+        self.run_main_with_args(["quota"], load_env_file=True)
+
+        assert os.environ["MEMORI_API_KEY"] == "dotenv-key"
+        mock_manager_cls.assert_called_once()
+
+    @mock.patch("memori.__main__.ApiQuotaManager")
+    def test_cli_dotenv_does_not_override_exported_env(
+        self, mock_manager_cls, monkeypatch, tmp_path
+    ):
+        dotenv = tmp_path / ".env"
+        dotenv.write_text("MEMORI_API_KEY=dotenv-key\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("MEMORI_API_KEY", "exported-key")
+
+        mock_manager_cls.return_value.execute.return_value = None
+
+        self.run_main_with_args(["quota"], load_env_file=True)
+
+        assert os.environ["MEMORI_API_KEY"] == "exported-key"
+        mock_manager_cls.assert_called_once()
 
     def test_branding_displayed(self, capsys):
         self.run_main_with_args([])
@@ -98,6 +138,57 @@ class TestCliEntrypoint:
         assert exit_code != 0
         captured = capsys.readouterr()
         assert "usage" in captured.out.lower()
+
+    @mock.patch("memori.provisioning._manager.provision_memori")
+    def test_provision_provider_dispatches_and_redacts_output(
+        self, mock_provision_memori, capsys
+    ):
+        result = mock.Mock(
+            provider="tidb-zero",
+            family="mysql",
+            dsn="mysql://user:secret@example.com:4000/memori?ssl-mode=REQUIRED",
+            claim_url="https://tidbcloud.com/tidbs/claim/abc",
+            expires_at="2026-06-01T00:00:00Z",
+        )
+        mock_provision_memori.return_value.config.provision_result = result
+
+        exit_code = self.run_main_with_args(["provision", "tidb-zero"])
+
+        assert exit_code in (0, None)
+        mock_provision_memori.assert_called_once_with(
+            provider="tidb-zero",
+            build=True,
+        )
+        output = capsys.readouterr().out
+        assert "tidb-zero" in output
+        assert "mysql://user:****@example.com:4000/memori?ssl-mode=REQUIRED" in output
+        assert "secret" not in output
+        assert "https://tidbcloud.com/tidbs/claim/abc" in output
+        assert "2026-06-01T00:00:00Z" in output
+
+    @mock.patch("memori.provisioning._manager.provision_memori")
+    def test_provision_provider_flag_dispatches(self, mock_provision_memori):
+        result = mock.Mock(
+            provider="tidb-zero",
+            family="mysql",
+            dsn="mysql://user:secret@example.com/memori",
+            claim_url=None,
+            expires_at=None,
+        )
+        mock_provision_memori.return_value.config.provision_result = result
+
+        exit_code = self.run_main_with_args(["provision", "--provider", "tidb-zero"])
+
+        assert exit_code in (0, None)
+        mock_provision_memori.assert_called_once_with(
+            provider="tidb-zero",
+            build=True,
+        )
+
+    def test_provision_missing_provider_shows_usage(self, capsys):
+        exit_code = self.run_main_with_args(["provision"])
+        assert exit_code != 0
+        assert "usage: python -m memori provision" in capsys.readouterr().out
 
     @mock.patch("memori.__main__.CockroachDBClusterManager")
     def test_cockroachdb_cluster_start_dispatches_correctly(

@@ -8,7 +8,9 @@ r"""
                        memorilabs.ai
 """
 
+import os
 import sys
+from pathlib import Path
 from typing import Any
 
 from memori._cli import Cli
@@ -16,12 +18,42 @@ from memori._config import Config
 from memori._setup import Manager as SetupManager
 from memori.api._quota import Manager as ApiQuotaManager
 from memori.api._sign_up import Manager as ApiSignUpManager
+from memori.provisioning._manager import Manager as ProvisioningManager
 from memori.storage.cockroachdb._cluster_manager import (
     ClusterManager as CockroachDBClusterManager,
 )
 
 
+def _load_env_file() -> None:
+    env_path = Path.cwd() / ".env"
+    if not env_path.is_file():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        if stripped.startswith("export "):
+            stripped = stripped.removeprefix("export ").lstrip()
+
+        key, separator, value = stripped.partition("=")
+        key = key.strip()
+        if not separator or not key or key in os.environ:
+            continue
+
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        else:
+            value = value.split(" #", 1)[0].strip()
+
+        os.environ[key] = value
+
+
 def main():
+    _load_env_file()
+
     cli = Cli(Config())
     cli.banner()
 
@@ -35,6 +67,11 @@ def main():
             "description": "Check your quota",
             "params": [],
             "obj": ApiQuotaManager,
+        },
+        "provision": {
+            "description": "Provision a BYODB database",
+            "params": [],
+            "obj": ProvisioningManager,
         },
         "setup": {
             "description": "Execute suggested setup steps",
@@ -65,6 +102,7 @@ def main():
         option = options[sys.argv[1]]
         params = option["params"]
         obj_cls = option["obj"]
+
         if len(params) > 0:
             if len(sys.argv) != 2 + len(params):
                 obj_cls(Config()).usage()

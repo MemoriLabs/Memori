@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memori"
-version = "3.3.3"
+version = "3.3.4"
 description = "Memori Python SDK"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
 license = {text = "Apache-2.0"}
@@ -37,11 +37,12 @@ dependencies = [
     "protobuf>=4.25.0,<6.0.0",
     "pyfiglet>=0.8.0",
     "requests>=2.32.5",
-    "sentence-transformers>=3.0.0"
 ]
 
 [project.optional-dependencies]
+embeddings = ["sentence-transformers>=3.0.0"]
 sqlalchemy = ["sqlalchemy>=2.0.44"]
+tidb-zero = ["certifi>=2024.0.0", "pymysql>=1.1.2"]
 cockroachdb = [
     "psycopg[binary]>=3.1.0",
     "sqlalchemy>=2.0.44",
@@ -164,6 +165,7 @@ dev = [
     "langchain-google-genai>=3.0.0",
     "langchain-google-vertexai>=2.0.0",
     "langchain-openai>=1.0.1",
+    "litellm>=1.65.0",
     "openai>=2.6.0",
     "oracledb>=3.0.0",
     "pip-audit>=2.8.0",
@@ -180,6 +182,7 @@ dev = [
     "psutil>=5.9.0",
     "requests>=2.32.5",
     "ruff>=0.8.0",
+    "sentence-transformers>=3.0.0",
     "sqlalchemy>=2.0.44",
     "sqlalchemy-cockroachdb>=1.4.0",
     "xai-sdk>=1.3.1",
