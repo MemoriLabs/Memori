@@ -131,12 +131,12 @@ export class NativeEngine {
     });
   }
 
-  public embedTexts(texts: string[]): Float32Array[] {
+  public async embedTexts(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
     try {
-      return this.getEngine().embedTexts(texts);
+      return await this.getEngine().embedTexts(texts);
     } catch (e: unknown) {
-      console.error('[Memori] Bridge Sync Error (embedTexts):', e);
+      console.error('[Memori] Bridge Error (embedTexts):', e);
       return [];
     }
   }

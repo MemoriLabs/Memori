@@ -71,6 +71,28 @@ pub fn process_create(
     Ok(rows.first().and_then(|r| read_id(r, "id")))
 }
 
+pub fn session_get_id(
+    conn: &dyn StorageConnection,
+    uuid: &str,
+) -> Result<Option<i64>, HostStorageError> {
+    let rows = conn.execute(
+        "SELECT id FROM memori_session WHERE uuid = ?",
+        vec![SqlBind::Text(uuid.to_string())],
+    )?;
+    Ok(rows.first().and_then(|r| read_id(r, "id")))
+}
+
+pub fn conversation_get_id_by_session(
+    conn: &dyn StorageConnection,
+    session_id: i64,
+) -> Result<Option<i64>, HostStorageError> {
+    let rows = conn.execute(
+        "SELECT id FROM memori_conversation WHERE session_id = ? ORDER BY id DESC LIMIT 1",
+        vec![SqlBind::Int(session_id)],
+    )?;
+    Ok(rows.first().and_then(|r| read_id(r, "id")))
+}
+
 pub fn session_create(
     conn: &dyn StorageConnection,
     uuid: &str,
@@ -200,9 +222,6 @@ pub fn entity_fact_create(
 ) -> Result<(), HostStorageError> {
     for (i, fact) in facts.iter().enumerate() {
         let embedding = embeddings.get(i).map(|e| e.as_slice()).unwrap_or(&[]);
-        if embedding.is_empty() {
-            continue;
-        }
         let embedding_bytes = embedding_to_bytes(embedding);
         let uniq = generate_uniq(&[fact.as_str()]);
 

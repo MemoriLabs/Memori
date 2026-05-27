@@ -208,28 +208,26 @@ describe('NativeEngine', () => {
   // embedTexts
   // -------------------------------------------------------------------------
 
-  it('embedTexts() returns empty array for empty input without touching engine', () => {
+  it('embedTexts() returns empty array for empty input without touching engine', async () => {
     const engine = new NativeEngine();
-    expect(engine.embedTexts([])).toEqual([]);
+    expect(await engine.embedTexts([])).toEqual([]);
     expect(MemoriEngine).not.toHaveBeenCalled();
   });
 
   it('embedTexts() delegates to native engine', async () => {
     const engine = new NativeEngine();
     const instance = await bootEngine(engine);
-    instance.embedTexts.mockReturnValue([new Float32Array(3)]);
-    const result = engine.embedTexts(['hello']);
+    instance.embedTexts.mockResolvedValue([new Float32Array(3)]);
+    const result = await engine.embedTexts(['hello']);
     expect(result).toHaveLength(1);
   });
 
   it('embedTexts() returns [] and logs error if native throws', async () => {
     const engine = new NativeEngine();
     const instance = await bootEngine(engine);
-    instance.embedTexts.mockImplementation(() => {
-      throw new Error('embed fail');
-    });
+    instance.embedTexts.mockRejectedValue(new Error('embed fail'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(engine.embedTexts(['hello'])).toEqual([]);
+    expect(await engine.embedTexts(['hello'])).toEqual([]);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });

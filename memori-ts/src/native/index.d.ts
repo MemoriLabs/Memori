@@ -35,7 +35,7 @@ export declare class MemoriEngine {
    * `{ role, content }` objects. Returns `"[]"` when no storage is configured.
    */
   getConversationHistory(sessionId: string): Promise<string>
-  embedTexts(texts: Array<string>): Array<Float32Array>
+  embedTexts(texts: Array<string>): Promise<Array<Float32Array>>
   retrieve(request: NapiRetrievalRequest): Promise<Array<NapiRecallObject>>
   recall(request: NapiRetrievalRequest): Promise<string>
   submitAugmentation(input: NapiAugmentationInput): string

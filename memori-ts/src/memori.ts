@@ -12,6 +12,137 @@ import { NativeEngine } from './core/engine.js';
 import { StorageManager } from './storage/manager.js';
 import type { ConnFactory } from './storage/base.js';
 
+export interface RequestScopeOptions {
+  entityId?: string;
+  processId?: string;
+  sessionId?: string;
+}
+
+/**
+ * A lightweight, per-request view over a shared Memori instance.
+ *
+ * Holds its own `entityId`, `processId`, and session so concurrent requests
+ * cannot bleed attribution state into each other. The expensive resources
+ * (NativeEngine, ONNX model, worker runtimes, StorageManager) are shared with
+ * the parent Memori instance and are never reloaded.
+ *
+ * Obtain one via `memori.forRequest(options)` rather than constructing directly.
+ */
+export class MemoriRequestScope {
+  public readonly config: Config;
+  public readonly session: SessionManager;
+  public readonly axon: Axon;
+
+  private readonly recallEngine: RecallEngine;
+  private readonly persistenceEngine: PersistenceEngine;
+  private readonly augmentationEngine: AugmentationEngine;
+  private readonly sharedEngine: NativeEngine;
+  private readonly sharedApi: Api;
+  private readonly sharedCollectorApi: Api;
+  private readonly sharedProjectManager: ProjectManager;
+
+  /** @internal — use `Memori.forRequest()` instead */
+  constructor(
+    sharedEngine: NativeEngine,
+    sharedApi: Api,
+    sharedCollectorApi: Api,
+    sharedProjectManager: ProjectManager,
+    parentConfig: Config,
+    options?: RequestScopeOptions
+  ) {
+    this.sharedEngine = sharedEngine;
+    this.sharedApi = sharedApi;
+    this.sharedCollectorApi = sharedCollectorApi;
+    this.sharedProjectManager = sharedProjectManager;
+
+    // Copy shared/infrastructure fields; override only per-request identity.
+    this.config = new Config();
+    this.config.apiKey = parentConfig.apiKey;
+    this.config.baseUrl = parentConfig.baseUrl;
+    this.config.testMode = parentConfig.testMode;
+    this.config.recallRelevanceThreshold = parentConfig.recallRelevanceThreshold;
+    this.config.timeout = parentConfig.timeout;
+    this.config.storage = parentConfig.storage;
+    if (options?.entityId) this.config.entityId = options.entityId;
+    if (options?.processId) this.config.processId = options.processId;
+
+    this.session = new SessionManager();
+    if (options?.sessionId) this.session.set(options.sessionId);
+
+    this.axon = new Axon();
+    this.recallEngine = new RecallEngine(
+      sharedApi,
+      sharedEngine,
+      this.config,
+      this.session,
+      sharedProjectManager
+    );
+    this.persistenceEngine = new PersistenceEngine(
+      sharedApi,
+      sharedEngine,
+      this.config,
+      this.session
+    );
+    this.augmentationEngine = new AugmentationEngine(
+      sharedApi,
+      sharedCollectorApi,
+      sharedEngine,
+      this.config,
+      this.session,
+      sharedProjectManager
+    );
+
+    this.axon.hook.before(this.recallEngine.handleRecall.bind(this.recallEngine));
+    this.axon.hook.after(this.persistenceEngine.handlePersistence.bind(this.persistenceEngine));
+    this.axon.hook.after(this.augmentationEngine.handleAugmentation.bind(this.augmentationEngine));
+  }
+
+  public attribution(entityId?: string, processId?: string): this {
+    if (entityId) this.config.entityId = entityId;
+    if (processId) this.config.processId = processId;
+    return this;
+  }
+
+  public async recall(query: string): Promise<ParsedFact[]> {
+    return this.recallEngine.recall(query);
+  }
+
+  public setSession(id: string): this {
+    this.session.set(id);
+    return this;
+  }
+
+  public resetSession(): this {
+    this.session.reset();
+    return this;
+  }
+
+  public readonly llm = {
+    register: (client: unknown): MemoriRequestScope => {
+      this.axon.llm.register(client);
+      return this;
+    },
+  };
+
+  public readonly augmentation = {
+    wait: (timeoutMs?: number): Promise<boolean> =>
+      this.sharedEngine.waitForAugmentation(timeoutMs),
+  };
+
+  public integrate<T extends SupportedIntegration>(IntegrationClass: IntegrationConstructor<T>): T {
+    return new IntegrationClass({
+      recall: this.recallEngine,
+      persistence: this.persistenceEngine,
+      augmentation: this.augmentationEngine,
+      config: this.config,
+      session: this.session,
+      project: this.sharedProjectManager,
+      defaultApi: this.sharedApi,
+      collectorApi: this.sharedCollectorApi,
+    });
+  }
+}
+
 export interface MemoriOptions {
   conn?: ConnFactory; // A factory function returning your database connection: () => pool, () => db, etc.
   embeddingModel?: string;
@@ -39,7 +170,10 @@ export class Memori {
    */
   public readonly session: SessionManager;
 
+  // These are private but exposed to MemoriRequestScope (same module) via forRequest().
   private readonly projectManager: ProjectManager;
+  private readonly api: Api;
+  private readonly collectorApi: Api;
 
   /**
    * The underlying Axon instance used for LLM middleware hooks.
@@ -50,9 +184,6 @@ export class Memori {
    * The native Rust engine handling BYODB math and queueing.
    */
   public readonly engine: NativeEngine;
-
-  private readonly api: Api;
-  private readonly collectorApi: Api;
 
   private readonly recallEngine: RecallEngine;
   private readonly persistenceEngine: PersistenceEngine;
@@ -196,5 +327,43 @@ export class Memori {
       defaultApi: this.api,
       collectorApi: this.collectorApi,
     });
+  }
+
+  /**
+   * Creates a lightweight, per-request scope that is safe to use in concurrent
+   * Node.js backends.
+   *
+   * The returned `MemoriRequestScope` has its own `entityId`, `processId`, and
+   * session state, so concurrent requests cannot bleed attribution into each other.
+   * The expensive resources (ONNX model, worker runtimes, StorageManager) are
+   * shared with this instance and are never reloaded.
+   *
+   * @example
+   * ```ts
+   * // At app startup — once
+   * const memori = new Memori({ conn: () => pool });
+   * await memori.config.storage!.build();
+   *
+   * // In each request handler
+   * app.post('/chat', async (req, res) => {
+   *   const scope = memori.forRequest({
+   *     entityId: req.user.id,
+   *     sessionId: req.session.id,
+   *   });
+   *   scope.axon.llm.register(openai);
+   *   const response = await scope.axon.chat.completions.create({ ... });
+   *   res.json(response);
+   * });
+   * ```
+   */
+  public forRequest(options?: RequestScopeOptions): MemoriRequestScope {
+    return new MemoriRequestScope(
+      this.engine,
+      this.api,
+      this.collectorApi,
+      this.projectManager,
+      this.config,
+      options
+    );
   }
 }

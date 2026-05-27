@@ -76,7 +76,7 @@ function normalizeRows(rows: unknown[]): Record<string, unknown>[] {
   });
 }
 
-type TrackedAdapter = { adapter: StorageAdapter; lastUsed: number };
+type TrackedAdapter = { adapter: StorageAdapter; lastUsed: number; isBusy: boolean };
 
 export class StorageManager {
   private readonly factory: ConnFactory;
@@ -154,8 +154,8 @@ export class StorageManager {
    */
   private sweepOrphanedConnections(): void {
     const cutoff = Date.now() - CONN_TTL_MS;
-    for (const [id, { adapter, lastUsed }] of this.connections) {
-      if (lastUsed < cutoff) {
+    for (const [id, { adapter, lastUsed, isBusy }] of this.connections) {
+      if (!isBusy && lastUsed < cutoff) {
         this.connections.delete(id);
         const p = Promise.resolve(adapter.close()).catch((e: unknown) => {
           console.warn(`[Memori] failed to close orphaned connection ${id}:`, e);
@@ -176,7 +176,7 @@ export class StorageManager {
         this.sweepOrphanedConnections();
         const adapter = Registry.getAdapter(this.factory);
         const connId = this.nextConnId++;
-        this.connections.set(connId, { adapter, lastUsed: Date.now() });
+        this.connections.set(connId, { adapter, lastUsed: Date.now(), isBusy: false });
         resolve({ conn_id: connId });
         break;
       }
@@ -189,9 +189,15 @@ export class StorageManager {
           return;
         }
         entry.lastUsed = Date.now();
-        const binds = deserializeBinds(payload.binds ?? []);
-        const rawRows = await entry.adapter.execute(payload.sql ?? '', binds);
-        resolve({ rows: normalizeRows(rawRows) });
+        entry.isBusy = true;
+        try {
+          const binds = deserializeBinds(payload.binds ?? []);
+          const rawRows = await entry.adapter.execute(payload.sql ?? '', binds);
+          resolve({ rows: normalizeRows(rawRows) });
+        } finally {
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
         break;
       }
 
@@ -203,8 +209,14 @@ export class StorageManager {
           return;
         }
         entry.lastUsed = Date.now();
-        await entry.adapter.begin();
-        resolve({ ok: true });
+        entry.isBusy = true;
+        try {
+          await entry.adapter.begin();
+          resolve({ ok: true });
+        } finally {
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
         break;
       }
 
@@ -216,8 +228,14 @@ export class StorageManager {
           return;
         }
         entry.lastUsed = Date.now();
-        await entry.adapter.commit();
-        resolve({ ok: true });
+        entry.isBusy = true;
+        try {
+          await entry.adapter.commit();
+          resolve({ ok: true });
+        } finally {
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
         break;
       }
 
@@ -230,10 +248,14 @@ export class StorageManager {
           return;
         }
         entry.lastUsed = Date.now();
+        entry.isBusy = true;
         try {
           await entry.adapter.rollback();
         } catch {
           // non-fatal
+        } finally {
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
         }
         resolve({ ok: true });
         break;
@@ -277,5 +299,10 @@ export class StorageManager {
       }
     }
     this.connections.clear();
+    try {
+      await this.dialectAdapter.close();
+    } catch {
+      // non-fatal
+    }
   }
 }

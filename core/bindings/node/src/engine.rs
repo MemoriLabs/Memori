@@ -39,9 +39,7 @@ impl MemoriEngine {
             napi::sys::napi_unref_threadsafe_function(env.raw(), storage_call_cb.raw());
         }
 
-        let dialect_enum = dialect
-            .parse::<Dialect>()
-            .map_err(Error::from_reason)?;
+        let dialect_enum = dialect.parse::<Dialect>().map_err(Error::from_reason)?;
 
         let factory = Arc::new(NodeConnectionFactory::new(storage_call_cb, dialect));
         let storage_manager = Arc::new(RustStorageManager::new(factory.clone(), dialect_enum));
@@ -141,22 +139,28 @@ impl MemoriEngine {
     }
 
     #[napi]
-    pub fn embed_texts(&self, texts: Vec<String>) -> Result<Vec<Float32Array>> {
-        let result = catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let (flat_vectors, shape) = self.inner.embed(texts);
-            let mut out = Vec::with_capacity(shape[0]);
-            let dim = shape[1];
-            for chunk in flat_vectors.chunks(dim) {
-                out.push(Float32Array::new(chunk.to_vec()));
+    pub async fn embed_texts(&self, texts: Vec<String>) -> Result<Vec<Float32Array>> {
+        let inner = self.inner.clone();
+        // Run ONNX inference on a blocking thread so the Node event loop stays free.
+        let chunks: Vec<Vec<f32>> = tokio::task::spawn_blocking(move || {
+            let result = catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (flat, shape) = inner.embed(texts);
+                if shape[0] == 0 || shape[1] == 0 {
+                    return Ok(vec![]);
+                }
+                let dim = shape[1];
+                Ok::<Vec<Vec<f32>>, Error>(flat.chunks(dim).map(|c| c.to_vec()).collect())
+            }));
+            match result {
+                Ok(Ok(v)) => Ok(v),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(Error::from_reason("Rust panicked during embed_texts!")),
             }
-            Ok(out)
-        }));
-
-        match result {
-            Ok(Ok(arr)) => Ok(arr),
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(Error::from_reason("Rust panicked during embed_texts!")),
-        }
+        })
+        .await
+        .map_err(|e| Error::from_reason(e.to_string()))??;
+        // Float32Array wrapping happens here, after returning to the async context.
+        Ok(chunks.into_iter().map(Float32Array::new).collect())
     }
 
     #[napi]

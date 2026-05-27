@@ -54,27 +54,33 @@ impl Inner {
             ));
         }
 
-        // Always called from spawn_blocking — block_on is safe on a dedicated blocking thread.
-        tokio::runtime::Handle::current().block_on(async {
-            match timeout(JS_CALLBACK_TIMEOUT, rx).await {
-                Ok(Ok(value)) => {
-                    if let Some(err) = value.get("error") {
-                        let code = err["code"].as_str().unwrap_or("ERR").to_string();
-                        let msg = err["message"]
-                            .as_str()
-                            .unwrap_or("unknown error")
-                            .to_string();
-                        Err(HostStorageError::new(code, msg))
-                    } else {
-                        Ok(value)
+        // block_in_place lets Tokio know this thread is about to block, keeping the scheduler
+        // correct even if Inner::call is ever reached from a regular async worker thread.
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                match timeout(JS_CALLBACK_TIMEOUT, rx).await {
+                    Ok(Ok(value)) => {
+                        if let Some(err) = value.get("error") {
+                            let code = err["code"].as_str().unwrap_or("ERR").to_string();
+                            let msg = err["message"]
+                                .as_str()
+                                .unwrap_or("unknown error")
+                                .to_string();
+                            Err(HostStorageError::new(code, msg))
+                        } else {
+                            Ok(value)
+                        }
+                    }
+                    Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "storage channel dropped")),
+                    Err(_) => {
+                        self.pending.remove(&id);
+                        Err(HostStorageError::new(
+                            "TIMEOUT",
+                            "storage JS callback did not respond within 30s",
+                        ))
                     }
                 }
-                Ok(Err(_)) => Err(HostStorageError::new("NAPI_ERR", "storage channel dropped")),
-                Err(_) => Err(HostStorageError::new(
-                    "TIMEOUT",
-                    "storage JS callback did not respond within 30s",
-                )),
-            }
+            })
         })
     }
 }

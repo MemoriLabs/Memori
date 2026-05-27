@@ -109,6 +109,32 @@ impl RustStorageManager {
         }
     }
 
+    fn do_session_get_id(
+        &self,
+        conn: &dyn crate::storage::connection::StorageConnection,
+        uuid: &str,
+    ) -> Result<Option<i64>, HostStorageError> {
+        match &self.dialect {
+            Dialect::Sqlite => sqlite::session_get_id(conn, uuid),
+            Dialect::Postgresql | Dialect::Cockroachdb => postgresql::session_get_id(conn, uuid),
+            Dialect::Mysql => mysql::session_get_id(conn, uuid),
+        }
+    }
+
+    fn do_conversation_get_id_by_session(
+        &self,
+        conn: &dyn crate::storage::connection::StorageConnection,
+        session_id: i64,
+    ) -> Result<Option<i64>, HostStorageError> {
+        match &self.dialect {
+            Dialect::Sqlite => sqlite::conversation_get_id_by_session(conn, session_id),
+            Dialect::Postgresql | Dialect::Cockroachdb => {
+                postgresql::conversation_get_id_by_session(conn, session_id)
+            }
+            Dialect::Mysql => mysql::conversation_get_id_by_session(conn, session_id),
+        }
+    }
+
     fn do_conversation_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
@@ -265,6 +291,8 @@ impl RustStorageManager {
     ) -> Result<(), HostStorageError> {
         for op in &batch.ops {
             match op.op_type.as_str() {
+                // TS/BYODB-only: the Python SDK persists conversation messages through its own
+                // augmentation path and does not use write_batch for this op.
                 "conversation_message.create" => {
                     let conv_id_str = op.payload["conversation_id"]
                         .as_str()
@@ -444,12 +472,14 @@ impl StorageBridge for RustStorageManager {
         session_id: &str,
     ) -> Result<Vec<serde_json::Value>, HostStorageError> {
         self.with_conn(|conn| {
-            let session_internal_id = self
-                .do_session_create(conn, session_id, None, None)?
-                .unwrap_or(0);
-            let conv_id = self
-                .do_conversation_create(conn, session_internal_id, 30)?
-                .unwrap_or(0);
+            let session_internal_id = match self.do_session_get_id(conn, session_id)? {
+                Some(id) => id,
+                None => return Ok(vec![]),
+            };
+            let conv_id = match self.do_conversation_get_id_by_session(conn, session_internal_id)? {
+                Some(id) => id,
+                None => return Ok(vec![]),
+            };
             let messages = match &self.dialect {
                 Dialect::Sqlite => sqlite::conversation_messages_read(conn, conv_id)?,
                 Dialect::Postgresql | Dialect::Cockroachdb => {

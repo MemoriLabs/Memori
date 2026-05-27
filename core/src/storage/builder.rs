@@ -35,18 +35,30 @@ pub fn run(conn: &dyn StorageConnection, dialect: &Dialect) -> Result<(), HostSt
         for migration in batch.iter() {
             log::info!("  -> {}", migration.description);
             conn.begin()?;
-            for statement in migration.statements.iter() {
-                conn.execute(statement, vec![])?;
+            let result: Result<(), HostStorageError> = (|| {
+                for statement in migration.statements.iter() {
+                    conn.execute(statement, vec![])?;
+                }
+                conn.commit()
+            })();
+            if let Err(e) = result {
+                let _ = conn.rollback();
+                return Err(e);
             }
-            conn.commit()?;
         }
     }
 
     // num is one past the last applied migration after breaking, subtract 1.
     conn.begin()?;
-    delete_schema_version(conn, dialect)?;
-    write_schema_version(conn, dialect, num - 1)?;
-    conn.commit()?;
+    let version_result: Result<(), HostStorageError> = (|| {
+        delete_schema_version(conn, dialect)?;
+        write_schema_version(conn, dialect, num - 1)?;
+        conn.commit()
+    })();
+    if let Err(e) = version_result {
+        let _ = conn.rollback();
+        return Err(e);
+    }
 
     log::info!("[Memori] Build executed successfully!");
     Ok(())

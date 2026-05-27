@@ -71,6 +71,28 @@ pub fn process_create(
     Ok(rows.first().and_then(|r| read_id(r, "id")))
 }
 
+pub fn session_get_id(
+    conn: &dyn StorageConnection,
+    uuid: &str,
+) -> Result<Option<i64>, HostStorageError> {
+    let rows = conn.execute(
+        "SELECT id FROM memori_session WHERE uuid = $1",
+        vec![SqlBind::Text(uuid.to_string())],
+    )?;
+    Ok(rows.first().and_then(|r| read_id(r, "id")))
+}
+
+pub fn conversation_get_id_by_session(
+    conn: &dyn StorageConnection,
+    session_id: i64,
+) -> Result<Option<i64>, HostStorageError> {
+    let rows = conn.execute(
+        "SELECT id FROM memori_conversation WHERE session_id = $1 ORDER BY id DESC LIMIT 1",
+        vec![SqlBind::Int(session_id)],
+    )?;
+    Ok(rows.first().and_then(|r| read_id(r, "id")))
+}
+
 pub fn session_create(
     conn: &dyn StorageConnection,
     uuid: &str,
@@ -197,24 +219,24 @@ pub fn entity_fact_create(
 ) -> Result<(), HostStorageError> {
     const CHUNK_SIZE: usize = 2000;
 
-    let valid_facts: Vec<(usize, &String, Vec<u8>)> = facts
+    let all_facts: Vec<(&String, Vec<u8>)> = facts
         .iter()
         .enumerate()
-        .filter_map(|(i, fact)| {
-            let embedding = embeddings.get(i)?;
-            if embedding.is_empty() {
-                return None;
-            }
-            Some((i, fact, embedding_to_bytes(embedding)))
+        .map(|(i, fact)| {
+            let embedding_bytes = embeddings
+                .get(i)
+                .map(|e| embedding_to_bytes(e))
+                .unwrap_or_default();
+            (fact, embedding_bytes)
         })
         .collect();
 
-    for chunk in valid_facts.chunks(CHUNK_SIZE) {
+    for chunk in all_facts.chunks(CHUNK_SIZE) {
         let mut placeholders = Vec::new();
         let mut binds: Vec<SqlBind> = Vec::new();
         let mut param = 1usize;
 
-        for (_, fact, embedding_bytes) in chunk {
+        for (fact, embedding_bytes) in chunk {
             let uniq = generate_uniq(&[fact.as_str()]);
             placeholders.push(format!(
                 "(${}, ${}, ${}, ${}, 1, CURRENT_TIMESTAMP, ${})",
@@ -249,7 +271,7 @@ pub fn entity_fact_create(
         if let Some(conv_id) = conversation_id {
             let uniq_vals: Vec<String> = chunk
                 .iter()
-                .map(|(_, fact, _)| generate_uniq(&[fact.as_str()]))
+                .map(|(fact, _)| generate_uniq(&[fact.as_str()]))
                 .collect();
             if !uniq_vals.is_empty() {
                 let uniq_placeholders: String = (2..=uniq_vals.len() + 1)
