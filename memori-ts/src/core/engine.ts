@@ -1,17 +1,15 @@
-import { MemoriEngine } from '../native/index.js';
-import { WriteBatch, WriteAck } from '../types/storage.js';
 import type { MemoriEngine } from '../native/index.js';
 import { createRequire } from 'node:module';
-import {
-  StorageBridge,
-  WriteBatch,
-  EmbeddingRow,
-  CandidateFactRow,
-  WriteAck,
-} from '../types/storage.js';
+import { WriteBatch, WriteAck } from '../types/storage.js';
 import { RetrievalRequest, RecallObject, NapiRecallRow } from '../types/api.js';
 import { AugmentationInput } from '../types/integrations.js';
 import { StorageManager } from '../storage/manager.js';
+
+type StorageCallCb = (
+  err: Error | null,
+  _id: number | [number, string],
+  _payloadJson?: string
+) => void;
 
 export class NativeEngine {
   private memoriEngine?: MemoriEngine;
@@ -27,14 +25,19 @@ export class NativeEngine {
 
   private getEngine(): MemoriEngine {
     if (!this.memoriEngine) {
+      const require = createRequire(import.meta.url);
+      const native = require('../native/index.js') as {
+        MemoriEngine: new (
+          modelName: string | null,
+          storageCallCb: StorageCallCb,
+          dialect: string
+        ) => MemoriEngine;
+      };
+
       if (this.storageManager) {
         const dialect = this.storageManager.getDialect();
         const sm = this.storageManager;
-        const storageCallCb = (
-          err: Error | null,
-          _id: number | [number, string],
-          _payloadJson?: string
-        ) => {
+        const storageCallCb: StorageCallCb = (err, _id, _payloadJson) => {
           if (err) {
             console.error('[Memori] Bridge error in storageCall:', err);
             return;
@@ -44,10 +47,10 @@ export class NativeEngine {
             this.memoriEngine?.resolveStorageCall(id, JSON.stringify(result));
           });
         };
-        this.memoriEngine = new MemoriEngine(this.modelName, storageCallCb, dialect);
+        this.memoriEngine = new native.MemoriEngine(this.modelName, storageCallCb, dialect);
       } else {
         // No storage configured — provide a no-op callback so Rust doesn't hang.
-        const noopCb = (err: Error | null, _id: number | [number, string], _json?: string) => {
+        const noopCb: StorageCallCb = (err, _id) => {
           if (err) return;
           const id = Array.isArray(_id) ? _id[0] : _id;
           this.memoriEngine?.resolveStorageCall(
@@ -55,23 +58,8 @@ export class NativeEngine {
             JSON.stringify({ error: { code: 'NO_STORAGE', message: 'no storage configured' } })
           );
         };
-        this.memoriEngine = new MemoriEngine(this.modelName, noopCb, 'sqlite');
+        this.memoriEngine = new native.MemoriEngine(this.modelName, noopCb, 'sqlite');
       }
-      const require = createRequire(import.meta.url);
-      const native = require('../native/index.js') as {
-        MemoriEngine: new (
-          modelName: string | null,
-          fetchEmbeddings: BridgeCb,
-          fetchFacts: BridgeCb,
-          writeBatch: BridgeCb
-        ) => MemoriEngine;
-      };
-      this.memoriEngine = new native.MemoriEngine(
-        this.modelName,
-        this.fetchEmbeddingsCb,
-        this.fetchFactsCb,
-        this.writeBatchCb
-      );
     }
     return this.memoriEngine;
   }
