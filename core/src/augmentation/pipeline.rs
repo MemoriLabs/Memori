@@ -199,7 +199,13 @@ where
         let (flat, shape) = embed(facts);
         let embeddings = reshape_embeddings(flat, shape);
         if embeddings.len() == expected_rows {
-            payload.insert("fact_embeddings".to_string(), serde_json::json!(embeddings));
+            if embedding_rows_have_signal(&embeddings) {
+                payload.insert("fact_embeddings".to_string(), serde_json::json!(embeddings));
+            } else {
+                log::warn!(
+                    "Skipping fact_embeddings for entity_fact.create: embeddings have no semantic signal"
+                );
+            }
         } else {
             log::warn!(
                 "Skipping fact_embeddings for entity_fact.create: expected {expected_rows} rows, got {}",
@@ -209,6 +215,13 @@ where
     }
 
     batch
+}
+
+fn embedding_rows_have_signal(embeddings: &[Vec<f32>]) -> bool {
+    !embeddings.is_empty()
+        && embeddings
+            .iter()
+            .all(|row| row.iter().any(|value| *value != 0.0))
 }
 
 fn reshape_embeddings(flat: Vec<f32>, shape: [usize; 2]) -> Vec<Vec<f32>> {
@@ -382,5 +395,22 @@ mod tests {
             batch.ops[0].payload.get("content").and_then(|v| v.as_str()),
             Some("manual fact")
         );
+    }
+
+    #[test]
+    fn attach_entity_fact_embeddings_skips_all_zero_rows() {
+        let mut batch = WriteBatch {
+            ops: vec![WriteOp {
+                op_type: "entity_fact.create".to_string(),
+                payload: serde_json::json!({
+                    "facts": ["prefers concise responses"]
+                }),
+            }],
+        };
+
+        batch = attach_entity_fact_embeddings(batch, |_| (vec![0.0, 0.0, 0.0], [1, 3]));
+
+        let fact_op = &batch.ops[0];
+        assert!(fact_op.payload.get("fact_embeddings").is_none());
     }
 }
