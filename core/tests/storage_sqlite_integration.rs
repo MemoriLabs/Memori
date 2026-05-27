@@ -41,9 +41,7 @@ fn row_to_json(row: &Row<'_>) -> rusqlite::Result<serde_json::Value> {
             ValueRef::Null => serde_json::Value::Null,
             ValueRef::Integer(n) => serde_json::json!(n),
             ValueRef::Real(f) => serde_json::json!(f),
-            ValueRef::Text(s) => {
-                serde_json::Value::String(String::from_utf8_lossy(s).into_owned())
-            }
+            ValueRef::Text(s) => serde_json::Value::String(String::from_utf8_lossy(s).into_owned()),
             ValueRef::Blob(b) => serde_json::Value::String(STANDARD.encode(b)),
         };
         obj.insert((*name).to_string(), val);
@@ -78,10 +76,8 @@ impl StorageConnection for RusqliteConnection {
         binds: Vec<SqlBind>,
     ) -> Result<Vec<serde_json::Value>, HostStorageError> {
         let conn = self.conn.lock().unwrap();
-        let params: Vec<Box<dyn ToSql>> = binds
-            .iter()
-            .map(bind_to_sql)
-            .collect::<Result<_, _>>()?;
+        let params: Vec<Box<dyn ToSql>> =
+            binds.iter().map(bind_to_sql).collect::<Result<_, _>>()?;
         let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| p.as_ref()).collect();
 
         let mut stmt = conn.prepare(sql).map_err(db_err)?;
@@ -151,7 +147,10 @@ fn build_applies_sqlite_migrations() {
     let rows = conn
         .execute("SELECT num FROM memori_schema_version", vec![])
         .expect("schema version read");
-    assert!(!rows.is_empty(), "schema_version should be populated after build");
+    assert!(
+        !rows.is_empty(),
+        "schema_version should be populated after build"
+    );
 }
 
 #[test]
@@ -160,10 +159,7 @@ fn write_batch_upsert_and_fetch_embeddings() {
     manager.build().expect("build");
 
     manager.set_embedder(Box::new(|texts: Vec<String>| {
-        texts
-            .into_iter()
-            .map(|_| vec![1.0_f32, 0.0, 0.0])
-            .collect()
+        texts.into_iter().map(|_| vec![1.0_f32, 0.0, 0.0]).collect()
     }));
 
     let batch = WriteBatch {
