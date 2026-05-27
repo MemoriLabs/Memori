@@ -776,7 +776,7 @@ class RustCoreAdapter:
                             "id": _normalize_fact_id(row.get("id")),
                             "content": row.get("content", ""),
                             "date_created": str(row.get("date_created", "")),
-                            "summaries": row.get("summaries", []),
+                            "summaries": _json_safe(row.get("summaries", [])),
                         }
                     )
                 return json.dumps(out)
@@ -845,6 +845,25 @@ def _normalize_fact_id(fact_id: Any) -> int | str:
     if isinstance(fact_id, str):
         return fact_id
     return str(fact_id)
+
+
+def _json_safe(value: Any) -> Any:
+    try:
+        json.dumps(value)
+    except TypeError:
+        pass
+    else:
+        return value
+
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, set):
+        return [_json_safe(item) for item in value]
+    return str(value)
 
 
 def _normalize_embedding_row(fact_id: Any, embedding: Any) -> dict[str, Any] | None:

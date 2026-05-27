@@ -4,6 +4,7 @@ import os
 import shutil
 import zipfile
 from contextlib import contextmanager
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -112,6 +113,42 @@ def test_fetch_facts_by_ids_callback_rehydrates_mongodb_object_ids(mocker):
 
     assert output[0]["id"] == str(fact_id)
     driver.entity_fact.get_facts_by_ids.assert_called_once_with([fact_id])
+
+
+def test_fetch_facts_by_ids_callback_serializes_datetime_summaries(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    date_created = datetime(2026, 5, 20, 14, 30, 12)
+    driver = SimpleNamespace(
+        entity_fact=SimpleNamespace(
+            get_facts_by_ids=mocker.Mock(
+                return_value=[
+                    {
+                        "id": 7,
+                        "content": "The user lives in Paris.",
+                        "date_created": date_created,
+                        "summaries": [
+                            {
+                                "content": "The conversation mentions Paris.",
+                                "date_created": date_created,
+                            }
+                        ],
+                    }
+                ]
+            )
+        )
+    )
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+
+    callback = _rust_core.RustCoreAdapter._fetch_facts_by_ids_cb(config)
+    output = json.loads(callback(json.dumps({"ids": [7]})))
+
+    assert output[0]["date_created"] == "2026-05-20 14:30:12"
+    assert output[0]["summaries"][0]["date_created"] == "2026-05-20 14:30:12"
 
 
 def test_write_batch_callback_maps_process_attribute_dict(mocker):
