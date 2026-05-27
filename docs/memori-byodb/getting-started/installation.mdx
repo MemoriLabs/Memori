@@ -253,10 +253,21 @@ python -m memori quota
 
 ## Pre-download the Embedding Model
 
-Memori uses a local embedding model for semantic search. On first run, it downloads the model automatically, which can take a moment. To pre-download it:
+Memori uses a native Rust embedding backend for semantic search. On first run, it downloads the model automatically, which can take a moment. To pre-download it:
 
 ```bash
 python -m memori setup
+```
+
+This requires a Memori wheel with the native `memori_python` extension for your
+platform. If you run Memori in a custom deployment without the native extension,
+you can embed via an external TEI-compatible server instead:
+
+```python
+from memori.embeddings import TEI, embed_texts
+
+tei = TEI(url="http://localhost:8080/v1/embeddings")
+vectors = embed_texts(["hello"], model="your-model", tei=tei)
 ```
 
 ## Verify Installation

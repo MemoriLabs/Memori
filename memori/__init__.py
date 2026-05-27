@@ -34,7 +34,11 @@ from memori.memory.augmentation import Manager as AugmentationManager
 from memori.memory.recall import CloudRecallResponse, Recall, RecallFact
 from memori.storage import Manager as StorageManager
 
-__all__ = ["Memori", "QuotaExceededError", "UnsupportedLLMProviderError"]
+__all__ = [
+    "Memori",
+    "QuotaExceededError",
+    "UnsupportedLLMProviderError",
+]
 
 warn_if_legacy_memorisdk_installed()
 

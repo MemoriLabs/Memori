@@ -9,13 +9,12 @@ r"""
 """
 
 import struct
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import numpy as np
 import pytest
 
-import memori.embeddings._sentence_transformers as st_core
 from memori._config import Config
+from memori._rust_core import RustCoreAdapterError
 from memori.embeddings import TEI, embed_texts, format_embedding_for_db
 
 
@@ -53,16 +52,14 @@ def test_format_embedding_for_db_sqlite():
 
 def test_format_embedding_for_db_mongodb(mocker):
     embedding = [1.0, 2.0, 3.0]
-    # Mock bson.Binary to test MongoDB path
     mock_bson = mocker.MagicMock()
     mock_binary = mocker.MagicMock()
     mock_bson.Binary.return_value = mock_binary
     mocker.patch.dict("sys.modules", {"bson": mock_bson})
 
     result = format_embedding_for_db(embedding, "mongodb")
-    # Should return bson.Binary wrapped bytes
+
     assert result == mock_binary
-    # Verify bson.Binary was called with packed bytes
     mock_bson.Binary.assert_called_once()
     call_args = mock_bson.Binary.call_args[0][0]
     assert isinstance(call_args, bytes)
@@ -71,11 +68,8 @@ def test_format_embedding_for_db_mongodb(mocker):
 
 
 def test_format_embedding_for_db_mongodb_no_bson():
-    """Test MongoDB fallback when bson is not available."""
     embedding = [1.0, 2.0, 3.0]
-    # Don't mock bson, let ImportError happen
     result = format_embedding_for_db(embedding, "mongodb")
-    # Should return raw bytes as fallback
     assert isinstance(result, bytes)
     unpacked = struct.unpack("<3f", result)
     assert list(unpacked) == pytest.approx(embedding)
@@ -118,278 +112,102 @@ def test_format_embedding_for_db_high_dimensional():
     assert list(unpacked_postgres) == pytest.approx(embedding)
 
 
-def test_get_model_caches_model():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformer"
-    ) as mock_transformer:
-        mock_model = Mock()
-        mock_transformer.return_value = mock_model
-
-        embedder = st_core.get_sentence_transformers_embedder("test-model")
-        model1 = embedder._get_model()
-        model2 = embedder._get_model()
-
-        assert model1 is model2
-        mock_transformer.assert_called_once_with("test-model")
-
-
-def test_get_model_different_models():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformer"
-    ) as mock_transformer:
-        mock_model_1 = Mock()
-        mock_model_2 = Mock()
-        mock_transformer.side_effect = [mock_model_1, mock_model_2]
-
-        model1 = st_core.get_sentence_transformers_embedder("model-1")._get_model()
-        model2 = st_core.get_sentence_transformers_embedder("model-2")._get_model()
-
-        assert model1 is not model2
-        assert mock_transformer.call_count == 2
-
-
-def test_embed_texts_single_string():
+def test_embed_texts_single_string(mocker):
     cfg = Config()
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_model = Mock()
-        mock_embeddings = np.array([[0.1, 0.2, 0.3]])
-        mock_model.encode.return_value = mock_embeddings
-        mock_get_model.return_value = mock_model
-
-        result = embed_texts(
-            "Hello world",
-            model=cfg.embeddings.model,
-        )
-
-        assert len(result) == 1
-        assert result[0] == pytest.approx([0.1, 0.2, 0.3])
-        mock_model.encode.assert_called_once()
-
-
-def test_embed_texts_list_of_strings():
-    cfg = Config()
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_model = Mock()
-        mock_embeddings = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
-        mock_model.encode.return_value = mock_embeddings
-        mock_get_model.return_value = mock_model
-
-        result = embed_texts(
-            ["Hello", "World"],
-            model=cfg.embeddings.model,
-        )
-
-        assert len(result) == 2
-        assert result[0] == pytest.approx([0.1, 0.2, 0.3])
-        assert result[1] == pytest.approx([0.4, 0.5, 0.6])
-
-
-def test_embed_texts_empty_list():
-    cfg = Config()
-    st_core._EMBEDDER_CACHE.clear()
-    result = embed_texts(
-        [],
-        model=cfg.embeddings.model,
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        return_value=[[0.1, 0.2, 0.3]],
     )
+
+    result = embed_texts("Hello world", model=cfg.embeddings.model)
+
+    assert result == [[0.1, 0.2, 0.3]]
+    native.assert_called_once_with(["Hello world"], model=cfg.embeddings.model)
+
+
+def test_embed_texts_list_of_strings(mocker):
+    cfg = Config()
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        return_value=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
+    )
+
+    result = embed_texts(["Hello", "World"], model=cfg.embeddings.model)
+
+    assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+    native.assert_called_once_with(["Hello", "World"], model=cfg.embeddings.model)
+
+
+def test_embed_texts_empty_list(mocker):
+    cfg = Config()
+    native = mocker.patch("memori.embeddings._api.embed_texts_native")
+
+    result = embed_texts([], model=cfg.embeddings.model)
+
     assert result == []
+    native.assert_not_called()
 
 
-def test_embed_texts_empty_string():
+def test_embed_texts_empty_string(mocker):
     cfg = Config()
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_model = Mock()
-        mock_embeddings = np.array([[0.1, 0.2, 0.3]])
-        mock_model.encode.return_value = mock_embeddings
-        mock_get_model.return_value = mock_model
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        return_value=[[0.1, 0.2, 0.3]],
+    )
 
-        result = embed_texts(
-            "",
-            model=cfg.embeddings.model,
-        )
+    result = embed_texts("", model=cfg.embeddings.model)
 
-        assert len(result) == 1
-        mock_model.encode.assert_called_once_with(
-            [""], convert_to_numpy=True, normalize_embeddings=True
-        )
+    assert result == [[0.1, 0.2, 0.3]]
+    native.assert_called_once_with([""], model=cfg.embeddings.model)
 
 
-def test_embed_texts_filters_empty_strings():
+def test_embed_texts_filters_empty_strings(mocker):
     cfg = Config()
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_model = Mock()
-        mock_embeddings = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
-        mock_model.encode.return_value = mock_embeddings
-        mock_get_model.return_value = mock_model
-
-        result = embed_texts(
-            ["Hello", "", "World", ""],
-            model=cfg.embeddings.model,
-        )
-
-        assert len(result) == 2
-        mock_model.encode.assert_called_once_with(
-            ["Hello", "World"], convert_to_numpy=True, normalize_embeddings=True
-        )
-
-
-def test_embed_texts_chunks_long_text_and_pools(mocker):
-    st_core._EMBEDDER_CACHE.clear()
-    mock_model = mocker.Mock()
-    mock_model.get_max_seq_length.return_value = 6
-    mock_model.tokenizer = mocker.Mock()
-    mock_model.tokenizer.return_value = {"input_ids": list(range(20))}
-    mock_model.tokenizer.decode.side_effect = ["c1", "c2", "c3", "c4", "c5"]
-
-    # Chunk embeddings: unit vectors along two axes to make mean+renorm predictable.
-    mock_model.encode.return_value = np.array(
-        [[1.0, 0.0], [0.0, 1.0], [1.0, 0.0], [0.0, 1.0], [1.0, 0.0]],
-        dtype=np.float32,
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        return_value=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
     )
 
-    mocker.patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model",
-        return_value=mock_model,
+    result = embed_texts(["Hello", "", "World", ""], model=cfg.embeddings.model)
+
+    assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+    native.assert_called_once_with(["Hello", "World"], model=cfg.embeddings.model)
+
+
+def test_embed_texts_custom_model(mocker):
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        return_value=[[0.1, 0.2, 0.3]],
     )
 
-    out = embed_texts(["x" * 10], model="test-model")
+    result = embed_texts("test", model="custom-model")
 
-    assert len(out) == 1
-    # Mean is [0.6, 0.4], then renormalized to unit length.
-    assert out[0] == pytest.approx([0.832050, 0.554700], rel=1e-4)
-    mock_model.encode.assert_called_with(
-        ["c1", "c2", "c3", "c4", "c5"],
-        convert_to_numpy=True,
-        normalize_embeddings=True,
+    native.assert_called_once_with(["test"], model="custom-model")
+    assert result == [[0.1, 0.2, 0.3]]
+
+
+def test_embed_texts_propagates_native_errors(mocker):
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        side_effect=RuntimeError("unsupported native model"),
     )
 
+    with pytest.raises(RuntimeError, match="unsupported native model"):
+        embed_texts("test", model="unsupported-model")
 
-def test_embed_texts_custom_model():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch("memori.embeddings._api.get_sentence_transformers_embedder") as mock_get:
-        mock_embedder = Mock()
-        mock_embedder.embed.return_value = [[0.1, 0.2, 0.3]]
-        mock_get.return_value = mock_embedder
-
-        result = embed_texts("test", model="custom-model")
-
-        mock_get.assert_called_once_with("custom-model")
-        mock_embedder.embed.assert_called_once_with(["test"], fallback_dimension=768)
-        assert len(result) == 1
+    native.assert_called_once_with(["test"], model="unsupported-model")
 
 
-def test_embed_texts_model_load_failure():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_get_model.side_effect = OSError("Model not found")
-
-        result = embed_texts(["Hello", "World"], model="missing-model")
-
-        assert len(result) == 2
-        assert len(result[0]) == 768
-        assert len(result[1]) == 768
-        assert set(result[0]) == {0.0}
-        assert set(result[1]) == {0.0}
-
-
-def test_embed_texts_encode_failure():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_model = Mock()
-        mock_model.encode.side_effect = RuntimeError("Encoding failed")
-        mock_model.get_sentence_embedding_dimension.return_value = 384
-        mock_get_model.return_value = mock_model
-
-        result = embed_texts(["Hello"], model="test-model")
-
-        assert len(result) == 1
-        assert result[0] == [0.0] * 384
-
-
-def test_embed_texts_shape_error_retries_and_pools(mocker):
-    st_core._EMBEDDER_CACHE.clear()
-    mock_model = mocker.Mock()
-    # First call (convert_to_numpy=True) fails like numpy stack error
-    # Then we retry per-text (convert_to_numpy=True) which succeeds.
-    mock_model.encode.side_effect = [
-        ValueError("all input arrays must have the same shape"),
-        np.ones((1, 4), dtype=np.float32),
-        np.zeros((1, 4), dtype=np.float32),
-    ]
-    mock_model.get_sentence_embedding_dimension.return_value = 4
-    mocker.patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model",
-        return_value=mock_model,
+def test_embed_texts_propagates_unavailable_native_backend(mocker):
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        side_effect=RustCoreAdapterError("Rust embeddings are unavailable"),
     )
 
-    out = embed_texts(["a", "b"], model="test-model")
+    with pytest.raises(RustCoreAdapterError, match="Rust embeddings are unavailable"):
+        embed_texts("test", model="all-MiniLM-L6-v2")
 
-    assert out == [[1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 0.0, 0.0]]
-    assert mock_model.encode.call_count == 3
-
-
-def test_embed_texts_encode_failure_with_dimension_error():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_model = Mock()
-        mock_model.encode.side_effect = RuntimeError("Encoding failed")
-        mock_model.get_sentence_embedding_dimension.side_effect = RuntimeError(
-            "Dimension error"
-        )
-        mock_get_model.return_value = mock_model
-
-        result = embed_texts(["Hello"], model="test-model")
-
-        assert len(result) == 1
-        assert len(result[0]) == 768
-        assert set(result[0]) == {0.0}
-
-
-def test_embed_texts_model_load_runtime_error():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_get_model.side_effect = RuntimeError("Runtime error")
-
-        result = embed_texts("test", model="test-model")
-
-        assert len(result) == 1
-        assert len(result[0]) == 768
-        assert set(result[0]) == {0.0}
-
-
-def test_embed_texts_model_load_value_error():
-    st_core._EMBEDDER_CACHE.clear()
-    with patch(
-        "memori.embeddings._sentence_transformers.SentenceTransformersEmbedder._get_model"
-    ) as mock_get_model:
-        mock_get_model.side_effect = ValueError("Value error")
-
-        result = embed_texts("test", model="test-model")
-
-        assert len(result) == 1
-        assert len(result[0]) == 768
-        assert set(result[0]) == {0.0}
+    native.assert_called_once_with(["test"], model="all-MiniLM-L6-v2")
 
 
 @pytest.mark.asyncio
@@ -409,8 +227,7 @@ async def test_embed_texts_async_single_string():
             async_=True,
         )
 
-        assert len(result) == 1
-        assert result[0] == pytest.approx([0.1, 0.2, 0.3])
+        assert result == [[0.1, 0.2, 0.3]]
 
 
 @pytest.mark.asyncio
@@ -430,9 +247,7 @@ async def test_embed_texts_async_list():
             async_=True,
         )
 
-        assert len(result) == 2
-        assert result[0] == pytest.approx([0.1, 0.2, 0.3])
-        assert result[1] == pytest.approx([0.4, 0.5, 0.6])
+        assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
 
 
 @pytest.mark.asyncio
@@ -447,8 +262,7 @@ async def test_embed_texts_async_custom_model():
 
         result = await embed_texts("test", model="custom-model", async_=True)
 
-        assert len(result) == 1
-        assert result[0] == pytest.approx([0.1, 0.2, 0.3])
+        assert result == [[0.1, 0.2, 0.3]]
 
 
 def test_embed_texts_uses_tei_remote(mocker):
@@ -484,7 +298,6 @@ def test_embed_texts_tei_token_chunks_and_pools(mocker):
     mock_post = mocker.patch("memori.embeddings._tei.requests.post")
     mock_response = mocker.Mock()
     mock_response.raise_for_status.return_value = None
-    # Two chunks -> mean([1,0],[0,1]) renorm => [0.707..., 0.707...]
     mock_response.json.return_value = {
         "data": [{"embedding": [1.0, 0.0]}, {"embedding": [0.0, 1.0]}]
     }

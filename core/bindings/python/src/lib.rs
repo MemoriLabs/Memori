@@ -6,7 +6,9 @@
 
 #![forbid(unsafe_code)]
 
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -17,7 +19,9 @@ use engine_orchestrator::storage::{
     CandidateFactRow, EmbeddingRow, FetchEmbeddingsRequest, FetchFactsByIdsRequest,
     HostStorageError, StorageBridge, WriteAck, WriteBatch,
 };
-use engine_orchestrator::{EngineOrchestrator, OrchestratorError};
+use engine_orchestrator::{
+    EmbeddingEngine as CoreEmbeddingEngine, EngineOrchestrator, OrchestratorError,
+};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -134,6 +138,30 @@ impl MemoriEngine {
             .map(|accepted| accepted.job_id)
             .map_err(orchestrator_error_to_py_err)
     }
+
+    fn embed_texts(&self, py: Python<'_>, texts: Vec<String>) -> Vec<Vec<f32>> {
+        reshape_embedding_result(py.detach(|| self.inner.embed(texts)))
+    }
+}
+
+#[pyclass]
+struct NativeEmbedder {
+    inner: CoreEmbeddingEngine,
+}
+
+#[pymethods]
+impl NativeEmbedder {
+    #[new]
+    #[pyo3(signature = (model_name=None))]
+    fn new(model_name: Option<&str>) -> PyResult<Self> {
+        let inner = CoreEmbeddingEngine::new(model_name)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        Ok(Self { inner })
+    }
+
+    fn embed_texts(&self, py: Python<'_>, texts: Vec<String>) -> Vec<Vec<f32>> {
+        reshape_embedding_result(py.detach(|| self.inner.embed(texts)))
+    }
 }
 
 #[pyclass]
@@ -176,6 +204,10 @@ impl EngineHandle {
             .postprocess_request(payload)
             .map(|accepted| accepted.job_id)
             .map_err(orchestrator_error_to_py_err)
+    }
+
+    fn embed_texts(&self, py: Python<'_>, texts: Vec<String>) -> Vec<Vec<f32>> {
+        reshape_embedding_result(py.detach(|| self.orchestrator.embed(texts)))
     }
 
     fn retrieve(&self, py: Python<'_>, request_json: &str) -> PyResult<String> {
@@ -237,6 +269,50 @@ fn core_postprocess_request(payload: &str) -> PyResult<u64> {
         .map_err(orchestrator_error_to_py_err)
 }
 
+#[pyfunction]
+#[pyo3(signature = (texts, model_name=None))]
+fn embed_texts(
+    py: Python<'_>,
+    texts: Vec<String>,
+    model_name: Option<&str>,
+) -> PyResult<Vec<Vec<f32>>> {
+    let model_name = model_name.map(str::to_owned);
+    let result: Result<Vec<Vec<f32>>, OrchestratorError> = py.detach(move || {
+        let engine = cached_embedding_engine(model_name.as_deref())?;
+        Ok(reshape_embedding_result(engine.embed(texts)))
+    });
+    result.map_err(orchestrator_error_to_py_err)
+}
+
+fn cached_embedding_engine(model_name: Option<&str>) -> Result<CoreEmbeddingEngine, OrchestratorError> {
+    static CACHE: Mutex<Option<HashMap<Option<String>, CoreEmbeddingEngine>>> = Mutex::new(None);
+
+    let key = model_name.map(str::to_owned);
+    let mut guard = CACHE
+        .lock()
+        .map_err(|_| OrchestratorError::ModelError("embedding engine cache lock poisoned".into()))?;
+    let cache = guard.get_or_insert_with(HashMap::new);
+    if !cache.contains_key(&key) {
+        let engine = CoreEmbeddingEngine::new(model_name)?;
+        cache.insert(key.clone(), engine);
+    }
+    Ok(cache.get(&key).expect("embedding engine cache entry").clone())
+}
+
+fn reshape_embedding_result((flat_vectors, shape): (Vec<f32>, [usize; 2])) -> Vec<Vec<f32>> {
+    let rows = shape[0];
+    let dim = shape[1];
+    if rows == 0 || dim == 0 {
+        return Vec::new();
+    }
+
+    flat_vectors
+        .chunks(dim)
+        .take(rows)
+        .map(|chunk| chunk.to_vec())
+        .collect()
+}
+
 fn orchestrator_error_to_py_err(error: OrchestratorError) -> PyErr {
     match error.status_code() {
         1 | 2 => PyValueError::new_err(error.to_string()),
@@ -248,9 +324,11 @@ fn orchestrator_error_to_py_err(error: OrchestratorError) -> PyErr {
 #[pymodule(gil_used = true)]
 fn memori_python(_py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<MemoriEngine>()?;
+    module.add_class::<NativeEmbedder>()?;
     module.add_class::<EngineHandle>()?;
     module.add_function(wrap_pyfunction!(execute, module)?)?;
     module.add_function(wrap_pyfunction!(hello_world, module)?)?;
     module.add_function(wrap_pyfunction!(core_postprocess_request, module)?)?;
+    module.add_function(wrap_pyfunction!(embed_texts, module)?)?;
     Ok(())
 }

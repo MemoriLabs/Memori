@@ -201,6 +201,105 @@ def test_write_batch_callback_embeds_entity_facts(mocker):
     )
 
 
+def test_write_batch_callback_uses_precomputed_entity_fact_embeddings(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    config.embeddings = SimpleNamespace(model="all-MiniLM-L6-v2")
+    driver = SimpleNamespace(
+        entity=SimpleNamespace(create=mocker.Mock(return_value=42)),
+        entity_fact=SimpleNamespace(create=mocker.Mock()),
+    )
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+    embed = mocker.patch("memori._rust_core.embed_texts")
+
+    callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
+    response = json.loads(
+        callback(
+            json.dumps(
+                {
+                    "ops": [
+                        {
+                            "op_type": "entity_fact.create",
+                            "payload": {
+                                "entity_id": "entity-1",
+                                "facts": ["The user's favorite color is blue."],
+                                "fact_embeddings": [[0.1, 0.2]],
+                                "conversation_id": "5",
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    assert response["written_ops"] == 1
+    embed.assert_not_called()
+    driver.entity_fact.create.assert_called_once_with(
+        42,
+        ["The user's favorite color is blue."],
+        fact_embeddings=[[0.1, 0.2]],
+        conversation_id=5,
+    )
+
+
+def test_write_batch_callback_prefers_active_rust_core_engine(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    config.embeddings = SimpleNamespace(model="all-MiniLM-L6-v2")
+    driver = SimpleNamespace(
+        entity=SimpleNamespace(create=mocker.Mock(return_value=42)),
+        entity_fact=SimpleNamespace(create=mocker.Mock()),
+    )
+
+    rust_core = mocker.Mock()
+    rust_core.embed_texts.return_value = [[0.3, 0.4]]
+    config.rust_core = rust_core
+
+    mocker.patch(
+        "memori._rust_core.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+    module_embed = mocker.patch("memori._rust_core.embed_texts")
+
+    callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
+    response = json.loads(
+        callback(
+            json.dumps(
+                {
+                    "ops": [
+                        {
+                            "op_type": "entity_fact.create",
+                            "payload": {
+                                "entity_id": "entity-1",
+                                "facts": ["The user's favorite color is blue."],
+                                "conversation_id": "5",
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    assert response["written_ops"] == 1
+    rust_core.embed_texts.assert_called_once_with(
+        ["The user's favorite color is blue."],
+        model="all-MiniLM-L6-v2",
+    )
+    module_embed.assert_not_called()
+    driver.entity_fact.create.assert_called_once_with(
+        42,
+        ["The user's favorite color is blue."],
+        fact_embeddings=[[0.3, 0.4]],
+        conversation_id=5,
+    )
+
+
 def test_write_batch_callback_rehydrates_mongodb_conversation_id(mocker):
     class MongoDriver:
         pass
@@ -594,3 +693,33 @@ def test_compute_sha256_produces_expected_digest(tmp_path):
         _rust_core._compute_sha256(target)
         == "e2092aab4fc7f734b716bd2eaccd02e6c8a83a7aeb4955acab115716847bb7f1"
     )
+
+
+def test_embed_texts_uses_native_embedder(mocker):
+    _rust_core._NATIVE_EMBEDDER_CACHE.clear()
+    engine = mocker.Mock()
+    engine.embed_texts.return_value = [[0.1, 0.2]]
+    memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
+
+    mocker.patch("memori._rust_core._try_import_memori_python", return_value=True)
+    mocker.patch.dict("sys.modules", {"memori_python": memori_python})
+
+    result = _rust_core.embed_texts(["hello"], model="all-MiniLM-L6-v2")
+
+    assert result == [[0.1, 0.2]]
+    memori_python.NativeEmbedder.assert_called_once_with(None)
+    engine.embed_texts.assert_called_once_with(["hello"])
+
+
+def test_rust_core_adapter_embed_texts_uses_active_engine(mocker):
+    config = Config()
+    engine = mocker.Mock()
+    engine.embed_texts.return_value = [[0.5, 0.6]]
+    adapter = _rust_core.RustCoreAdapter(config=config, _engine=engine)
+    native = mocker.patch("memori._rust_core._embed_with_native_cache")
+
+    result = adapter.embed_texts(["hello"], model="all-MiniLM-L6-v2")
+
+    assert result == [[0.5, 0.6]]
+    engine.embed_texts.assert_called_once_with(["hello"])
+    native.assert_not_called()

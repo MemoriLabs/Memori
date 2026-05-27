@@ -165,6 +165,63 @@ pub fn build_write_batch_from_response(
     WriteBatch { ops }
 }
 
+pub fn attach_entity_fact_embeddings<F>(mut batch: WriteBatch, mut embed: F) -> WriteBatch
+where
+    F: FnMut(Vec<String>) -> (Vec<f32>, [usize; 2]),
+{
+    for op in batch.ops.iter_mut() {
+        if op.op_type != "entity_fact.create" {
+            continue;
+        }
+
+        let Some(payload) = op.payload.as_object_mut() else {
+            continue;
+        };
+        if payload.contains_key("fact_embeddings") {
+            continue;
+        }
+
+        let facts = payload
+            .get("facts")
+            .and_then(|value| value.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(ToString::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if facts.is_empty() {
+            continue;
+        }
+
+        let expected_rows = facts.len();
+        let (flat, shape) = embed(facts);
+        let embeddings = reshape_embeddings(flat, shape);
+        if embeddings.len() == expected_rows {
+            payload.insert("fact_embeddings".to_string(), serde_json::json!(embeddings));
+        } else {
+            log::warn!(
+                "Skipping fact_embeddings for entity_fact.create: expected {expected_rows} rows, got {}",
+                embeddings.len()
+            );
+        }
+    }
+
+    batch
+}
+
+fn reshape_embeddings(flat: Vec<f32>, shape: [usize; 2]) -> Vec<Vec<f32>> {
+    let [rows, cols] = shape;
+    if rows == 0 || cols == 0 || flat.len() != rows.saturating_mul(cols) {
+        return Vec::new();
+    }
+
+    flat.chunks_exact(cols)
+        .map(|chunk| chunk.to_vec())
+        .collect::<Vec<_>>()
+}
+
 fn extract_facts(response: &serde_json::Value) -> Option<Vec<String>> {
     if let Some(arr) = response
         .pointer("/entity/facts")

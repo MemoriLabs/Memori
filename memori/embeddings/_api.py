@@ -16,20 +16,12 @@ from collections.abc import Awaitable
 from functools import partial
 from typing import Literal, overload
 
+from memori._rust_core import embed_texts as embed_texts_native
 from memori.embeddings._tei import TEI
 from memori.embeddings._tei_embed import embed_texts_via_tei
 from memori.embeddings._utils import prepare_text_inputs
 
 logger = logging.getLogger(__name__)
-_FALLBACK_DIMENSION = 768
-
-
-def get_sentence_transformers_embedder(model: str):
-    from memori.embeddings._sentence_transformers import (
-        get_sentence_transformers_embedder,
-    )
-
-    return get_sentence_transformers_embedder(model)
 
 
 def _embed_texts(
@@ -56,9 +48,7 @@ def _embed_texts(
             for t in inputs
         ]
 
-    return get_sentence_transformers_embedder(model).embed(
-        inputs, fallback_dimension=_FALLBACK_DIMENSION
-    )
+    return embed_texts_native(inputs, model=model)
 
 
 async def _embed_texts_async(

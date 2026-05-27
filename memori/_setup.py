@@ -10,6 +10,7 @@ r"""
 
 from memori._cli import Cli
 from memori._config import Config
+from memori._rust_core import embed_texts
 
 
 class Manager:
@@ -17,21 +18,14 @@ class Manager:
         self.config = config
 
     def execute(self):
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError as exc:
-            raise ImportError(
-                "The setup command requires the optional embeddings dependency. "
-                "Install it with `pip install 'memori[embeddings]'`."
-            ) from exc
-
         cli = Cli(self.config)
+        model = self.config.embeddings.model
 
-        cli.notice("Installing model all-mpnet-base-v2")
+        cli.notice(f"Installing embedding model {model}")
         cli.notice("this may take a moment; output to follow:", 1)
         cli.notice("-----")
 
-        SentenceTransformer("all-mpnet-base-v2")
+        embed_texts(["memori setup"], model=model)
 
         cli.notice("-----\n")
 

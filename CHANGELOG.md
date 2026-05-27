@@ -14,6 +14,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `python -m memori provision` CLI command, and the `tidb-zero` optional
   dependency extra.
 
+## [3.3.6rc1] - 2026-05-27
+
+### Changed
+
+- Local embeddings now use the native Rust `fastembed` backend exclusively,
+  including Python `Memori.embed_texts(...)`, recall query embeddings, and
+  advanced augmentation fact embeddings. The Python `sentence-transformers`
+  fallback has been removed; the `embeddings` optional extra remains as a
+  no-op for install compatibility.
+- Advanced augmentation fact embeddings are attached in the Rust worker before
+  persistence, and the Python write callback reuses the active rust-core engine
+  when available.
+
+### Fixed
+
+- Advanced augmentation fact writes no longer depend on Python
+  `sentence-transformers` or its transitive dependencies.
+- Rust augmentation now logs when fact embedding attachment is skipped due to a
+  row-count mismatch.
+
 ## [3.3.2] - 2026-04-28
 
 ### Added
@@ -95,5 +115,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Fixes #83)
 
 [3.3.0rc1]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.0rc1
+[3.3.6rc1]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.6rc1
 [3.3.2]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.2
 [3.0.0]: https://github.com/MemoriLabs/Memori/releases/tag/v3.0.0

@@ -12,7 +12,7 @@ Quick fixes for the most common Memori issues.
 **Python: `pip install memori` fails** — Requires Python 3.10+.
 Run `python --version` to check, then `pip install --upgrade pip && pip install memori`.
 
-**Python: Missing binary deps** — Install prerequisites first: `pip install numpy>=1.24.0 sentence-transformers>=3.0.0 memori`.
+**Python: Missing binary deps** — Install prerequisites first: `pip install --upgrade pip && pip install memori`.
 
 **TypeScript: `npm install @memorilabs/memori` fails** — Requires Node.js 20+.
 Run `node --version` to check.
@@ -157,6 +157,8 @@ Sign up for a free API key at [app.memorilabs.ai](https://app.memorilabs.ai) - g
 ## Performance
 
 **Python: Slow first run** — Memori downloads the embedding model on first use. Pre-download with `python -m memori setup`.
+
+**Python: `Rust embeddings are unavailable`** — Install a Memori wheel that includes the native extension for your OS/architecture, or embed through an external TEI-compatible server via `embed_texts(..., tei=TEI(url=...))`.
 
 **Python: High memory usage** — Reduce embeddings limit: `mem.config.recall_embeddings_limit = 500`. Use PostgreSQL for production.
 
