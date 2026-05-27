@@ -22,6 +22,32 @@ struct Inner {
 }
 
 impl Inner {
+    /// Fire-and-forget: sends `close` to TS without waiting for acknowledgement.
+    /// Used by [`NodeConnection::close`] since close errors are non-fatal and blocking
+    /// a Tokio worker thread for a pool-return operation is unnecessary.
+    fn send_close(&self, conn_id: u32) {
+        let Ok(payload_str) = serde_json::to_string(&serde_json::json!({
+            "op": "close",
+            "conn_id": conn_id,
+        })) else {
+            return;
+        };
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        // No pending entry — TS will call resolveStorageCall, which silently discards
+        // the result when the id is absent from the map.
+        if let Some(tsfn) = self
+            .storage_call_tsfn
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .as_ref()
+        {
+            let _ = tsfn.call(
+                Ok((id, payload_str)),
+                ThreadsafeFunctionCallMode::NonBlocking,
+            );
+        }
+    }
+
     /// Send a JSON payload to TS and block until TS resolves it.
     fn call(&self, payload: serde_json::Value) -> Result<serde_json::Value, HostStorageError> {
         let payload_str = serde_json::to_string(&payload)
@@ -145,12 +171,23 @@ impl ConnectionFactory for NodeConnectionFactory {
     }
 
     fn shutdown(&self) {
+        // Drop the TSFN first so no new calls can be queued.
         let _ = self
             .inner
             .storage_call_tsfn
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .take();
+        // Unblock any Rust threads waiting in block_in_place for a JS callback.
+        // Without this they would hang until the 30-second timeout fires per call.
+        let keys: Vec<u32> = self.inner.pending.iter().map(|e| *e.key()).collect();
+        for key in keys {
+            if let Some((_, tx)) = self.inner.pending.remove(&key) {
+                let _ = tx.send(serde_json::json!({
+                    "error": { "code": "SHUTDOWN", "message": "engine is shutting down" }
+                }));
+            }
+        }
     }
 }
 
@@ -197,9 +234,6 @@ impl StorageConnection for NodeConnection {
     }
 
     fn close(&self) {
-        // Fire-and-wait; errors are non-fatal since we're releasing the connection.
-        let _ = self
-            .inner
-            .call(serde_json::json!({ "op": "close", "conn_id": self.conn_id }));
+        self.inner.send_close(self.conn_id);
     }
 }

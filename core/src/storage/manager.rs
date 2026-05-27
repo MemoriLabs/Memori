@@ -284,6 +284,51 @@ impl RustStorageManager {
 
     // ── write_batch internals ─────────────────────────────────────────────────
 
+    /// Clones the batch and injects pre-computed embeddings into any op that needs
+    /// them but doesn't already carry them. Must be called outside the DB transaction
+    /// window — ONNX inference here avoids holding a write lock or inflating the
+    /// CockroachDB transaction window (which increases 40001 retry frequency).
+    fn precompute_embeddings(&self, batch: &WriteBatch) -> WriteBatch {
+        let ops = batch
+            .ops
+            .iter()
+            .map(|op| match op.op_type.as_str() {
+                "entity_fact.create" if !op.payload["fact_embeddings"].is_array() => {
+                    let facts: Vec<String> = op.payload["facts"]
+                        .as_array()
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    if facts.is_empty() {
+                        return op.clone();
+                    }
+                    let embeddings = self.embed_texts(facts);
+                    let mut new_op = op.clone();
+                    new_op.payload["fact_embeddings"] = serde_json::json!(embeddings);
+                    new_op
+                }
+                "upsert_fact" if op.payload.get("content_embedding").is_none() => {
+                    if let Some(content) = op.payload["content"].as_str() {
+                        let embedding = self
+                            .embed_texts(vec![content.to_string()])
+                            .into_iter()
+                            .next()
+                            .unwrap_or_default();
+                        let mut new_op = op.clone();
+                        new_op.payload["content_embedding"] = serde_json::json!(embedding);
+                        return new_op;
+                    }
+                    op.clone()
+                }
+                _ => op.clone(),
+            })
+            .collect();
+        WriteBatch { ops }
+    }
+
     fn execute_batch_ops(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
@@ -425,9 +470,16 @@ impl RustStorageManager {
                     let internal_entity_id =
                         self.do_entity_create(conn, &entity_id_str)?.unwrap_or(0);
                     if let Some(content) = op.payload["content"].as_str() {
-                        // Embed if embedder is available — matches Python which always embeds.
-                        // Fall back to embedding-free storage only when no embedder is wired up.
-                        let embeddings = self.embed_texts(vec![content.to_string()]);
+                        // Read the embedding pre-computed by precompute_embeddings (outside the tx).
+                        // Falls back to embed_texts only if somehow missing (defensive).
+                        let pre = op.payload["content_embedding"].as_array().map(|a| {
+                            a.iter()
+                                .filter_map(|v| v.as_f64().map(|f| f as f32))
+                                .collect::<Vec<f32>>()
+                        });
+                        let embeddings = pre
+                            .map(|e| vec![e])
+                            .unwrap_or_else(|| self.embed_texts(vec![content.to_string()]));
                         if let Some(embedding) =
                             embeddings.into_iter().next().filter(|e| !e.is_empty())
                         {
@@ -531,6 +583,9 @@ impl StorageBridge for RustStorageManager {
             return Ok(WriteAck { written_ops: 0 });
         }
 
+        // Embed outside the transaction so ONNX inference doesn't extend the lock window.
+        let batch = self.precompute_embeddings(batch);
+
         let op_count = batch.ops.len();
         const MAX_RETRIES: u32 = 5;
         let mut last_err: Option<HostStorageError> = None;
@@ -543,12 +598,14 @@ impl StorageBridge for RustStorageManager {
                 return Err(e);
             }
 
-            match self.execute_batch_ops(&*conn, batch) {
+            // Fold commit into the result so a 40001 at commit time is retried like any
+            // other serialization failure — CockroachDB commonly rejects at commit.
+            let result = self
+                .execute_batch_ops(&*conn, &batch)
+                .and_then(|_| conn.commit());
+
+            match result {
                 Ok(()) => {
-                    if let Err(e) = conn.commit() {
-                        conn.close();
-                        return Err(e);
-                    }
                     conn.close();
                     return Ok(WriteAck {
                         written_ops: op_count,
