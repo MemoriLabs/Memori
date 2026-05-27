@@ -47,8 +47,11 @@ export class PersistenceEngine {
         ],
       };
 
-      await this.engine.writeBatch(batch);
-
+      try {
+        await this.engine.writeBatch(batch);
+      } catch (e) {
+        console.warn('Memori Persistence (BYODB) failed:', e);
+      }
       return res;
     }
 

@@ -345,10 +345,17 @@ impl RustStorageManager {
                         .to_string();
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
-                        .unwrap_or(0);
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_session_create returned no id")
+                        })?;
                     let conv_id = self
                         .do_conversation_create(conn, session_id, 30)?
-                        .unwrap_or(0);
+                        .ok_or_else(|| {
+                            HostStorageError::new(
+                                "INTERNAL",
+                                "do_conversation_create returned no id",
+                            )
+                        })?;
 
                     if let Some(messages) = op.payload["messages"].as_array() {
                         for msg in messages {
@@ -360,8 +367,11 @@ impl RustStorageManager {
                 }
                 "entity_fact.create" => {
                     let entity_id_str = op.payload["entity_id"].as_str().unwrap_or("").to_string();
-                    let internal_entity_id =
-                        self.do_entity_create(conn, &entity_id_str)?.unwrap_or(0);
+                    let internal_entity_id = self
+                        .do_entity_create(conn, &entity_id_str)?
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
+                        })?;
 
                     let facts: Vec<String> = op.payload["facts"]
                         .as_array()
@@ -403,7 +413,12 @@ impl RustStorageManager {
                                         Some(internal_entity_id),
                                         None,
                                     )?
-                                    .unwrap_or(0);
+                                    .ok_or_else(|| {
+                                        HostStorageError::new(
+                                            "INTERNAL",
+                                            "do_session_create returned no id",
+                                        )
+                                    })?;
                                 self.do_conversation_create(conn, session_id, 30)?
                             } else {
                                 None
@@ -422,8 +437,11 @@ impl RustStorageManager {
                 }
                 "knowledge_graph.create" => {
                     let entity_id_str = op.payload["entity_id"].as_str().unwrap_or("").to_string();
-                    let internal_entity_id =
-                        self.do_entity_create(conn, &entity_id_str)?.unwrap_or(0);
+                    let internal_entity_id = self
+                        .do_entity_create(conn, &entity_id_str)?
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
+                        })?;
                     let triples = op.payload["semantic_triples"]
                         .as_array()
                         .map(Vec::as_slice)
@@ -433,8 +451,11 @@ impl RustStorageManager {
                 "process_attribute.create" => {
                     let process_id_str =
                         op.payload["process_id"].as_str().unwrap_or("").to_string();
-                    let internal_process_id =
-                        self.do_process_create(conn, &process_id_str)?.unwrap_or(0);
+                    let internal_process_id = self
+                        .do_process_create(conn, &process_id_str)?
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_process_create returned no id")
+                        })?;
                     let attributes: Vec<String> = match op.payload["attributes"].as_array() {
                         Some(arr) => arr
                             .iter()
@@ -458,17 +479,27 @@ impl RustStorageManager {
                         .to_string();
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
-                        .unwrap_or(0);
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_session_create returned no id")
+                        })?;
                     let conv_id = self
                         .do_conversation_create(conn, session_id, 30)?
-                        .unwrap_or(0);
+                        .ok_or_else(|| {
+                            HostStorageError::new(
+                                "INTERNAL",
+                                "do_conversation_create returned no id",
+                            )
+                        })?;
                     let summary = op.payload["summary"].as_str().unwrap_or("");
                     self.do_conversation_update(conn, conv_id, summary)?;
                 }
                 "upsert_fact" => {
                     let entity_id_str = op.payload["entity_id"].as_str().unwrap_or("").to_string();
-                    let internal_entity_id =
-                        self.do_entity_create(conn, &entity_id_str)?.unwrap_or(0);
+                    let internal_entity_id = self
+                        .do_entity_create(conn, &entity_id_str)?
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
+                        })?;
                     if let Some(content) = op.payload["content"].as_str() {
                         // Read the embedding pre-computed by precompute_embeddings (outside the tx).
                         // Falls back to embed_texts only if somehow missing (defensive).

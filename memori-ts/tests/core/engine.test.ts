@@ -141,17 +141,21 @@ describe('NativeEngine', () => {
     expect(instance.resolveStorageCall).toHaveBeenCalledWith(42, JSON.stringify({ conn_id: 1 }));
   });
 
-  it('storageCallCb logs and returns early on error', async () => {
+  it('storageCallCb logs and resolves with NAPI_ERR on error', async () => {
     const sm = makeStorageManager();
     const engine = new NativeEngine(sm as any);
-    await bootEngine(engine);
+    const instance = await bootEngine(engine);
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const storageCallCb: (err: Error | null, args: [number, string]) => void = (
       MemoriEngine as any
     ).mock.calls.at(-1)[1];
-    storageCallCb(new Error('bridge error'), [0, '']);
+    storageCallCb(new Error('bridge error'), [42, '']);
     expect(sm.handleStorageCall).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalled();
+    expect(instance.resolveStorageCall).toHaveBeenCalledWith(
+      42,
+      expect.stringContaining('NAPI_ERR')
+    );
     consoleSpy.mockRestore();
   });
 

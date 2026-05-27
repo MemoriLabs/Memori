@@ -38,11 +38,16 @@ export class NativeEngine {
         const dialect = this.storageManager.getDialect();
         const sm = this.storageManager;
         const storageCallCb: StorageCallCb = (err, _id, _payloadJson) => {
+          const id = Array.isArray(_id) ? _id[0] : (_id as number);
           if (err) {
             console.error('[Memori] Bridge error in storageCall:', err);
+            this.memoriEngine?.resolveStorageCall(
+              id,
+              JSON.stringify({ error: { code: 'NAPI_ERR', message: err.message } })
+            );
             return;
           }
-          const [id, payloadJson] = Array.isArray(_id) ? _id : [_id, _payloadJson as string];
+          const [, payloadJson] = Array.isArray(_id) ? _id : [_id, _payloadJson as string];
           sm.handleStorageCall(id, payloadJson, (result) => {
             this.memoriEngine?.resolveStorageCall(id, JSON.stringify(result));
           });
