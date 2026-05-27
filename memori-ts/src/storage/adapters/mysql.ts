@@ -52,8 +52,11 @@ export class MysqlAdapter implements StorageAdapter {
     if (this.txConn) {
       const conn = this.txConn;
       this.txConn = null;
-      await conn.commit();
-      conn.release();
+      try {
+        await conn.commit();
+      } finally {
+        conn.release();
+      }
     }
   }
 

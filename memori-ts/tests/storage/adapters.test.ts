@@ -164,6 +164,16 @@ describe('MysqlAdapter', () => {
     expect(conn.release).toHaveBeenCalled();
   });
 
+  it('commit() releases connection and rethrows if commit() fails', async () => {
+    const { pool, conn } = makeMysqlPool({
+      commit: vi.fn().mockRejectedValue(new Error('deadlock')),
+    });
+    const adapter = new MysqlAdapter(pool);
+    await adapter.begin();
+    await expect(adapter.commit()).rejects.toThrow('deadlock');
+    expect(conn.release).toHaveBeenCalled();
+  });
+
   it('rollback() calls rollback() on txConn and releases it', async () => {
     const { pool, conn } = makeMysqlPool();
     const adapter = new MysqlAdapter(pool);

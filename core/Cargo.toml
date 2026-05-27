@@ -35,6 +35,9 @@ thiserror.workspace = true
 tokenizers = "0.22"
 tokio.workspace = true
 
+[dev-dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+
 [workspace]
 members = [
     "bindings/node",
