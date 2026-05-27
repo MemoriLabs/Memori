@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.6rc2] - 2026-05-27
+
 ### Added
 
 - Added MCP client setup guidance for project-scoped attribution using workspace-derived values for `X-Memori-Entity-Id` and `X-Memori-Process-Id` to prevent memory mixing across projects. (Refs #404)
 - Added TiDB Zero BYODB provisioning via `Memori.provision(...)`, the
   `python -m memori provision` CLI command, and the `tidb-zero` optional
   dependency extra.
+
+### Fixed
+
+- Rust-backed BYODB recall now serializes nested recalled summaries before
+  passing rows into the native engine, preventing TiDB Zero/MySQL datetime
+  values from raising `TypeError: Object of type datetime is not JSON
+  serializable`.
 
 ## [3.3.6rc1] - 2026-05-27
 
@@ -115,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Fixes #83)
 
 [3.3.0rc1]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.0rc1
+[3.3.6rc2]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.6rc2
 [3.3.6rc1]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.6rc1
 [3.3.2]: https://github.com/MemoriLabs/Memori/releases/tag/v3.3.2
 [3.0.0]: https://github.com/MemoriLabs/Memori/releases/tag/v3.0.0
