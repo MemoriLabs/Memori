@@ -19,6 +19,7 @@ from typing import Any
 
 import requests
 
+from memori._embedding_input import is_embeddable_text, normalize_embed_texts_input
 from memori.memory._struct import SemanticTriple
 from memori.storage._connection import connection_context
 
@@ -145,12 +146,40 @@ def _embed_with_native_cache(
     return [list(row) for row in engine.embed_texts(inputs)]
 
 
-def embed_texts(texts: str | list[str], model: str | None = None) -> list[list[float]]:
-    inputs = [texts] if isinstance(texts, str) else [text for text in texts if text]
-    if not inputs:
+def _embed_texts_with_cardinality(
+    texts: str | list[str],
+    embed_fn: Any,
+) -> list[list[float]]:
+    originals = normalize_embed_texts_input(texts)
+    if not originals:
         return []
 
-    return _embed_with_native_cache(inputs, model)
+    embeddable = [text for text in originals if is_embeddable_text(text)]
+    if not embeddable:
+        return [[] for _ in originals]
+
+    embedded = embed_fn(embeddable)
+    if len(embedded) != len(embeddable):
+        raise RustCoreAdapterError(
+            "Native embedder returned "
+            f"{len(embedded)} vectors for {len(embeddable)} embeddable inputs"
+        )
+
+    result: list[list[float]] = [[] for _ in originals]
+    embed_index = 0
+    for index, text in enumerate(originals):
+        if not is_embeddable_text(text):
+            continue
+        result[index] = embedded[embed_index]
+        embed_index += 1
+    return result
+
+
+def embed_texts(texts: str | list[str], model: str | None = None) -> list[list[float]]:
+    return _embed_texts_with_cardinality(
+        texts,
+        lambda embeddable: _embed_with_native_cache(embeddable, model),
+    )
 
 
 def _embed_entity_facts(
@@ -595,15 +624,15 @@ class RustCoreAdapter:
     def embed_texts(
         self, texts: str | list[str], model: str | None = None
     ) -> list[list[float]]:
-        inputs = [texts] if isinstance(texts, str) else [text for text in texts if text]
-        if not inputs:
-            return []
-
         engine = self._engine
         if engine is not None:
-            return [list(row) for row in engine.embed_texts(inputs)]
-
-        return _embed_with_native_cache(inputs, model)
+            return _embed_texts_with_cardinality(
+                texts,
+                lambda embeddable: [
+                    list(row) for row in engine.embed_texts(embeddable)
+                ],
+            )
+        return embed_texts(texts, model=model)
 
     def retrieve_facts(
         self,
@@ -873,8 +902,11 @@ def _normalize_fact_embeddings(
 
     embeddings: list[list[float]] = []
     for row in value:
-        if not isinstance(row, (list, tuple)) or not row:
+        if not isinstance(row, (list, tuple)):
             return None
+        if not row:
+            embeddings.append([])
+            continue
         try:
             embeddings.append([float(item) for item in row])
         except (TypeError, ValueError):

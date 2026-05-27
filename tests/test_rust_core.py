@@ -698,28 +698,48 @@ def test_compute_sha256_produces_expected_digest(tmp_path):
 def test_embed_texts_uses_native_embedder(mocker):
     _rust_core._NATIVE_EMBEDDER_CACHE.clear()
     engine = mocker.Mock()
-    engine.embed_texts.return_value = [[0.1, 0.2]]
+    engine.embed_texts.return_value = [[0.1, 0.2], [0.3, 0.4]]
     memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
 
     mocker.patch("memori._rust_core._try_import_memori_python", return_value=True)
     mocker.patch.dict("sys.modules", {"memori_python": memori_python})
 
-    result = _rust_core.embed_texts(["hello"], model="all-MiniLM-L6-v2")
+    result = _rust_core.embed_texts(["hello", "   ", "world"], model="all-MiniLM-L6-v2")
 
-    assert result == [[0.1, 0.2]]
+    assert result == [[0.1, 0.2], [], [0.3, 0.4]]
     memori_python.NativeEmbedder.assert_called_once_with(None)
-    engine.embed_texts.assert_called_once_with(["hello"])
+    engine.embed_texts.assert_called_once_with(["hello", "world"])
+
+
+def test_embed_texts_returns_empty_vectors_for_non_embeddable_inputs(mocker):
+    _rust_core._NATIVE_EMBEDDER_CACHE.clear()
+    engine = mocker.Mock()
+    memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
+
+    mocker.patch("memori._rust_core._try_import_memori_python", return_value=True)
+    mocker.patch.dict("sys.modules", {"memori_python": memori_python})
+
+    result = _rust_core.embed_texts(["", "   "], model="all-MiniLM-L6-v2")
+
+    assert result == [[], []]
+    engine.embed_texts.assert_not_called()
+
+
+def test_normalize_fact_embeddings_allows_empty_rows():
+    normalized = _rust_core._normalize_fact_embeddings([[0.1, 0.2], [], [0.3]], 3)
+
+    assert normalized == [[0.1, 0.2], [], [0.3]]
 
 
 def test_rust_core_adapter_embed_texts_uses_active_engine(mocker):
     config = Config()
     engine = mocker.Mock()
-    engine.embed_texts.return_value = [[0.5, 0.6]]
+    engine.embed_texts.return_value = [[0.5, 0.6], [0.7, 0.8]]
     adapter = _rust_core.RustCoreAdapter(config=config, _engine=engine)
     native = mocker.patch("memori._rust_core._embed_with_native_cache")
 
-    result = adapter.embed_texts(["hello"], model="all-MiniLM-L6-v2")
+    result = adapter.embed_texts(["hello", "   ", "world"], model="all-MiniLM-L6-v2")
 
-    assert result == [[0.5, 0.6]]
-    engine.embed_texts.assert_called_once_with(["hello"])
+    assert result == [[0.5, 0.6], [], [0.7, 0.8]]
+    engine.embed_texts.assert_called_once_with(["hello", "world"])
     native.assert_not_called()

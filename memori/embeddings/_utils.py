@@ -12,8 +12,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from memori._embedding_input import is_embeddable_text, normalize_embed_texts_input
+
 
 def prepare_text_inputs(texts: str | Iterable[str]) -> list[str]:
-    if isinstance(texts, str):
-        return [texts]
-    return [t for t in texts if t]
+    return [
+        text for text in normalize_embed_texts_input(texts) if is_embeddable_text(text)
+    ]

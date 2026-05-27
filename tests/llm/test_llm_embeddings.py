@@ -152,26 +152,43 @@ def test_embed_texts_empty_string(mocker):
     cfg = Config()
     native = mocker.patch(
         "memori.embeddings._api.embed_texts_native",
-        return_value=[[0.1, 0.2, 0.3]],
+        return_value=[[]],
     )
 
     result = embed_texts("", model=cfg.embeddings.model)
 
-    assert result == [[0.1, 0.2, 0.3]]
+    assert result == [[]]
     native.assert_called_once_with([""], model=cfg.embeddings.model)
 
 
-def test_embed_texts_filters_empty_strings(mocker):
+def test_embed_texts_preserves_input_cardinality_for_empty_strings(mocker):
     cfg = Config()
     native = mocker.patch(
         "memori.embeddings._api.embed_texts_native",
-        return_value=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
+        return_value=[[0.1, 0.2, 0.3], [], [0.4, 0.5, 0.6], []],
     )
 
     result = embed_texts(["Hello", "", "World", ""], model=cfg.embeddings.model)
 
-    assert result == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
-    native.assert_called_once_with(["Hello", "World"], model=cfg.embeddings.model)
+    assert result == [[0.1, 0.2, 0.3], [], [0.4, 0.5, 0.6], []]
+    native.assert_called_once_with(
+        ["Hello", "", "World", ""], model=cfg.embeddings.model
+    )
+
+
+def test_embed_texts_preserves_input_cardinality_for_whitespace(mocker):
+    cfg = Config()
+    native = mocker.patch(
+        "memori.embeddings._api.embed_texts_native",
+        return_value=[[0.1, 0.2, 0.3], [], [0.4, 0.5, 0.6]],
+    )
+
+    result = embed_texts(["Hello", "   ", "World"], model=cfg.embeddings.model)
+
+    assert result == [[0.1, 0.2, 0.3], [], [0.4, 0.5, 0.6]]
+    native.assert_called_once_with(
+        ["Hello", "   ", "World"], model=cfg.embeddings.model
+    )
 
 
 def test_embed_texts_custom_model(mocker):
