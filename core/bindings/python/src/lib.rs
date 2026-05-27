@@ -284,19 +284,24 @@ fn embed_texts(
     result.map_err(orchestrator_error_to_py_err)
 }
 
-fn cached_embedding_engine(model_name: Option<&str>) -> Result<CoreEmbeddingEngine, OrchestratorError> {
+fn cached_embedding_engine(
+    model_name: Option<&str>,
+) -> Result<CoreEmbeddingEngine, OrchestratorError> {
     static CACHE: Mutex<Option<HashMap<Option<String>, CoreEmbeddingEngine>>> = Mutex::new(None);
 
     let key = model_name.map(str::to_owned);
-    let mut guard = CACHE
-        .lock()
-        .map_err(|_| OrchestratorError::ModelError("embedding engine cache lock poisoned".into()))?;
+    let mut guard = CACHE.lock().map_err(|_| {
+        OrchestratorError::ModelError("embedding engine cache lock poisoned".into())
+    })?;
     let cache = guard.get_or_insert_with(HashMap::new);
     if !cache.contains_key(&key) {
         let engine = CoreEmbeddingEngine::new(model_name)?;
         cache.insert(key.clone(), engine);
     }
-    Ok(cache.get(&key).expect("embedding engine cache entry").clone())
+    Ok(cache
+        .get(&key)
+        .expect("embedding engine cache entry")
+        .clone())
 }
 
 fn reshape_embedding_result((flat_vectors, shape): (Vec<f32>, [usize; 2])) -> Vec<Vec<f32>> {

@@ -134,8 +134,8 @@ def _embed_with_native_cache(
         if engine is None:
             _try_import_memori_python()
             try:
-                from memori_python import (
-                    NativeEmbedder,  # ty: ignore[unresolved-import]
+                from memori_python import (  # ty: ignore[unresolved-import]
+                    NativeEmbedder,
                 )
             except ImportError as exc:
                 raise RustCoreAdapterError("Rust embeddings are unavailable") from exc
