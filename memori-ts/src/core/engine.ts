@@ -38,7 +38,7 @@ export class NativeEngine {
         const dialect = this.storageManager.getDialect();
         const sm = this.storageManager;
         const storageCallCb: StorageCallCb = (err, _id, _payloadJson) => {
-          const id = Array.isArray(_id) ? _id[0] : (_id as number);
+          const id = Array.isArray(_id) ? _id[0] : _id;
           if (err) {
             console.error('[Memori] Bridge error in storageCall:', err);
             this.memoriEngine?.resolveStorageCall(
