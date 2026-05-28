@@ -329,6 +329,22 @@ impl RustStorageManager {
         WriteBatch { ops }
     }
 
+    // ── id coercion ───────────────────────────────────────────────────────────
+
+    // Accepts both JSON string and integer values so a numeric ID sent from the
+    // TS bridge never silently becomes an empty string via `.as_str()`.
+    fn coerce_id_str(v: &serde_json::Value) -> String {
+        if let Some(s) = v.as_str() {
+            s.to_string()
+        } else if let Some(n) = v.as_i64() {
+            n.to_string()
+        } else if let Some(n) = v.as_u64() {
+            n.to_string()
+        } else {
+            String::new()
+        }
+    }
+
     fn execute_batch_ops(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
@@ -340,10 +356,7 @@ impl RustStorageManager {
                 // TS/BYODB-only: the Python SDK persists conversation messages through its own
                 // augmentation path and does not use write_batch for this op.
                 "conversation_message.create" => {
-                    let conv_id_str = op.payload["conversation_id"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string();
+                    let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
                         .ok_or_else(|| {
@@ -367,7 +380,7 @@ impl RustStorageManager {
                     }
                 }
                 "entity_fact.create" => {
-                    let entity_id_str = op.payload["entity_id"].as_str().unwrap_or("").to_string();
+                    let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {
@@ -404,29 +417,27 @@ impl RustStorageManager {
                             vec![]
                         };
 
-                    let internal_conv_id =
-                        if let Some(conv_id_str) = op.payload["conversation_id"].as_str() {
-                            if !conv_id_str.is_empty() {
-                                let session_id = self
-                                    .do_session_create(
-                                        conn,
-                                        conv_id_str,
-                                        Some(internal_entity_id),
-                                        None,
-                                    )?
-                                    .ok_or_else(|| {
-                                        HostStorageError::new(
-                                            "INTERNAL",
-                                            "do_session_create returned no id",
-                                        )
-                                    })?;
-                                self.do_conversation_create(conn, session_id, 30)?
-                            } else {
-                                None
-                            }
+                    let internal_conv_id = {
+                        let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
+                        if !conv_id_str.is_empty() {
+                            let session_id = self
+                                .do_session_create(
+                                    conn,
+                                    &conv_id_str,
+                                    Some(internal_entity_id),
+                                    None,
+                                )?
+                                .ok_or_else(|| {
+                                    HostStorageError::new(
+                                        "INTERNAL",
+                                        "do_session_create returned no id",
+                                    )
+                                })?;
+                            self.do_conversation_create(conn, session_id, 30)?
                         } else {
                             None
-                        };
+                        }
+                    };
 
                     self.do_entity_fact_create(
                         conn,
@@ -437,7 +448,7 @@ impl RustStorageManager {
                     )?;
                 }
                 "knowledge_graph.create" => {
-                    let entity_id_str = op.payload["entity_id"].as_str().unwrap_or("").to_string();
+                    let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {
@@ -450,8 +461,7 @@ impl RustStorageManager {
                     self.do_knowledge_graph_create(conn, internal_entity_id, triples)?;
                 }
                 "process_attribute.create" => {
-                    let process_id_str =
-                        op.payload["process_id"].as_str().unwrap_or("").to_string();
+                    let process_id_str = Self::coerce_id_str(&op.payload["process_id"]);
                     if process_id_str.is_empty() {
                         continue;
                     }
@@ -477,10 +487,7 @@ impl RustStorageManager {
                     self.do_process_attribute_create(conn, internal_process_id, &attributes)?;
                 }
                 "conversation.update" => {
-                    let conv_id_str = op.payload["conversation_id"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string();
+                    let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
                         .ok_or_else(|| {
@@ -498,7 +505,7 @@ impl RustStorageManager {
                     self.do_conversation_update(conn, conv_id, summary)?;
                 }
                 "upsert_fact" => {
-                    let entity_id_str = op.payload["entity_id"].as_str().unwrap_or("").to_string();
+                    let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {

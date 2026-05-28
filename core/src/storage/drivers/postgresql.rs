@@ -100,7 +100,10 @@ pub fn session_create(
     process_id: Option<i64>,
 ) -> Result<Option<i64>, HostStorageError> {
     conn.execute(
-        "INSERT INTO memori_session(uuid, entity_id, process_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        "INSERT INTO memori_session(uuid, entity_id, process_id) VALUES ($1, $2, $3) \
+         ON CONFLICT(uuid) DO UPDATE SET \
+           entity_id = COALESCE(EXCLUDED.entity_id, memori_session.entity_id), \
+           process_id = COALESCE(EXCLUDED.process_id, memori_session.process_id)",
         vec![
             SqlBind::Text(uuid.to_string()),
             SqlBind::id_or_null(entity_id),

@@ -80,6 +80,7 @@ type TrackedAdapter = {
   adapter: StorageAdapter;
   lastUsed: number;
   isBusy: boolean;
+  inTransaction: boolean;
   // Held from `begin` until `commit`/`rollback`/`close` to serialize SQLite transactions.
   releaseSqliteLock?: () => void;
 };
@@ -164,7 +165,7 @@ export class StorageManager {
   private sweepOrphanedConnections(): void {
     const cutoff = Date.now() - CONN_TTL_MS;
     for (const [id, entry] of this.connections) {
-      if (!entry.isBusy && entry.lastUsed < cutoff) {
+      if (!entry.isBusy && !entry.inTransaction && entry.lastUsed < cutoff) {
         this.connections.delete(id);
         entry.releaseSqliteLock?.();
         entry.releaseSqliteLock = undefined;
@@ -186,7 +187,12 @@ export class StorageManager {
         this.sweepOrphanedConnections();
         const adapter = Registry.getAdapter(this.factory);
         const connId = this.nextConnId++;
-        this.connections.set(connId, { adapter, lastUsed: Date.now(), isBusy: false });
+        this.connections.set(connId, {
+          adapter,
+          lastUsed: Date.now(),
+          isBusy: false,
+          inTransaction: false,
+        });
         resolve({ conn_id: connId });
         break;
       }
@@ -244,6 +250,7 @@ export class StorageManager {
         try {
           await entry.adapter.begin();
           began = true;
+          entry.inTransaction = true;
           resolve({ ok: true });
         } finally {
           if (!began) {
@@ -269,6 +276,7 @@ export class StorageManager {
           await entry.adapter.commit();
           resolve({ ok: true });
         } finally {
+          entry.inTransaction = false;
           entry.releaseSqliteLock?.();
           entry.releaseSqliteLock = undefined;
           entry.isBusy = false;
@@ -292,6 +300,7 @@ export class StorageManager {
         } catch {
           // non-fatal
         } finally {
+          entry.inTransaction = false;
           entry.releaseSqliteLock?.();
           entry.releaseSqliteLock = undefined;
           entry.isBusy = false;
@@ -341,7 +350,15 @@ export class StorageManager {
     // Drain all in-flight dispatchOp calls before touching adapters.
     await Promise.allSettled(this.inFlight);
     // Release any connections that Rust left open (e.g. due to an in-flight shutdown).
+    // Roll back any open transactions first so the DB isn't left in a dirty state.
     for (const entry of this.connections.values()) {
+      if (entry.inTransaction) {
+        try {
+          await entry.adapter.rollback();
+        } catch {
+          // non-fatal
+        }
+      }
       try {
         await entry.adapter.close();
       } catch {
