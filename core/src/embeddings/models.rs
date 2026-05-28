@@ -1,4 +1,4 @@
-//! ONNX-backed sentence-transformers embedder via `fastembed`.
+//! ONNX-backed text embedder via `fastembed`.
 
 use anyhow::{Result, anyhow};
 use fastembed::{EmbeddingModel, ModelTrait, TextEmbedding, TextInitOptions, get_cache_dir};
