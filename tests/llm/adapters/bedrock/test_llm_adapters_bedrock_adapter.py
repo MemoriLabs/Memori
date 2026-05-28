@@ -38,6 +38,49 @@ def test_get_formatted_response_streamed():
     ) == [{"role": "assistant", "text": "abcdef", "type": "text"}]
 
 
+def test_get_formatted_response_unstreamed():
+    # Converse API format
+    assert Adapter().get_formatted_response(
+        {
+            "conversation": {
+                "response": [
+                    {
+                        "output": {
+                            "message": {
+                                "role": "assistant",
+                                "content": [{"text": "Hello Converse"}],
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ) == [{"role": "assistant", "text": "Hello Converse", "type": "text"}]
+
+    # Messages API format
+    assert Adapter().get_formatted_response(
+        {
+            "conversation": {
+                "response": [
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "Hello Messages"}],
+                    }
+                ]
+            }
+        }
+    ) == [{"role": "assistant", "text": "Hello Messages", "type": "text"}]
+
+    # Legacy format
+    assert Adapter().get_formatted_response(
+        {
+            "conversation": {
+                "response": [{"completion": "Hello Legacy"}]
+            }
+        }
+    ) == [{"role": "assistant", "text": "Hello Legacy", "type": "text"}]
+
+
 def test_get_formatted_query_with_injected_messages():
     assert Adapter().get_formatted_query(
         {
