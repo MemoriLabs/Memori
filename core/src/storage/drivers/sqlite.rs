@@ -186,12 +186,11 @@ pub fn conversation_message_create(
     content: &str,
 ) -> Result<(), HostStorageError> {
     conn.execute(
-        "INSERT INTO memori_conversation_message(uuid, conversation_id, role, type, content) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO memori_conversation_message(uuid, conversation_id, role, content) VALUES (?, ?, ?, ?)",
         vec![
             SqlBind::Text(new_uuid()),
             SqlBind::Int(conversation_id),
             SqlBind::Text(role.to_string()),
-            SqlBind::Text("text".to_string()),
             SqlBind::Text(content.to_string()),
         ],
     )?;

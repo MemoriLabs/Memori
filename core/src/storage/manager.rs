@@ -357,6 +357,9 @@ impl RustStorageManager {
                 // augmentation path and does not use write_batch for this op.
                 "conversation_message.create" => {
                     let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
+                    if conv_id_str.is_empty() {
+                        continue;
+                    }
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
                         .ok_or_else(|| {
@@ -381,6 +384,9 @@ impl RustStorageManager {
                 }
                 "entity_fact.create" => {
                     let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
+                    if entity_id_str.is_empty() {
+                        continue;
+                    }
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {
@@ -449,6 +455,9 @@ impl RustStorageManager {
                 }
                 "knowledge_graph.create" => {
                     let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
+                    if entity_id_str.is_empty() {
+                        continue;
+                    }
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {
@@ -488,6 +497,9 @@ impl RustStorageManager {
                 }
                 "conversation.update" => {
                     let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
+                    if conv_id_str.is_empty() {
+                        continue;
+                    }
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
                         .ok_or_else(|| {
@@ -506,6 +518,9 @@ impl RustStorageManager {
                 }
                 "upsert_fact" => {
                     let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
+                    if entity_id_str.is_empty() {
+                        continue;
+                    }
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {
