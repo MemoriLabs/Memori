@@ -31,9 +31,6 @@ impl Dialect {
         )
     }
 
-    pub fn is_cockroachdb(&self) -> bool {
-        matches!(self, Dialect::Cockroachdb)
-    }
 }
 
 impl std::fmt::Display for Dialect {

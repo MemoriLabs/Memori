@@ -111,6 +111,13 @@ describe('StorageManager', () => {
     expect(Buffer.isBuffer(calledBinds[3])).toBe(true);
   });
 
+  it('begin op returns error object for unknown conn_id', async () => {
+    const manager = new StorageManager(makeFactory());
+    const result = (await dispatchCall(manager, JSON.stringify({ op: 'begin', conn_id: 9999 }))) as any;
+    expect(result.error).toBeDefined();
+    expect(result.error.code).toBe('NO_CONN');
+  });
+
   it('execute op returns error object for unknown conn_id', async () => {
     const manager = new StorageManager(makeFactory());
     const result = (await dispatchCall(

@@ -170,17 +170,18 @@ impl RustStorageManager {
         conn: &dyn crate::storage::connection::StorageConnection,
         conversation_id: i64,
         role: &str,
+        msg_type: &str,
         content: &str,
     ) -> Result<(), HostStorageError> {
         match &self.dialect {
             Dialect::Sqlite => {
-                sqlite::conversation_message_create(conn, conversation_id, role, content)
+                sqlite::conversation_message_create(conn, conversation_id, role, msg_type, content)
             }
             Dialect::Postgresql | Dialect::Cockroachdb => {
-                postgresql::conversation_message_create(conn, conversation_id, role, content)
+                postgresql::conversation_message_create(conn, conversation_id, role, msg_type, content)
             }
             Dialect::Mysql => {
-                mysql::conversation_message_create(conn, conversation_id, role, content)
+                mysql::conversation_message_create(conn, conversation_id, role, msg_type, content)
             }
         }
     }
@@ -377,8 +378,9 @@ impl RustStorageManager {
                     if let Some(messages) = op.payload["messages"].as_array() {
                         for msg in messages {
                             let role = msg["role"].as_str().unwrap_or("");
+                            let msg_type = msg["type"].as_str().unwrap_or("");
                             let content = msg["content"].as_str().unwrap_or("");
-                            self.do_conversation_message_create(conn, conv_id, role, content)?;
+                            self.do_conversation_message_create(conn, conv_id, role, msg_type, content)?;
                         }
                     }
                 }
@@ -401,6 +403,10 @@ impl RustStorageManager {
                                 .collect()
                         })
                         .unwrap_or_default();
+
+                    if facts.is_empty() {
+                        continue;
+                    }
 
                     let embeddings =
                         if let Some(raw_embs) = op.payload["fact_embeddings"].as_array() {
