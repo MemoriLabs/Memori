@@ -17,35 +17,55 @@ interface MysqlConnection {
   release(): void;
 }
 
+// Accepts both a mysql2/promise Pool (has getConnection) and a direct
+// PoolConnection / Connection (has beginTransaction but no getConnection).
 function isMysqlConnection(conn: unknown): boolean {
+  if (conn == null) return false;
+  const c = conn as MysqlPool & MysqlConnection;
   return (
-    conn != null &&
-    typeof (conn as MysqlPool).execute === 'function' &&
-    typeof (conn as MysqlPool).query === 'function' &&
-    typeof (conn as MysqlPool).getConnection === 'function'
+    typeof c.execute === 'function' &&
+    typeof c.query === 'function' &&
+    (typeof c.getConnection === 'function' || typeof c.beginTransaction === 'function')
   );
 }
 
 export class MysqlAdapter implements StorageAdapter {
-  private readonly pool: MysqlPool;
+  private readonly conn: MysqlPool | MysqlConnection;
+  // True when the factory returned a Pool (has getConnection); false for direct connections.
+  private readonly isPool: boolean;
   private txConn: MysqlConnection | null = null;
 
   constructor(conn: unknown) {
-    this.pool = conn as MysqlPool;
+    this.isPool = typeof (conn as MysqlPool).getConnection === 'function';
+    this.conn = conn as MysqlPool | MysqlConnection;
   }
 
   public async execute<T = Record<string, unknown>>(
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
-    const client = this.txConn ?? this.pool;
+    const client = this.txConn ?? (this.conn as MysqlConnection);
     const [rows] = await client.execute(operation, binds);
     return Array.isArray(rows) ? (rows as T[]) : [];
   }
 
   public async begin(): Promise<void> {
-    this.txConn = await this.pool.getConnection();
-    await this.txConn.beginTransaction();
+    if (this.isPool) {
+      // Acquire into a local first; only store on the instance after the transaction
+      // has started so a failed beginTransaction() doesn't leave an unreleased connection.
+      const conn = await (this.conn as MysqlPool).getConnection();
+      try {
+        await conn.beginTransaction();
+      } catch (e) {
+        conn.release();
+        throw e;
+      }
+      this.txConn = conn;
+    } else {
+      // Direct connection — begin transaction in-place; caller owns lifecycle.
+      await (this.conn as MysqlConnection).beginTransaction();
+      this.txConn = this.conn as MysqlConnection;
+    }
   }
 
   public async commit(): Promise<void> {
@@ -55,7 +75,8 @@ export class MysqlAdapter implements StorageAdapter {
       try {
         await conn.commit();
       } finally {
-        conn.release();
+        // Only release pool-checked-out connections; never release a direct connection.
+        if (this.isPool) conn.release();
       }
     }
   }
@@ -69,7 +90,7 @@ export class MysqlAdapter implements StorageAdapter {
       } catch {
         // non-fatal
       } finally {
-        conn.release();
+        if (this.isPool) conn.release();
       }
     }
   }
@@ -79,9 +100,9 @@ export class MysqlAdapter implements StorageAdapter {
   }
 
   public close(): void {
-    // Release any checked-out transaction connection — never call pool.end(), caller owns pool lifecycle.
+    // Release any checked-out pool connection — never call pool.end() or release a direct connection.
     if (this.txConn) {
-      this.txConn.release();
+      if (this.isPool) this.txConn.release();
       this.txConn = null;
     }
   }
