@@ -233,6 +233,18 @@ describe('StorageManager', () => {
     expect(result.rows[0].blob).toBe(Buffer.from(raw).toString('base64'));
   });
 
+  it('execute op converts BigInt row values to strings', async () => {
+    mockExecute.mockResolvedValueOnce([{ id: BigInt('9007199254740993') }]);
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT id FROM t', binds: [] })
+    )) as any;
+    expect(typeof result.rows[0].id).toBe('string');
+    expect(result.rows[0].id).toBe('9007199254740993');
+  });
+
   it('execute op leaves non-binary row values untouched', async () => {
     mockExecute.mockResolvedValueOnce([{ id: 42, content: 'hello', score: 0.9 }]);
     const manager = new StorageManager(makeFactory());

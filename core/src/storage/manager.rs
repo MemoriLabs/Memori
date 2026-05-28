@@ -521,39 +521,40 @@ impl RustStorageManager {
                     if entity_id_str.is_empty() {
                         continue;
                     }
+                    let content = match op.payload["content"].as_str() {
+                        Some(c) if !c.trim().is_empty() => c,
+                        _ => continue,
+                    };
                     let internal_entity_id = self
                         .do_entity_create(conn, &entity_id_str)?
                         .ok_or_else(|| {
                             HostStorageError::new("INTERNAL", "do_entity_create returned no id")
                         })?;
-                    if let Some(content) = op.payload["content"].as_str() {
-                        // Read the embedding pre-computed by precompute_embeddings (outside the tx).
-                        // Falls back to embed_texts only if somehow missing (defensive).
-                        let pre = op.payload["content_embedding"].as_array().map(|a| {
-                            a.iter()
-                                .filter_map(|v| v.as_f64().map(|f| f as f32))
-                                .collect::<Vec<f32>>()
-                        });
-                        let embeddings = pre
-                            .map(|e| vec![e])
-                            .unwrap_or_else(|| self.embed_texts(vec![content.to_string()]));
-                        if let Some(embedding) =
-                            embeddings.into_iter().next().filter(|e| !e.is_empty())
-                        {
-                            self.do_entity_fact_create(
-                                conn,
-                                internal_entity_id,
-                                &[content.to_string()],
-                                &[embedding],
-                                None,
-                            )?;
-                        } else {
-                            self.do_entity_fact_create_without_embedding(
-                                conn,
-                                internal_entity_id,
-                                content,
-                            )?;
-                        }
+                    // Read the embedding pre-computed by precompute_embeddings (outside the tx).
+                    // Falls back to embed_texts only if somehow missing (defensive).
+                    let pre = op.payload["content_embedding"].as_array().map(|a| {
+                        a.iter()
+                            .filter_map(|v| v.as_f64().map(|f| f as f32))
+                            .collect::<Vec<f32>>()
+                    });
+                    let embeddings = pre
+                        .map(|e| vec![e])
+                        .unwrap_or_else(|| self.embed_texts(vec![content.to_string()]));
+                    if let Some(embedding) = embeddings.into_iter().next().filter(|e| !e.is_empty())
+                    {
+                        self.do_entity_fact_create(
+                            conn,
+                            internal_entity_id,
+                            &[content.to_string()],
+                            &[embedding],
+                            None,
+                        )?;
+                    } else {
+                        self.do_entity_fact_create_without_embedding(
+                            conn,
+                            internal_entity_id,
+                            content,
+                        )?;
                     }
                 }
                 unknown => {

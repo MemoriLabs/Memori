@@ -62,6 +62,7 @@ const SWEEP_INTERVAL_MS = 60_000;
 function normalizeRowValue(v: unknown): unknown {
   if (Buffer.isBuffer(v)) return v.toString('base64');
   if (v instanceof Uint8Array) return Buffer.from(v).toString('base64');
+  if (typeof v === 'bigint') return v.toString();
   return v;
 }
 

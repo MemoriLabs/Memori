@@ -279,5 +279,9 @@ fn augmentation_batch_entity_fact_knowledge_graph_process_attribute_conversation
     let embeddings = manager
         .fetch_embeddings("aug-entity", 10)
         .expect("fetch_embeddings");
-    assert_eq!(embeddings.len(), 2, "two facts should be stored with embeddings");
+    assert_eq!(
+        embeddings.len(),
+        2,
+        "two facts should be stored with embeddings"
+    );
 }
