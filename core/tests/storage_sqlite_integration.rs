@@ -198,3 +198,86 @@ fn get_conversation_history_returns_empty_for_unknown_session() {
         .expect("history");
     assert!(history.is_empty());
 }
+
+#[test]
+fn conversation_message_create_and_history_round_trip() {
+    let manager = make_manager();
+    manager.build().expect("build");
+
+    let batch = WriteBatch {
+        ops: vec![WriteOp {
+            op_type: "conversation_message.create".to_string(),
+            payload: serde_json::json!({
+                "conversation_id": "sess-abc",
+                "messages": [
+                    { "role": "user", "content": "Hello!" },
+                    { "role": "assistant", "content": "Hi there!" },
+                ]
+            }),
+        }],
+    };
+    let ack = manager.write_batch(&batch).expect("write_batch");
+    assert_eq!(ack.written_ops, 1);
+
+    let history = manager
+        .get_conversation_history("sess-abc")
+        .expect("history");
+    assert_eq!(history.len(), 2);
+    assert_eq!(history[0]["role"], "user");
+    assert_eq!(history[0]["content"], "Hello!");
+    assert_eq!(history[1]["role"], "assistant");
+    assert_eq!(history[1]["content"], "Hi there!");
+}
+
+#[test]
+fn augmentation_batch_entity_fact_knowledge_graph_process_attribute_conversation_update() {
+    let manager = make_manager();
+    manager.build().expect("build");
+
+    manager.set_embedder(Box::new(|texts: Vec<String>| {
+        texts.into_iter().map(|_| vec![1.0_f32, 0.0, 0.0]).collect()
+    }));
+
+    let batch = WriteBatch {
+        ops: vec![
+            WriteOp {
+                op_type: "entity_fact.create".to_string(),
+                payload: serde_json::json!({
+                    "entity_id": "aug-entity",
+                    "facts": ["User prefers dark mode", "User is a developer"],
+                    "conversation_id": "aug-sess",
+                }),
+            },
+            WriteOp {
+                op_type: "knowledge_graph.create".to_string(),
+                payload: serde_json::json!({
+                    "entity_id": "aug-entity",
+                    "semantic_triples": [
+                        { "subject": "User", "predicate": "prefers", "object": "dark mode" }
+                    ],
+                }),
+            },
+            WriteOp {
+                op_type: "process_attribute.create".to_string(),
+                payload: serde_json::json!({
+                    "process_id": "aug-process",
+                    "attributes": ["code-assistant", "rust-developer"],
+                }),
+            },
+            WriteOp {
+                op_type: "conversation.update".to_string(),
+                payload: serde_json::json!({
+                    "conversation_id": "aug-sess",
+                    "summary": "User is a developer who prefers dark mode.",
+                }),
+            },
+        ],
+    };
+    let ack = manager.write_batch(&batch).expect("write_batch");
+    assert_eq!(ack.written_ops, 4);
+
+    let embeddings = manager
+        .fetch_embeddings("aug-entity", 10)
+        .expect("fetch_embeddings");
+    assert_eq!(embeddings.len(), 2, "two facts should be stored with embeddings");
+}

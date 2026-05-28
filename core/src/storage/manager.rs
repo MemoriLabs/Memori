@@ -672,10 +672,12 @@ impl StorageBridge for RustStorageManager {
                     let _ = conn.rollback();
                     conn.close();
 
-                    // CockroachDB serialization failure — retry with exponential backoff.
+                    // SQLSTATE 40001 (serialization failure) — retry with exponential backoff.
+                    // Applies to CockroachDB, CockroachDB via pg adapter (reported as postgresql),
+                    // and PostgreSQL under REPEATABLE READ / SERIALIZABLE isolation.
                     // 50ms, 100ms, 200ms, 400ms, 800ms (capped at 1000ms).
                     // Production callers should add random jitter via the `rand` crate.
-                    if e.code == "40001" && self.dialect.is_cockroachdb() && attempt < MAX_RETRIES {
+                    if e.code == "40001" && attempt < MAX_RETRIES {
                         let backoff =
                             std::time::Duration::from_millis((50 * 2_u64.pow(attempt)).min(1000));
                         std::thread::sleep(backoff);
