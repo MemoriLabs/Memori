@@ -12,11 +12,32 @@ from bson import ObjectId
 
 from memori import _rust_core
 from memori._config import Config
+from memori.native import (
+    RustCoreAdapter,
+    RustCoreAdapterError,
+)
+from memori.native import (
+    embed_texts as native_embed_texts,
+)
 
 
 @contextmanager
 def _fake_connection_context(_conn_factory, driver):
     yield None, None, driver
+
+
+def test_rust_core_compat_facade_exports_native_public_api():
+    assert _rust_core.RustCoreAdapter is RustCoreAdapter
+    assert _rust_core.RustCoreAdapterError is RustCoreAdapterError
+    assert _rust_core.embed_texts is native_embed_texts
+
+
+def test_rust_core_compat_facade_exposes_bootstrap_helpers():
+    assert callable(_rust_core._ensure_onnxruntime_dylib)
+    assert callable(_rust_core._try_import_memori_python)
+    assert callable(_rust_core._normalize_model_name)
+    assert hasattr(_rust_core, "os")
+    assert hasattr(_rust_core, "Path")
 
 
 def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
@@ -37,7 +58,7 @@ def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -68,7 +89,7 @@ def test_fetch_embeddings_callback_preserves_mongodb_object_id(mocker):
     driver.entity_fact = SimpleNamespace(get_embeddings=mocker.Mock(return_value=[]))
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -104,7 +125,7 @@ def test_fetch_facts_by_ids_callback_rehydrates_mongodb_object_ids(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -140,7 +161,7 @@ def test_fetch_facts_by_ids_callback_serializes_datetime_summaries(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -160,7 +181,7 @@ def test_write_batch_callback_maps_process_attribute_dict(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -201,10 +222,12 @@ def test_write_batch_callback_embeds_entity_facts(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
-    embed = mocker.patch("memori._rust_core.embed_texts", return_value=[[0.1, 0.2]])
+    embed = mocker.patch(
+        "memori.native._adapter.embed_texts", return_value=[[0.1, 0.2]]
+    )
 
     callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
     response = json.loads(
@@ -248,10 +271,10 @@ def test_write_batch_callback_uses_precomputed_entity_fact_embeddings(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
-    embed = mocker.patch("memori._rust_core.embed_texts")
+    embed = mocker.patch("memori.native._adapter.embed_texts")
 
     callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
     response = json.loads(
@@ -298,10 +321,10 @@ def test_write_batch_callback_prefers_active_rust_core_engine(mocker):
     config.rust_core = rust_core
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
-    module_embed = mocker.patch("memori._rust_core.embed_texts")
+    module_embed = mocker.patch("memori.native._adapter.embed_texts")
 
     callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
     response = json.loads(
@@ -353,7 +376,7 @@ def test_write_batch_callback_rehydrates_mongodb_conversation_id(mocker):
     driver.entity_fact = SimpleNamespace(create=mocker.Mock())
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -399,7 +422,7 @@ def test_write_batch_callback_updates_mongodb_conversation(mocker):
     driver.conversation = SimpleNamespace(update=mocker.Mock())
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -450,7 +473,9 @@ def test_maybe_create_defers_engine_import(mocker):
     config.byodb = True
     config.use_rust_core = True
     config.storage = SimpleNamespace(conn_factory=object)
-    import_memori_python = mocker.patch("memori._rust_core._try_import_memori_python")
+    import_memori_python = mocker.patch(
+        "memori.native._loader._try_import_memori_python"
+    )
 
     adapter = _rust_core.RustCoreAdapter.maybe_create(config)
 
@@ -703,7 +728,8 @@ def test_ensure_onnxruntime_dylib_extracts_android_aar_without_root(mocker, tmp_
     mocker.patch("memori._rust_core.platform.machine", return_value="aarch64")
     mocker.patch("memori._rust_core.Path.home", return_value=tmp_path)
     mocker.patch(
-        "memori._rust_core._download_asset_with_retries", side_effect=_copy_archive
+        "memori.native._onnxruntime._download_asset_with_retries",
+        side_effect=_copy_archive,
     )
 
     os.environ.pop("ORT_DYLIB_PATH", None)
@@ -738,7 +764,9 @@ def test_embed_texts_uses_native_embedder(mocker):
     engine.embed_texts.return_value = [[0.1, 0.2], [0.3, 0.4]]
     memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
 
-    mocker.patch("memori._rust_core._try_import_memori_python", return_value=True)
+    mocker.patch(
+        "memori.native._embeddings._try_import_memori_python", return_value=True
+    )
     mocker.patch.dict("sys.modules", {"memori_python": memori_python})
 
     result = _rust_core.embed_texts(["hello", "   ", "world"], model="all-MiniLM-L6-v2")
@@ -753,7 +781,9 @@ def test_embed_texts_returns_empty_vectors_for_non_embeddable_inputs(mocker):
     engine = mocker.Mock()
     memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
 
-    mocker.patch("memori._rust_core._try_import_memori_python", return_value=True)
+    mocker.patch(
+        "memori.native._embeddings._try_import_memori_python", return_value=True
+    )
     mocker.patch.dict("sys.modules", {"memori_python": memori_python})
 
     result = _rust_core.embed_texts(["", "   "], model="all-MiniLM-L6-v2")

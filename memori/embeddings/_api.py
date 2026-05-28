@@ -20,9 +20,9 @@ from memori._embedding_input import (
     is_embeddable_text,
     normalize_embed_texts_input,
 )
-from memori._rust_core import embed_texts as embed_texts_native
 from memori.embeddings._tei import TEI
 from memori.embeddings._tei_embed import embed_texts_via_tei
+from memori.native import embed_texts as embed_texts_native
 
 logger = logging.getLogger(__name__)
 

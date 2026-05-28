@@ -14,8 +14,8 @@ from unittest.mock import patch
 import pytest
 
 from memori._config import Config
-from memori._rust_core import RustCoreAdapterError
 from memori.embeddings import TEI, embed_texts, format_embedding_for_db
+from memori.native import RustCoreAdapterError
 
 
 def test_format_embedding_for_db_mysql():

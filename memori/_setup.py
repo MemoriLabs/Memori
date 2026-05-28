@@ -10,7 +10,7 @@ r"""
 
 from memori._cli import Cli
 from memori._config import Config
-from memori._rust_core import embed_texts
+from memori.native import embed_texts
 
 
 class Manager:
