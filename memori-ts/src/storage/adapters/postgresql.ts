@@ -13,7 +13,7 @@ function isPostgresConnection(conn: unknown): boolean {
 
 export class PostgresAdapter implements StorageAdapter {
   private readonly pool: Pool;
-  private txClient: PoolClient | null = null;
+  private txConn: PoolClient | null = null;
 
   constructor(conn: unknown) {
     this.pool = conn as Pool;
@@ -23,20 +23,20 @@ export class PostgresAdapter implements StorageAdapter {
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
-    const client = this.txClient ?? this.pool;
+    const client = this.txConn ?? this.pool;
     const result = await client.query(operation, binds);
     return result.rows as T[];
   }
 
   public async begin(): Promise<void> {
-    this.txClient = await this.pool.connect();
-    await this.txClient.query('BEGIN');
+    this.txConn = await this.pool.connect();
+    await this.txConn.query('BEGIN');
   }
 
   public async commit(): Promise<void> {
-    if (this.txClient) {
-      const client = this.txClient;
-      this.txClient = null;
+    if (this.txConn) {
+      const client = this.txConn;
+      this.txConn = null;
       try {
         await client.query('COMMIT');
         client.release();
@@ -49,9 +49,9 @@ export class PostgresAdapter implements StorageAdapter {
   }
 
   public async rollback(): Promise<void> {
-    if (this.txClient) {
-      const client = this.txClient;
-      this.txClient = null;
+    if (this.txConn) {
+      const client = this.txConn;
+      this.txConn = null;
       try {
         await client.query('ROLLBACK');
       } catch {
@@ -69,9 +69,9 @@ export class PostgresAdapter implements StorageAdapter {
 
   public close(): void {
     // Release any open transaction client — never call pool.end(), caller owns pool lifecycle.
-    if (this.txClient) {
-      this.txClient.release();
-      this.txClient = null;
+    if (this.txConn) {
+      this.txConn.release();
+      this.txConn = null;
     }
   }
 }

@@ -136,7 +136,7 @@ export class StorageManager {
    * `resolve` must be called exactly once — it unblocks the waiting Rust thread.
    */
   public handleStorageCall(
-    id: number,
+    _id: number,
     payloadJson: string,
     resolve: (result: object) => void
   ): void {
@@ -148,7 +148,7 @@ export class StorageManager {
       return;
     }
 
-    const p = this.dispatchOp(id, payload, resolve).catch((e: unknown) => {
+    const p = this.dispatchOp(payload, resolve).catch((e: unknown) => {
       const code = typeof e === 'object' && e !== null && 'code' in e ? String(e.code) : 'ERR';
       resolve({ error: { code, message: String(e) } });
     });
@@ -178,7 +178,6 @@ export class StorageManager {
   }
 
   private async dispatchOp(
-    _id: number,
     payload: StorageCallPayload,
     resolve: (result: object) => void
   ): Promise<void> {
@@ -228,6 +227,15 @@ export class StorageManager {
             releaseLock = r;
           });
           await prev;
+          // close() was called while we were waiting — release the lock immediately so
+          // any further queued begins also see the flag and unwind, then bail out.
+          if (this.sweepHandle === undefined) {
+            releaseLock();
+            resolve({
+              error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
+            });
+            return;
+          }
           entry.releaseSqliteLock = releaseLock;
         }
         entry.lastUsed = Date.now();
@@ -322,11 +330,18 @@ export class StorageManager {
       this.engineShutdown();
       this.engineShutdown = undefined;
     }
+    // Signal shutdown and release all held SQLite locks before draining. Any begin
+    // calls queued behind an open transaction will see isShuttingDown, call their own
+    // releaseLock (unwinding the full chain), and resolve with a SHUTTING_DOWN error
+    // rather than hanging forever waiting for a commit that will never arrive.
+    for (const entry of this.connections.values()) {
+      entry.releaseSqliteLock?.();
+      entry.releaseSqliteLock = undefined;
+    }
     // Drain all in-flight dispatchOp calls before touching adapters.
     await Promise.allSettled(this.inFlight);
     // Release any connections that Rust left open (e.g. due to an in-flight shutdown).
     for (const entry of this.connections.values()) {
-      entry.releaseSqliteLock?.();
       try {
         await entry.adapter.close();
       } catch {

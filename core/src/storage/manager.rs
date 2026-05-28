@@ -333,7 +333,8 @@ impl RustStorageManager {
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         batch: &WriteBatch,
-    ) -> Result<(), HostStorageError> {
+    ) -> Result<usize, HostStorageError> {
+        let mut applied: usize = 0;
         for op in &batch.ops {
             match op.op_type.as_str() {
                 // TS/BYODB-only: the Python SDK persists conversation messages through its own
@@ -540,8 +541,9 @@ impl RustStorageManager {
                     ));
                 }
             }
+            applied += 1;
         }
-        Ok(())
+        Ok(applied)
     }
 }
 
@@ -620,7 +622,6 @@ impl StorageBridge for RustStorageManager {
         // Embed outside the transaction so ONNX inference doesn't extend the lock window.
         let batch = self.precompute_embeddings(batch);
 
-        let op_count = batch.ops.len();
         const MAX_RETRIES: u32 = 5;
         let mut last_err: Option<HostStorageError> = None;
 
@@ -636,13 +637,13 @@ impl StorageBridge for RustStorageManager {
             // other serialization failure — CockroachDB commonly rejects at commit.
             let result = self
                 .execute_batch_ops(&*conn, &batch)
-                .and_then(|_| conn.commit());
+                .and_then(|applied| conn.commit().map(|_| applied));
 
             match result {
-                Ok(()) => {
+                Ok(applied) => {
                     conn.close();
                     return Ok(WriteAck {
-                        written_ops: op_count,
+                        written_ops: applied,
                     });
                 }
                 Err(e) => {

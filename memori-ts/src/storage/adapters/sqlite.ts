@@ -11,7 +11,7 @@ function isSqliteConnection(conn: unknown): boolean {
 }
 
 export class SqliteAdapter implements StorageAdapter {
-  private client: Database;
+  private readonly client: Database;
   constructor(conn: unknown) {
     this.client = conn as Database;
     // WAL mode allows concurrent reads during a write — important for the async bridge callbacks
