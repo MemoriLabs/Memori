@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memori"
-version = "3.3.4"
+version = "3.3.6"
 description = "Memori Python SDK"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
 license = {text = "Apache-2.0"}
@@ -40,8 +40,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-embeddings = ["sentence-transformers>=3.0.0"]
+# Kept as a no-op compatibility extra for `pip install memori[embeddings]`.
+# Embeddings are provided by the native Rust fastembed core in the default wheel.
+embeddings = []
 sqlalchemy = ["sqlalchemy>=2.0.44"]
+tidb-zero = ["certifi>=2024.0.0", "pymysql>=1.1.2"]
 cockroachdb = [
     "psycopg[binary]>=3.1.0",
     "sqlalchemy>=2.0.44",
@@ -181,7 +184,6 @@ dev = [
     "psutil>=5.9.0",
     "requests>=2.32.5",
     "ruff>=0.8.0",
-    "sentence-transformers>=3.0.0",
     "sqlalchemy>=2.0.44",
     "sqlalchemy-cockroachdb>=1.4.0",
     "xai-sdk>=1.3.1",

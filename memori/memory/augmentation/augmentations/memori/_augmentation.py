@@ -192,15 +192,27 @@ class AdvancedAugmentation(BaseAugmentation):
             ]
 
         if facts:
-            embeddings_config = self.config.embeddings
-            fact_embeddings = await embed_texts(
+            fact_embeddings = await self._embed_facts(facts)
+            if fact_embeddings is not None:
+                api_response["entity"]["fact_embeddings"] = fact_embeddings
+
+        return Memories().configure_from_advanced_augmentation(api_response)
+
+    async def _embed_facts(self, facts: list[str]) -> list[list[float]] | None:
+        embeddings_config = self.config.embeddings
+        try:
+            return await embed_texts(
                 facts,
                 model=embeddings_config.model,
                 async_=True,
             )
-            api_response["entity"]["fact_embeddings"] = fact_embeddings
-
-        return Memories().configure_from_advanced_augmentation(api_response)
+        except Exception as exc:
+            logger.warning(
+                "Embeddings failed; writing AA facts without embeddings. %s",
+                exc,
+                exc_info=True,
+            )
+            return None
 
     async def _schedule_entity_writes(
         self, ctx: AugmentationContext, driver, memories: Memories
@@ -224,18 +236,14 @@ class AdvancedAugmentation(BaseAugmentation):
             ]
 
             if facts_from_triples:
-                embeddings_config = self.config.embeddings
-                embeddings_from_triples = await embed_texts(
-                    facts_from_triples,
-                    model=embeddings_config.model,
-                    async_=True,
-                )
+                embeddings_from_triples = await self._embed_facts(facts_from_triples)
                 facts_to_write = (facts_to_write or []) + facts_from_triples
-                embeddings_to_write = (
-                    embeddings_to_write or []
-                ) + embeddings_from_triples
+                if embeddings_from_triples is not None:
+                    embeddings_to_write = (
+                        embeddings_to_write or []
+                    ) + embeddings_from_triples
 
-        if facts_to_write and embeddings_to_write:
+        if facts_to_write:
             ctx.add_write(
                 "entity_fact.create",
                 entity_id,

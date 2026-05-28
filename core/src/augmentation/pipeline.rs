@@ -165,6 +165,98 @@ pub fn build_write_batch_from_response(
     WriteBatch { ops }
 }
 
+pub fn attach_entity_fact_embeddings<F>(mut batch: WriteBatch, mut embed: F) -> WriteBatch
+where
+    F: FnMut(Vec<String>) -> (Vec<f32>, [usize; 2]),
+{
+    for op in batch.ops.iter_mut() {
+        if op.op_type != "entity_fact.create" {
+            continue;
+        }
+
+        let Some(payload) = op.payload.as_object_mut() else {
+            continue;
+        };
+        if payload.contains_key("fact_embeddings") {
+            continue;
+        }
+
+        let facts = payload
+            .get("facts")
+            .and_then(|value| value.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(ToString::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if facts.is_empty() {
+            continue;
+        }
+
+        let expected_rows = facts.len();
+        let embeddable: Vec<(usize, String)> = facts
+            .iter()
+            .enumerate()
+            .filter(|(_, fact)| is_embeddable_text(fact))
+            .map(|(index, fact)| (index, fact.clone()))
+            .collect();
+        if embeddable.is_empty() {
+            continue;
+        }
+
+        let embed_inputs: Vec<String> = embeddable.iter().map(|(_, fact)| fact.clone()).collect();
+        let (flat, shape) = embed(embed_inputs);
+        let embedded = reshape_embeddings(flat, shape);
+        if embedded.len() != embeddable.len() {
+            log::warn!(
+                "Skipping fact_embeddings for entity_fact.create: expected {} embeddable rows, got {}",
+                embeddable.len(),
+                embedded.len()
+            );
+            continue;
+        }
+        if !embedding_rows_have_signal(&embedded) {
+            log::warn!(
+                "Skipping fact_embeddings for entity_fact.create: embeddings have no semantic signal"
+            );
+            continue;
+        }
+
+        let mut aligned = vec![Vec::new(); expected_rows];
+        for ((index, _), vector) in embeddable.into_iter().zip(embedded) {
+            aligned[index] = vector;
+        }
+        payload.insert("fact_embeddings".to_string(), serde_json::json!(aligned));
+    }
+
+    batch
+}
+
+fn is_embeddable_text(text: &str) -> bool {
+    text.chars()
+        .any(|c| !c.is_whitespace() && !c.is_control() && c != '\u{200B}')
+}
+
+fn embedding_rows_have_signal(embeddings: &[Vec<f32>]) -> bool {
+    !embeddings.is_empty()
+        && embeddings
+            .iter()
+            .all(|row| row.iter().any(|value| *value != 0.0))
+}
+
+fn reshape_embeddings(flat: Vec<f32>, shape: [usize; 2]) -> Vec<Vec<f32>> {
+    let [rows, cols] = shape;
+    if rows == 0 || cols == 0 || flat.len() != rows.saturating_mul(cols) {
+        return Vec::new();
+    }
+
+    flat.chunks_exact(cols)
+        .map(|chunk| chunk.to_vec())
+        .collect::<Vec<_>>()
+}
+
 fn extract_facts(response: &serde_json::Value) -> Option<Vec<String>> {
     if let Some(arr) = response
         .pointer("/entity/facts")
@@ -325,5 +417,55 @@ mod tests {
             batch.ops[0].payload.get("content").and_then(|v| v.as_str()),
             Some("manual fact")
         );
+    }
+
+    #[test]
+    fn attach_entity_fact_embeddings_skips_all_zero_rows() {
+        let mut batch = WriteBatch {
+            ops: vec![WriteOp {
+                op_type: "entity_fact.create".to_string(),
+                payload: serde_json::json!({
+                    "facts": ["prefers concise responses"]
+                }),
+            }],
+        };
+
+        batch = attach_entity_fact_embeddings(batch, |_| (vec![0.0, 0.0, 0.0], [1, 3]));
+
+        let fact_op = &batch.ops[0];
+        assert!(fact_op.payload.get("fact_embeddings").is_none());
+    }
+
+    #[test]
+    fn attach_entity_fact_embeddings_aligns_partially_embeddable_facts() {
+        let mut batch = WriteBatch {
+            ops: vec![WriteOp {
+                op_type: "entity_fact.create".to_string(),
+                payload: serde_json::json!({
+                    "facts": ["prefers concise responses", "   ", "lives in Paris"]
+                }),
+            }],
+        };
+
+        batch = attach_entity_fact_embeddings(batch, |facts| {
+            assert_eq!(
+                facts,
+                vec![
+                    "prefers concise responses".to_string(),
+                    "lives in Paris".to_string()
+                ]
+            );
+            (vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], [2, 3])
+        });
+
+        let embeddings = batch.ops[0]
+            .payload
+            .get("fact_embeddings")
+            .and_then(|value| value.as_array())
+            .expect("fact_embeddings should be present");
+        assert_eq!(embeddings.len(), 3);
+        assert_eq!(embeddings[0].as_array().unwrap().len(), 3);
+        assert!(embeddings[1].as_array().unwrap().is_empty());
+        assert_eq!(embeddings[2].as_array().unwrap().len(), 3);
     }
 }

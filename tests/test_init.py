@@ -23,7 +23,7 @@ def test_memori_initializes_rust_core_adapter_in_byodb(mocker, monkeypatch):
     mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
 
     maybe_create = mocker.patch(
-        "memori._rust_core.RustCoreAdapter.maybe_create", return_value=object()
+        "memori.native.RustCoreAdapter.maybe_create", return_value=object()
     )
 
     mem = Memori(conn=lambda: mock_conn)
@@ -42,7 +42,7 @@ def test_memori_use_rust_core_kwarg_false(mocker):
     mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
 
     maybe_create = mocker.patch(
-        "memori._rust_core.RustCoreAdapter.maybe_create",
+        "memori.native.RustCoreAdapter.maybe_create",
         return_value=None,
     )
 
