@@ -89,6 +89,110 @@ def _load_config(hermes_home: str | Path | None = None) -> MemoriConfig | None:
     )
 
 
+def _content_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _parse_tool_args(arguments: Any) -> dict[str, Any]:
+    if isinstance(arguments, dict):
+        return arguments
+    if isinstance(arguments, str):
+        try:
+            parsed = json.loads(arguments)
+        except json.JSONDecodeError:
+            return {"_raw": arguments}
+        if isinstance(parsed, dict):
+            return parsed
+        return {"value": parsed}
+    if arguments is None:
+        return {}
+    return {"value": arguments}
+
+
+def _current_turn_messages(
+    messages: list[dict[str, Any]] | None,
+    *,
+    user_content: str,
+    assistant_content: str,
+) -> list[dict[str, Any]]:
+    """Return only the completed turn from Hermes' full conversation history."""
+    if not messages:
+        return []
+
+    final_idx: int | None = None
+    for idx in range(len(messages) - 1, -1, -1):
+        message = messages[idx]
+        if not isinstance(message, dict) or message.get("role") != "assistant":
+            continue
+        if _content_text(message.get("content")) == _content_text(assistant_content):
+            final_idx = idx
+            break
+    if final_idx is None:
+        final_idx = len(messages)
+
+    start_idx = 0
+    for idx in range(final_idx - 1, -1, -1):
+        message = messages[idx]
+        if not isinstance(message, dict) or message.get("role") != "user":
+            continue
+        start_idx = idx
+        if _content_text(message.get("content")) == _content_text(user_content):
+            break
+
+    return messages[start_idx : final_idx + 1]
+
+
+def _derive_trace_from_messages(
+    messages: list[dict[str, Any]] | None,
+    *,
+    user_content: str,
+    assistant_content: str,
+) -> dict[str, list[dict[str, Any]]] | None:
+    """Build Memori's provider-owned tool trace from the current Hermes turn."""
+    current_turn = _current_turn_messages(
+        messages,
+        user_content=user_content,
+        assistant_content=assistant_content,
+    )
+    if not current_turn:
+        return None
+
+    tools: list[dict[str, Any]] = []
+    tools_by_id: dict[str, dict[str, Any]] = {}
+
+    for message in current_turn:
+        if not isinstance(message, dict):
+            continue
+
+        if message.get("role") == "assistant":
+            for tool_call in message.get("tool_calls") or []:
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get("function") or {}
+                if not isinstance(function, dict):
+                    function = {}
+                tool_call_id = str(tool_call.get("id") or "")
+                item = {
+                    "name": str(function.get("name") or ""),
+                    "args": _parse_tool_args(function.get("arguments")),
+                    "result": None,
+                }
+                tools.append(item)
+                if tool_call_id:
+                    tools_by_id[tool_call_id] = item
+
+        elif message.get("role") == "tool":
+            tool_call_id = str(message.get("tool_call_id") or "")
+            if tool_call_id and tool_call_id in tools_by_id:
+                tools_by_id[tool_call_id]["result"] = message.get("content")
+
+    return {"tools": tools} if tools else None
+
+
 class MemoriMemoryProvider(MemoryProvider):
     """Hermes MemoryProvider implementation backed by Memori Cloud."""
 
@@ -176,6 +280,7 @@ was not provided."""
         assistant_content: str,
         *,
         session_id: str = "",
+        messages: list[dict[str, Any]] | None = None,
     ) -> None:
         if self._client is None:
             return
@@ -184,9 +289,14 @@ was not provided."""
             self._sync_thread.join(timeout=SYNC_JOIN_TIMEOUT_SECS)
 
         active_session = session_id or self._session_id
+        trace = _derive_trace_from_messages(
+            messages,
+            user_content=user_content,
+            assistant_content=assistant_content,
+        )
         self._sync_thread = threading.Thread(
             target=self._sync_turn_background,
-            args=(user_content, assistant_content, active_session),
+            args=(user_content, assistant_content, active_session, trace),
             daemon=True,
         )
         self._sync_thread.start()
@@ -196,6 +306,7 @@ was not provided."""
         user_content: str,
         assistant_content: str,
         session_id: str,
+        trace: dict[str, Any] | None = None,
     ) -> None:
         if self._client is None:
             return
@@ -206,6 +317,7 @@ was not provided."""
                 assistant_content=assistant_content,
                 session_id=session_id,
                 platform=HERMES_PLATFORM,
+                trace=trace,
             )
         except MemoriApiError as exc:
             logger.warning("Memori sync_turn failed: %s", exc)
