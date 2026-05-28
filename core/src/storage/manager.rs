@@ -451,6 +451,9 @@ impl RustStorageManager {
                 "process_attribute.create" => {
                     let process_id_str =
                         op.payload["process_id"].as_str().unwrap_or("").to_string();
+                    if process_id_str.is_empty() {
+                        continue;
+                    }
                     let internal_process_id = self
                         .do_process_create(conn, &process_id_str)?
                         .ok_or_else(|| {

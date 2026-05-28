@@ -76,7 +76,13 @@ function normalizeRows(rows: unknown[]): Record<string, unknown>[] {
   });
 }
 
-type TrackedAdapter = { adapter: StorageAdapter; lastUsed: number; isBusy: boolean };
+type TrackedAdapter = {
+  adapter: StorageAdapter;
+  lastUsed: number;
+  isBusy: boolean;
+  // Held from `begin` until `commit`/`rollback`/`close` to serialize SQLite transactions.
+  releaseSqliteLock?: () => void;
+};
 
 export class StorageManager {
   private readonly factory: ConnFactory;
@@ -86,6 +92,9 @@ export class StorageManager {
   private readonly connections = new Map<number, TrackedAdapter>();
   private readonly inFlight = new Set<Promise<void>>();
   private nextConnId = 1;
+  // SQLite only: promise chain that serializes begin→commit/rollback sequences so
+  // two concurrent write_batch calls can't interleave transactions on the same DB object.
+  private sqliteQueue: Promise<void> = Promise.resolve();
   private engineShutdown?: () => void;
   private engineBuild?: () => Promise<void>;
   private sweepHandle?: ReturnType<typeof setInterval>;
@@ -154,10 +163,12 @@ export class StorageManager {
    */
   private sweepOrphanedConnections(): void {
     const cutoff = Date.now() - CONN_TTL_MS;
-    for (const [id, { adapter, lastUsed, isBusy }] of this.connections) {
-      if (!isBusy && lastUsed < cutoff) {
+    for (const [id, entry] of this.connections) {
+      if (!entry.isBusy && entry.lastUsed < cutoff) {
         this.connections.delete(id);
-        const p = Promise.resolve(adapter.close()).catch((e: unknown) => {
+        entry.releaseSqliteLock?.();
+        entry.releaseSqliteLock = undefined;
+        const p = Promise.resolve(entry.adapter.close()).catch((e: unknown) => {
           console.warn(`[Memori] failed to close orphaned connection ${id}:`, e);
         });
         this.inFlight.add(p);
@@ -208,12 +219,29 @@ export class StorageManager {
           resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
           return;
         }
+        // SQLite: wait for any in-progress transaction to finish before starting a new one,
+        // mirroring Python's connection_context which scopes one connection per operation.
+        if (this.getDialect() === 'sqlite') {
+          const prev = this.sqliteQueue;
+          let releaseLock!: () => void;
+          this.sqliteQueue = new Promise<void>((r) => {
+            releaseLock = r;
+          });
+          await prev;
+          entry.releaseSqliteLock = releaseLock;
+        }
         entry.lastUsed = Date.now();
         entry.isBusy = true;
+        let began = false;
         try {
           await entry.adapter.begin();
+          began = true;
           resolve({ ok: true });
         } finally {
+          if (!began) {
+            entry.releaseSqliteLock?.();
+            entry.releaseSqliteLock = undefined;
+          }
           entry.isBusy = false;
           entry.lastUsed = Date.now();
         }
@@ -233,6 +261,8 @@ export class StorageManager {
           await entry.adapter.commit();
           resolve({ ok: true });
         } finally {
+          entry.releaseSqliteLock?.();
+          entry.releaseSqliteLock = undefined;
           entry.isBusy = false;
           entry.lastUsed = Date.now();
         }
@@ -254,6 +284,8 @@ export class StorageManager {
         } catch {
           // non-fatal
         } finally {
+          entry.releaseSqliteLock?.();
+          entry.releaseSqliteLock = undefined;
           entry.isBusy = false;
           entry.lastUsed = Date.now();
         }
@@ -266,6 +298,8 @@ export class StorageManager {
         const entry = this.connections.get(connId);
         this.connections.delete(connId);
         if (entry) {
+          entry.releaseSqliteLock?.();
+          entry.releaseSqliteLock = undefined;
           try {
             await entry.adapter.close();
           } catch {
@@ -291,9 +325,10 @@ export class StorageManager {
     // Drain all in-flight dispatchOp calls before touching adapters.
     await Promise.allSettled(this.inFlight);
     // Release any connections that Rust left open (e.g. due to an in-flight shutdown).
-    for (const { adapter } of this.connections.values()) {
+    for (const entry of this.connections.values()) {
+      entry.releaseSqliteLock?.();
       try {
-        await adapter.close();
+        await entry.adapter.close();
       } catch {
         // non-fatal
       }
