@@ -2251,7 +2251,7 @@ wheels = [
 
 [[package]]
 name = "memori"
-version = "3.3.6rc2"
+version = "3.3.6"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
