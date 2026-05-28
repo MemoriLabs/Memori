@@ -89,6 +89,14 @@ def _load_config(hermes_home: str | Path | None = None) -> MemoriConfig | None:
     )
 
 
+def _content_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    return str(value)
+
+
 def _parse_tool_args(arguments: Any) -> dict[str, Any]:
     if isinstance(arguments, dict):
         return arguments
@@ -105,17 +113,58 @@ def _parse_tool_args(arguments: Any) -> dict[str, Any]:
     return {"value": arguments}
 
 
+def _current_turn_messages(
+    messages: list[dict[str, Any]] | None,
+    *,
+    user_content: str,
+    assistant_content: str,
+) -> list[dict[str, Any]]:
+    """Return only the completed turn from Hermes' full conversation history."""
+    if not messages:
+        return []
+
+    final_idx: int | None = None
+    for idx in range(len(messages) - 1, -1, -1):
+        message = messages[idx]
+        if not isinstance(message, dict) or message.get("role") != "assistant":
+            continue
+        if _content_text(message.get("content")) == _content_text(assistant_content):
+            final_idx = idx
+            break
+    if final_idx is None:
+        final_idx = len(messages)
+
+    start_idx = 0
+    for idx in range(final_idx - 1, -1, -1):
+        message = messages[idx]
+        if not isinstance(message, dict) or message.get("role") != "user":
+            continue
+        start_idx = idx
+        if _content_text(message.get("content")) == _content_text(user_content):
+            break
+
+    return messages[start_idx : final_idx + 1]
+
+
 def _derive_trace_from_messages(
     messages: list[dict[str, Any]] | None,
+    *,
+    user_content: str,
+    assistant_content: str,
 ) -> dict[str, list[dict[str, Any]]] | None:
-    """Build Memori's provider-owned tool trace from Hermes messages."""
-    if not messages:
+    """Build Memori's provider-owned tool trace from the current Hermes turn."""
+    current_turn = _current_turn_messages(
+        messages,
+        user_content=user_content,
+        assistant_content=assistant_content,
+    )
+    if not current_turn:
         return None
 
     tools: list[dict[str, Any]] = []
     tools_by_id: dict[str, dict[str, Any]] = {}
 
-    for message in messages:
+    for message in current_turn:
         if not isinstance(message, dict):
             continue
 
@@ -240,7 +289,11 @@ was not provided."""
             self._sync_thread.join(timeout=SYNC_JOIN_TIMEOUT_SECS)
 
         active_session = session_id or self._session_id
-        trace = _derive_trace_from_messages(messages)
+        trace = _derive_trace_from_messages(
+            messages,
+            user_content=user_content,
+            assistant_content=assistant_content,
+        )
         self._sync_thread = threading.Thread(
             target=self._sync_turn_background,
             args=(user_content, assistant_content, active_session, trace),

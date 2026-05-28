@@ -78,7 +78,7 @@ def test_sync_turn_runs_background_capture() -> None:
     assert client.captured == [("hello", "hi", "session-1", "hermes", None)]
 
 
-def test_sync_turn_derives_trace_from_hermes_messages() -> None:
+def test_sync_turn_derives_trace_from_current_hermes_turn_only() -> None:
     client = FakeClient()
     provider = MemoriMemoryProvider(client=client)
     provider._session_id = "session-1"
@@ -87,6 +87,23 @@ def test_sync_turn_derives_trace_from_hermes_messages() -> None:
         "run tests",
         "tests passed",
         messages=[
+            {"role": "user", "content": "old request"},
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "old-call",
+                        "type": "function",
+                        "function": {
+                            "name": "terminal",
+                            "arguments": '{"command": "old"}',
+                        },
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": "old-call", "content": "old result"},
+            {"role": "assistant", "content": "old answer"},
+            {"role": "user", "content": "run tests"},
             {
                 "role": "assistant",
                 "tool_calls": [
@@ -100,11 +117,8 @@ def test_sync_turn_derives_trace_from_hermes_messages() -> None:
                     }
                 ],
             },
-            {
-                "role": "tool",
-                "tool_call_id": "call-1",
-                "content": "passed",
-            },
+            {"role": "tool", "tool_call_id": "call-1", "content": "passed"},
+            {"role": "assistant", "content": "tests passed"},
         ],
     )
     provider.shutdown()
