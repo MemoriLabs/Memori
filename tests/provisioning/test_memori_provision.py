@@ -42,7 +42,7 @@ def test_memori_provision_returns_byodb_instance(mocker):
         return_value=lambda: FakeConnection(),
     )
     build = mocker.patch("memori.storage._manager.Manager.build")
-    mocker.patch("memori._rust_core.RustCoreAdapter.maybe_create", return_value=None)
+    mocker.patch("memori.native.RustCoreAdapter.maybe_create", return_value=None)
 
     mem = Memori.provision(provider="tidb-zero", build=True)
 
@@ -65,7 +65,7 @@ def test_memori_provision_can_skip_build(mocker):
         return_value=lambda: FakeConnection(),
     )
     build = mocker.patch("memori.storage._manager.Manager.build")
-    mocker.patch("memori._rust_core.RustCoreAdapter.maybe_create", return_value=None)
+    mocker.patch("memori.native.RustCoreAdapter.maybe_create", return_value=None)
 
     Memori.provision(provider="tidb-zero", build=False)
 

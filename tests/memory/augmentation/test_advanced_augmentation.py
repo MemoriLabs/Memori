@@ -272,6 +272,46 @@ async def test_process_api_response_dict_to_memories(augmentation):
 
 
 @pytest.mark.asyncio
+async def test_process_api_response_keeps_facts_when_embeddings_fail(augmentation):
+    api_response = {
+        "entity": {"facts": ["User likes pizza"], "triples": []},
+        "conversation": {"summary": "Discussed food preferences"},
+        "process": {"attributes": []},
+    }
+
+    with patch(
+        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts",
+        new_callable=AsyncMock,
+    ) as mock_embed:
+        mock_embed.side_effect = RuntimeError("embedding model failed to load")
+
+        result = await augmentation._process_api_response(api_response)
+
+        assert result.entity.facts == ["User likes pizza"]
+        assert result.entity.fact_embeddings == []
+
+
+@pytest.mark.asyncio
+async def test_process_api_response_keeps_facts_when_embeddings_missing(augmentation):
+    api_response = {
+        "entity": {"facts": ["User likes pizza"], "triples": []},
+        "conversation": {"summary": "Discussed food preferences"},
+        "process": {"attributes": []},
+    }
+
+    with patch(
+        "memori.memory.augmentation.augmentations.memori._augmentation.embed_texts",
+        new_callable=AsyncMock,
+    ) as mock_embed:
+        mock_embed.side_effect = RuntimeError("Rust embeddings are unavailable")
+
+        result = await augmentation._process_api_response(api_response)
+
+        assert result.entity.facts == ["User likes pizza"]
+        assert result.entity.fact_embeddings == []
+
+
+@pytest.mark.asyncio
 async def test_process_api_response_triples_to_facts(augmentation):
     api_response = {
         "entity": {
@@ -348,6 +388,22 @@ async def test_schedule_entity_writes(augmentation, driver, augmentation_input):
 
     assert len(ctx.writes) == 1
     assert ctx.writes[0]["method_path"] == "entity_fact.create"
+
+
+@pytest.mark.asyncio
+async def test_schedule_entity_writes_without_embeddings(
+    augmentation, driver, augmentation_input
+):
+    ctx = AugmentationContext(payload=augmentation_input)
+    memories = Memories()
+    memories.entity.facts = ["Fact 1"]
+    memories.entity.fact_embeddings = []
+
+    await augmentation._schedule_entity_writes(ctx, driver, memories)
+
+    assert len(ctx.writes) == 1
+    assert ctx.writes[0]["method_path"] == "entity_fact.create"
+    assert ctx.writes[0]["args"][2] == []
 
 
 @pytest.mark.asyncio

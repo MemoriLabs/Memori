@@ -21,7 +21,6 @@ from memori._exceptions import (
     UnsupportedLLMProviderError,
     warn_if_legacy_memorisdk_installed,
 )
-from memori._rust_core import RustCoreAdapter
 from memori.agent import Agent as AgentClient
 from memori.llm._providers import Agno as LlmProviderAgno
 from memori.llm._providers import Anthropic as LlmProviderAnthropic
@@ -32,9 +31,14 @@ from memori.llm._providers import PydanticAi as LlmProviderPydanticAi
 from memori.llm._providers import XAi as LlmProviderXAi
 from memori.memory.augmentation import Manager as AugmentationManager
 from memori.memory.recall import CloudRecallResponse, Recall, RecallFact
+from memori.native import RustCoreAdapter
 from memori.storage import Manager as StorageManager
 
-__all__ = ["Memori", "QuotaExceededError", "UnsupportedLLMProviderError"]
+__all__ = [
+    "Memori",
+    "QuotaExceededError",
+    "UnsupportedLLMProviderError",
+]
 
 warn_if_legacy_memorisdk_installed()
 

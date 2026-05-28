@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //!
-//! - Synchronous embedding generation via `sentence-transformers` models.
+//! - Synchronous embedding generation via `fastembed`.
 //! - Bounded, async background worker pools ([`WorkerRuntime`]) for postprocess and
 //!   augmentation jobs.
 //! - Sync retrieval pipeline (dense cosine + BM25 re-rank) over a host-provided
@@ -17,7 +17,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use crate::augmentation::{AugmentationInput, run_advanced_augmentation};
+use crate::augmentation::{
+    AugmentationInput, attach_entity_fact_embeddings, run_advanced_augmentation,
+};
 use crate::embeddings::{SentenceTransformersEmbedder, embed_texts};
 use crate::models::{AugmentationJob, PostprocessJob};
 use crate::network::{ApiSubdomain, MemoriClient};
@@ -47,6 +49,35 @@ pub struct AugmentationAccepted {
     pub job_id: u64,
 }
 
+/// Lightweight handle for embedding-only callers.
+///
+/// This owns only the embedding model. It deliberately does not create
+/// postprocess or augmentation worker runtimes.
+#[derive(Clone)]
+pub struct EmbeddingEngine {
+    embedder: Arc<SentenceTransformersEmbedder>,
+}
+
+impl EmbeddingEngine {
+    /// Initializes the embedding model, downloading it to the local cache if necessary.
+    ///
+    /// # Errors
+    /// Returns `OrchestratorError::ModelError` if the model cannot be found,
+    /// downloaded, or initialized.
+    pub fn new(model_name: Option<&str>) -> Result<Self, OrchestratorError> {
+        let embedder = Arc::new(
+            SentenceTransformersEmbedder::new(model_name)
+                .map_err(|e: anyhow::Error| OrchestratorError::ModelError(e.to_string()))?,
+        );
+        Ok(Self { embedder })
+    }
+
+    /// Synchronously embeds `texts` and returns `(flat_buffer, [rows, cols])`.
+    pub fn embed(&self, texts: Vec<String>) -> (Vec<f32>, [usize; 2]) {
+        embed_texts(&self.embedder, texts)
+    }
+}
+
 /// Top-level engine handle shared across SDK calls.
 ///
 /// Owns the embedding model and the postprocess/augmentation worker runtimes.
@@ -74,16 +105,21 @@ impl EngineOrchestrator {
         model_name: Option<&str>,
         storage_bridge: Option<Arc<dyn StorageBridge>>,
     ) -> Result<Self, OrchestratorError> {
-        let embedder = SentenceTransformersEmbedder::new(model_name)
-            .map_err(|e: anyhow::Error| OrchestratorError::ModelError(e.to_string()))?;
+        let embedder = Arc::new(
+            SentenceTransformersEmbedder::new(model_name)
+                .map_err(|e: anyhow::Error| OrchestratorError::ModelError(e.to_string()))?,
+        );
 
         let api_client = Arc::new(MemoriClient::new(ApiSubdomain::Default)?);
         let postprocess_runtime = init_postprocess_runtime()?;
-        let augmentation_runtime =
-            init_augmentation_runtime(storage_bridge.clone(), api_client.clone())?;
+        let augmentation_runtime = init_augmentation_runtime(
+            storage_bridge.clone(),
+            api_client.clone(),
+            embedder.clone(),
+        )?;
 
         Ok(Self {
-            embedder: Arc::new(embedder),
+            embedder,
             postprocess_runtime,
             augmentation_runtime,
             storage_bridge,
@@ -238,6 +274,7 @@ fn init_postprocess_runtime() -> Result<WorkerRuntime<PostprocessJob>, Orchestra
 fn init_augmentation_runtime(
     storage_bridge: Option<Arc<dyn StorageBridge>>,
     api_client: Arc<MemoriClient>,
+    embedder: Arc<SentenceTransformersEmbedder>,
 ) -> Result<WorkerRuntime<AugmentationJob>, OrchestratorError> {
     let augmentation_runtime = WorkerRuntime::new(
         RuntimeConfig {
@@ -249,38 +286,61 @@ fn init_augmentation_runtime(
         move |job: AugmentationJob| {
             let bridge = storage_bridge.clone();
             let client = api_client.clone();
+            let embedder = embedder.clone();
             async move {
                 match run_advanced_augmentation(&job.input, &client).await {
-                    Ok(batch) => match bridge {
-                        Some(storage) => {
-                            let op_count = batch.ops.len();
-                            match tokio::task::spawn_blocking(move || storage.write_batch(&batch))
+                    Ok(batch) => {
+                        match bridge {
+                            Some(storage) => {
+                                let fallback_batch = batch.clone();
+                                let embedder = embedder.clone();
+                                let batch = match tokio::task::spawn_blocking(move || {
+                                    attach_entity_fact_embeddings(batch, |facts| {
+                                        embed_texts(&embedder, facts)
+                                    })
+                                })
                                 .await
-                            {
-                                Ok(Ok(_)) => log::info!(
-                                    "[orchestrator augmentation worker] job {} persisted {} op(s)",
-                                    job.job_id,
-                                    op_count
-                                ),
-                                Ok(Err(error)) => log::error!(
-                                    "[orchestrator augmentation worker] job {} write failed: {}",
-                                    job.job_id,
-                                    error
-                                ),
-                                Err(join_err) => log::error!(
-                                    "[orchestrator augmentation worker] job {} write task panicked: {}",
-                                    job.job_id,
-                                    join_err
-                                ),
+                                {
+                                    Ok(batch) => batch,
+                                    Err(join_err) => {
+                                        log::error!(
+                                            "[orchestrator augmentation worker] job {} embedding task panicked: {}",
+                                            job.job_id,
+                                            join_err
+                                        );
+                                        fallback_batch
+                                    }
+                                };
+
+                                let op_count = batch.ops.len();
+                                match tokio::task::spawn_blocking(move || storage.write_batch(&batch))
+                                    .await
+                                {
+                                    Ok(Ok(_)) => log::info!(
+                                        "[orchestrator augmentation worker] job {} persisted {} op(s)",
+                                        job.job_id,
+                                        op_count
+                                    ),
+                                    Ok(Err(error)) => log::error!(
+                                        "[orchestrator augmentation worker] job {} write failed: {}",
+                                        job.job_id,
+                                        error
+                                    ),
+                                    Err(join_err) => log::error!(
+                                        "[orchestrator augmentation worker] job {} write task panicked: {}",
+                                        job.job_id,
+                                        join_err
+                                    ),
+                                }
+                            }
+                            None => {
+                                log::warn!(
+                                    "[orchestrator augmentation worker] job {} ignored: no storage bridge",
+                                    job.job_id
+                                );
                             }
                         }
-                        None => {
-                            log::warn!(
-                                "[orchestrator augmentation worker] job {} ignored: no storage bridge",
-                                job.job_id
-                            );
-                        }
-                    },
+                    }
                     Err(error) => {
                         log::error!(
                             "[orchestrator augmentation worker] job {} augmentation failed: {}",
