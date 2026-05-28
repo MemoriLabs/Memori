@@ -405,6 +405,10 @@ pub fn knowledge_graph_create(
         let pred = triple["predicate"].as_str().unwrap_or("").to_string();
         let (obj_name, obj_type) = read_triple_entity(triple.get("object"));
 
+        if subj_name.is_empty() || pred.is_empty() || obj_name.is_empty() {
+            continue;
+        }
+
         let subj_uniq = generate_uniq(&[&subj_name, &subj_type]);
         conn.execute(
             "INSERT IGNORE INTO memori_subject(uuid, name, type, uniq) VALUES (?, ?, ?, ?)",

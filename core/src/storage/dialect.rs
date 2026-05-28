@@ -30,7 +30,6 @@ impl Dialect {
             Dialect::Postgresql | Dialect::Cockroachdb | Dialect::Mysql
         )
     }
-
 }
 
 impl std::fmt::Display for Dialect {

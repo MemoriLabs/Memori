@@ -177,9 +177,13 @@ impl RustStorageManager {
             Dialect::Sqlite => {
                 sqlite::conversation_message_create(conn, conversation_id, role, msg_type, content)
             }
-            Dialect::Postgresql | Dialect::Cockroachdb => {
-                postgresql::conversation_message_create(conn, conversation_id, role, msg_type, content)
-            }
+            Dialect::Postgresql | Dialect::Cockroachdb => postgresql::conversation_message_create(
+                conn,
+                conversation_id,
+                role,
+                msg_type,
+                content,
+            ),
             Dialect::Mysql => {
                 mysql::conversation_message_create(conn, conversation_id, role, msg_type, content)
             }
@@ -380,7 +384,9 @@ impl RustStorageManager {
                             let role = msg["role"].as_str().unwrap_or("");
                             let msg_type = msg["type"].as_str().unwrap_or("");
                             let content = msg["content"].as_str().unwrap_or("");
-                            self.do_conversation_message_create(conn, conv_id, role, msg_type, content)?;
+                            self.do_conversation_message_create(
+                                conn, conv_id, role, msg_type, content,
+                            )?;
                         }
                     }
                 }
@@ -493,8 +499,11 @@ impl RustStorageManager {
                         None => op.payload["attributes"]
                             .as_object()
                             .map(|o| {
-                                o.values()
-                                    .filter_map(|v| v.as_str().map(String::from))
+                                o.iter()
+                                    .filter_map(|(k, v)| {
+                                        let val = v.as_str()?;
+                                        Some(format!("{k}:{val}"))
+                                    })
                                     .collect()
                             })
                             .unwrap_or_default(),
