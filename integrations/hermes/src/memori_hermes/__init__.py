@@ -89,6 +89,61 @@ def _load_config(hermes_home: str | Path | None = None) -> MemoriConfig | None:
     )
 
 
+def _parse_tool_args(arguments: Any) -> dict[str, Any]:
+    if isinstance(arguments, dict):
+        return arguments
+    if isinstance(arguments, str):
+        try:
+            parsed = json.loads(arguments)
+        except json.JSONDecodeError:
+            return {"_raw": arguments}
+        if isinstance(parsed, dict):
+            return parsed
+        return {"value": parsed}
+    if arguments is None:
+        return {}
+    return {"value": arguments}
+
+
+def _derive_trace_from_messages(
+    messages: list[dict[str, Any]] | None,
+) -> dict[str, list[dict[str, Any]]] | None:
+    """Build Memori's provider-owned tool trace from Hermes messages."""
+    if not messages:
+        return None
+
+    tools: list[dict[str, Any]] = []
+    tools_by_id: dict[str, dict[str, Any]] = {}
+
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+
+        if message.get("role") == "assistant":
+            for tool_call in message.get("tool_calls") or []:
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get("function") or {}
+                if not isinstance(function, dict):
+                    function = {}
+                tool_call_id = str(tool_call.get("id") or "")
+                item = {
+                    "name": str(function.get("name") or ""),
+                    "args": _parse_tool_args(function.get("arguments")),
+                    "result": None,
+                }
+                tools.append(item)
+                if tool_call_id:
+                    tools_by_id[tool_call_id] = item
+
+        elif message.get("role") == "tool":
+            tool_call_id = str(message.get("tool_call_id") or "")
+            if tool_call_id and tool_call_id in tools_by_id:
+                tools_by_id[tool_call_id]["result"] = message.get("content")
+
+    return {"tools": tools} if tools else None
+
+
 class MemoriMemoryProvider(MemoryProvider):
     """Hermes MemoryProvider implementation backed by Memori Cloud."""
 
@@ -176,6 +231,7 @@ was not provided."""
         assistant_content: str,
         *,
         session_id: str = "",
+        messages: list[dict[str, Any]] | None = None,
     ) -> None:
         if self._client is None:
             return
@@ -184,9 +240,10 @@ was not provided."""
             self._sync_thread.join(timeout=SYNC_JOIN_TIMEOUT_SECS)
 
         active_session = session_id or self._session_id
+        trace = _derive_trace_from_messages(messages)
         self._sync_thread = threading.Thread(
             target=self._sync_turn_background,
-            args=(user_content, assistant_content, active_session),
+            args=(user_content, assistant_content, active_session, trace),
             daemon=True,
         )
         self._sync_thread.start()
@@ -196,6 +253,7 @@ was not provided."""
         user_content: str,
         assistant_content: str,
         session_id: str,
+        trace: dict[str, Any] | None = None,
     ) -> None:
         if self._client is None:
             return
@@ -206,6 +264,7 @@ was not provided."""
                 assistant_content=assistant_content,
                 session_id=session_id,
                 platform=HERMES_PLATFORM,
+                trace=trace,
             )
         except MemoriApiError as exc:
             logger.warning("Memori sync_turn failed: %s", exc)

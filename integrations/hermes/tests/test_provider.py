@@ -21,8 +21,11 @@ class FakeClient:
         assistant_content: str,
         session_id: str,
         platform: str,
+        trace=None,
     ) -> None:
-        self.captured.append((user_content, assistant_content, session_id, platform))
+        self.captured.append(
+            (user_content, assistant_content, session_id, platform, trace)
+        )
 
     def agent_recall(self, params):
         self.recall_params = params
@@ -72,7 +75,57 @@ def test_sync_turn_runs_background_capture() -> None:
     provider.sync_turn("hello", "hi")
     provider.shutdown()
 
-    assert client.captured == [("hello", "hi", "session-1", "hermes")]
+    assert client.captured == [("hello", "hi", "session-1", "hermes", None)]
+
+
+def test_sync_turn_derives_trace_from_hermes_messages() -> None:
+    client = FakeClient()
+    provider = MemoriMemoryProvider(client=client)
+    provider._session_id = "session-1"
+
+    provider.sync_turn(
+        "run tests",
+        "tests passed",
+        messages=[
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "call-1",
+                        "type": "function",
+                        "function": {
+                            "name": "terminal",
+                            "arguments": '{"command": "pytest"}',
+                        },
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call-1",
+                "content": "passed",
+            },
+        ],
+    )
+    provider.shutdown()
+
+    assert client.captured == [
+        (
+            "run tests",
+            "tests passed",
+            "session-1",
+            "hermes",
+            {
+                "tools": [
+                    {
+                        "name": "terminal",
+                        "args": {"command": "pytest"},
+                        "result": "passed",
+                    }
+                ]
+            },
+        )
+    ]
 
 
 def test_handle_recall_adds_project_default() -> None:
