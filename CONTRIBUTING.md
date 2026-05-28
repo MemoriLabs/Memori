@@ -287,10 +287,15 @@ python --version
 **Error:** `Permission denied`
 
 ```bash
-# Linux/Mac
-sudo uv sync
+# Fix directory ownership (Linux/Mac)
+sudo chown -R $USER ~/.cache/uv
+sudo chown -R $USER .venv
 
-# Windows — run terminal as Administrator
+# OR reinstall uv in user-writable location
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows — fix cache permissions
+icacls .venv /grant %USERNAME%:F
 ```
 
 ### 3. Docker Won't Start
@@ -377,15 +382,19 @@ uv run pytest
 ```
 
 **Error:** `API key missing`
+(integration tests only — not needed for unit tests)
 
 ```bash
-# Copy env file
+# Only needed when running integration tests:
 cp .env.example .env
 
-# Add your keys inside .env
+# Add keys:
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=...
+
+# Then run integration tests:
+make run-integration FILE=tests/llm/clients/oss/openai/sync.py
 ```
 
 ### 7. TypeScript / npm Errors
