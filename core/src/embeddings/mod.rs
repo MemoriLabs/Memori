@@ -1,4 +1,4 @@
-//! Text embedding backed by sentence-transformers models via `fastembed`.
+//! Text embedding backed by `fastembed`.
 mod api;
 mod chunking;
 mod models;
