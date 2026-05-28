@@ -382,7 +382,7 @@ impl RustStorageManager {
                     if let Some(messages) = op.payload["messages"].as_array() {
                         for msg in messages {
                             let role = msg["role"].as_str().unwrap_or("");
-                            let msg_type = msg["type"].as_str().unwrap_or("");
+                            let msg_type = msg["type"].as_str().unwrap_or("text");
                             let content = msg["content"].as_str().unwrap_or("");
                             self.do_conversation_message_create(
                                 conn, conv_id, role, msg_type, content,
@@ -479,6 +479,9 @@ impl RustStorageManager {
                         .as_array()
                         .map(Vec::as_slice)
                         .unwrap_or(&[]);
+                    if triples.is_empty() {
+                        continue;
+                    }
                     self.do_knowledge_graph_create(conn, internal_entity_id, triples)?;
                 }
                 "process_attribute.create" => {
@@ -494,7 +497,14 @@ impl RustStorageManager {
                     let attributes: Vec<String> = match op.payload["attributes"].as_array() {
                         Some(arr) => arr
                             .iter()
-                            .filter_map(|v| v.as_str().map(String::from))
+                            .filter_map(|v| {
+                                let s = v.as_str()?;
+                                if s.trim().is_empty() {
+                                    None
+                                } else {
+                                    Some(s.to_string())
+                                }
+                            })
                             .collect(),
                         None => op.payload["attributes"]
                             .as_object()
@@ -508,11 +518,15 @@ impl RustStorageManager {
                             })
                             .unwrap_or_default(),
                     };
+                    if attributes.is_empty() {
+                        continue;
+                    }
                     self.do_process_attribute_create(conn, internal_process_id, &attributes)?;
                 }
                 "conversation.update" => {
                     let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
-                    if conv_id_str.is_empty() {
+                    let summary = op.payload["summary"].as_str().unwrap_or("");
+                    if conv_id_str.is_empty() || summary.is_empty() {
                         continue;
                     }
                     let session_id = self
@@ -528,7 +542,6 @@ impl RustStorageManager {
                                 "do_conversation_create returned no id",
                             )
                         })?;
-                    let summary = op.payload["summary"].as_str().unwrap_or("");
                     self.do_conversation_update(conn, conv_id, summary)?;
                 }
                 "upsert_fact" => {

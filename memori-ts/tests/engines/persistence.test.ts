@@ -59,8 +59,8 @@ describe('PersistenceEngine', () => {
             payload: expect.objectContaining({
               conversation_id: 'sess-1',
               messages: [
-                { role: 'user', content: 'hello' },
-                { role: 'assistant', content: 'world' },
+                { role: 'user', type: 'text', content: 'hello' },
+                { role: 'assistant', type: 'text', content: 'world' },
               ],
             }),
           }),

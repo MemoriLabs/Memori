@@ -39,8 +39,8 @@ export class PersistenceEngine {
             payload: {
               conversation_id: sessionId,
               messages: [
-                { role: 'user', content: lastUserMessage },
-                { role: 'assistant', content: res.content },
+                { role: 'user', type: 'text', content: lastUserMessage },
+                { role: 'assistant', type: 'text', content: res.content },
               ],
             },
           },

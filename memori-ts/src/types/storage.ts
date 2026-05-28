@@ -26,7 +26,7 @@ export type WriteOp =
       op_type: 'conversation_message.create';
       payload: {
         conversation_id: string;
-        messages: Array<{ role: string; content: string }>;
+        messages: Array<{ role: string; type?: string; content: string }>;
       };
     }
   | {
