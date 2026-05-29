@@ -92,7 +92,29 @@ def test_capture_turn_writes_default_then_collector(
         "project_id": "project",
         "session_id": "session",
         "platform": "hermes",
+        "trace": None,
     }
+
+
+def test_capture_turn_passes_trace(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = make_client()
+    seen = {}
+    trace = {"tools": [{"name": "terminal", "args": {}, "result": "ok"}]}
+
+    def fake_capture_agent_turn(**kwargs):
+        seen.update(kwargs)
+
+    monkeypatch.setattr(client.memori, "capture_agent_turn", fake_capture_agent_turn)
+
+    client.capture_turn(
+        user_content="u",
+        assistant_content="a",
+        session_id="session",
+        platform="cli",
+        trace=trace,
+    )
+
+    assert seen["trace"] == trace
 
 
 def test_summary_rejects_session_without_project() -> None:
