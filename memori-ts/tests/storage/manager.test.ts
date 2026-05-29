@@ -362,6 +362,39 @@ describe('StorageManager', () => {
     vi.useRealTimers();
   });
 
+  it('sqlite: orphaned transaction is swept and SQLite lock released after stale TTL', async () => {
+    // Regression: inTransaction entries were skipped by the sweep forever.
+    // With SQLite's acquire-to-close queue lock, an orphaned transaction blocks future acquires.
+    // After STALE_TX_TTL_MS the sweep must force-rollback/close and release the lock.
+    mockGetDialect.mockReturnValue('sqlite');
+    vi.useFakeTimers();
+    const manager = new StorageManager(makeFactory());
+
+    const { conn_id: id1 } = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'acquire' })
+    )) as any;
+    await dispatchCall(manager, JSON.stringify({ op: 'begin', conn_id: id1 }));
+
+    // Advance past STALE_TX_TTL_MS (60s) with no further activity on id1.
+    vi.advanceTimersByTime(61_000);
+
+    // A new acquire triggers the sweep. The sweep must release id1's SQLite lock so
+    // this acquire can proceed rather than block forever.
+    const r2 = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    expect(r2).toHaveProperty('conn_id');
+
+    // id1 should have been swept.
+    const execResult = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id: id1, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(execResult.error).toBeDefined();
+    expect(execResult.error.code).toBe('NO_CONN');
+
+    vi.useRealTimers();
+  });
+
   it('sweeps a connection that has been idle past the TTL', async () => {
     mockGetDialect.mockReturnValue('postgresql');
     vi.useFakeTimers();

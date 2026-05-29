@@ -52,6 +52,8 @@ function deserializeBinds(binds: Array<{ t: string; v: unknown }>): SqlBindValue
  */
 /** Milliseconds of inactivity before an acquired-but-never-closed connection is considered orphaned. */
 const CONN_TTL_MS = 30_000;
+/** Milliseconds of inactivity before a connection that reached begin but was never committed/rolled back is force-closed. */
+const STALE_TX_TTL_MS = 60_000;
 const SWEEP_INTERVAL_MS = 60_000;
 
 /**
@@ -82,7 +84,7 @@ type TrackedAdapter = {
   lastUsed: number;
   isBusy: boolean;
   inTransaction: boolean;
-  // Held from `begin` until `commit`/`rollback`/`close` to serialize SQLite transactions.
+  // Held from acquire until close to serialize SQLite access on the shared sqlite3* handle.
   releaseSqliteLock?: () => void;
 };
 
@@ -93,8 +95,8 @@ export class StorageManager {
   private readonly connections = new Map<number, TrackedAdapter>();
   private readonly inFlight = new Set<Promise<void>>();
   private nextConnId = 1;
-  // SQLite only: promise chain that serializes begin→commit/rollback sequences so
-  // two concurrent write_batch calls can't interleave transactions on the same DB object.
+  // SQLite only: promise chain that serializes connection lifetime (acquire→close) so only
+  // one connection is live on the shared sqlite3* handle at a time.
   private sqliteQueue: Promise<void> = Promise.resolve();
   private engineShutdown?: () => void;
   private engineBuild?: () => Promise<void>;
@@ -166,17 +168,28 @@ export class StorageManager {
    */
   private sweepOrphanedConnections(): void {
     const cutoff = Date.now() - CONN_TTL_MS;
+    const txCutoff = Date.now() - STALE_TX_TTL_MS;
     for (const [id, entry] of this.connections) {
-      if (!entry.isBusy && !entry.inTransaction && entry.lastUsed < cutoff) {
-        this.connections.delete(id);
-        entry.releaseSqliteLock?.();
-        entry.releaseSqliteLock = undefined;
-        const p = Promise.resolve(entry.adapter.close()).catch((e: unknown) => {
-          console.warn(`[Memori] failed to close orphaned connection ${id}:`, e);
-        });
-        this.inFlight.add(p);
-        void p.finally(() => this.inFlight.delete(p));
-      }
+      const isStaleIdle = !entry.isBusy && !entry.inTransaction && entry.lastUsed < cutoff;
+      const isStaleTx = !entry.isBusy && entry.inTransaction && entry.lastUsed < txCutoff;
+      if (!isStaleIdle && !isStaleTx) continue;
+
+      this.connections.delete(id);
+      entry.releaseSqliteLock?.();
+      entry.releaseSqliteLock = undefined;
+
+      const p = isStaleTx
+        ? Promise.resolve(entry.adapter.rollback())
+            .catch(() => {})
+            .then(() => entry.adapter.close())
+            .catch((e: unknown) => {
+              console.warn(`[Memori] failed to close orphaned transaction ${id}:`, e);
+            })
+        : Promise.resolve(entry.adapter.close()).catch((e: unknown) => {
+            console.warn(`[Memori] failed to close orphaned connection ${id}:`, e);
+          });
+      this.inFlight.add(p);
+      void p.finally(() => this.inFlight.delete(p));
     }
   }
 

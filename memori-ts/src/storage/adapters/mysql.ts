@@ -72,12 +72,24 @@ export class MysqlAdapter implements StorageAdapter {
   public async commit(): Promise<void> {
     if (this.txConn) {
       const conn = this.txConn;
-      this.txConn = null;
       try {
         await conn.commit();
-      } finally {
+        this.txConn = null;
         // Only release pool-checked-out connections; never release a direct connection.
         if (this.isPool) conn.release();
+      } catch (e) {
+        // Commit failed — transaction state is unknown; don't return connection as clean.
+        this.txConn = null;
+        if (this.isPool) {
+          try {
+            await conn.rollback();
+          } catch {
+            // ignore secondary failure
+          }
+          if (conn.destroy) conn.destroy();
+          else conn.release();
+        }
+        throw e;
       }
     }
   }
