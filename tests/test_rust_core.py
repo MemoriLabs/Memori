@@ -4,6 +4,7 @@ import os
 import shutil
 import zipfile
 from contextlib import contextmanager
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -11,11 +12,32 @@ from bson import ObjectId
 
 from memori import _rust_core
 from memori._config import Config
+from memori.native import (
+    RustCoreAdapter,
+    RustCoreAdapterError,
+)
+from memori.native import (
+    embed_texts as native_embed_texts,
+)
 
 
 @contextmanager
 def _fake_connection_context(_conn_factory, driver):
     yield None, None, driver
+
+
+def test_rust_core_compat_facade_exports_native_public_api():
+    assert _rust_core.RustCoreAdapter is RustCoreAdapter
+    assert _rust_core.RustCoreAdapterError is RustCoreAdapterError
+    assert _rust_core.embed_texts is native_embed_texts
+
+
+def test_rust_core_compat_facade_exposes_bootstrap_helpers():
+    assert callable(_rust_core._ensure_onnxruntime_dylib)
+    assert callable(_rust_core._try_import_memori_python)
+    assert callable(_rust_core._normalize_model_name)
+    assert hasattr(_rust_core, "os")
+    assert hasattr(_rust_core, "Path")
 
 
 def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
@@ -36,7 +58,7 @@ def test_fetch_embeddings_callback_serializes_binary_embeddings(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -67,7 +89,7 @@ def test_fetch_embeddings_callback_preserves_mongodb_object_id(mocker):
     driver.entity_fact = SimpleNamespace(get_embeddings=mocker.Mock(return_value=[]))
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -103,7 +125,7 @@ def test_fetch_facts_by_ids_callback_rehydrates_mongodb_object_ids(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -112,6 +134,42 @@ def test_fetch_facts_by_ids_callback_rehydrates_mongodb_object_ids(mocker):
 
     assert output[0]["id"] == str(fact_id)
     driver.entity_fact.get_facts_by_ids.assert_called_once_with([fact_id])
+
+
+def test_fetch_facts_by_ids_callback_serializes_datetime_summaries(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    date_created = datetime(2026, 5, 20, 14, 30, 12)
+    driver = SimpleNamespace(
+        entity_fact=SimpleNamespace(
+            get_facts_by_ids=mocker.Mock(
+                return_value=[
+                    {
+                        "id": 7,
+                        "content": "The user lives in Paris.",
+                        "date_created": date_created,
+                        "summaries": [
+                            {
+                                "content": "The conversation mentions Paris.",
+                                "date_created": date_created,
+                            }
+                        ],
+                    }
+                ]
+            )
+        )
+    )
+
+    mocker.patch(
+        "memori.native._adapter.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+
+    callback = _rust_core.RustCoreAdapter._fetch_facts_by_ids_cb(config)
+    output = json.loads(callback(json.dumps({"ids": [7]})))
+
+    assert output[0]["date_created"] == "2026-05-20 14:30:12"
+    assert output[0]["summaries"][0]["date_created"] == "2026-05-20 14:30:12"
 
 
 def test_write_batch_callback_maps_process_attribute_dict(mocker):
@@ -123,7 +181,7 @@ def test_write_batch_callback_maps_process_attribute_dict(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -164,10 +222,12 @@ def test_write_batch_callback_embeds_entity_facts(mocker):
     )
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
-    embed = mocker.patch("memori._rust_core.embed_texts", return_value=[[0.1, 0.2]])
+    embed = mocker.patch(
+        "memori.native._adapter.embed_texts", return_value=[[0.1, 0.2]]
+    )
 
     callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
     response = json.loads(
@@ -201,6 +261,105 @@ def test_write_batch_callback_embeds_entity_facts(mocker):
     )
 
 
+def test_write_batch_callback_uses_precomputed_entity_fact_embeddings(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    config.embeddings = SimpleNamespace(model="all-MiniLM-L6-v2")
+    driver = SimpleNamespace(
+        entity=SimpleNamespace(create=mocker.Mock(return_value=42)),
+        entity_fact=SimpleNamespace(create=mocker.Mock()),
+    )
+
+    mocker.patch(
+        "memori.native._adapter.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+    embed = mocker.patch("memori.native._adapter.embed_texts")
+
+    callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
+    response = json.loads(
+        callback(
+            json.dumps(
+                {
+                    "ops": [
+                        {
+                            "op_type": "entity_fact.create",
+                            "payload": {
+                                "entity_id": "entity-1",
+                                "facts": ["The user's favorite color is blue."],
+                                "fact_embeddings": [[0.1, 0.2]],
+                                "conversation_id": "5",
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    assert response["written_ops"] == 1
+    embed.assert_not_called()
+    driver.entity_fact.create.assert_called_once_with(
+        42,
+        ["The user's favorite color is blue."],
+        fact_embeddings=[[0.1, 0.2]],
+        conversation_id=5,
+    )
+
+
+def test_write_batch_callback_prefers_active_rust_core_engine(mocker):
+    config = Config()
+    config.storage = SimpleNamespace(conn_factory=object)
+    config.embeddings = SimpleNamespace(model="all-MiniLM-L6-v2")
+    driver = SimpleNamespace(
+        entity=SimpleNamespace(create=mocker.Mock(return_value=42)),
+        entity_fact=SimpleNamespace(create=mocker.Mock()),
+    )
+
+    rust_core = mocker.Mock()
+    rust_core.embed_texts.return_value = [[0.3, 0.4]]
+    config.rust_core = rust_core
+
+    mocker.patch(
+        "memori.native._adapter.connection_context",
+        side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
+    )
+    module_embed = mocker.patch("memori.native._adapter.embed_texts")
+
+    callback = _rust_core.RustCoreAdapter._write_batch_cb(config)
+    response = json.loads(
+        callback(
+            json.dumps(
+                {
+                    "ops": [
+                        {
+                            "op_type": "entity_fact.create",
+                            "payload": {
+                                "entity_id": "entity-1",
+                                "facts": ["The user's favorite color is blue."],
+                                "conversation_id": "5",
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    assert response["written_ops"] == 1
+    rust_core.embed_texts.assert_called_once_with(
+        ["The user's favorite color is blue."],
+        model="all-MiniLM-L6-v2",
+    )
+    module_embed.assert_not_called()
+    driver.entity_fact.create.assert_called_once_with(
+        42,
+        ["The user's favorite color is blue."],
+        fact_embeddings=[[0.3, 0.4]],
+        conversation_id=5,
+    )
+
+
 def test_write_batch_callback_rehydrates_mongodb_conversation_id(mocker):
     class MongoDriver:
         pass
@@ -217,7 +376,7 @@ def test_write_batch_callback_rehydrates_mongodb_conversation_id(mocker):
     driver.entity_fact = SimpleNamespace(create=mocker.Mock())
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -263,7 +422,7 @@ def test_write_batch_callback_updates_mongodb_conversation(mocker):
     driver.conversation = SimpleNamespace(update=mocker.Mock())
 
     mocker.patch(
-        "memori._rust_core.connection_context",
+        "memori.native._adapter.connection_context",
         side_effect=lambda conn_factory: _fake_connection_context(conn_factory, driver),
     )
 
@@ -314,7 +473,9 @@ def test_maybe_create_defers_engine_import(mocker):
     config.byodb = True
     config.use_rust_core = True
     config.storage = SimpleNamespace(conn_factory=object)
-    import_memori_python = mocker.patch("memori._rust_core._try_import_memori_python")
+    import_memori_python = mocker.patch(
+        "memori.native._loader._try_import_memori_python"
+    )
 
     adapter = _rust_core.RustCoreAdapter.maybe_create(config)
 
@@ -567,7 +728,8 @@ def test_ensure_onnxruntime_dylib_extracts_android_aar_without_root(mocker, tmp_
     mocker.patch("memori._rust_core.platform.machine", return_value="aarch64")
     mocker.patch("memori._rust_core.Path.home", return_value=tmp_path)
     mocker.patch(
-        "memori._rust_core._download_asset_with_retries", side_effect=_copy_archive
+        "memori.native._onnxruntime._download_asset_with_retries",
+        side_effect=_copy_archive,
     )
 
     os.environ.pop("ORT_DYLIB_PATH", None)
@@ -594,3 +756,57 @@ def test_compute_sha256_produces_expected_digest(tmp_path):
         _rust_core._compute_sha256(target)
         == "e2092aab4fc7f734b716bd2eaccd02e6c8a83a7aeb4955acab115716847bb7f1"
     )
+
+
+def test_embed_texts_uses_native_embedder(mocker):
+    _rust_core._NATIVE_EMBEDDER_CACHE.clear()
+    engine = mocker.Mock()
+    engine.embed_texts.return_value = [[0.1, 0.2], [0.3, 0.4]]
+    memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
+
+    mocker.patch(
+        "memori.native._embeddings._try_import_memori_python", return_value=True
+    )
+    mocker.patch.dict("sys.modules", {"memori_python": memori_python})
+
+    result = _rust_core.embed_texts(["hello", "   ", "world"], model="all-MiniLM-L6-v2")
+
+    assert result == [[0.1, 0.2], [], [0.3, 0.4]]
+    memori_python.NativeEmbedder.assert_called_once_with(None)
+    engine.embed_texts.assert_called_once_with(["hello", "world"])
+
+
+def test_embed_texts_returns_empty_vectors_for_non_embeddable_inputs(mocker):
+    _rust_core._NATIVE_EMBEDDER_CACHE.clear()
+    engine = mocker.Mock()
+    memori_python = SimpleNamespace(NativeEmbedder=mocker.Mock(return_value=engine))
+
+    mocker.patch(
+        "memori.native._embeddings._try_import_memori_python", return_value=True
+    )
+    mocker.patch.dict("sys.modules", {"memori_python": memori_python})
+
+    result = _rust_core.embed_texts(["", "   "], model="all-MiniLM-L6-v2")
+
+    assert result == [[], []]
+    engine.embed_texts.assert_not_called()
+
+
+def test_normalize_fact_embeddings_allows_empty_rows():
+    normalized = _rust_core._normalize_fact_embeddings([[0.1, 0.2], [], [0.3]], 3)
+
+    assert normalized == [[0.1, 0.2], [], [0.3]]
+
+
+def test_rust_core_adapter_embed_texts_uses_active_engine(mocker):
+    config = Config()
+    engine = mocker.Mock()
+    engine.embed_texts.return_value = [[0.5, 0.6], [0.7, 0.8]]
+    adapter = _rust_core.RustCoreAdapter(config=config, _engine=engine)
+    native = mocker.patch("memori._rust_core._embed_with_native_cache")
+
+    result = adapter.embed_texts(["hello", "   ", "world"], model="all-MiniLM-L6-v2")
+
+    assert result == [[0.5, 0.6], [], [0.7, 0.8]]
+    engine.embed_texts.assert_called_once_with(["hello", "world"])
+    native.assert_not_called()

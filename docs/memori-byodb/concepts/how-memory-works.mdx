@@ -98,7 +98,7 @@ Each returned fact includes `id`, `content`, `similarity` (0–1 relevance score
 
 ### Recall Configuration
 
-Memori uses the **all-mpnet-base-v2** sentence transformer with cosine similarity for semantic search. You can tune recall behavior with these configuration options:
+Memori uses the native **fastembed** backend with the default **all-MiniLM-L6-v2** embedding model and cosine similarity for semantic search. You can tune recall behavior with these configuration options:
 
 | Option                                  | Default | Description                                        |
 | --------------------------------------- | ------- | -------------------------------------------------- |

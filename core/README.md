@@ -25,7 +25,7 @@ directly.
 
 The top-level [`EngineOrchestrator`] owns:
 
-- a synchronous embedding pipeline (`fastembed` + `sentence-transformers`),
+- a synchronous embedding pipeline (`fastembed`),
 - two bounded async worker runtimes (`WorkerRuntime<PostprocessJob>` and
   `WorkerRuntime<AugmentationJob>`),
 - an optional host-provided [`storage::StorageBridge`] used by the retrieval

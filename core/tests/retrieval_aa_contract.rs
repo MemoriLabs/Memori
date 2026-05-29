@@ -2,7 +2,8 @@ use std::sync::Mutex;
 
 use base64::Engine;
 use engine_orchestrator::augmentation::{
-    AugmentationInput, ConversationMessage, build_payload, build_write_batch_from_response,
+    AugmentationInput, ConversationMessage, attach_entity_fact_embeddings, build_payload,
+    build_write_batch_from_response,
 };
 use engine_orchestrator::embeddings::format_embedding_for_db;
 use engine_orchestrator::retrieval::{RetrievalRequest, format_recall_output, run_retrieval};
@@ -266,6 +267,58 @@ fn augmentation_pipeline_builds_write_batch() {
 
     let ack = bridge.write_batch(&batch).expect("write should succeed");
     assert_eq!(ack.written_ops, 4);
+}
+
+#[test]
+fn augmentation_pipeline_attaches_fact_embeddings() {
+    let input = AugmentationInput {
+        entity_id: "user-1".to_string(),
+        process_id: Some("proc-1".to_string()),
+        conversation_id: Some("conv-1".to_string()),
+        conversation_messages: vec![],
+        system_prompt: None,
+        llm_provider: Some("openai".to_string()),
+        llm_model: Some("gpt-4.1-mini".to_string()),
+        llm_provider_sdk_version: Some("1.2.3".to_string()),
+        framework: Some("pytest".to_string()),
+        platform_provider: Some("local".to_string()),
+        storage_dialect: Some("sqlite".to_string()),
+        storage_cockroachdb: Some(false),
+        sdk_version: Some("0.1.0".to_string()),
+        use_mock_response: true,
+        mock_response: Some(serde_json::json!({
+            "entity": { "facts": ["prefers concise responses"] }
+        })),
+        session_id: None,
+        fact_id: None,
+        content: None,
+        metadata: serde_json::json!({}),
+    };
+
+    let batch = build_write_batch_from_response(&input, input.mock_response.clone().expect("mock"));
+    let batch = attach_entity_fact_embeddings(batch, |facts| {
+        assert_eq!(facts, vec!["prefers concise responses".to_string()]);
+        (vec![0.1, 0.2, 0.3], [1, 3])
+    });
+
+    let fact_op = batch
+        .ops
+        .iter()
+        .find(|op| op.op_type == "entity_fact.create")
+        .expect("entity_fact.create should exist");
+    let embeddings = fact_op
+        .payload
+        .get("fact_embeddings")
+        .and_then(|value| value.as_array())
+        .expect("fact_embeddings should be present");
+    assert_eq!(embeddings.len(), 1);
+    assert_eq!(
+        embeddings[0]
+            .as_array()
+            .expect("embedding should be an array")
+            .len(),
+        3
+    );
 }
 
 #[test]
