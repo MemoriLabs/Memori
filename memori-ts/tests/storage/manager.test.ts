@@ -72,8 +72,43 @@ describe('StorageManager', () => {
   it('consecutive acquire ops return distinct conn_ids', async () => {
     const manager = new StorageManager(makeFactory());
     const r1 = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    // Close first before acquiring again — SQLite serializes at acquire level.
+    await dispatchCall(manager, JSON.stringify({ op: 'close', conn_id: r1.conn_id }));
     const r2 = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
     expect(r1.conn_id).not.toBe(r2.conn_id);
+  });
+
+  it('sqlite: second acquire waits for first connection to close before proceeding', async () => {
+    // Regression: the sqliteQueue previously only serialized begin→commit/rollback.
+    // A second conn_id's execute would run inside the first conn_id's open transaction
+    // and could be committed or rolled back by the wrong caller.
+    // The queue now spans acquire→close so only one SQLite connection is live at a time.
+    mockGetDialect.mockReturnValue('sqlite');
+    const manager = new StorageManager(makeFactory());
+
+    const { conn_id: id1 } = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'acquire' })
+    )) as any;
+
+    // Start a second acquire — should be blocked behind id1.
+    let conn2Resolved = false;
+    const acquire2Promise = dispatchCall(manager, JSON.stringify({ op: 'acquire' })).then((r) => {
+      conn2Resolved = true;
+      return r;
+    });
+
+    // Yield to the event loop — id1 is still open so id2 must still be waiting.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(conn2Resolved).toBe(false);
+
+    // Close id1 — unblocks the second acquire.
+    await dispatchCall(manager, JSON.stringify({ op: 'close', conn_id: id1 }));
+    const r2 = (await acquire2Promise) as any;
+
+    expect(conn2Resolved).toBe(true);
+    expect(r2).toHaveProperty('conn_id');
+    expect(r2.conn_id).not.toBe(id1);
   });
 
   // -------------------------------------------------------------------------
@@ -298,6 +333,7 @@ describe('StorageManager', () => {
   // -------------------------------------------------------------------------
 
   it('refreshes lastUsed on execute so an active connection survives the TTL sweep', async () => {
+    mockGetDialect.mockReturnValue('postgresql');
     vi.useFakeTimers();
     const manager = new StorageManager(makeFactory());
     const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
@@ -327,6 +363,7 @@ describe('StorageManager', () => {
   });
 
   it('sweeps a connection that has been idle past the TTL', async () => {
+    mockGetDialect.mockReturnValue('postgresql');
     vi.useFakeTimers();
     const manager = new StorageManager(makeFactory());
     const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;

@@ -189,11 +189,31 @@ export class StorageManager {
         this.sweepOrphanedConnections();
         const adapter = Registry.getAdapter(this.factory);
         const connId = this.nextConnId++;
+
+        let releaseSqliteLock: (() => void) | undefined;
+        if (this.getDialect() === 'sqlite') {
+          const prev = this.sqliteQueue;
+          let releaseLock!: () => void;
+          this.sqliteQueue = new Promise<void>((r) => {
+            releaseLock = r;
+          });
+          await prev;
+          if (this.sweepHandle === undefined) {
+            releaseLock();
+            resolve({
+              error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
+            });
+            return;
+          }
+          releaseSqliteLock = releaseLock;
+        }
+
         this.connections.set(connId, {
           adapter,
           lastUsed: Date.now(),
           isBusy: false,
           inTransaction: false,
+          releaseSqliteLock,
         });
         resolve({ conn_id: connId });
         break;
@@ -226,25 +246,13 @@ export class StorageManager {
           resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
           return;
         }
-        // SQLite: wait for any in-progress transaction to finish before starting a new one,
-        // mirroring Python's connection_context which scopes one connection per operation.
-        if (this.getDialect() === 'sqlite') {
-          const prev = this.sqliteQueue;
-          let releaseLock!: () => void;
-          this.sqliteQueue = new Promise<void>((r) => {
-            releaseLock = r;
+        // SQLite serialization is now enforced at acquire time (lock spans acquire→close),
+        // so we only need a shutdown guard here in case close() was called after acquire.
+        if (this.getDialect() === 'sqlite' && this.sweepHandle === undefined) {
+          resolve({
+            error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
           });
-          await prev;
-          // close() was called while we were waiting — release the lock immediately so
-          // any further queued begins also see the flag and unwind, then bail out.
-          if (this.sweepHandle === undefined) {
-            releaseLock();
-            resolve({
-              error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
-            });
-            return;
-          }
-          entry.releaseSqliteLock = releaseLock;
+          return;
         }
         entry.lastUsed = Date.now();
         entry.isBusy = true;
@@ -256,6 +264,8 @@ export class StorageManager {
           resolve({ ok: true });
         } finally {
           if (!began) {
+            // begin failed — Rust will call close(), but release the lock here too
+            // as a safety net so the queue never gets stuck.
             entry.releaseSqliteLock?.();
             entry.releaseSqliteLock = undefined;
           }
@@ -279,8 +289,6 @@ export class StorageManager {
           resolve({ ok: true });
         } finally {
           entry.inTransaction = false;
-          entry.releaseSqliteLock?.();
-          entry.releaseSqliteLock = undefined;
           entry.isBusy = false;
           entry.lastUsed = Date.now();
         }
@@ -303,8 +311,6 @@ export class StorageManager {
           // non-fatal
         } finally {
           entry.inTransaction = false;
-          entry.releaseSqliteLock?.();
-          entry.releaseSqliteLock = undefined;
           entry.isBusy = false;
           entry.lastUsed = Date.now();
         }
