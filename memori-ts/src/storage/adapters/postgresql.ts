@@ -29,8 +29,15 @@ export class PostgresAdapter implements StorageAdapter {
   }
 
   public async begin(): Promise<void> {
-    this.txConn = await this.pool.connect();
-    await this.txConn.query('BEGIN');
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+    } catch (e) {
+      // BEGIN failed — destroy rather than return to pool since state is unknown.
+      client.release(true);
+      throw e;
+    }
+    this.txConn = client;
   }
 
   public async commit(): Promise<void> {

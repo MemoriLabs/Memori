@@ -301,58 +301,56 @@ impl RustStorageManager {
             .iter()
             .map(|op| match op.op_type.as_str() {
                 "entity_fact.create" => {
-                    if op.payload["fact_embeddings"].is_array() {
-                        // Pre-supplied embeddings (augmentation path): filter blank facts and
-                        // drop their paired embeddings so execute_batch_ops always sees aligned
-                        // counts without needing to re-run ONNX inside the DB transaction.
-                        let facts_arr = op.payload["facts"].as_array();
-                        let embs_arr = op.payload["fact_embeddings"].as_array();
-                        if let (Some(facts), Some(embs)) = (facts_arr, embs_arr) {
-                            if facts
+                    let facts_arr = op.payload["facts"].as_array();
+                    let embs_arr = op.payload["fact_embeddings"].as_array();
+                    match (facts_arr, embs_arr) {
+                        (None, _) => op.clone(),
+                        (Some(facts), Some(embs)) if embs.len() == facts.len() => {
+                            // Embeddings are aligned 1:1 with original facts — zip+filter is
+                            // safe. Only normalize if blank facts are present.
+                            let has_blanks = facts
                                 .iter()
-                                .any(|f| f.as_str().map(|s| s.trim().is_empty()).unwrap_or(false))
-                            {
-                                let (f_out, e_out): (Vec<_>, Vec<_>) = facts
-                                    .iter()
-                                    .zip(embs.iter())
-                                    .filter(|(f, _)| {
-                                        f.as_str().map(|s| !s.trim().is_empty()).unwrap_or(false)
-                                    })
-                                    .map(|(f, e)| (f.clone(), e.clone()))
-                                    .unzip();
-                                let mut new_op = op.clone();
-                                new_op.payload["facts"] = serde_json::json!(f_out);
-                                new_op.payload["fact_embeddings"] = serde_json::json!(e_out);
-                                return new_op;
+                                .any(|f| f.as_str().map(|s| s.trim().is_empty()).unwrap_or(false));
+                            if !has_blanks {
+                                return op.clone();
                             }
+                            let (f_out, e_out): (Vec<_>, Vec<_>) = facts
+                                .iter()
+                                .zip(embs.iter())
+                                .filter(|(f, _)| {
+                                    f.as_str().map(|s| !s.trim().is_empty()).unwrap_or(false)
+                                })
+                                .map(|(f, e)| (f.clone(), e.clone()))
+                                .unzip();
+                            let mut new_op = op.clone();
+                            new_op.payload["facts"] = serde_json::json!(f_out);
+                            new_op.payload["fact_embeddings"] = serde_json::json!(e_out);
+                            new_op
                         }
-                        op.clone()
-                    } else {
-                        // No embeddings supplied — filter blank facts and compute embeddings
-                        // here so ONNX inference never runs inside the DB transaction window.
-                        let facts: Vec<String> = op.payload["facts"]
-                            .as_array()
-                            .map(|a| {
-                                a.iter()
-                                    .filter_map(|v| {
-                                        let s = v.as_str()?;
-                                        if s.trim().is_empty() {
-                                            None
-                                        } else {
-                                            Some(s.to_string())
-                                        }
-                                    })
-                                    .collect()
-                            })
-                            .unwrap_or_default();
-                        if facts.is_empty() {
-                            return op.clone();
+                        (Some(facts), _) => {
+                            // No embeddings supplied, or misaligned count — zip would truncate
+                            // valid facts. Filter blank facts and compute embeddings outside
+                            // the transaction window instead.
+                            let filtered: Vec<String> = facts
+                                .iter()
+                                .filter_map(|v| {
+                                    let s = v.as_str()?;
+                                    if s.trim().is_empty() {
+                                        None
+                                    } else {
+                                        Some(s.to_string())
+                                    }
+                                })
+                                .collect();
+                            if filtered.is_empty() {
+                                return op.clone();
+                            }
+                            let embeddings = self.embed_texts(filtered.clone());
+                            let mut new_op = op.clone();
+                            new_op.payload["facts"] = serde_json::json!(filtered);
+                            new_op.payload["fact_embeddings"] = serde_json::json!(embeddings);
+                            new_op
                         }
-                        let embeddings = self.embed_texts(facts.clone());
-                        let mut new_op = op.clone();
-                        new_op.payload["facts"] = serde_json::json!(facts);
-                        new_op.payload["fact_embeddings"] = serde_json::json!(embeddings);
-                        new_op
                     }
                 }
                 "upsert_fact" if op.payload.get("content_embedding").is_none() => {

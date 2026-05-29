@@ -16,12 +16,25 @@ export class NativeEngine {
   private _hasStorage: boolean = false;
   private readonly modelName: string | null;
   private readonly storageManager?: StorageManager;
-  private beforeExitHandler?: () => void;
+  // One process.once('beforeExit') shared across all instances — prevents
+  // MaxListenersExceededWarning regardless of how many engines are created.
+  private static readonly _activeEngines = new Set<NativeEngine>();
+  private static _beforeExitInstalled = false;
 
   constructor(storageManager?: StorageManager, modelName?: string) {
     this.modelName = modelName ?? null;
     this.storageManager = storageManager;
     if (storageManager) this._hasStorage = true;
+  }
+
+  private static _installBeforeExitOnce(): void {
+    if (NativeEngine._beforeExitInstalled) return;
+    NativeEngine._beforeExitInstalled = true;
+    process.once('beforeExit', () => {
+      for (const engine of Array.from(NativeEngine._activeEngines)) {
+        engine.shutdown();
+      }
+    });
   }
 
   private getEngine(): MemoriEngine {
@@ -66,12 +79,10 @@ export class NativeEngine {
         };
         this.memoriEngine = new native.MemoriEngine(this.modelName, noopCb, 'sqlite');
       }
-      // Safety net: call shutdown() when the event loop drains naturally so the
-      // tokio WorkerRuntime threads are cleaned up before Node exits.
-      this.beforeExitHandler = () => {
-        this.shutdown();
-      };
-      process.once('beforeExit', this.beforeExitHandler);
+      // Safety net: track this engine so the shared beforeExit listener can
+      // clean up tokio WorkerRuntime threads when the event loop drains.
+      NativeEngine._activeEngines.add(this);
+      NativeEngine._installBeforeExitOnce();
     }
     return this.memoriEngine;
   }
@@ -187,10 +198,7 @@ export class NativeEngine {
   }
 
   public shutdown(): void {
-    if (this.beforeExitHandler) {
-      process.off('beforeExit', this.beforeExitHandler);
-      this.beforeExitHandler = undefined;
-    }
+    NativeEngine._activeEngines.delete(this);
     if (!this.memoriEngine) return;
     if (typeof this.memoriEngine.shutdown === 'function') {
       this.memoriEngine.shutdown();
