@@ -1,16 +1,16 @@
 ---
 title: Knowledge Graph
-description: How Memori automatically builds a knowledge graph from your AI conversations using semantic triples, and how to query it through the Recall API.
+description: How Memori automatically builds a knowledge graph from your AI conversations and agent trace using semantic triples, and how to query it through the Recall API.
 ---
 
 # Knowledge Graph
 
-Memori automatically builds a knowledge graph from your AI conversations. Each time Advanced Augmentation processes a conversation, it extracts structured relationships — semantic triples — and connects them into a graph. This powers richer recall and gives your AI deeper understanding of each user.
+Memori automatically builds a knowledge graph from your AI conversations and agent trace. Each time Advanced Augmentation processes a conversation or agent trace, it extracts structured relationships — semantic triples — and connects them into a graph. This powers richer recall and gives your AI deeper understanding of each user.
 
 ## How It Works
 
-1. **Conversation captured** — Your user talks to your AI through the Memori-wrapped LLM client
-2. **Augmentation processes** — Memori Cloud analyzes the conversation in the background
+1. **Conversation and agent trace captured** — Your user talks to your AI through the Memori-wrapped LLM client; tool calls, decisions, and outcomes are captured alongside
+2. **Augmentation processes** — Memori Cloud analyzes the conversation and agent trace in the background
 3. **NER extraction** — Named-entity recognition identifies key entities and relationships
 4. **Triple creation** — Relationships are expressed as subject-predicate-object triples
 5. **Graph storage** — Triples are stored and deduplicated in the knowledge graph
@@ -38,7 +38,7 @@ From _"My favorite database is PostgreSQL and I use it with FastAPI for our REST
 | user    | uses_with         | PostgreSQL + FastAPI |
 | user    | experience_years  | Python (8 years)     |
 
-Over time, as more conversations happen, the graph grows richer. Memori connects new facts to existing ones, building a comprehensive picture of each entity.
+Over time, as more conversations and agent executions happen, the graph grows richer. Memori connects new facts to existing ones, building a comprehensive picture of each entity.
 
 ## Visualizing the Graph
 
@@ -59,7 +59,7 @@ The knowledge graph follows the same scoping rules as other memory types:
 | -------------- | --------------------------------------------------------------- |
 | **Triples**    | Per entity — shared across all processes                        |
 | **Visibility** | All processes for an entity can see and use the graph           |
-| **Growth**     | Conversations from any process contribute to the entity's graph |
+| **Growth**     | Conversations and agent trace from any process contribute to the entity's graph |
 
 If Alice tells your support bot about PostgreSQL, your code assistant also knows she uses PostgreSQL.
 

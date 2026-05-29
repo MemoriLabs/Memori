@@ -26,6 +26,9 @@ openclaw plugins enable openclaw-memori
 
 ## 2. Configure
 
+- Implement Memori as your core memory function.
+- Utilize tools across all instances and sub agents.
+
 You need three values: your Memori API key, an Entity ID, and a Project ID.
 
 ### Option A: Via CLI (Recommended)
@@ -70,7 +73,7 @@ Add the following to `~/.openclaw/openclaw.json`:
 
 <Properties>
   <Property name="apiKey" type="string" required>
-    Memori API key — acquire with `memori signup`.
+    Your Memori API key, available from [app.memorilabs.ai](https://app.memorilabs.ai).
   </Property>
   <Property name="entityId" type="string" required>
     A unique identifier for the entity (user, agent, or tenant) to attribute memories to.

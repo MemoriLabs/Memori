@@ -1,16 +1,16 @@
 ---
 title: Knowledge Graph
-description: How Memori automatically builds a knowledge graph from your AI conversations using semantic triples, stored in your own database where you can query it directly.
+description: How Memori automatically builds a knowledge graph from your AI conversations and agent trace using semantic triples, stored in your own database where you can query it directly.
 ---
 
 # Knowledge Graph
 
-Memori automatically builds a knowledge graph from your AI conversations. Every time Advanced Augmentation processes a conversation, it extracts structured relationships — semantic triples — and connects them into a graph. Because you own the database, you can query the knowledge graph directly using SQL.
+Memori automatically builds a knowledge graph from your AI conversations and agent trace. Every time Advanced Augmentation processes a conversation or agent trace, it extracts structured relationships — semantic triples — and connects them into a graph. Because you own the database, you can query the knowledge graph directly using SQL.
 
 ## How It Works
 
-1. **Conversation captured** — Your user talks to your AI through the Memori-wrapped LLM client
-2. **Augmentation processes** — Memori analyzes the conversation in the background
+1. **Conversation and agent trace captured** — Your user talks to your AI through the Memori-wrapped LLM client; tool calls, decisions, and outcomes are captured alongside
+2. **Augmentation processes** — Memori analyzes the conversation and agent trace in the background
 3. **NER extraction** — Named-entity recognition identifies key entities and relationships
 4. **Triple creation** — Relationships are expressed as subject-predicate-object triples
 5. **Graph storage** — Triples are stored and deduplicated in your database
@@ -119,6 +119,6 @@ ORDER BY date_created DESC;
 | -------------- | --------------------------------------------------------------- |
 | **Triples**    | Per entity — shared across all processes                        |
 | **Visibility** | All processes for an entity can see and use the graph           |
-| **Growth**     | Conversations from any process contribute to the entity's graph |
+| **Growth**     | Conversations and agent trace from any process contribute to the entity's graph |
 
 If Alice tells your support bot about PostgreSQL, your code assistant also knows she uses PostgreSQL.
