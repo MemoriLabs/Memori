@@ -80,12 +80,12 @@ export class MysqlAdapter implements StorageAdapter {
       } catch (e) {
         // Commit failed — transaction state is unknown; don't return connection as clean.
         this.txConn = null;
+        try {
+          await conn.rollback();
+        } catch {
+          // ignore secondary failure
+        }
         if (this.isPool) {
-          try {
-            await conn.rollback();
-          } catch {
-            // ignore secondary failure
-          }
           if (conn.destroy) conn.destroy();
           else conn.release();
         }

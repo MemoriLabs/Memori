@@ -100,10 +100,10 @@ pub fn session_create(
     process_id: Option<i64>,
 ) -> Result<Option<i64>, HostStorageError> {
     conn.execute(
-        "INSERT INTO memori_session(uuid, entity_id, process_id) VALUES (?, ?, ?) AS new_vals \
+        "INSERT INTO memori_session(uuid, entity_id, process_id) VALUES (?, ?, ?) \
          ON DUPLICATE KEY UPDATE \
-           entity_id = COALESCE(memori_session.entity_id, new_vals.entity_id), \
-           process_id = COALESCE(memori_session.process_id, new_vals.process_id)",
+           entity_id = COALESCE(entity_id, VALUES(entity_id)), \
+           process_id = COALESCE(process_id, VALUES(process_id))",
         vec![
             SqlBind::Text(uuid.to_string()),
             SqlBind::id_or_null(entity_id),

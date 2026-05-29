@@ -336,12 +336,18 @@ export class StorageManager {
         const entry = this.connections.get(connId);
         this.connections.delete(connId);
         if (entry) {
-          entry.releaseSqliteLock?.();
-          entry.releaseSqliteLock = undefined;
           try {
+            if (entry.inTransaction) {
+              await entry.adapter.rollback();
+            }
             await entry.adapter.close();
           } catch {
             // non-fatal
+          } finally {
+            // Release the SQLite lock only after rollback/close so the next acquire
+            // doesn't start on the shared sqlite3* handle before cleanup finishes.
+            entry.releaseSqliteLock?.();
+            entry.releaseSqliteLock = undefined;
           }
         }
         resolve({ ok: true });

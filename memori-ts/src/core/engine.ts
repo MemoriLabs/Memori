@@ -65,6 +65,9 @@ export class NativeEngine {
         };
         this.memoriEngine = new native.MemoriEngine(this.modelName, noopCb, 'sqlite');
       }
+      // Safety net: call shutdown() when the event loop drains naturally so the
+      // tokio WorkerRuntime threads are cleaned up before Node exits.
+      process.once('beforeExit', () => { this.shutdown(); });
     }
     return this.memoriEngine;
   }
@@ -170,7 +173,13 @@ export class NativeEngine {
 
   public async waitForAugmentation(timeoutMs?: number): Promise<boolean> {
     if (!this.memoriEngine) return false;
-    return await this.memoriEngine.waitForAugmentation(timeoutMs);
+    const result = await this.memoriEngine.waitForAugmentation(timeoutMs);
+    // Rust's NodeConnection::close() is fire-and-forget (NonBlocking TSFN). By the
+    // time waitForAugmentation resolves, close messages are queued but not yet
+    // dispatched. One event-loop tick lets the TS side process them so pool
+    // connections are fully released before the caller hits pool.end().
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    return result;
   }
 
   public shutdown(): void {
