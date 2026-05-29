@@ -96,7 +96,9 @@ class Api:
                     url,
                     headers=headers,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=self.config.request_secs_timeout),
+                    timeout=aiohttp.ClientTimeout(
+                        total=self.config.request_secs_timeout
+                    ),
                 ) as r:
                     logger.debug("Augmentation response - status: %d", r.status)
 
@@ -250,7 +252,9 @@ class Api:
                         url,
                         headers=headers,
                         json=json,
-                        timeout=aiohttp.ClientTimeout(total=self.config.request_secs_timeout),
+                        timeout=aiohttp.ClientTimeout(
+                            total=self.config.request_secs_timeout
+                        ),
                     ) as r:
                         logger.debug(
                             "Async %s response - status: %d, attempt: %d",
