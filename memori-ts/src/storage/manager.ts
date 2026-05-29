@@ -154,7 +154,15 @@ export class StorageManager {
     }
 
     const p = this.dispatchOp(payload, resolve).catch((e: unknown) => {
-      const code = typeof e === 'object' && e !== null && 'code' in e ? String(e.code) : 'ERR';
+      // Prefer sqlState over code: mysql2 reports serialization failures (e.g. deadlock)
+      // as sqlState "40001" while code is a symbolic name like ER_LOCK_DEADLOCK. Rust's
+      // retry logic matches on the numeric SQLSTATE, so normalize here for all dialects.
+      let code = 'ERR';
+      if (typeof e === 'object' && e !== null) {
+        const err = e as Record<string, unknown>;
+        const raw = err['sqlState'] ?? err['code'];
+        if (typeof raw === 'string' || typeof raw === 'number') code = String(raw);
+      }
       resolve({ error: { code, message: String(e) } });
     });
     this.inFlight.add(p);

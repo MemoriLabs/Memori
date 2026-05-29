@@ -18,55 +18,43 @@ interface MysqlConnection {
   destroy?(): void;
 }
 
-// Accepts both a mysql2/promise Pool (has getConnection) and a direct
-// PoolConnection / Connection (has beginTransaction but no getConnection).
 function isMysqlConnection(conn: unknown): boolean {
   if (conn == null) return false;
-  const c = conn as MysqlPool & MysqlConnection;
+  const c = conn as MysqlPool;
   return (
     typeof c.execute === 'function' &&
     typeof c.query === 'function' &&
-    (typeof c.getConnection === 'function' || typeof c.beginTransaction === 'function')
+    typeof c.getConnection === 'function'
   );
 }
 
 export class MysqlAdapter implements StorageAdapter {
-  private readonly conn: MysqlPool | MysqlConnection;
-  // True when the factory returned a Pool (has getConnection); false for direct connections.
-  private readonly isPool: boolean;
+  private readonly pool: MysqlPool;
   private txConn: MysqlConnection | null = null;
 
   constructor(conn: unknown) {
-    this.isPool = typeof (conn as MysqlPool).getConnection === 'function';
-    this.conn = conn as MysqlPool | MysqlConnection;
+    this.pool = conn as MysqlPool;
   }
 
   public async execute<T = Record<string, unknown>>(
     operation: string,
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
-    const client = this.txConn ?? (this.conn as MysqlConnection);
-    const [rows] = await client.execute(operation, binds);
+    const [rows] = this.txConn
+      ? await this.txConn.execute(operation, binds)
+      : await this.pool.execute(operation, binds);
     return Array.isArray(rows) ? (rows as T[]) : [];
   }
 
   public async begin(): Promise<void> {
-    if (this.isPool) {
-      // Acquire into a local first; only store on the instance after the transaction
-      // has started so a failed beginTransaction() doesn't leave an unreleased connection.
-      const conn = await (this.conn as MysqlPool).getConnection();
-      try {
-        await conn.beginTransaction();
-      } catch (e) {
-        conn.release();
-        throw e;
-      }
-      this.txConn = conn;
-    } else {
-      // Direct connection — begin transaction in-place; caller owns lifecycle.
-      await (this.conn as MysqlConnection).beginTransaction();
-      this.txConn = this.conn as MysqlConnection;
+    const conn = await this.pool.getConnection();
+    try {
+      await conn.beginTransaction();
+    } catch (e) {
+      conn.release();
+      throw e;
     }
+    this.txConn = conn;
   }
 
   public async commit(): Promise<void> {
@@ -75,8 +63,7 @@ export class MysqlAdapter implements StorageAdapter {
       try {
         await conn.commit();
         this.txConn = null;
-        // Only release pool-checked-out connections; never release a direct connection.
-        if (this.isPool) conn.release();
+        conn.release();
       } catch (e) {
         // Commit failed — transaction state is unknown; don't return connection as clean.
         this.txConn = null;
@@ -85,10 +72,8 @@ export class MysqlAdapter implements StorageAdapter {
         } catch {
           // ignore secondary failure
         }
-        if (this.isPool) {
-          if (conn.destroy) conn.destroy();
-          else conn.release();
-        }
+        if (conn.destroy) conn.destroy();
+        else conn.release();
         throw e;
       }
     }
@@ -104,10 +89,8 @@ export class MysqlAdapter implements StorageAdapter {
       } catch {
         failed = true;
       } finally {
-        if (this.isPool) {
-          if (failed && conn.destroy) conn.destroy();
-          else conn.release();
-        }
+        if (failed && conn.destroy) conn.destroy();
+        else conn.release();
       }
     }
   }
@@ -117,9 +100,9 @@ export class MysqlAdapter implements StorageAdapter {
   }
 
   public close(): void {
-    // Release any checked-out pool connection — never call pool.end() or release a direct connection.
+    // Release any checked-out pool connection — never call pool.end().
     if (this.txConn) {
-      if (this.isPool) this.txConn.release();
+      this.txConn.release();
       this.txConn = null;
     }
   }
