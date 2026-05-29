@@ -34,12 +34,26 @@ Install Rust (`rustup`, `cargo`) when you are:
 
 If you are only changing pure Python SDK code (outside Rust/bindings), Rust is not required.
 
+## Quick Start Flow
+
+![Quick Start Flow](images/quickstart.png)
+
 ### Quick Start (Local Development)
+
+**Linux/Mac:**
 
 ```bash
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
+**Windows (PowerShell):**
+
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
 # Clone the repository
 git clone https://github.com/MemoriLabs/Memori.git
 cd Memori
@@ -86,6 +100,7 @@ make dev-up
 ```
 
 This will:
+
 - Build the Docker container with Python 3.12
 - Install all dependencies with uv
 - Start PostgreSQL, MySQL, and MongoDB for integration tests
@@ -94,6 +109,7 @@ This will:
 ### Development Commands
 
 #### Local Development
+
 ```bash
 # Run unit tests
 uv run pytest
@@ -113,6 +129,7 @@ uv run pip-audit --require-hashes --disable-pip || true
 ```
 
 #### Docker Development
+
 ```bash
 # Enter the development container
 make dev-shell
@@ -185,7 +202,9 @@ Notes:
 We use `pytest` with coverage reporting and `pytest-mock` for mocking.
 
 ### Unit Tests
+
 Unit tests use mocks and run without external dependencies:
+
 ```bash
 # Local
 uv run pytest
@@ -195,7 +214,9 @@ make test
 ```
 
 ### Integration Tests
+
 Integration tests require:
+
 - Database instances (PostgreSQL, MySQL, MongoDB, or SQLite)
 - LLM API keys (OpenAI, Anthropic, Google)
 
@@ -215,35 +236,216 @@ make run-integration FILE=tests/llm/clients/oss/openai/sync.py
 ### Test Coverage
 
 We maintain high test coverage. Coverage reports are generated automatically:
+
 - Terminal output (summary)
 - HTML report in `htmlcov/`
 - XML report in `coverage.xml`
 
 View HTML coverage:
+
 ```bash
 open htmlcov/index.html  # macOS
 xdg-open htmlcov/index.html  # Linux
 ```
 
+## Troubleshooting
+
+### 1. uv Installation Fails
+
+**Linux/Mac:**
+
+```bash
+# If curl command fails, try pip instead
+pip install uv
+
+# Verify installation
+uv --version
+```
+
+**Windows (PowerShell):**
+
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Verify
+uv --version
+```
+
+### 2. `uv sync` Fails
+
+**Error:** `No solution found`
+
+```bash
+# Clear cache and retry
+uv cache clean
+uv sync
+
+# Check Python version (must be 3.10+)
+python --version
+```
+
+**Error:** `Permission denied`
+
+```bash
+# Fix directory ownership (Linux/Mac)
+sudo chown -R $USER ~/.cache/uv
+sudo chown -R $USER .venv
+
+# OR reinstall uv in user-writable location
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows — fix cache permissions
+icacls .venv /grant %USERNAME%:F
+```
+
+### 3. Docker Won't Start
+
+**Error:** `Cannot connect to Docker daemon`
+
+```bash
+# Linux
+sudo systemctl start docker
+
+# Mac/Windows — open Docker Desktop app first
+
+# Verify Docker is running
+docker ps
+```
+
+**Error:** `Port already in use`
+
+```bash
+# Windows
+netstat -ano | findstr :8081
+
+# Linux/Mac
+lsof -i :8081
+
+# Then stop that process or change port in docker-compose.yml
+```
+
+### 4. Pre-commit Hooks Failing
+
+**Error:** `Ruff formatting issues`
+
+```bash
+# Auto-fix formatting
+uv run ruff format .
+
+# Auto-fix linting
+uv run ruff check --fix .
+
+# Retry commit
+git commit -m "your message"
+```
+
+**Error:** `pre-commit command not found`
+
+```bash
+# Reinstall hooks
+uv run pre-commit install
+
+# Run manually
+uv run pre-commit run --all-files
+```
+
+### 5. Rust Build Errors
+
+**Error:** `cargo not found`
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Reload terminal then verify
+rustc --version
+cargo --version
+```
+
+**Error:** `Rust version too old`
+
+```bash
+# Update Rust
+rustup update stable
+```
+
+### 6. pytest Failures
+
+**Error:** `Module not found`
+
+```bash
+# Reinstall dependencies
+uv sync
+
+# Always run pytest via uv
+uv run pytest
+```
+
+**Error:** `API key missing`
+(integration tests only — not needed for unit tests)
+
+```bash
+# Only needed when running integration tests:
+cp .env.example .env
+
+# Add keys:
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+
+# Then run integration tests:
+make run-integration FILE=tests/llm/clients/oss/openai/sync.py
+```
+
+### 7. TypeScript / npm Errors
+
+**Error:** `npm ci fails`
+
+```bash
+# Check Node version (must be 20+)
+node --version
+
+# Clear cache and retry
+npm cache clean --force
+cd memori-ts && npm ci
+```
+
+**Error:** `Native module not found`
+
+```bash
+# Build Rust bindings first
+cd memori-ts
+npm run sync-native
+```
+
+### Still Stuck?
+
+1. Search [existing issues](https://github.com/MemoriLabs/Memori/issues) for your error
+2. Open a new issue with:
+   - Your OS and Python version (`python --version`)
+   - Full error message
+   - Steps you already tried
+
 ## Project Structure
 
 ```
-memori/              # SDK source code
-  llm/               # LLM provider integrations (OpenAI, Anthropic, Google, etc.)
-  memory/            # Memory system and augmentation
-  storage/           # Storage adapters (PostgreSQL, MySQL, MongoDB, SQLite, etc.)
-  api/               # API client for Memori Advanced Augmentation
-  __init__.py        # Main Memori class and public API
-  py.typed           # PEP 561 type hint marker
-tests/               # Test files
-  build/             # Database initialization scripts
-  llm/               # LLM provider tests (unit & integration)
-  memory/            # Memory system tests
-  storage/           # Storage adapter tests
-conftest.py          # Pytest fixtures
-pyproject.toml       # Project metadata and dependencies
-uv.lock              # Locked dependency versions
-CHANGELOG.md         # Version history
+📦 Memori/
+├── 📂 memori/              # Python SDK source
+│   ├── 📂 llm/             # LLM provider integrations
+│   ├── 📂 memory/          # Memory system
+│   ├── 📂 storage/         # Storage adapters
+│   ├── 📂 api/             # API client
+│   ├── 🐍 __init__.py      # Main class & public API
+│   └── 🏷️  py.typed         # PEP 561 marker
+├── 📂 tests/
+│   ├── 📂 build/           # DB initialization scripts
+│   ├── 📂 llm/             # LLM tests
+│   ├── 📂 memory/          # Memory tests
+│   └── 📂 storage/         # Storage tests
+├── 🐍 conftest.py          # Pytest fixtures
+├── ⚙️  pyproject.toml       # Project metadata
+├── 🔒 uv.lock              # Locked dependencies
+└── 📝 CHANGELOG.md         # Version history
 ```
 
 ## Code Quality
@@ -307,16 +509,19 @@ npm run build
 ## Supported Integrations
 
 ### LLM Providers
+
 - OpenAI (sync/async, streaming)
 - Anthropic Claude (sync/async, streaming)
 - Google Gemini (sync/async, streaming)
 - AWS Bedrock
 
 ### Frameworks
+
 - Agno
 - LangChain
 
 ### Database Adapters
+
 - PostgreSQL (via psycopg2, psycopg3)
 - MySQL / MariaDB (via pymysql)
 - MongoDB (via pymongo)
@@ -342,6 +547,7 @@ python3 -m memori sign-up <email_address>
 ```
 
 These commands help you:
+
 - Monitor your memory quota and usage
 - Sign up for increased limits (always free for developers)
 - Obtain API keys for Advanced Augmentation features

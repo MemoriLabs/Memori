@@ -53,6 +53,7 @@ class MemoriAgentClient:
         assistant_content: str,
         session_id: str,
         platform: str,
+        trace: dict[str, Any] | None = None,
     ) -> None:
         del platform
         try:
@@ -62,6 +63,7 @@ class MemoriAgentClient:
                 project_id=self.project_id,
                 session_id=session_id,
                 platform=MEMORI_PLATFORM,
+                trace=trace,
             )
         except Exception as exc:  # noqa: BLE001
             raise MemoriApiError(str(exc)) from exc
