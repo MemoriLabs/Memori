@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Implemented unstreamed response parsing in the AWS Bedrock adapter, supporting the Converse API, Messages API (e.g., Claude 3), and legacy completion formats.
+- Added comprehensive unit tests for Bedrock unstreamed response parsing.
+- Added repository-wide linting and formatting scripts (`scripts/run-linters.sh`) and unified environment templates (`.env.template`).
+
+### Changed
+
+- Updated the streaming pipeline to wrap unstreamed responses in a consistent list structure for downstream adapters.
+- Modernized `pyproject.toml` with SPDX-compliant license strings and updated build metadata.
+- Renamed all `.env.example` files to `.env.template` for repository consistency.
+- Improved CI workflow reliability by fixing malformed YAML and redundant steps in `ci.yml`.
+- Standardized Python and TypeScript code formatting using Ruff, ESLint, and Prettier.
+
+### Fixed
+
+- Resolved `setuptools` build warnings by removing deprecated metadata from `pyproject.toml`.
+- Fixed indentation and duplication issues in GitHub Action workflows.
+
 ## [3.3.6] - 2026-05-27
 
 ### Added
