@@ -15,6 +15,7 @@ interface MysqlConnection {
   commit(): Promise<void>;
   rollback(): Promise<void>;
   release(): void;
+  destroy?(): void;
 }
 
 // Accepts both a mysql2/promise Pool (has getConnection) and a direct
@@ -85,12 +86,16 @@ export class MysqlAdapter implements StorageAdapter {
     if (this.txConn) {
       const conn = this.txConn;
       this.txConn = null;
+      let failed = false;
       try {
         await conn.rollback();
       } catch {
-        // non-fatal
+        failed = true;
       } finally {
-        if (this.isPool) conn.release();
+        if (this.isPool) {
+          if (failed && conn.destroy) conn.destroy();
+          else conn.release();
+        }
       }
     }
   }
