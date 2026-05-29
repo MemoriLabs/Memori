@@ -334,3 +334,77 @@ fn entity_fact_blank_facts_are_filtered_before_embedding() {
         "only the two non-blank facts should be stored with embeddings"
     );
 }
+
+#[test]
+fn entity_fact_all_blank_facts_are_skipped() {
+    // When every fact in a batch is blank/whitespace, the op should be skipped
+    // entirely — no entity row or fact rows should be written.
+    let manager = make_manager();
+    manager.build().expect("build");
+
+    manager.set_embedder(Box::new(|_texts: Vec<String>| {
+        panic!("embed_texts must not be called for an all-blank fact batch");
+    }));
+
+    let batch = WriteBatch {
+        ops: vec![WriteOp {
+            op_type: "entity_fact.create".to_string(),
+            payload: serde_json::json!({
+                "entity_id": "all-blank-entity",
+                "facts": ["   ", "\t", ""],
+            }),
+        }],
+    };
+    let ack = manager.write_batch(&batch).expect("write_batch");
+    assert_eq!(ack.written_ops, 0, "all-blank batch should be skipped");
+
+    let embeddings = manager
+        .fetch_embeddings("all-blank-entity", 10)
+        .expect("fetch_embeddings");
+    assert!(embeddings.is_empty(), "no facts should be stored");
+}
+
+#[test]
+fn entity_fact_misaligned_supplied_embeddings_fall_back_to_reembed() {
+    // Mirrors Python's _normalize_fact_embeddings: if caller-supplied
+    // fact_embeddings length != facts length, discard and re-embed rather than
+    // silently storing facts with wrong or missing vectors.
+    let manager = make_manager();
+    manager.build().expect("build");
+
+    let embed_called = Arc::new(Mutex::new(false));
+    let flag = Arc::clone(&embed_called);
+
+    manager.set_embedder(Box::new(move |texts: Vec<String>| {
+        *flag.lock().unwrap() = true;
+        texts.into_iter().map(|_| vec![0.5_f32, 0.5, 0.5]).collect()
+    }));
+
+    let batch = WriteBatch {
+        ops: vec![WriteOp {
+            op_type: "entity_fact.create".to_string(),
+            payload: serde_json::json!({
+                "entity_id": "misaligned-entity",
+                // 2 facts but only 1 supplied embedding — should trigger re-embed
+                "facts": ["fact one", "fact two"],
+                "fact_embeddings": [[0.1, 0.2, 0.3]],
+            }),
+        }],
+    };
+    let ack = manager.write_batch(&batch).expect("write_batch");
+    assert_eq!(ack.written_ops, 1);
+
+    assert!(
+        *embed_called.lock().unwrap(),
+        "embedder must be called when supplied fact_embeddings are misaligned"
+    );
+
+    let embeddings = manager
+        .fetch_embeddings("misaligned-entity", 10)
+        .expect("fetch_embeddings");
+    assert_eq!(
+        embeddings.len(),
+        2,
+        "both facts should be stored with re-embedded vectors"
+    );
+}

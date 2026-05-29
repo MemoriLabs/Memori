@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use rand::Rng;
+
 use parking_lot::RwLock;
 
 use crate::search::FactId;
@@ -408,17 +410,19 @@ impl RustStorageManager {
                     if entity_id_str.is_empty() {
                         continue;
                     }
-                    let internal_entity_id = self
-                        .do_entity_create(conn, &entity_id_str)?
-                        .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
-                        })?;
 
                     let facts: Vec<String> = op.payload["facts"]
                         .as_array()
                         .map(|a| {
                             a.iter()
-                                .filter_map(|v| v.as_str().map(String::from))
+                                .filter_map(|v| {
+                                    let s = v.as_str()?;
+                                    if s.trim().is_empty() {
+                                        None
+                                    } else {
+                                        Some(s.to_string())
+                                    }
+                                })
                                 .collect()
                         })
                         .unwrap_or_default();
@@ -427,10 +431,18 @@ impl RustStorageManager {
                         continue;
                     }
 
+                    let internal_entity_id = self
+                        .do_entity_create(conn, &entity_id_str)?
+                        .ok_or_else(|| {
+                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
+                        })?;
+
                     let embeddings =
                         if let Some(raw_embs) = op.payload["fact_embeddings"].as_array() {
-                            // Embeddings provided by the caller (e.g. from a manual write call).
-                            raw_embs
+                            // Caller-supplied embeddings: mirror Python's _normalize_fact_embeddings
+                            // which rejects arrays whose length doesn't match facts and falls back
+                            // to re-embedding, preventing facts from getting wrong or missing vectors.
+                            let deserialized: Vec<Vec<f32>> = raw_embs
                                 .iter()
                                 .map(|emb| {
                                     emb.as_array()
@@ -441,11 +453,14 @@ impl RustStorageManager {
                                         })
                                         .unwrap_or_default()
                                 })
-                                .collect()
-                        } else if !facts.is_empty() {
-                            self.embed_texts(facts.clone())
+                                .collect();
+                            if deserialized.len() == facts.len() {
+                                deserialized
+                            } else {
+                                self.embed_texts(facts.clone())
+                            }
                         } else {
-                            vec![]
+                            self.embed_texts(facts.clone())
                         };
 
                     let internal_conv_id = {
@@ -542,19 +557,18 @@ impl RustStorageManager {
                     if conv_id_str.is_empty() || summary.is_empty() {
                         continue;
                     }
-                    let session_id = self
-                        .do_session_create(conn, &conv_id_str, None, None)?
-                        .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_session_create returned no id")
-                        })?;
-                    let conv_id = self
-                        .do_conversation_create(conn, session_id, 30)?
-                        .ok_or_else(|| {
-                            HostStorageError::new(
-                                "INTERNAL",
-                                "do_conversation_create returned no id",
-                            )
-                        })?;
+                    // Look up — never create — so a stale session doesn't spawn a new
+                    // empty conversation that swallows the summary. Python resolves
+                    // conversation_id as a direct DB integer id; we mirror that by
+                    // reading the most recent conversation for the existing session.
+                    let session_id = match self.do_session_get_id(conn, &conv_id_str)? {
+                        Some(id) => id,
+                        None => continue,
+                    };
+                    let conv_id = match self.do_conversation_get_id_by_session(conn, session_id)? {
+                        Some(id) => id,
+                        None => continue,
+                    };
                     self.do_conversation_update(conn, conv_id, summary)?;
                 }
                 "upsert_fact" => {
@@ -714,14 +728,15 @@ impl StorageBridge for RustStorageManager {
                     let _ = conn.rollback();
                     conn.close();
 
-                    // SQLSTATE 40001 (serialization failure) — retry with exponential backoff.
+                    // SQLSTATE 40001 (serialization failure) — retry with exponential backoff
+                    // plus up to 50% random jitter to de-correlate concurrent retriers.
                     // Applies to CockroachDB, CockroachDB via pg adapter (reported as postgresql),
                     // and PostgreSQL under REPEATABLE READ / SERIALIZABLE isolation.
-                    // 50ms, 100ms, 200ms, 400ms, 800ms (capped at 1000ms).
-                    // Production callers should add random jitter via the `rand` crate.
+                    // Base: 50ms, 100ms, 200ms, 400ms, 800ms (capped at 1000ms).
                     if e.code == "40001" && attempt < MAX_RETRIES {
-                        let backoff =
-                            std::time::Duration::from_millis((50 * 2_u64.pow(attempt)).min(1000));
+                        let base_ms = (50 * 2_u64.pow(attempt)).min(1000);
+                        let jitter_ms = rand::thread_rng().gen_range(0..=base_ms / 2);
+                        let backoff = std::time::Duration::from_millis(base_ms + jitter_ms);
                         std::thread::sleep(backoff);
                         last_err = Some(e);
                         continue;

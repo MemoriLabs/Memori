@@ -88,8 +88,7 @@ type TrackedAdapter = {
 
 export class StorageManager {
   private readonly factory: ConnFactory;
-  /** Single adapter used only to detect the SQL dialect at construction time. */
-  private readonly dialectAdapter: StorageAdapter;
+  private readonly cachedDialect: string;
   private readonly dialectOverride?: string;
   private readonly connections = new Map<number, TrackedAdapter>();
   private readonly inFlight = new Set<Promise<void>>();
@@ -104,7 +103,9 @@ export class StorageManager {
   constructor(factory: ConnFactory, dialectOverride?: string) {
     this.factory = factory;
     this.dialectOverride = dialectOverride;
-    this.dialectAdapter = Registry.getAdapter(factory);
+    const probe = Registry.getAdapter(factory);
+    this.cachedDialect = probe.getDialect();
+    void Promise.resolve(probe.close()).catch(() => {});
     const handle = setInterval(() => {
       this.sweepOrphanedConnections();
     }, SWEEP_INTERVAL_MS);
@@ -113,7 +114,7 @@ export class StorageManager {
   }
 
   public getDialect(): string {
-    return this.dialectOverride ?? this.dialectAdapter.getDialect();
+    return this.dialectOverride ?? this.cachedDialect;
   }
 
   public setEngineShutdown(fn: () => void): void {
@@ -367,10 +368,5 @@ export class StorageManager {
       }
     }
     this.connections.clear();
-    try {
-      await this.dialectAdapter.close();
-    } catch {
-      // non-fatal
-    }
   }
 }
