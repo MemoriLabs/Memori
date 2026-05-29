@@ -102,8 +102,8 @@ pub fn session_create(
     conn.execute(
         "INSERT INTO memori_session(uuid, entity_id, process_id) VALUES (?, ?, ?) \
          ON DUPLICATE KEY UPDATE \
-           entity_id = COALESCE(entity_id, VALUES(entity_id)), \
-           process_id = COALESCE(process_id, VALUES(process_id))",
+           entity_id = COALESCE(VALUES(entity_id), entity_id), \
+           process_id = COALESCE(VALUES(process_id), process_id)",
         vec![
             SqlBind::Text(uuid.to_string()),
             SqlBind::id_or_null(entity_id),
