@@ -16,6 +16,7 @@ export class NativeEngine {
   private _hasStorage: boolean = false;
   private readonly modelName: string | null;
   private readonly storageManager?: StorageManager;
+  private beforeExitHandler?: () => void;
 
   constructor(storageManager?: StorageManager, modelName?: string) {
     this.modelName = modelName ?? null;
@@ -67,7 +68,10 @@ export class NativeEngine {
       }
       // Safety net: call shutdown() when the event loop drains naturally so the
       // tokio WorkerRuntime threads are cleaned up before Node exits.
-      process.once('beforeExit', () => { this.shutdown(); });
+      this.beforeExitHandler = () => {
+        this.shutdown();
+      };
+      process.once('beforeExit', this.beforeExitHandler);
     }
     return this.memoriEngine;
   }
@@ -183,6 +187,10 @@ export class NativeEngine {
   }
 
   public shutdown(): void {
+    if (this.beforeExitHandler) {
+      process.off('beforeExit', this.beforeExitHandler);
+      this.beforeExitHandler = undefined;
+    }
     if (!this.memoriEngine) return;
     if (typeof this.memoriEngine.shutdown === 'function') {
       this.memoriEngine.shutdown();

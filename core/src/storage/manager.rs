@@ -308,16 +308,15 @@ impl RustStorageManager {
                         let facts_arr = op.payload["facts"].as_array();
                         let embs_arr = op.payload["fact_embeddings"].as_array();
                         if let (Some(facts), Some(embs)) = (facts_arr, embs_arr) {
-                            if facts.iter().any(|f| {
-                                f.as_str().map(|s| s.trim().is_empty()).unwrap_or(false)
-                            }) {
+                            if facts
+                                .iter()
+                                .any(|f| f.as_str().map(|s| s.trim().is_empty()).unwrap_or(false))
+                            {
                                 let (f_out, e_out): (Vec<_>, Vec<_>) = facts
                                     .iter()
                                     .zip(embs.iter())
                                     .filter(|(f, _)| {
-                                        f.as_str()
-                                            .map(|s| !s.trim().is_empty())
-                                            .unwrap_or(false)
+                                        f.as_str().map(|s| !s.trim().is_empty()).unwrap_or(false)
                                     })
                                     .map(|(f, e)| (f.clone(), e.clone()))
                                     .unzip();
