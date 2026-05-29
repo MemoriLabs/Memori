@@ -285,3 +285,52 @@ fn augmentation_batch_entity_fact_knowledge_graph_process_attribute_conversation
         "two facts should be stored with embeddings"
     );
 }
+
+#[test]
+fn entity_fact_blank_facts_are_filtered_before_embedding() {
+    // Regression: precompute_embeddings() must filter blank/whitespace facts
+    // before calling embed_texts(). The Rust embedding pipeline silently drops
+    // blank inputs, so an unfiltered call returns fewer vectors than facts,
+    // misaligning embeddings with the wrong facts (e.g. "likes coffee" gets no
+    // embedding and the blank slot gets the "likes coffee" vector).
+    let manager = make_manager();
+    manager.build().expect("build");
+
+    let received_texts: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(vec![]));
+    let captured = Arc::clone(&received_texts);
+
+    manager.set_embedder(Box::new(move |texts: Vec<String>| {
+        *captured.lock().unwrap() = texts.clone();
+        texts.into_iter().map(|_| vec![0.1_f32, 0.2, 0.3]).collect()
+    }));
+
+    let batch = WriteBatch {
+        ops: vec![WriteOp {
+            op_type: "entity_fact.create".to_string(),
+            payload: serde_json::json!({
+                "entity_id": "blank-test-entity",
+                "facts": ["likes tea", "   ", "likes coffee"],
+            }),
+        }],
+    };
+    let ack = manager.write_batch(&batch).expect("write_batch");
+    assert_eq!(ack.written_ops, 1);
+
+    // Embedder should have been called with only the two non-blank facts.
+    let texts_sent = received_texts.lock().unwrap().clone();
+    assert_eq!(
+        texts_sent,
+        vec!["likes tea", "likes coffee"],
+        "blank/whitespace facts must be filtered before embed_texts is called"
+    );
+
+    // Both non-blank facts should have been stored with their embeddings.
+    let embeddings = manager
+        .fetch_embeddings("blank-test-entity", 10)
+        .expect("fetch_embeddings");
+    assert_eq!(
+        embeddings.len(),
+        2,
+        "only the two non-blank facts should be stored with embeddings"
+    );
+}
