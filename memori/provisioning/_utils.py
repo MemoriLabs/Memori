@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse, urlunparse
 
 import certifi
 
-from memori._exceptions import MissingPyMySQLError
+from memori._exceptions import MissingPsycopgError, MissingPyMySQLError
 
 DEFAULT_MYSQL_DATABASE = "memori"
 
@@ -123,3 +123,21 @@ def _first(query: dict[str, list[str]], key: str) -> str | None:
     if not values:
         return None
     return values[0]
+
+
+## NEON LAUNCHPAD
+def require_pg_driver(database: str = "Neon Launchpad") -> Any:
+    try:
+        import psycopg
+    except ImportError as e:
+        raise MissingPsycopgError(database) from e
+    return psycopg
+
+
+def pg_connection_factory(
+    dsn: str,
+    connect_args: dict[str, Any] | None = None,
+) -> Callable[[], Any]:
+    psycopg = require_pg_driver("Neon Launchpad")
+    return lambda: psycopg.connect(dsn, **(connect_args or {}))
+

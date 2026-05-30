@@ -9,8 +9,11 @@ from memori.provisioning._models import ProvisionResult
 from memori.provisioning._registry import provision
 from memori.provisioning._utils import (
     mysql_connection_factory,
+    pg_connection_factory,
     redact_dsn,
     require_mysql_driver,
+    require_pg_driver,
+    
 )
 
 # Import providers to trigger registration decorators.
@@ -19,8 +22,9 @@ importlib.import_module("memori.provisioning.providers")
 if TYPE_CHECKING:
     from memori import Memori
 
-SUPPORTED_FAMILIES = {"mysql"}
+SUPPORTED_FAMILIES = {"mysql", "postgres"}
 MYSQL_PROVIDERS = {"tidb-zero"}
+PG_PROVIDERS = {"neon-launchpad"}
 
 
 def get_provision_result(
@@ -59,6 +63,9 @@ def provision_memori(
     if provider in MYSQL_PROVIDERS:
         require_mysql_driver("TiDB Zero")
 
+    elif provider in PG_PROVIDERS:
+        require_pg_driver("Neon Launchpad")
+    
     result = get_provision_result(
         provider=provider,
         cache=cache,
@@ -68,7 +75,13 @@ def provision_memori(
     )
     _validate_family(result)
 
-    mem = Memori(conn=mysql_connection_factory(result.dsn, result.connect_args))
+    if result.family == "mysql":
+        conn_factory = mysql_connection_factory(result.dsn, result.connect_args)
+
+    elif result.family == "postgres":
+        conn_factory = pg_connection_factory(result.dsn, result.connect_args)
+
+    mem = Memori(conn=conn_factory)
     mem.config.provision_result = result
     if build:
         mem.config.storage.build()

@@ -3,6 +3,7 @@ import pytest
 import memori.provisioning as provisioning
 from memori._exceptions import (
     MissingPyMySQLError,
+    MissingPsycopgError,
     UnsupportedProvisionedDatabaseFamilyError,
 )
 from memori.provisioning import ProvisionResult, get_provision_result, provision_memori
@@ -65,7 +66,7 @@ def test_get_provision_result_rejects_unsupported_family_before_caching(
     def provider(name, **_kwargs):
         return ProvisionResult(
             provider=name,
-            family="postgres",
+            family="unsupported-family",
             dsn="postgresql://user:pass@host/db",
         )
 
@@ -82,7 +83,7 @@ def test_provision_memori_rejects_unsupported_family(mocker):
         "memori.provisioning.get_provision_result",
         return_value=ProvisionResult(
             provider="neon-launchpad",
-            family="postgres",
+            family="unsupported-family",
             dsn="postgresql://user:pass@host/db",
         ),
     )
@@ -102,4 +103,20 @@ def test_provision_memori_checks_driver_before_provider_or_cache(mocker):
         provision_memori(provider="tidb-zero")
 
     require_driver.assert_called_once_with("TiDB Zero")
+    get_result.assert_not_called()
+
+
+## PG DRIVE FLOW TEST
+
+def test_provision_memori_checks_pg_driver_before_provider_or_cache(mocker):
+    require_driver = mocker.patch(
+        "memori.provisioning.require_pg_driver",
+        side_effect=MissingPsycopgError("Neon Launchpad"),
+    )
+    get_result = mocker.patch("memori.provisioning.get_provision_result")
+
+    with pytest.raises(MissingPsycopgError):
+        provision_memori(provider="neon-launchpad")
+
+    require_driver.assert_called_once_with("Neon Launchpad")
     get_result.assert_not_called()
