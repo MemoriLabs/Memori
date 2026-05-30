@@ -29,11 +29,11 @@ def test_provision_neon_launchpad_posts_to_api(mocker):
     )
     response.raise_for_status.assert_called_once_with()
     assert result.dsn == "postgresql://user:password@host:port/dbname"
-    assert result.family == "postgres"
+    assert result.family == "postgresql"
     assert result.claim_url == "https://neon.new/claim/abc"
 
 
-def test_provision_neon_launchpad_supports_url_override_and_bearer_token(mocker):
+def test_provision_neon_launchpad_supports_url_override(mocker):
     response = mocker.Mock()
     response.json.return_value = {
         "connection_string": "postgresql://user:password@host:port/dbname",

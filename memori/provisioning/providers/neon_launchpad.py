@@ -19,6 +19,12 @@ def provision_neon_launchpad(
     url: str | None = None,
     **_kwargs: Any,
 ) -> ProvisionResult:
+    """Provision a PostgreSQL database via the Neon Launchpad API.
+
+    API source: https://neon.tech/docs/reference/claimable-postgres
+    POST to ``/api/v1/database`` with ``{"ref": "<tag>"}``, no auth required.
+    Returns a ``ProvisionResult`` with ``family="postgresql"``.
+    """
     response = requests.post(
         url or os.environ.get("MEMORI_NEON_LAUNCHPAD_URL") or DEFAULT_NEON_LAUNCHPAD_URL,
         json={"ref": tag},
@@ -35,7 +41,7 @@ def parse_neon_launchpad_response(data: dict[str, Any]) -> ProvisionResult:
         
     return ProvisionResult(
         provider="neon-launchpad",
-        family="postgres",
+        family="postgresql",
         dsn=dsn,
         connect_args={},
         claim_url=data["claim_url"] if isinstance(data.get("claim_url"), str) else None,

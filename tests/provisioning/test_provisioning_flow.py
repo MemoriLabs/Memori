@@ -108,6 +108,33 @@ def test_provision_memori_checks_driver_before_provider_or_cache(mocker):
 
 ## PG DRIVE FLOW TEST
 
+def test_provision_memori_postgresql_success_flow(mocker):
+    require_pg = mocker.patch("memori.provisioning.require_pg_driver")
+    result = ProvisionResult(
+        provider="neon-launchpad",
+        family="postgresql",
+        dsn="postgresql://user:pass@host/db",
+    )
+    mocker.patch(
+        "memori.provisioning.get_provision_result",
+        return_value=result,
+    )
+    conn_factory = mocker.Mock()
+    mocker.patch(
+        "memori.provisioning.pg_connection_factory",
+        return_value=conn_factory,
+    )
+    mem = mocker.Mock()
+    mocker.patch("memori.Memori", return_value=mem)
+    build = mocker.patch("memori.storage._manager.Manager.build")
+
+    returned = provision_memori(provider="neon-launchpad", build=True)
+
+    require_pg.assert_called_once_with("Neon Launchpad")
+    build.assert_called_once_with()
+    assert returned is mem
+
+
 def test_provision_memori_checks_pg_driver_before_provider_or_cache(mocker):
     require_driver = mocker.patch(
         "memori.provisioning.require_pg_driver",

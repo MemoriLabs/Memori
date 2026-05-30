@@ -22,7 +22,7 @@ importlib.import_module("memori.provisioning.providers")
 if TYPE_CHECKING:
     from memori import Memori
 
-SUPPORTED_FAMILIES = {"mysql", "postgres"}
+SUPPORTED_FAMILIES = {"mysql", "postgresql"}
 MYSQL_PROVIDERS = {"tidb-zero"}
 PG_PROVIDERS = {"neon-launchpad"}
 
@@ -78,7 +78,7 @@ def provision_memori(
     if result.family == "mysql":
         conn_factory = mysql_connection_factory(result.dsn, result.connect_args)
 
-    elif result.family == "postgres":
+    elif result.family == "postgresql":
         conn_factory = pg_connection_factory(result.dsn, result.connect_args)
 
     mem = Memori(conn=conn_factory)
