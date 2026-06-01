@@ -218,15 +218,29 @@ impl RustStorageManager {
         conn: &dyn crate::storage::connection::StorageConnection,
         entity_id: i64,
         content: &str,
+        conversation_id: Option<i64>,
     ) -> Result<(), HostStorageError> {
         match &self.dialect {
-            Dialect::Sqlite => {
-                sqlite::entity_fact_create_without_embedding(conn, entity_id, content)
-            }
+            Dialect::Sqlite => sqlite::entity_fact_create_without_embedding(
+                conn,
+                entity_id,
+                content,
+                conversation_id,
+            ),
             Dialect::Postgresql | Dialect::Cockroachdb => {
-                postgresql::entity_fact_create_without_embedding(conn, entity_id, content)
+                postgresql::entity_fact_create_without_embedding(
+                    conn,
+                    entity_id,
+                    content,
+                    conversation_id,
+                )
             }
-            Dialect::Mysql => mysql::entity_fact_create_without_embedding(conn, entity_id, content),
+            Dialect::Mysql => mysql::entity_fact_create_without_embedding(
+                conn,
+                entity_id,
+                content,
+                conversation_id,
+            ),
         }
     }
 
@@ -484,23 +498,14 @@ impl RustStorageManager {
                                     .unwrap_or_default()
                             })
                             .collect();
-                        // Empty embeddings = no embedder configured. Python handles this the
-                        // same way: entity_fact.create(fact_embeddings=None) stores each fact
-                        // with an empty blob rather than erroring. We do the same below.
-                        // Non-empty but misaligned = precompute bug — that is an error.
-                        if !deserialized.is_empty() && deserialized.len() != facts.len() {
-                            return Err(HostStorageError::new(
-                                "INTERNAL",
-                                format!(
-                                    "entity_fact.create: fact_embeddings length {} \
-                                     does not match facts length {}; \
-                                     check precompute_embeddings",
-                                    deserialized.len(),
-                                    facts.len()
-                                ),
-                            ));
+                        // Empty or misaligned embeddings — Python's _normalize_fact_embeddings
+                        // returns None for both cases, and the caller stores each fact with an
+                        // empty blob. Treat the same way: fall through to the no-embedding path.
+                        if deserialized.is_empty() || deserialized.len() != facts.len() {
+                            vec![]
+                        } else {
+                            deserialized
                         }
-                        deserialized
                     };
 
                     let internal_conv_id = {
@@ -531,6 +536,7 @@ impl RustStorageManager {
                                 conn,
                                 internal_entity_id,
                                 fact,
+                                internal_conv_id,
                             )?;
                         }
                     } else {
@@ -657,6 +663,7 @@ impl RustStorageManager {
                             conn,
                             internal_entity_id,
                             content,
+                            None,
                         )?;
                     }
                 }

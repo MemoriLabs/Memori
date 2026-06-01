@@ -266,6 +266,7 @@ pub fn entity_fact_create_without_embedding(
     conn: &dyn StorageConnection,
     entity_id: i64,
     content: &str,
+    conversation_id: Option<i64>,
 ) -> Result<(), HostStorageError> {
     let uniq = generate_uniq(&[content]);
     conn.execute(
@@ -277,9 +278,28 @@ pub fn entity_fact_create_without_embedding(
             SqlBind::Int(entity_id),
             SqlBind::Text(content.to_string()),
             SqlBind::bytes(&[]),
-            SqlBind::Text(uniq),
+            SqlBind::Text(uniq.clone()),
         ],
     )?;
+
+    if let Some(conv_id) = conversation_id {
+        let fact_rows = conn.execute(
+            "SELECT id FROM memori_entity_fact WHERE entity_id = ? AND uniq = ?",
+            vec![SqlBind::Int(entity_id), SqlBind::Text(uniq)],
+        )?;
+        if let Some(fact_id) = fact_rows.first().and_then(|r| read_id(r, "id")) {
+            conn.execute(
+                "INSERT IGNORE INTO memori_entity_fact_mention(uuid, entity_id, fact_id, conversation_id) VALUES (?, ?, ?, ?)",
+                vec![
+                    SqlBind::Text(new_uuid()),
+                    SqlBind::Int(entity_id),
+                    SqlBind::Int(fact_id),
+                    SqlBind::Int(conv_id),
+                ],
+            )?;
+        }
+    }
+
     Ok(())
 }
 
