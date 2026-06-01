@@ -209,6 +209,68 @@ describe('MysqlAdapter', () => {
     const { pool } = makeMysqlPool();
     expect(new MysqlAdapter(pool).getDialect()).toBe('mysql');
   });
+
+  it('accepts a direct connection (no getConnection) without throwing', () => {
+    const conn = makeMysqlConn();
+    expect(() => new MysqlAdapter(conn)).not.toThrow();
+  });
+
+  it('direct: execute() routes to the connection directly, not a pool', async () => {
+    const conn = makeMysqlConn({ execute: vi.fn().mockResolvedValue([[{ id: 7 }], []]) });
+    const adapter = new MysqlAdapter(conn);
+    const rows = await adapter.execute('SELECT 1');
+    expect(conn.execute).toHaveBeenCalledWith('SELECT 1', []);
+    expect(rows).toEqual([{ id: 7 }]);
+  });
+
+  it('direct: begin() calls beginTransaction() on the connection, not getConnection()', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    expect(conn.beginTransaction).toHaveBeenCalled();
+    // No pool, so getConnection should never be called.
+    expect((conn as Record<string, unknown>)['getConnection']).toBeUndefined();
+  });
+
+  it('direct: execute() still routes to the connection after begin()', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    await adapter.execute('SELECT 1');
+    expect(conn.execute).toHaveBeenCalledWith('SELECT 1', []);
+  });
+
+  it('direct: commit() calls commit() on the connection directly', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    await adapter.commit();
+    expect(conn.commit).toHaveBeenCalled();
+    // release() is pool-only — must not be called on a direct connection.
+    expect(conn.release).not.toHaveBeenCalled();
+  });
+
+  it('direct: rollback() calls rollback() on the connection directly', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    await adapter.rollback();
+    expect(conn.rollback).toHaveBeenCalled();
+    expect(conn.release).not.toHaveBeenCalled();
+  });
+
+  it('direct: close() is a no-op — caller owns the connection lifecycle', () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    expect(() => {
+      adapter.close();
+    }).not.toThrow();
+    expect(conn.release).not.toHaveBeenCalled();
+  });
+
+  it('direct: getDialect() returns "mysql"', () => {
+    expect(new MysqlAdapter(makeMysqlConn()).getDialect()).toBe('mysql');
+  });
 });
 
 // ---------------------------------------------------------------------------
