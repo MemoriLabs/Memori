@@ -23,10 +23,10 @@ Each question in the LoCoMo benchmark was answered using GPT-4.1-mini, condition
 
 ### Performance Metrics: LLM-as-a-Judge
 
-We employ an LLM-as-a-Judge methodology (the utilized prompt is presented in the Appendix), using GPT-4.1-mini as the evaluator. The judge model analyzes the user query, the ground-truth answer, and the generated response to provide a nuanced assessment. 
+We employ an LLM-as-a-Judge methodology (the utilized prompt is presented in the Appendix), using GPT-4.1-mini as the evaluator. The judge model analyzes the user query, the ground-truth answer, and the generated response to provide a nuanced assessment.
 
-### Token-Driven Cost Analysis 
+### Token-Driven Cost Analysis
 
-Beyond response quality, practical deployment considerations are paramount for enterprise AI applications. We evaluate Memori against traditional architectures (e.g., standard RAG) by systematically measuring system efficiency as a function of context consumption.. 
+Beyond response quality, practical deployment considerations are paramount for enterprise AI applications. We evaluate Memori against traditional architectures (e.g., standard RAG) by systematically measuring system efficiency as a function of context consumption..
 
 The absolute number of tokens added to the LLM prompt is the primary driver of operational costs in conversational AI. We measure the exact number of tokens extracted during retrieval and injected into the prompt context. This metric highlights a critical architectural distinction: while traditional architectures consume massive token budgets by indiscriminately injecting large, raw text chunks or full histories into the prompt, Memori retrieves highly concise, structured memory facts. By minimizing the context footprint, Memori directly curtails API expenditure and optimizes operational economics.

@@ -7,14 +7,13 @@ name = "memori"
 version = "3.3.6"
 description = "Memori Python SDK"
 authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 keywords = ["ai", "memory", "agents", "llm", "artificial-intelligence", "multi-agent"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

@@ -14,7 +14,14 @@ repos:
     args: [--fix]
   - id: ruff-format
 
-#- repo: local
+- repo: local
+  hooks:
+    - id: run-linters
+      name: Run all linters
+      entry: bash ./scripts/run-linters.sh
+      language: system
+      always_run: true
+      pass_filenames: false
   #hooks:
   # - id: ty
   #   name: ty type checker

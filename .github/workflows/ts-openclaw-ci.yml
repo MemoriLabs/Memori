@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'integrations/openclaw/**' 
+      - 'integrations/openclaw/**'
   pull_request:
     branches: [ "main" ]
     paths:
@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         node-version: [22, 24]
-    
+
     defaults:
       run:
         working-directory: ./integrations/openclaw

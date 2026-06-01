@@ -50,7 +50,8 @@ class StreamingBody:
                     injected_count=self.invoke._injected_message_count,
                 ),
                 format_response(
-                    json.loads(data.decode()), uses_protobuf=self.invoke._uses_protobuf
+                    [json.loads(data.decode())],
+                    uses_protobuf=self.invoke._uses_protobuf,
                 ),
             )
         )

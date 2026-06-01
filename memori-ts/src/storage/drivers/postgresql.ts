@@ -145,9 +145,9 @@ class EntityFact {
       if (values.length > 0) {
         // Execute chunk Bulk Insert
         await this.conn.execute(
-          `INSERT INTO memori_entity_fact(uuid, entity_id, content, content_embedding, num_times, date_last_time, uniq) 
-           VALUES ${placeholders.join(', ')} 
-           ON CONFLICT (entity_id, uniq) DO UPDATE 
+          `INSERT INTO memori_entity_fact(uuid, entity_id, content, content_embedding, num_times, date_last_time, uniq)
+           VALUES ${placeholders.join(', ')}
+           ON CONFLICT (entity_id, uniq) DO UPDATE
            SET num_times = memori_entity_fact.num_times + 1, date_last_time = CURRENT_TIMESTAMP`,
           values
         );
@@ -173,8 +173,8 @@ class EntityFact {
         }
 
         await this.conn.execute(
-          `INSERT INTO memori_entity_fact_mention(uuid, entity_id, fact_id, conversation_id) 
-           VALUES ${linkPlaceholders.join(', ')} 
+          `INSERT INTO memori_entity_fact_mention(uuid, entity_id, fact_id, conversation_id)
+           VALUES ${linkPlaceholders.join(', ')}
            ON CONFLICT (entity_id, fact_id, conversation_id) DO NOTHING`,
           linkValues
         );

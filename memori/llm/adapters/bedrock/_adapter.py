@@ -41,12 +41,39 @@ class Adapter(BaseLlmAdaptor):
         response = []
         if "chunk" not in payload["conversation"]["response"][0]:
             # Unstreamed
-            """
-            REQUEST FOR CONTRIBUTION
+            data = payload["conversation"]["response"][0]
+            role = None
+            text = []
 
-            How do we parse the messages when Bedrock does not stream the response?
-            """
-            raise RuntimeError("REQUEST FOR CONTRIBUTION")
+            # Converse API format
+            if "output" in data and "message" in data["output"]:
+                message = data["output"]["message"]
+                role = message.get("role")
+                content = message.get("content", [])
+                for part in content:
+                    if isinstance(part, dict) and "text" in part:
+                        text.append(part["text"])
+
+            # Messages API format (e.g. Claude 3 directly on Bedrock)
+            elif "role" in data and "content" in data:
+                role = data["role"]
+                content = data["content"]
+                if isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and "text" in part:
+                            text.append(part["text"])
+                        elif isinstance(part, str):
+                            text.append(part)
+                elif isinstance(content, str):
+                    text.append(content)
+
+            # Legacy Claude on Bedrock format
+            elif "completion" in data:
+                role = "assistant"
+                text.append(data["completion"])
+
+            if role and text:
+                response.append({"role": role, "text": "".join(text), "type": "text"})
         else:
             # Streamed
             # [

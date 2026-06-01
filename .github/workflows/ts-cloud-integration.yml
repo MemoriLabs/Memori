@@ -1,7 +1,7 @@
 name: TS Cloud Integration Tests
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   run-ts-integrations:
