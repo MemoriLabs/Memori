@@ -84,8 +84,8 @@ type TrackedAdapter = {
   lastUsed: number;
   isBusy: boolean;
   inTransaction: boolean;
-  // Held from acquire until close to serialize SQLite access on the shared sqlite3* handle.
-  releaseSqliteLock?: () => void;
+  // Held from acquire until close to serialize access for adapters that require it (SQLite, MySQL direct).
+  releaseSerialLock?: () => void;
 };
 
 export class StorageManager {
@@ -95,9 +95,10 @@ export class StorageManager {
   private readonly connections = new Map<number, TrackedAdapter>();
   private readonly inFlight = new Set<Promise<void>>();
   private nextConnId = 1;
-  // SQLite only: promise chain that serializes connection lifetime (acquire→close) so only
-  // one connection is live on the shared sqlite3* handle at a time.
-  private sqliteQueue: Promise<void> = Promise.resolve();
+  // Promise chain that serializes connection lifetime (acquire→close) for adapters that require it
+  // (SQLite shared handle, MySQL direct connection). Only one acquire is live at a time.
+  private serialQueue: Promise<void> = Promise.resolve();
+  private readonly needsSerialAccess: boolean;
   private engineShutdown?: () => void;
   private engineBuild?: () => Promise<void>;
   private sweepHandle?: ReturnType<typeof setInterval>;
@@ -107,6 +108,7 @@ export class StorageManager {
     this.dialectOverride = dialectOverride;
     const probe = Registry.getAdapter(factory);
     this.cachedDialect = probe.getDialect();
+    this.needsSerialAccess = probe.requiresSerialAccess?.() ?? false;
     void Promise.resolve(probe.close()).catch(() => {});
     const handle = setInterval(() => {
       this.sweepOrphanedConnections();
@@ -183,8 +185,8 @@ export class StorageManager {
       if (!isStaleIdle && !isStaleTx) continue;
 
       this.connections.delete(id);
-      entry.releaseSqliteLock?.();
-      entry.releaseSqliteLock = undefined;
+      entry.releaseSerialLock?.();
+      entry.releaseSerialLock = undefined;
 
       const p = isStaleTx
         ? Promise.resolve(entry.adapter.rollback())
@@ -211,11 +213,11 @@ export class StorageManager {
         const adapter = Registry.getAdapter(this.factory);
         const connId = this.nextConnId++;
 
-        let releaseSqliteLock: (() => void) | undefined;
-        if (this.getDialect() === 'sqlite') {
-          const prev = this.sqliteQueue;
+        let releaseSerialLock: (() => void) | undefined;
+        if (this.needsSerialAccess) {
+          const prev = this.serialQueue;
           let releaseLock!: () => void;
-          this.sqliteQueue = new Promise<void>((r) => {
+          this.serialQueue = new Promise<void>((r) => {
             releaseLock = r;
           });
           await prev;
@@ -226,7 +228,7 @@ export class StorageManager {
             });
             return;
           }
-          releaseSqliteLock = releaseLock;
+          releaseSerialLock = releaseLock;
         }
 
         this.connections.set(connId, {
@@ -234,7 +236,7 @@ export class StorageManager {
           lastUsed: Date.now(),
           isBusy: false,
           inTransaction: false,
-          releaseSqliteLock,
+          releaseSerialLock,
         });
         resolve({ conn_id: connId });
         break;
@@ -267,9 +269,9 @@ export class StorageManager {
           resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
           return;
         }
-        // SQLite serialization is now enforced at acquire time (lock spans acquire→close),
+        // Serial-access serialization is enforced at acquire time (lock spans acquire→close),
         // so we only need a shutdown guard here in case close() was called after acquire.
-        if (this.getDialect() === 'sqlite' && this.sweepHandle === undefined) {
+        if (this.needsSerialAccess && this.sweepHandle === undefined) {
           resolve({
             error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
           });
@@ -287,8 +289,8 @@ export class StorageManager {
           if (!began) {
             // begin failed — Rust will call close(), but release the lock here too
             // as a safety net so the queue never gets stuck.
-            entry.releaseSqliteLock?.();
-            entry.releaseSqliteLock = undefined;
+            entry.releaseSerialLock?.();
+            entry.releaseSerialLock = undefined;
           }
           entry.isBusy = false;
           entry.lastUsed = Date.now();
@@ -354,8 +356,8 @@ export class StorageManager {
           } finally {
             // Release the SQLite lock only after rollback/close so the next acquire
             // doesn't start on the shared sqlite3* handle before cleanup finishes.
-            entry.releaseSqliteLock?.();
-            entry.releaseSqliteLock = undefined;
+            entry.releaseSerialLock?.();
+            entry.releaseSerialLock = undefined;
           }
         }
         resolve({ ok: true });
@@ -379,8 +381,8 @@ export class StorageManager {
     // releaseLock (unwinding the full chain), and resolve with a SHUTTING_DOWN error
     // rather than hanging forever waiting for a commit that will never arrive.
     for (const entry of this.connections.values()) {
-      entry.releaseSqliteLock?.();
-      entry.releaseSqliteLock = undefined;
+      entry.releaseSerialLock?.();
+      entry.releaseSerialLock = undefined;
     }
     // Drain all in-flight dispatchOp calls before touching adapters.
     await Promise.allSettled(this.inFlight);

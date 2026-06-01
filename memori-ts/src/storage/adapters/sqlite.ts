@@ -39,6 +39,9 @@ export class SqliteAdapter implements StorageAdapter {
   public getDialect(): string {
     return 'sqlite';
   }
+  public requiresSerialAccess(): boolean {
+    return true;
+  }
   public close(): void {
     // Never close the user's database — caller owns the connection lifecycle.
   }

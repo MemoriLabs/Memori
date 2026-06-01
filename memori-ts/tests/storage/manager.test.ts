@@ -1,16 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // vi.mock is hoisted — all variables it references must be declared with vi.hoisted.
-const { mockExecute, mockBegin, mockCommit, mockRollback, mockClose, mockGetDialect } = vi.hoisted(
-  () => ({
-    mockExecute: vi.fn().mockResolvedValue([{ id: 1 }]),
-    mockBegin: vi.fn().mockResolvedValue(undefined),
-    mockCommit: vi.fn().mockResolvedValue(undefined),
-    mockRollback: vi.fn().mockResolvedValue(undefined),
-    mockClose: vi.fn().mockResolvedValue(undefined),
-    mockGetDialect: vi.fn().mockReturnValue('sqlite'),
-  })
-);
+const {
+  mockExecute,
+  mockBegin,
+  mockCommit,
+  mockRollback,
+  mockClose,
+  mockGetDialect,
+  mockRequiresSerialAccess,
+} = vi.hoisted(() => ({
+  mockExecute: vi.fn().mockResolvedValue([{ id: 1 }]),
+  mockBegin: vi.fn().mockResolvedValue(undefined),
+  mockCommit: vi.fn().mockResolvedValue(undefined),
+  mockRollback: vi.fn().mockResolvedValue(undefined),
+  mockClose: vi.fn().mockResolvedValue(undefined),
+  mockGetDialect: vi.fn().mockReturnValue('sqlite'),
+  mockRequiresSerialAccess: vi.fn().mockReturnValue(false),
+}));
 
 vi.mock('../../src/storage/registry.js', () => ({
   Registry: {
@@ -22,6 +29,7 @@ vi.mock('../../src/storage/registry.js', () => ({
       rollback: (...args: unknown[]) => mockRollback(...args),
       close: (...args: unknown[]) => mockClose(...args),
       getDialect: () => mockGetDialect(),
+      requiresSerialAccess: () => mockRequiresSerialAccess(),
     }),
   },
 }));
@@ -82,8 +90,9 @@ describe('StorageManager', () => {
     // Regression: the sqliteQueue previously only serialized begin→commit/rollback.
     // A second conn_id's execute would run inside the first conn_id's open transaction
     // and could be committed or rolled back by the wrong caller.
-    // The queue now spans acquire→close so only one SQLite connection is live at a time.
-    mockGetDialect.mockReturnValue('sqlite');
+    // The queue now spans acquire→close so only one connection is live at a time.
+    // mockReturnValueOnce so only the constructor probe sees true; doesn't bleed into later tests.
+    mockRequiresSerialAccess.mockReturnValueOnce(true);
     const manager = new StorageManager(makeFactory());
 
     const { conn_id: id1 } = (await dispatchCall(
@@ -364,9 +373,9 @@ describe('StorageManager', () => {
 
   it('sqlite: orphaned transaction is swept and SQLite lock released after stale TTL', async () => {
     // Regression: inTransaction entries were skipped by the sweep forever.
-    // With SQLite's acquire-to-close queue lock, an orphaned transaction blocks future acquires.
+    // With the acquire-to-close serial lock, an orphaned transaction blocks future acquires.
     // After STALE_TX_TTL_MS the sweep must force-rollback/close and release the lock.
-    mockGetDialect.mockReturnValue('sqlite');
+    mockRequiresSerialAccess.mockReturnValueOnce(true);
     vi.useFakeTimers();
     const manager = new StorageManager(makeFactory());
 

@@ -93,6 +93,10 @@ describe('SqliteAdapter', () => {
     const adapter = new SqliteAdapter(makeSqliteDb());
     expect(adapter.getDialect()).toBe('sqlite');
   });
+
+  it('requiresSerialAccess() returns true', () => {
+    expect(new SqliteAdapter(makeSqliteDb()).requiresSerialAccess()).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -270,6 +274,15 @@ describe('MysqlAdapter', () => {
 
   it('direct: getDialect() returns "mysql"', () => {
     expect(new MysqlAdapter(makeMysqlConn()).getDialect()).toBe('mysql');
+  });
+
+  it('requiresSerialAccess() returns true for a direct connection', () => {
+    expect(new MysqlAdapter(makeMysqlConn()).requiresSerialAccess()).toBe(true);
+  });
+
+  it('requiresSerialAccess() returns false for a pool', () => {
+    const { pool } = makeMysqlPool();
+    expect(new MysqlAdapter(pool).requiresSerialAccess()).toBe(false);
   });
 });
 

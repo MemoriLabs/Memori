@@ -150,6 +150,12 @@ export class MysqlAdapter implements StorageAdapter {
     return 'mysql';
   }
 
+  public requiresSerialAccess(): boolean {
+    // A direct connection is a single shared handle — concurrent acquires would race.
+    // A pool safely issues getConnection() for each acquire, so no serialization needed.
+    return this.directConn !== null;
+  }
+
   public close(): void {
     // Direct connection: nothing to release — caller manages its lifetime.
     // Pool: release any orphaned checked-out connection - never call pool.end().
