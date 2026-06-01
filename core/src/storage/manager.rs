@@ -460,31 +460,48 @@ impl RustStorageManager {
                             HostStorageError::new("INTERNAL", "do_entity_create returned no id")
                         })?;
 
-                    let embeddings =
-                        if let Some(raw_embs) = op.payload["fact_embeddings"].as_array() {
-                            // Caller-supplied embeddings: mirror Python's _normalize_fact_embeddings
-                            // which rejects arrays whose length doesn't match facts and falls back
-                            // to re-embedding, preventing facts from getting wrong or missing vectors.
-                            let deserialized: Vec<Vec<f32>> = raw_embs
-                                .iter()
-                                .map(|emb| {
-                                    emb.as_array()
-                                        .map(|arr| {
-                                            arr.iter()
-                                                .filter_map(|v| v.as_f64().map(|f| f as f32))
-                                                .collect()
-                                        })
-                                        .unwrap_or_default()
-                                })
-                                .collect();
-                            if deserialized.len() == facts.len() {
-                                deserialized
-                            } else {
-                                self.embed_texts(facts.clone())
-                            }
-                        } else {
-                            self.embed_texts(facts.clone())
-                        };
+                    // fact_embeddings is always set by precompute_embeddings before the
+                    // transaction opens. Re-embedding inside the transaction would extend the
+                    // CockroachDB/PostgreSQL lock window and increase 40001 retry frequency.
+                    let embeddings = {
+                        let raw_embs =
+                            op.payload["fact_embeddings"].as_array().ok_or_else(|| {
+                                HostStorageError::new(
+                                    "INTERNAL",
+                                    "entity_fact.create: fact_embeddings missing; \
+                                     precompute_embeddings must run before execute_batch_ops",
+                                )
+                            })?;
+                        let deserialized: Vec<Vec<f32>> = raw_embs
+                            .iter()
+                            .map(|emb| {
+                                emb.as_array()
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .filter_map(|v| v.as_f64().map(|f| f as f32))
+                                            .collect()
+                                    })
+                                    .unwrap_or_default()
+                            })
+                            .collect();
+                        // Empty embeddings = no embedder configured. Python handles this the
+                        // same way: entity_fact.create(fact_embeddings=None) stores each fact
+                        // with an empty blob rather than erroring. We do the same below.
+                        // Non-empty but misaligned = precompute bug — that is an error.
+                        if !deserialized.is_empty() && deserialized.len() != facts.len() {
+                            return Err(HostStorageError::new(
+                                "INTERNAL",
+                                format!(
+                                    "entity_fact.create: fact_embeddings length {} \
+                                     does not match facts length {}; \
+                                     check precompute_embeddings",
+                                    deserialized.len(),
+                                    facts.len()
+                                ),
+                            ));
+                        }
+                        deserialized
+                    };
 
                     let internal_conv_id = {
                         let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
@@ -508,13 +525,23 @@ impl RustStorageManager {
                         }
                     };
 
-                    self.do_entity_fact_create(
-                        conn,
-                        internal_entity_id,
-                        &facts,
-                        &embeddings,
-                        internal_conv_id,
-                    )?;
+                    if embeddings.is_empty() {
+                        for fact in &facts {
+                            self.do_entity_fact_create_without_embedding(
+                                conn,
+                                internal_entity_id,
+                                fact,
+                            )?;
+                        }
+                    } else {
+                        self.do_entity_fact_create(
+                            conn,
+                            internal_entity_id,
+                            &facts,
+                            &embeddings,
+                            internal_conv_id,
+                        )?;
+                    }
                 }
                 "knowledge_graph.create" => {
                     let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
@@ -608,18 +635,16 @@ impl RustStorageManager {
                         .ok_or_else(|| {
                             HostStorageError::new("INTERNAL", "do_entity_create returned no id")
                         })?;
-                    // Read the embedding pre-computed by precompute_embeddings (outside the tx).
-                    // Falls back to embed_texts only if somehow missing (defensive).
+                    // Use the embedding pre-computed by precompute_embeddings outside the
+                    // transaction. If absent or empty (no embedder set), store without embedding
+                    // — matches Python which always passes fact_embeddings=None for upsert_fact.
+                    // Never call embed_texts here; that belongs in precompute_embeddings.
                     let pre = op.payload["content_embedding"].as_array().map(|a| {
                         a.iter()
                             .filter_map(|v| v.as_f64().map(|f| f as f32))
                             .collect::<Vec<f32>>()
                     });
-                    let embeddings = pre
-                        .map(|e| vec![e])
-                        .unwrap_or_else(|| self.embed_texts(vec![content.to_string()]));
-                    if let Some(embedding) = embeddings.into_iter().next().filter(|e| !e.is_empty())
-                    {
+                    if let Some(embedding) = pre.filter(|e| !e.is_empty()) {
                         self.do_entity_fact_create(
                             conn,
                             internal_entity_id,

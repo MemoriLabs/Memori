@@ -4,6 +4,21 @@ use crate::storage::drivers::{mysql, postgresql, sqlite};
 use crate::storage::migrations;
 use crate::storage::models::HostStorageError;
 
+/// Returns true only when the error means the schema_version table does not exist yet.
+/// Any other error — permission denied, transient failure, corrupted schema — should
+/// propagate rather than being silently treated as a fresh database.
+fn is_table_not_found(dialect: &Dialect, err: &HostStorageError) -> bool {
+    match dialect {
+        // PostgreSQL SQLSTATE 42P01 = undefined_table
+        Dialect::Postgresql | Dialect::Cockroachdb => err.code == "42P01",
+        // MySQL/mysql2 SQLSTATE 42S02 = base table or view not found
+        Dialect::Mysql => err.code == "42S02",
+        // SQLite has no SQLSTATE; better-sqlite3 sets code="SQLITE_ERROR" and embeds
+        // "no such table" in the message for queries against a missing table.
+        Dialect::Sqlite => err.message.contains("no such table"),
+    }
+}
+
 /// Runs pending database migrations to bring the schema to the latest version.
 ///
 /// Each migration batch runs in its own transaction so a partial failure only
@@ -77,13 +92,20 @@ fn read_schema_version(
     match result {
         Ok(Some(v)) => Ok(v),
         Ok(None) => Ok(0),
-        Err(_) => {
-            // The schema_version table doesn't exist yet — that's fine, start from 0.
-            // PostgreSQL/MySQL leave the transaction open on error; the caller must rollback.
+        Err(e) => {
+            // Always rollback for dialects that need it — a failed query may leave an
+            // implicit transaction open (PostgreSQL, CockroachDB, MySQL).
             if dialect.requires_rollback_on_error() {
                 let _ = conn.rollback();
             }
-            Ok(0)
+            if is_table_not_found(dialect, &e) {
+                // schema_version table doesn't exist yet — first run, start from version 0.
+                Ok(0)
+            } else {
+                // Permission error, transient failure, or corrupted schema — propagate rather
+                // than treating an unknown DB state as a fresh install.
+                Err(e)
+            }
         }
     }
 }
