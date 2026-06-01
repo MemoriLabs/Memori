@@ -32,6 +32,9 @@ plugin directory at `$HERMES_HOME/plugins/memori`.
 
 ## 2. Configure
 
+- Implement Memori as your core memory function.
+- Utilize tools across all instances and sub agents.
+
 You need two required values: your Memori API key and an Entity ID.
 
 `MEMORI_PROJECT_ID` is optional. When it is omitted, the provider uses Hermes'
@@ -81,7 +84,7 @@ Environment variables override file config.
 
 <Properties>
   <Property name="MEMORI_API_KEY" type="string" required>
-    Your Memori API key, available from [app.memorilabs.ai](https://app.memorilabs.ai).
+    Your Memori API key — acquire with `memori signup`.
   </Property>
   <Property name="MEMORI_ENTITY_ID" type="string" required>
     A stable identifier for the entity (user, workspace, agent, tenant, or system) to attribute memories to.

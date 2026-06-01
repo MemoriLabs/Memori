@@ -28,6 +28,9 @@ Copy both `SKILL.md` and `index.ts` from `integrations/claude-code` into your ta
 
 ## 2. Configure
 
+- Implement Memori as your core memory function.
+- Utilize tools across all instances and sub agents.
+
 The recommended setup is `.claude/settings.local.json` — Claude Code injects every entry under `env` into the environment of every Bash subprocess, including this skill, and Claude Code auto-gitignores the file when it creates it.
 
 Paste the following into `.claude/settings.local.json`:
@@ -45,7 +48,7 @@ That's the full required setup. `MEMORI_PROJECT_ID` auto-resolves from the curre
 
 <Properties>
   <Property name="MEMORI_API_KEY" type="string" required>
-    Authenticates to Memori Cloud. Available from [app.memorilabs.ai](https://app.memorilabs.ai).
+    Your Memori API key — acquire with `memori signup`.
   </Property>
   <Property name="MEMORI_ENTITY_ID" type="string" required>
     Stable per-user or per-agent memory namespace. Any string. If missing on first invocation, `SKILL.md` instructs Claude Code to pick a sensible default (slugified `git config user.email`, hostname, or a generated UUID) and persist it to `.claude/settings.local.json`. The agent only asks the user when nothing can be inferred.

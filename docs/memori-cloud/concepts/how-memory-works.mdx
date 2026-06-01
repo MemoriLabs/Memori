@@ -5,7 +5,7 @@ description: Understand the core concepts behind Memori — entities, processes,
 
 # How Memori Works
 
-Memori gives your AI application long-term memory. Instead of forgetting everything after each conversation, your AI can remember facts, preferences, and context across sessions and across different applications.
+Memori gives your AI application long-term memory. Instead of forgetting everything after each conversation, your AI can remember facts, preferences, and context across sessions and across different applications. Agent trace & execution memories are captured via integrations such as OpenClaw, Hermes and Claude Code.
 
 ## Attribution
 
@@ -64,7 +64,7 @@ const response = await client.chat.completions.create({
 
 ## Memory Types
 
-When you have a conversation through a Memori-wrapped LLM client, Advanced Augmentation extracts structured memories in the background:
+When you have a conversation through a Memori-wrapped LLM client, Advanced Augmentation extracts structured memories in the background. Agent trace & execution memories are captured via integrations such as OpenClaw, Hermes and Claude Code, which send tool calls, decisions, and outcomes directly to Memori:
 
 | Type                   | What it captures                          | Example                                         |
 | ---------------------- | ----------------------------------------- | ----------------------------------------------- |
@@ -72,7 +72,7 @@ When you have a conversation through a Memori-wrapped LLM client, Advanced Augme
 | **Preferences**        | Choices, opinions, and tastes             | "Prefers concise answers"                       |
 | **Skills & Knowledge** | Abilities and expertise levels            | "Experienced with React (5 years)"              |
 | **Attributes**         | Process-level information about the agent | "Handles billing and subscription queries"      |
-| **Agent trace & execution** | Tool calls, decisions, workflow steps, and outcomes | "Used search tool → found result → summarized" |
+| **Agent Trace & Execution** | Tool calls, decisions, workflow steps, and outcomes | "Used search tool → found result → summarized" |
 
 ## How Recall Works
 
@@ -157,6 +157,6 @@ mem.config.recallRelevanceThreshold = 0.05; // Lower = more results
 1. **Conversation** — Your user talks to your AI through the wrapped LLM client
 2. **Capture** — Memori intercepts and stores the raw conversation
 3. **Augmentation** — Advanced Augmentation processes the conversation asynchronously, extracting structured memories
-4. **Extraction** — Facts, preferences, skills, and attributes are identified
+4. **Extraction** — Facts, preferences, skills, attributes, and agent trace & execution memories are identified
 5. **Storage** — Extracted memories are stored in Memori Cloud with vector embeddings
 6. **Recall** — On the next LLM call, relevant memories are retrieved and injected into context
