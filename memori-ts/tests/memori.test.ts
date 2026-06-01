@@ -84,6 +84,47 @@ describe('Memori SDK', () => {
     expect(ok).toBe(true);
   });
 
+  it('forRequest() inherits entityId and processId from parent attribution', () => {
+    const memori = new Memori();
+    memori.attribution('user-123', 'process-xyz');
+
+    const scope = memori.forRequest({ sessionId: 'sess-1' });
+
+    expect(scope.config.entityId).toBe('user-123');
+    expect(scope.config.processId).toBe('process-xyz');
+  });
+
+  it('forRequest() options override parent attribution', () => {
+    const memori = new Memori();
+    memori.attribution('parent-user', 'parent-process');
+
+    const scope = memori.forRequest({ entityId: 'request-user', processId: 'request-process' });
+
+    expect(scope.config.entityId).toBe('request-user');
+    expect(scope.config.processId).toBe('request-process');
+  });
+
+  it('forRequest() options can partially override parent attribution', () => {
+    const memori = new Memori();
+    memori.attribution('parent-user', 'parent-process');
+
+    const scope = memori.forRequest({ entityId: 'request-user' });
+
+    expect(scope.config.entityId).toBe('request-user');
+    expect(scope.config.processId).toBe('parent-process');
+  });
+
+  it('forRequest() scopes are isolated — mutating one does not affect another', () => {
+    const memori = new Memori();
+    memori.attribution('shared-user', 'shared-process');
+
+    const scope1 = memori.forRequest({ entityId: 'user-a' });
+    const scope2 = memori.forRequest({ entityId: 'user-b' });
+
+    expect(scope1.config.entityId).toBe('user-a');
+    expect(scope2.config.entityId).toBe('user-b');
+  });
+
   it('should pass defaultApi and collectorApi to the integration core', () => {
     let capturedCore: MemoriCore | undefined;
 

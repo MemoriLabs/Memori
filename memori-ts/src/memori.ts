@@ -63,6 +63,11 @@ export class MemoriRequestScope {
     this.config.recallRelevanceThreshold = parentConfig.recallRelevanceThreshold;
     this.config.timeout = parentConfig.timeout;
     this.config.storage = parentConfig.storage;
+    // Inherit parent attribution as defaults so forRequest({ sessionId }) doesn't
+    // silently drop entityId/processId set via memori.attribution() on the shared instance.
+    if (parentConfig.entityId) this.config.entityId = parentConfig.entityId;
+    if (parentConfig.processId) this.config.processId = parentConfig.processId;
+    // Per-request options override the inherited defaults.
     if (options?.entityId) this.config.entityId = options.entityId;
     if (options?.processId) this.config.processId = options.processId;
 
