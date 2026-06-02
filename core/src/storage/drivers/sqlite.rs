@@ -224,40 +224,87 @@ pub fn entity_fact_create(
     embeddings: &[Vec<f32>],
     conversation_id: Option<i64>,
 ) -> Result<(), HostStorageError> {
-    for (i, fact) in facts.iter().enumerate() {
-        let embedding = embeddings.get(i).map(|e| e.as_slice()).unwrap_or(&[]);
-        let embedding_bytes = embedding_to_bytes(embedding);
-        let uniq = generate_uniq(&[fact.as_str()]);
+    // 5 params per fact row; SQLite defaults to 999 max bound variables.
+    const CHUNK_SIZE: usize = 100;
 
-        conn.execute(
-            "INSERT INTO memori_entity_fact(uuid, entity_id, content, content_embedding, num_times, date_last_time, uniq) \
-             VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, ?) \
-             ON CONFLICT (entity_id, uniq) DO UPDATE SET num_times = memori_entity_fact.num_times + 1, date_last_time = CURRENT_TIMESTAMP",
-            vec![
-                SqlBind::Text(new_uuid()),
-                SqlBind::Int(entity_id),
-                SqlBind::Text(fact.clone()),
-                SqlBind::bytes(&embedding_bytes),
-                SqlBind::Text(uniq.clone()),
-            ],
-        )?;
+    let all_facts: Vec<(&String, Vec<u8>, String)> = facts
+        .iter()
+        .enumerate()
+        .map(|(i, fact)| {
+            let embedding_bytes = embeddings
+                .get(i)
+                .map(|e| embedding_to_bytes(e))
+                .unwrap_or_default();
+            let uniq = generate_uniq(&[fact.as_str()]);
+            (fact, embedding_bytes, uniq)
+        })
+        .collect();
+
+    for chunk in all_facts.chunks(CHUNK_SIZE) {
+        let mut placeholders: Vec<&str> = Vec::new();
+        let mut binds: Vec<SqlBind> = Vec::new();
+
+        for (fact, embedding_bytes, uniq) in chunk {
+            placeholders.push("(?, ?, ?, ?, 1, CURRENT_TIMESTAMP, ?)");
+            binds.push(SqlBind::Text(new_uuid()));
+            binds.push(SqlBind::Int(entity_id));
+            binds.push(SqlBind::Text(fact.to_string()));
+            binds.push(SqlBind::bytes(embedding_bytes));
+            binds.push(SqlBind::Text(uniq.clone()));
+        }
+
+        if !binds.is_empty() {
+            conn.execute(
+                &format!(
+                    "INSERT INTO memori_entity_fact(uuid, entity_id, content, content_embedding, num_times, date_last_time, uniq) \
+                     VALUES {} \
+                     ON CONFLICT (entity_id, uniq) DO UPDATE SET num_times = memori_entity_fact.num_times + 1, date_last_time = CURRENT_TIMESTAMP",
+                    placeholders.join(", ")
+                ),
+                binds,
+            )?;
+        }
 
         if let Some(conv_id) = conversation_id {
-            let fact_rows = conn.execute(
-                "SELECT id FROM memori_entity_fact WHERE entity_id = ? AND uniq = ?",
-                vec![SqlBind::Int(entity_id), SqlBind::Text(uniq)],
-            )?;
-            if let Some(fact_id) = fact_rows.first().and_then(|r| read_id(r, "id")) {
-                conn.execute(
-                    "INSERT INTO memori_entity_fact_mention(uuid, entity_id, fact_id, conversation_id) \
-                     VALUES (?, ?, ?, ?) ON CONFLICT (entity_id, fact_id, conversation_id) DO NOTHING",
-                    vec![
-                        SqlBind::Text(new_uuid()),
-                        SqlBind::Int(entity_id),
-                        SqlBind::Int(fact_id),
-                        SqlBind::Int(conv_id),
-                    ],
+            let uniq_vals: Vec<&String> = chunk.iter().map(|(_, _, uniq)| uniq).collect();
+            if !uniq_vals.is_empty() {
+                // No RETURNING — fetch the IDs we just upserted to link them to the conversation.
+                let in_placeholders = uniq_vals.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+                let mut lookup_binds = vec![SqlBind::Int(entity_id)];
+                lookup_binds.extend(uniq_vals.iter().map(|u| SqlBind::Text(u.to_string())));
+                let inserted = conn.execute(
+                    &format!(
+                        "SELECT id FROM memori_entity_fact WHERE entity_id = ? AND uniq IN ({})",
+                        in_placeholders
+                    ),
+                    lookup_binds,
                 )?;
+
+                if !inserted.is_empty() {
+                    let mut link_placeholders: Vec<&str> = Vec::new();
+                    let mut link_binds: Vec<SqlBind> = Vec::new();
+
+                    for row in &inserted {
+                        if let Some(fact_id) = read_id(row, "id") {
+                            link_placeholders.push("(?, ?, ?, ?)");
+                            link_binds.push(SqlBind::Text(new_uuid()));
+                            link_binds.push(SqlBind::Int(entity_id));
+                            link_binds.push(SqlBind::Int(fact_id));
+                            link_binds.push(SqlBind::Int(conv_id));
+                        }
+                    }
+
+                    if !link_binds.is_empty() {
+                        conn.execute(
+                            &format!(
+                                "INSERT INTO memori_entity_fact_mention(uuid, entity_id, fact_id, conversation_id) \
+                                 VALUES {} ON CONFLICT (entity_id, fact_id, conversation_id) DO NOTHING",
+                                link_placeholders.join(", ")
+                            ),
+                            link_binds,
+                        )?;
+                    }
+                }
             }
         }
     }
