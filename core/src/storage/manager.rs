@@ -349,6 +349,16 @@ impl RustStorageManager {
         WriteBatch { ops }
     }
 
+    // Stringify a scalar JSON value — matches Python's str() used in _normalize_attributes.
+    fn scalar_to_string(v: &serde_json::Value) -> Option<String> {
+        match v {
+            serde_json::Value::String(s) => Some(s.clone()),
+            serde_json::Value::Number(n) => Some(n.to_string()),
+            serde_json::Value::Bool(b) => Some(b.to_string()),
+            _ => None,
+        }
+    }
+
     // Accepts both JSON string and integer values so a numeric ID sent from the
     // TS bridge never silently becomes an empty string via `.as_str()`.
     fn coerce_id_str(v: &serde_json::Value) -> String {
@@ -450,9 +460,14 @@ impl RustStorageManager {
                                     .unwrap_or_default()
                             })
                             .collect();
-                        // Misaligned or empty — mirrors Python's _normalize_fact_embeddings returning None.
                         if deserialized.is_empty() || deserialized.len() != facts.len() {
-                            vec![]
+                            // Misaligned — mirrors Python's recovery: re-embed all facts from scratch.
+                            let recomputed = self.embed_texts(facts.clone());
+                            if recomputed.len() == facts.len() {
+                                recomputed
+                            } else {
+                                vec![]
+                            }
                         } else {
                             deserialized
                         }
@@ -501,24 +516,21 @@ impl RustStorageManager {
                         HostStorageError::new("INTERNAL", "process_create returned no id")
                     })?;
                     let attributes: Vec<String> = match op.payload["attributes"].as_array() {
+                        // Python: [str(x) for x in raw if str(x).strip()]
                         Some(arr) => arr
                             .iter()
                             .filter_map(|v| {
-                                let s = v.as_str()?;
-                                if s.trim().is_empty() {
-                                    None
-                                } else {
-                                    Some(s.to_string())
-                                }
+                                let s = Self::scalar_to_string(v)?;
+                                if s.trim().is_empty() { None } else { Some(s) }
                             })
                             .collect(),
+                        // Python: [f"{k}:{v}" for k, v in raw.items()]
                         None => op.payload["attributes"]
                             .as_object()
                             .map(|o| {
                                 o.iter()
                                     .filter_map(|(k, v)| {
-                                        let val = v.as_str()?;
-                                        Some(format!("{k}:{val}"))
+                                        Some(format!("{}:{}", k, Self::scalar_to_string(v)?))
                                     })
                                     .collect()
                             })
