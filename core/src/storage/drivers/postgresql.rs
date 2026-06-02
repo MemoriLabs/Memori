@@ -1,4 +1,4 @@
-use super::{embedding_to_bytes, generate_uniq, new_uuid};
+use super::{embedding_to_bytes, generate_uniq, new_uuid, read_triple_entity};
 use crate::search::FactId;
 use crate::storage::connection::{SqlBind, StorageConnection, read_id};
 use crate::storage::models::{CandidateFactRow, EmbeddingRow, HostStorageError};
@@ -331,48 +331,6 @@ pub fn entity_fact_create(
     Ok(())
 }
 
-pub fn entity_fact_create_without_embedding(
-    conn: &dyn StorageConnection,
-    entity_id: i64,
-    content: &str,
-    conversation_id: Option<i64>,
-) -> Result<(), HostStorageError> {
-    let uniq = generate_uniq(&[content]);
-    conn.execute(
-        "INSERT INTO memori_entity_fact(uuid, entity_id, content, content_embedding, num_times, date_last_time, uniq) \
-         VALUES ($1, $2, $3, $4, 1, CURRENT_TIMESTAMP, $5) \
-         ON CONFLICT (entity_id, uniq) DO UPDATE SET num_times = memori_entity_fact.num_times + 1, date_last_time = CURRENT_TIMESTAMP",
-        vec![
-            SqlBind::Text(new_uuid()),
-            SqlBind::Int(entity_id),
-            SqlBind::Text(content.to_string()),
-            SqlBind::bytes(&[]),
-            SqlBind::Text(uniq.clone()),
-        ],
-    )?;
-
-    if let Some(conv_id) = conversation_id {
-        let fact_rows = conn.execute(
-            "SELECT id FROM memori_entity_fact WHERE entity_id = $1 AND uniq = $2",
-            vec![SqlBind::Int(entity_id), SqlBind::Text(uniq)],
-        )?;
-        if let Some(fact_id) = fact_rows.first().and_then(|r| read_id(r, "id")) {
-            conn.execute(
-                "INSERT INTO memori_entity_fact_mention(uuid, entity_id, fact_id, conversation_id) \
-                 VALUES ($1, $2, $3, $4) ON CONFLICT (entity_id, fact_id, conversation_id) DO NOTHING",
-                vec![
-                    SqlBind::Text(new_uuid()),
-                    SqlBind::Int(entity_id),
-                    SqlBind::Int(fact_id),
-                    SqlBind::Int(conv_id),
-                ],
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
 pub fn entity_fact_get_embeddings(
     conn: &dyn StorageConnection,
     entity_id: i64,
@@ -580,24 +538,4 @@ pub fn process_attribute_create(
         )?;
     }
     Ok(())
-}
-
-fn read_triple_entity(v: Option<&serde_json::Value>) -> (String, String) {
-    match v {
-        Some(serde_json::Value::String(s)) => (s.clone(), "entity".to_string()),
-        Some(serde_json::Value::Object(map)) => {
-            let name = map
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let typ = map
-                .get("type")
-                .and_then(|v| v.as_str())
-                .unwrap_or("entity")
-                .to_string();
-            (name, typ)
-        }
-        _ => (String::new(), "entity".to_string()),
-    }
 }

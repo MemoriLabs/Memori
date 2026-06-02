@@ -24,12 +24,11 @@ function deserializeBinds(binds: Array<{ t: string; v: unknown }>): SqlBindValue
     switch (bind.t) {
       case 'null':
         return null;
-      case 'int':
+      case 'int': // string: CockroachDB returns i64s that exceed JS Number.MAX_SAFE_INTEGER
+      case 'text':
         return bind.v as string;
       case 'float':
         return bind.v as number;
-      case 'text':
-        return bind.v as string;
       case 'bytes':
         return Buffer.from(bind.v as string, 'base64');
       default:
@@ -203,6 +202,15 @@ export class StorageManager {
     }
   }
 
+  private requireEntry(
+    connId: number | undefined,
+    resolve: (result: object) => void
+  ): TrackedAdapter | undefined {
+    const entry = this.connections.get(connId ?? -1);
+    if (!entry) resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
+    return entry;
+  }
+
   private async dispatchOp(
     payload: StorageCallPayload,
     resolve: (result: object) => void
@@ -243,12 +251,8 @@ export class StorageManager {
       }
 
       case 'execute': {
-        const connId = payload.conn_id ?? -1;
-        const entry = this.connections.get(connId);
-        if (!entry) {
-          resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
-          return;
-        }
+        const entry = this.requireEntry(payload.conn_id, resolve);
+        if (!entry) return;
         entry.lastUsed = Date.now();
         entry.isBusy = true;
         try {
@@ -263,12 +267,8 @@ export class StorageManager {
       }
 
       case 'begin': {
-        const connId = payload.conn_id ?? -1;
-        const entry = this.connections.get(connId);
-        if (!entry) {
-          resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
-          return;
-        }
+        const entry = this.requireEntry(payload.conn_id, resolve);
+        if (!entry) return;
         // Serial-access serialization is enforced at acquire time (lock spans acquire→close),
         // so we only need a shutdown guard here in case close() was called after acquire.
         if (this.needsSerialAccess && this.sweepHandle === undefined) {
@@ -299,12 +299,8 @@ export class StorageManager {
       }
 
       case 'commit': {
-        const connId = payload.conn_id ?? -1;
-        const entry = this.connections.get(connId);
-        if (!entry) {
-          resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
-          return;
-        }
+        const entry = this.requireEntry(payload.conn_id, resolve);
+        if (!entry) return;
         entry.lastUsed = Date.now();
         entry.isBusy = true;
         try {

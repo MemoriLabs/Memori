@@ -5,6 +5,28 @@ pub mod sqlite;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+/// Parses a triple entity node — either a plain string name or an `{name, type}` object.
+/// Used by `knowledge_graph_create` across all dialect drivers.
+pub(super) fn read_triple_entity(v: Option<&serde_json::Value>) -> (String, String) {
+    match v {
+        Some(serde_json::Value::String(s)) => (s.clone(), "entity".to_string()),
+        Some(serde_json::Value::Object(map)) => {
+            let name = map
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let typ = map
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("entity")
+                .to_string();
+            (name, typ)
+        }
+        _ => (String::new(), "entity".to_string()),
+    }
+}
+
 pub fn new_uuid() -> String {
     Uuid::new_v4().to_string()
 }

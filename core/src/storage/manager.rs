@@ -213,35 +213,13 @@ impl RustStorageManager {
         }
     }
 
-    fn do_entity_fact_create_without_embedding(
+    fn require_entity_id(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
-        entity_id: i64,
-        content: &str,
-        conversation_id: Option<i64>,
-    ) -> Result<(), HostStorageError> {
-        match &self.dialect {
-            Dialect::Sqlite => sqlite::entity_fact_create_without_embedding(
-                conn,
-                entity_id,
-                content,
-                conversation_id,
-            ),
-            Dialect::Postgresql | Dialect::Cockroachdb => {
-                postgresql::entity_fact_create_without_embedding(
-                    conn,
-                    entity_id,
-                    content,
-                    conversation_id,
-                )
-            }
-            Dialect::Mysql => mysql::entity_fact_create_without_embedding(
-                conn,
-                entity_id,
-                content,
-                conversation_id,
-            ),
-        }
+        external_id: &str,
+    ) -> Result<i64, HostStorageError> {
+        self.do_entity_create(conn, external_id)?
+            .ok_or_else(|| HostStorageError::new("INTERNAL", "do_entity_create returned no id"))
     }
 
     fn do_knowledge_graph_create(
@@ -468,11 +446,7 @@ impl RustStorageManager {
                         continue;
                     }
 
-                    let internal_entity_id = self
-                        .do_entity_create(conn, &entity_id_str)?
-                        .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
-                        })?;
+                    let internal_entity_id = self.require_entity_id(conn, &entity_id_str)?;
 
                     // fact_embeddings is always set by precompute_embeddings before the
                     // transaction opens. Re-embedding inside the transaction would extend the
@@ -530,35 +504,20 @@ impl RustStorageManager {
                         }
                     };
 
-                    if embeddings.is_empty() {
-                        for fact in &facts {
-                            self.do_entity_fact_create_without_embedding(
-                                conn,
-                                internal_entity_id,
-                                fact,
-                                internal_conv_id,
-                            )?;
-                        }
-                    } else {
-                        self.do_entity_fact_create(
-                            conn,
-                            internal_entity_id,
-                            &facts,
-                            &embeddings,
-                            internal_conv_id,
-                        )?;
-                    }
+                    self.do_entity_fact_create(
+                        conn,
+                        internal_entity_id,
+                        &facts,
+                        &embeddings,
+                        internal_conv_id,
+                    )?;
                 }
                 "knowledge_graph.create" => {
                     let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
                     if entity_id_str.is_empty() {
                         continue;
                     }
-                    let internal_entity_id = self
-                        .do_entity_create(conn, &entity_id_str)?
-                        .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
-                        })?;
+                    let internal_entity_id = self.require_entity_id(conn, &entity_id_str)?;
                     let triples = op.payload["semantic_triples"]
                         .as_array()
                         .map(Vec::as_slice)
@@ -636,36 +595,28 @@ impl RustStorageManager {
                         Some(c) if !c.trim().is_empty() => c,
                         _ => continue,
                     };
-                    let internal_entity_id = self
-                        .do_entity_create(conn, &entity_id_str)?
-                        .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_entity_create returned no id")
-                        })?;
+                    let internal_entity_id = self.require_entity_id(conn, &entity_id_str)?;
                     // Use the embedding pre-computed by precompute_embeddings outside the
                     // transaction. If absent or empty (no embedder set), store without embedding
                     // — matches Python which always passes fact_embeddings=None for upsert_fact.
                     // Never call embed_texts here; that belongs in precompute_embeddings.
-                    let pre = op.payload["content_embedding"].as_array().map(|a| {
-                        a.iter()
-                            .filter_map(|v| v.as_f64().map(|f| f as f32))
-                            .collect::<Vec<f32>>()
-                    });
-                    if let Some(embedding) = pre.filter(|e| !e.is_empty()) {
-                        self.do_entity_fact_create(
-                            conn,
-                            internal_entity_id,
-                            &[content.to_string()],
-                            &[embedding],
-                            None,
-                        )?;
-                    } else {
-                        self.do_entity_fact_create_without_embedding(
-                            conn,
-                            internal_entity_id,
-                            content,
-                            None,
-                        )?;
-                    }
+                    let embeddings: Vec<Vec<f32>> = op.payload["content_embedding"]
+                        .as_array()
+                        .and_then(|a| {
+                            let e: Vec<f32> = a
+                                .iter()
+                                .filter_map(|v| v.as_f64().map(|f| f as f32))
+                                .collect();
+                            if e.is_empty() { None } else { Some(vec![e]) }
+                        })
+                        .unwrap_or_default();
+                    self.do_entity_fact_create(
+                        conn,
+                        internal_entity_id,
+                        &[content.to_string()],
+                        &embeddings,
+                        None,
+                    )?;
                 }
                 unknown => {
                     return Err(HostStorageError::new(
