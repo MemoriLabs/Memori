@@ -395,6 +395,12 @@ impl RustStorageManager {
                     if conv_id_str.is_empty() {
                         continue;
                     }
+                    // Validate before touching the DB — avoids orphan session/conversation rows
+                    // when messages is missing or empty.
+                    let messages = match op.payload["messages"].as_array() {
+                        Some(msgs) if !msgs.is_empty() => msgs,
+                        _ => continue,
+                    };
                     let session_id = self
                         .do_session_create(conn, &conv_id_str, None, None)?
                         .ok_or_else(|| {
@@ -408,16 +414,13 @@ impl RustStorageManager {
                                 "do_conversation_create returned no id",
                             )
                         })?;
-
-                    if let Some(messages) = op.payload["messages"].as_array() {
-                        for msg in messages {
-                            let role = msg["role"].as_str().unwrap_or("");
-                            let msg_type = msg["type"].as_str().unwrap_or("text");
-                            let content = msg["content"].as_str().unwrap_or("");
-                            self.do_conversation_message_create(
-                                conn, conv_id, role, msg_type, content,
-                            )?;
-                        }
+                    for msg in messages {
+                        let role = msg["role"].as_str().unwrap_or("");
+                        let msg_type = msg["type"].as_str().unwrap_or("text");
+                        let content = msg["content"].as_str().unwrap_or("");
+                        self.do_conversation_message_create(
+                            conn, conv_id, role, msg_type, content,
+                        )?;
                     }
                 }
                 "entity_fact.create" => {

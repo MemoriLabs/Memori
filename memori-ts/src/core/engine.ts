@@ -14,6 +14,7 @@ type StorageCallCb = (
 export class NativeEngine {
   private memoriEngine?: MemoriEngine;
   private _hasStorage: boolean = false;
+  private _isShutdown: boolean = false;
   private readonly modelName: string | null;
   private readonly storageManager?: StorageManager;
   // One process.once('beforeExit') shared across all instances — prevents
@@ -38,6 +39,7 @@ export class NativeEngine {
   }
 
   private getEngine(): MemoriEngine {
+    if (this._isShutdown) throw new Error('[Memori] engine has been shut down');
     if (!this.memoriEngine) {
       const require = createRequire(import.meta.url);
       const native = require('../native/index.js') as {
@@ -199,11 +201,13 @@ export class NativeEngine {
 
   public shutdown(): void {
     NativeEngine._activeEngines.delete(this);
-    if (!this.memoriEngine) return;
-    if (typeof this.memoriEngine.shutdown === 'function') {
-      this.memoriEngine.shutdown();
-    }
-    this.memoriEngine = undefined;
     this._hasStorage = false;
+    this._isShutdown = true;
+    if (this.memoriEngine) {
+      if (typeof this.memoriEngine.shutdown === 'function') {
+        this.memoriEngine.shutdown();
+      }
+      this.memoriEngine = undefined;
+    }
   }
 }
