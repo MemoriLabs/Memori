@@ -70,9 +70,6 @@ export class MysqlAdapter implements StorageAdapter {
     binds: SqlBindValue[] = []
   ): Promise<T[]> {
     let rows: unknown;
-    // Direct connection: always execute on it
-    // the adapter calls conn.cursor().execute() on the same connection throughout.
-    // Pool: use the checked-out txConn during a transaction, pool otherwise.
     if (this.directConn) {
       [rows] = await this.directConn.execute(operation, binds);
     } else if (this.txConn) {
@@ -85,10 +82,8 @@ export class MysqlAdapter implements StorageAdapter {
 
   public async begin(): Promise<void> {
     if (this.directConn) {
-      // Direct connection: call beginTransaction() on the connection itself
       await this.directConn.beginTransaction();
     } else {
-      // Pool: check out a dedicated connection for the transaction lifetime.
       const conn = await this.getPool().getConnection();
       try {
         await conn.beginTransaction();
@@ -151,8 +146,7 @@ export class MysqlAdapter implements StorageAdapter {
   }
 
   public requiresSerialAccess(): boolean {
-    // A direct connection is a single shared handle — concurrent acquires would race.
-    // A pool safely issues getConnection() for each acquire, so no serialization needed.
+    // Direct connection is a single shared handle — concurrent acquires would race.
     return this.directConn !== null;
   }
 

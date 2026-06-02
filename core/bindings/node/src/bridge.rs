@@ -48,7 +48,6 @@ impl Inner {
         }
     }
 
-    /// Send a JSON payload to TS and block until TS resolves it.
     fn call(&self, payload: serde_json::Value) -> Result<serde_json::Value, HostStorageError> {
         let payload_str = serde_json::to_string(&payload)
             .map_err(|e| HostStorageError::new("JSON_ERR", e.to_string()))?;

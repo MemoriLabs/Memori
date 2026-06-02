@@ -19,10 +19,6 @@ export interface StorageAdapter {
   rollback(): Promise<void> | void;
   getDialect(): string;
   close(): Promise<void> | void;
-  /**
-   * Returns true when the adapter wraps a single shared handle that cannot safely
-   * service concurrent connections (SQLite shared file, MySQL direct connection).
-   * StorageManager serializes all acquire→close lifecycles for adapters that return true.
-   */
+  // Return true for single-handle adapters (SQLite, MySQL direct) — StorageManager will serialize acquires.
   requiresSerialAccess?(): boolean;
 }

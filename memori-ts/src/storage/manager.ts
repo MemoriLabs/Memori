@@ -14,11 +14,7 @@ type StorageCallPayload = {
   binds?: Array<{ t: string; v: unknown }>;
 };
 
-/**
- * Converts the `{ t, v }` tagged-union bind parameters that Rust sends over the
- * storageCall bridge into native JS values that adapters understand.
- * Binary embeddings arrive as base64-encoded strings and are decoded to Buffer.
- */
+// Binary embeddings arrive as base64 strings and are decoded to Buffer; ints arrive as strings (CockroachDB i64).
 function deserializeBinds(binds: Array<{ t: string; v: unknown }>): SqlBindValue[] {
   return binds.map((bind) => {
     switch (bind.t) {
@@ -38,28 +34,10 @@ function deserializeBinds(binds: Array<{ t: string; v: unknown }>): SqlBindValue
   });
 }
 
-/**
- * Thin bridge between the Rust storage layer and the user's database connection.
- *
- * Rust calls the `storageCall` TSFN with `(id, payloadJson)` for every storage
- * operation (acquire / execute / begin / commit / rollback / close). This class
- * dispatches those calls to the appropriate `StorageAdapter`, then resolves each
- * call back to Rust via `engine.resolveStorageCall(id, resultJson)`.
- *
- * Active connections are tracked in a `Map<connId, StorageAdapter>` keyed by the
- * numeric connection ID that Rust uses to route subsequent operations.
- */
-/** Milliseconds of inactivity before an acquired-but-never-closed connection is considered orphaned. */
 const CONN_TTL_MS = 30_000;
-/** Milliseconds of inactivity before a connection that reached begin but was never committed/rolled back is force-closed. */
 const STALE_TX_TTL_MS = 60_000;
 const SWEEP_INTERVAL_MS = 60_000;
 
-/**
- * Normalizes a single DB row value for JSON transport back to Rust.
- * Buffer/Uint8Array values (e.g. BLOB/BYTEA columns) are converted to base64 strings
- * so that Rust's `row["field"].as_str()` can read them correctly.
- */
 function normalizeRowValue(v: unknown): unknown {
   if (Buffer.isBuffer(v)) return v.toString('base64');
   if (v instanceof Uint8Array) return Buffer.from(v).toString('base64');
@@ -94,8 +72,7 @@ export class StorageManager {
   private readonly connections = new Map<number, TrackedAdapter>();
   private readonly inFlight = new Set<Promise<void>>();
   private nextConnId = 1;
-  // Promise chain that serializes connection lifetime (acquire→close) for adapters that require it
-  // (SQLite shared handle, MySQL direct connection). Only one acquire is live at a time.
+  // Serializes acquire→close for adapters that require it (SQLite, MySQL direct).
   private serialQueue: Promise<void> = Promise.resolve();
   private readonly needsSerialAccess: boolean;
   private engineShutdown?: () => void;
@@ -135,12 +112,7 @@ export class StorageManager {
     }
   }
 
-  /**
-   * Entry point for every Rust storage call. Parses the JSON payload, dispatches
-   * to the right operation, then calls `resolve` with the JSON result.
-   *
-   * `resolve` must be called exactly once — it unblocks the waiting Rust thread.
-   */
+  // `resolve` must be called exactly once — it unblocks the waiting Rust thread.
   public handleStorageCall(
     _id: number,
     payloadJson: string,
@@ -287,8 +259,7 @@ export class StorageManager {
           resolve({ ok: true });
         } finally {
           if (!began) {
-            // begin failed — Rust will call close(), but release the lock here too
-            // as a safety net so the queue never gets stuck.
+            // begin failed — release the lock so the queue doesn't get stuck waiting for a close that may not come.
             entry.releaseSerialLock?.();
             entry.releaseSerialLock = undefined;
           }

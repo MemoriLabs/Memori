@@ -173,8 +173,7 @@ export class RecallEngine {
     for (const [key, value] of Object.entries(params)) {
       if (value != null && value !== '') {
         if (value instanceof Date) {
-          // Properly serialize Date objects to ISO 8601 strings for the backend
-          qs.set(key, value.toISOString());
+          qs.set(key, value.toISOString()); // backend expects ISO 8601
         } else {
           qs.set(key, String(value));
         }

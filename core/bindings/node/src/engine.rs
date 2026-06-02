@@ -19,14 +19,7 @@ pub struct MemoriEngine {
 
 #[napi]
 impl MemoriEngine {
-    /// Constructs the engine and wires up the storage layer.
-    ///
-    /// `storage_call_cb` replaces the three separate callbacks from the previous design.
-    /// TS registers a single handler that dispatches `acquire`, `execute`, `begin`,
-    /// `commit`, `rollback`, and `close` operations keyed by `conn_id`.
-    ///
-    /// `dialect` is the SQL dialect detected from the user's connection object
-    /// (e.g. `"sqlite"`, `"postgresql"`, `"cockroachdb"`, `"mysql"`).
+    /// `dialect` is the SQL dialect of the user's connection (`"sqlite"`, `"postgresql"`, `"cockroachdb"`, `"mysql"`).
     #[napi(constructor)]
     pub fn new(
         env: Env,
@@ -44,10 +37,6 @@ impl MemoriEngine {
         let factory = Arc::new(NodeConnectionFactory::new(storage_call_cb, dialect));
         let storage_manager = Arc::new(RustStorageManager::new(factory.clone(), dialect_enum));
 
-        // Wire the embedding model into the storage manager so `entity_fact.create` ops
-        // that arrive without pre-computed embeddings get embedded automatically —
-        // matching the TS `setEmbedder` pattern. The closure captures `inner_ref` which
-        // is a weak-equivalent Arc that doesn't create a cycle.
         let inner = EngineOrchestrator::new_with_storage(
             model_name.as_deref(),
             Some(storage_manager.clone()),
@@ -100,10 +89,7 @@ impl MemoriEngine {
         .map_err(|e| Error::from_reason(e.to_string()))?
     }
 
-    /// Executes a write batch synchronously within the Rust storage layer.
-    ///
-    /// Called by TS when it needs to persist data immediately (e.g. conversation messages
-    /// from the persistence engine) rather than waiting for the augmentation pipeline.
+    /// For immediate writes before the augmentation pipeline completes (e.g. conversation messages).
     #[napi]
     pub async fn write_batch(&self, json: String) -> Result<NapiWriteAck> {
         let storage = self.storage_manager.clone();
@@ -159,7 +145,6 @@ impl MemoriEngine {
         })
         .await
         .map_err(|e| Error::from_reason(e.to_string()))??;
-        // Float32Array wrapping happens here, after returning to the async context.
         Ok(chunks.into_iter().map(Float32Array::new).collect())
     }
 

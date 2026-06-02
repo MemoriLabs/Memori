@@ -212,8 +212,6 @@ pub fn conversation_messages_read(
         .collect())
 }
 
-/// Bulk-inserts facts using PostgreSQL numbered placeholders.
-/// Chunks at CHUNK_SIZE to stay within the pg parameter limit.
 pub fn entity_fact_create(
     conn: &dyn StorageConnection,
     entity_id: i64,

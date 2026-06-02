@@ -16,11 +16,7 @@ use crate::storage::models::{
 
 type EmbedFn = Box<dyn Fn(Vec<String>) -> Vec<Vec<f32>> + Send + Sync>;
 
-/// Implements [`StorageBridge`] entirely in Rust.
-///
-/// Owns all SQL logic, migration running, and transaction orchestration.
-/// Delegates raw execution to the host language (TS or Python) via the
-/// [`ConnectionFactory`] — no connection is held between calls.
+/// SQL storage bridge backed by a user-supplied [`ConnectionFactory`]. No connection is held between calls.
 pub struct RustStorageManager {
     factory: Arc<dyn ConnectionFactory>,
     dialect: Dialect,
@@ -50,9 +46,6 @@ impl RustStorageManager {
         }
     }
 
-    // ── connection helper ─────────────────────────────────────────────────────
-
-    /// Acquires a connection, runs `f`, then closes it — even on error.
     fn with_conn<T>(
         &self,
         f: impl FnOnce(
@@ -65,9 +58,7 @@ impl RustStorageManager {
         result
     }
 
-    // ── dispatch helpers ──────────────────────────────────────────────────────
-
-    fn do_entity_create(
+    fn entity_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         external_id: &str,
@@ -81,7 +72,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_process_create(
+    fn process_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         external_id: &str,
@@ -95,7 +86,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_session_create(
+    fn session_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         uuid: &str,
@@ -111,7 +102,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_session_get_id(
+    fn session_get_id(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         uuid: &str,
@@ -123,7 +114,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_conversation_get_id_by_session(
+    fn conversation_get_id_by_session(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         session_id: i64,
@@ -137,7 +128,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_conversation_create(
+    fn conversation_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         session_id: i64,
@@ -152,7 +143,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_conversation_update(
+    fn conversation_update(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         id: i64,
@@ -167,7 +158,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_conversation_message_create(
+    fn conversation_message_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         conversation_id: i64,
@@ -192,7 +183,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_entity_fact_create(
+    fn entity_fact_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         entity_id: i64,
@@ -218,11 +209,11 @@ impl RustStorageManager {
         conn: &dyn crate::storage::connection::StorageConnection,
         external_id: &str,
     ) -> Result<i64, HostStorageError> {
-        self.do_entity_create(conn, external_id)?
-            .ok_or_else(|| HostStorageError::new("INTERNAL", "do_entity_create returned no id"))
+        self.entity_create(conn, external_id)?
+            .ok_or_else(|| HostStorageError::new("INTERNAL", "entity_create returned no id"))
     }
 
-    fn do_knowledge_graph_create(
+    fn knowledge_graph_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         entity_id: i64,
@@ -237,7 +228,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_process_attribute_create(
+    fn process_attribute_create(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         process_id: i64,
@@ -252,7 +243,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_entity_fact_get_embeddings(
+    fn entity_fact_get_embeddings(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         entity_id: i64,
@@ -267,7 +258,7 @@ impl RustStorageManager {
         }
     }
 
-    fn do_entity_fact_get_by_ids(
+    fn entity_fact_get_by_ids(
         &self,
         conn: &dyn crate::storage::connection::StorageConnection,
         ids: &[FactId],
@@ -281,12 +272,7 @@ impl RustStorageManager {
         }
     }
 
-    // ── write_batch internals ─────────────────────────────────────────────────
-
-    /// Clones the batch and injects pre-computed embeddings into any op that needs
-    /// them but doesn't already carry them. Must be called outside the DB transaction
-    /// window — ONNX inference here avoids holding a write lock or inflating the
-    /// CockroachDB transaction window (which increases 40001 retry frequency).
+    // Must run before the transaction — ONNX inference inside a tx inflates the CockroachDB lock window.
     fn precompute_embeddings(&self, batch: &WriteBatch) -> WriteBatch {
         let ops = batch
             .ops
@@ -298,8 +284,7 @@ impl RustStorageManager {
                     match (facts_arr, embs_arr) {
                         (None, _) => op.clone(),
                         (Some(facts), Some(embs)) if embs.len() == facts.len() => {
-                            // Embeddings are aligned 1:1 with original facts — zip+filter is
-                            // safe. Only normalize if blank facts are present.
+                            // Aligned — only re-filter if blank facts need stripping.
                             let has_blanks = facts
                                 .iter()
                                 .any(|f| f.as_str().map(|s| s.trim().is_empty()).unwrap_or(false));
@@ -364,8 +349,6 @@ impl RustStorageManager {
         WriteBatch { ops }
     }
 
-    // ── id coercion ───────────────────────────────────────────────────────────
-
     // Accepts both JSON string and integer values so a numeric ID sent from the
     // TS bridge never silently becomes an empty string via `.as_str()`.
     fn coerce_id_str(v: &serde_json::Value) -> String {
@@ -388,44 +371,39 @@ impl RustStorageManager {
         let mut applied: usize = 0;
         for op in &batch.ops {
             match op.op_type.as_str() {
-                // TS/BYODB-only: the Python SDK persists conversation messages through its own
-                // augmentation path and does not use write_batch for this op.
+                // TS/BYODB-only: Python persists messages through its own augmentation path.
                 "conversation_message.create" => {
-                    let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
-                    if conv_id_str.is_empty() {
+                    let conv_id = Self::coerce_id_str(&op.payload["conversation_id"]);
+                    if conv_id.is_empty() {
                         continue;
                     }
-                    // Validate before touching the DB — avoids orphan session/conversation rows
-                    // when messages is missing or empty.
                     let messages = match op.payload["messages"].as_array() {
                         Some(msgs) if !msgs.is_empty() => msgs,
                         _ => continue,
                     };
                     let session_id = self
-                        .do_session_create(conn, &conv_id_str, None, None)?
+                        .session_create(conn, &conv_id, None, None)?
                         .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_session_create returned no id")
+                            HostStorageError::new("INTERNAL", "session_create returned no id")
                         })?;
-                    let conv_id = self
-                        .do_conversation_create(conn, session_id, 30)?
-                        .ok_or_else(|| {
-                            HostStorageError::new(
-                                "INTERNAL",
-                                "do_conversation_create returned no id",
-                            )
-                        })?;
+                    let conv_id =
+                        self.conversation_create(conn, session_id, 30)?
+                            .ok_or_else(|| {
+                                HostStorageError::new(
+                                    "INTERNAL",
+                                    "conversation_create returned no id",
+                                )
+                            })?;
                     for msg in messages {
                         let role = msg["role"].as_str().unwrap_or("");
                         let msg_type = msg["type"].as_str().unwrap_or("text");
                         let content = msg["content"].as_str().unwrap_or("");
-                        self.do_conversation_message_create(
-                            conn, conv_id, role, msg_type, content,
-                        )?;
+                        self.conversation_message_create(conn, conv_id, role, msg_type, content)?;
                     }
                 }
                 "entity_fact.create" => {
-                    let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
-                    if entity_id_str.is_empty() {
+                    let entity_id = Self::coerce_id_str(&op.payload["entity_id"]);
+                    if entity_id.is_empty() {
                         continue;
                     }
 
@@ -449,11 +427,8 @@ impl RustStorageManager {
                         continue;
                     }
 
-                    let internal_entity_id = self.require_entity_id(conn, &entity_id_str)?;
+                    let entity_id = self.require_entity_id(conn, &entity_id)?;
 
-                    // fact_embeddings is always set by precompute_embeddings before the
-                    // transaction opens. Re-embedding inside the transaction would extend the
-                    // CockroachDB/PostgreSQL lock window and increase 40001 retry frequency.
                     let embeddings = {
                         let raw_embs =
                             op.payload["fact_embeddings"].as_array().ok_or_else(|| {
@@ -475,9 +450,7 @@ impl RustStorageManager {
                                     .unwrap_or_default()
                             })
                             .collect();
-                        // Empty or misaligned embeddings — Python's _normalize_fact_embeddings
-                        // returns None for both cases, and the caller stores each fact with an
-                        // empty blob. Treat the same way: fall through to the no-embedding path.
+                        // Misaligned or empty — mirrors Python's _normalize_fact_embeddings returning None.
                         if deserialized.is_empty() || deserialized.len() != facts.len() {
                             vec![]
                         } else {
@@ -485,42 +458,31 @@ impl RustStorageManager {
                         }
                     };
 
-                    let internal_conv_id = {
+                    let conv_id = {
                         let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
                         if !conv_id_str.is_empty() {
                             let session_id = self
-                                .do_session_create(
-                                    conn,
-                                    &conv_id_str,
-                                    Some(internal_entity_id),
-                                    None,
-                                )?
+                                .session_create(conn, &conv_id_str, Some(entity_id), None)?
                                 .ok_or_else(|| {
                                     HostStorageError::new(
                                         "INTERNAL",
-                                        "do_session_create returned no id",
+                                        "session_create returned no id",
                                     )
                                 })?;
-                            self.do_conversation_create(conn, session_id, 30)?
+                            self.conversation_create(conn, session_id, 30)?
                         } else {
                             None
                         }
                     };
 
-                    self.do_entity_fact_create(
-                        conn,
-                        internal_entity_id,
-                        &facts,
-                        &embeddings,
-                        internal_conv_id,
-                    )?;
+                    self.entity_fact_create(conn, entity_id, &facts, &embeddings, conv_id)?;
                 }
                 "knowledge_graph.create" => {
-                    let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
-                    if entity_id_str.is_empty() {
+                    let entity_id = Self::coerce_id_str(&op.payload["entity_id"]);
+                    if entity_id.is_empty() {
                         continue;
                     }
-                    let internal_entity_id = self.require_entity_id(conn, &entity_id_str)?;
+                    let entity_id = self.require_entity_id(conn, &entity_id)?;
                     let triples = op.payload["semantic_triples"]
                         .as_array()
                         .map(Vec::as_slice)
@@ -528,18 +490,16 @@ impl RustStorageManager {
                     if triples.is_empty() {
                         continue;
                     }
-                    self.do_knowledge_graph_create(conn, internal_entity_id, triples)?;
+                    self.knowledge_graph_create(conn, entity_id, triples)?;
                 }
                 "process_attribute.create" => {
-                    let process_id_str = Self::coerce_id_str(&op.payload["process_id"]);
-                    if process_id_str.is_empty() {
+                    let process_id = Self::coerce_id_str(&op.payload["process_id"]);
+                    if process_id.is_empty() {
                         continue;
                     }
-                    let internal_process_id = self
-                        .do_process_create(conn, &process_id_str)?
-                        .ok_or_else(|| {
-                            HostStorageError::new("INTERNAL", "do_process_create returned no id")
-                        })?;
+                    let process_id = self.process_create(conn, &process_id)?.ok_or_else(|| {
+                        HostStorageError::new("INTERNAL", "process_create returned no id")
+                    })?;
                     let attributes: Vec<String> = match op.payload["attributes"].as_array() {
                         Some(arr) => arr
                             .iter()
@@ -567,42 +527,36 @@ impl RustStorageManager {
                     if attributes.is_empty() {
                         continue;
                     }
-                    self.do_process_attribute_create(conn, internal_process_id, &attributes)?;
+                    self.process_attribute_create(conn, process_id, &attributes)?;
                 }
                 "conversation.update" => {
-                    let conv_id_str = Self::coerce_id_str(&op.payload["conversation_id"]);
+                    let conv_id = Self::coerce_id_str(&op.payload["conversation_id"]);
                     let summary = op.payload["summary"].as_str().unwrap_or("");
-                    if conv_id_str.is_empty() || summary.is_empty() {
+                    if conv_id.is_empty() || summary.is_empty() {
                         continue;
                     }
-                    // Look up — never create — so a stale session doesn't spawn a new
-                    // empty conversation that swallows the summary. Python resolves
-                    // conversation_id as a direct DB integer id; we mirror that by
-                    // reading the most recent conversation for the existing session.
-                    let session_id = match self.do_session_get_id(conn, &conv_id_str)? {
+                    // Look up only — don't create, or a stale ID could spawn an empty conversation that swallows the summary.
+                    let session_id = match self.session_get_id(conn, &conv_id)? {
                         Some(id) => id,
                         None => continue,
                     };
-                    let conv_id = match self.do_conversation_get_id_by_session(conn, session_id)? {
+                    let conv_id = match self.conversation_get_id_by_session(conn, session_id)? {
                         Some(id) => id,
                         None => continue,
                     };
-                    self.do_conversation_update(conn, conv_id, summary)?;
+                    self.conversation_update(conn, conv_id, summary)?;
                 }
                 "upsert_fact" => {
-                    let entity_id_str = Self::coerce_id_str(&op.payload["entity_id"]);
-                    if entity_id_str.is_empty() {
+                    let entity_id = Self::coerce_id_str(&op.payload["entity_id"]);
+                    if entity_id.is_empty() {
                         continue;
                     }
                     let content = match op.payload["content"].as_str() {
                         Some(c) if !c.trim().is_empty() => c,
                         _ => continue,
                     };
-                    let internal_entity_id = self.require_entity_id(conn, &entity_id_str)?;
-                    // Use the embedding pre-computed by precompute_embeddings outside the
-                    // transaction. If absent or empty (no embedder set), store without embedding
-                    // — matches Python which always passes fact_embeddings=None for upsert_fact.
-                    // Never call embed_texts here; that belongs in precompute_embeddings.
+                    let entity_id = self.require_entity_id(conn, &entity_id)?;
+                    // Embedding was pre-computed outside the tx; absent means no embedder is set.
                     let embeddings: Vec<Vec<f32>> = op.payload["content_embedding"]
                         .as_array()
                         .and_then(|a| {
@@ -613,9 +567,9 @@ impl RustStorageManager {
                             if e.is_empty() { None } else { Some(vec![e]) }
                         })
                         .unwrap_or_default();
-                    self.do_entity_fact_create(
+                    self.entity_fact_create(
                         conn,
-                        internal_entity_id,
+                        entity_id,
                         &[content.to_string()],
                         &embeddings,
                         None,
@@ -647,11 +601,11 @@ impl StorageBridge for RustStorageManager {
         session_id: &str,
     ) -> Result<Vec<serde_json::Value>, HostStorageError> {
         self.with_conn(|conn| {
-            let session_internal_id = match self.do_session_get_id(conn, session_id)? {
+            let session_internal_id = match self.session_get_id(conn, session_id)? {
                 Some(id) => id,
                 None => return Ok(vec![]),
             };
-            let conv_id = match self.do_conversation_get_id_by_session(conn, session_internal_id)? {
+            let conv_id = match self.conversation_get_id_by_session(conn, session_internal_id)? {
                 Some(id) => id,
                 None => return Ok(vec![]),
             };
@@ -683,7 +637,7 @@ impl StorageBridge for RustStorageManager {
                 Dialect::Mysql => mysql::entity_get_id(conn, entity_id)?,
             };
             match internal_id {
-                Some(id) => self.do_entity_fact_get_embeddings(conn, id, limit),
+                Some(id) => self.entity_fact_get_embeddings(conn, id, limit),
                 None => Ok(vec![]),
             }
         })
@@ -693,14 +647,9 @@ impl StorageBridge for RustStorageManager {
         &self,
         ids: &[FactId],
     ) -> Result<Vec<CandidateFactRow>, HostStorageError> {
-        self.with_conn(|conn| self.do_entity_fact_get_by_ids(conn, ids))
+        self.with_conn(|conn| self.entity_fact_get_by_ids(conn, ids))
     }
 
-    /// Executes all write ops in a single transaction per the Python `connection_context` model.
-    ///
-    /// CockroachDB can return serialization error code `40001` under concurrent load.
-    /// The correct response is to retry the entire transaction with a fresh connection,
-    /// which is what the retry loop here does.
     fn write_batch(&self, batch: &WriteBatch) -> Result<WriteAck, HostStorageError> {
         if batch.ops.is_empty() {
             return Ok(WriteAck { written_ops: 0 });

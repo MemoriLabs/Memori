@@ -221,17 +221,14 @@ export class Memori {
   };
 
   constructor(options: MemoriOptions = {}) {
-    // 1. Core State
     this.config = new Config();
     this.session = new SessionManager();
     this.projectManager = new ProjectManager();
     this.axon = new Axon();
 
-    // 2. Network Layer
     this.api = new Api(this.config, ApiSubdomain.DEFAULT);
     this.collectorApi = new Api(this.config, ApiSubdomain.COLLECTOR);
 
-    // 3. Local Rust Layer & Storage Manager Init
     if (options.conn) {
       this.config.storage = new StorageManager(options.conn, options.dialect);
       this.engine = new NativeEngine(this.config.storage, options.embeddingModel);
@@ -241,7 +238,6 @@ export class Memori {
       this.engine = new NativeEngine(undefined, options.embeddingModel);
     }
 
-    // 4. Engines (Now receiving both the Cloud API and Local Engine)
     this.recallEngine = new RecallEngine(
       this.api,
       this.engine,
@@ -264,7 +260,6 @@ export class Memori {
       this.projectManager
     );
 
-    // 5. Register Hooks
     this.axon.hook.before(this.recallEngine.handleRecall.bind(this.recallEngine));
     this.axon.hook.after(this.persistenceEngine.handlePersistence.bind(this.persistenceEngine));
     this.axon.hook.after(this.augmentationEngine.handleAugmentation.bind(this.augmentationEngine));

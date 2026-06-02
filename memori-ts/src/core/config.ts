@@ -65,22 +65,13 @@ export class Config {
   public storage?: StorageManager;
 
   constructor() {
-    // 1. Environment and Base URL Logic
     this.testMode = getEnv('MEMORI_TEST_MODE') === '1';
 
     const envUrl = getEnv('MEMORI_API_URL_BASE');
-    if (envUrl) {
-      this.baseUrl = envUrl;
-    } else {
-      this.baseUrl = this.testMode
-        ? 'https://staging-api.memorilabs.ai'
-        : 'https://api.memorilabs.ai';
-    }
+    this.baseUrl =
+      envUrl ?? (this.testMode ? 'https://staging-api.memorilabs.ai' : 'https://api.memorilabs.ai');
 
-    // 2. Authentication
     this.apiKey = getEnv('MEMORI_API_KEY') ?? null;
-
-    // 3. Session and Defaults
     this.sessionId = randomUUID();
     this.recallRelevanceThreshold = 0.1;
     this.timeout = 30000;

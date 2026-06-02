@@ -64,7 +64,6 @@ export class PostgresAdapter implements StorageAdapter {
       } catch {
         // Connection may be terminated — that's fine, we're rolling back anyway.
       } finally {
-        // Always release. Pass true to destroy rather than returning a bad connection to the pool.
         client.release(true);
       }
     }

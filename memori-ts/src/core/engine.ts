@@ -81,8 +81,6 @@ export class NativeEngine {
         };
         this.memoriEngine = new native.MemoriEngine(this.modelName, noopCb, 'sqlite');
       }
-      // Safety net: track this engine so the shared beforeExit listener can
-      // clean up tokio WorkerRuntime threads when the event loop drains.
       NativeEngine._activeEngines.add(this);
       NativeEngine._installBeforeExitOnce();
     }
@@ -100,21 +98,13 @@ export class NativeEngine {
     }
   }
 
-  /**
-   * Executes a write batch through the Rust storage layer.
-   *
-   * Used by the TS persistence engine for immediate conversation message writes
-   * before the async augmentation pipeline completes.
-   */
+  // Used by the persistence engine for immediate writes before the augmentation pipeline completes.
   public async writeBatch(batch: WriteBatch): Promise<WriteAck> {
     if (!this._hasStorage) return { written_ops: 0 };
     const ack = await this.getEngine().writeBatch(JSON.stringify(batch));
     return { written_ops: ack.writtenOps };
   }
 
-  /**
-   * Returns the conversation history for a session from the Rust storage layer.
-   */
   public async getConversationHistory(
     sessionId: string
   ): Promise<Array<{ role: string; content: string }>> {

@@ -64,11 +64,7 @@ impl SqlBind {
     }
 }
 
-/// A single live connection to the user's database pool.
-///
-/// Acquired via [`ConnectionFactory::acquire`]. Caller is responsible for
-/// calling [`StorageConnection::close`] when finished — this releases the
-/// connection back to the pool rather than destroying it.
+/// A single checked-out connection. Call [`StorageConnection::close`] when done to return it to the pool.
 pub trait StorageConnection: Send + Sync {
     fn execute(
         &self,
@@ -81,11 +77,7 @@ pub trait StorageConnection: Send + Sync {
     fn close(&self);
 }
 
-/// Creates on-demand connections backed by the user's connection pool.
-///
-/// Each call to [`acquire`] checks out one connection. Callers must close it
-/// when done so the pool can reclaim it. No connection is held between calls —
-/// matching the Python `connection_context` pattern.
+/// Vends connections from the user's pool. No connection is held between calls.
 pub trait ConnectionFactory: Send + Sync {
     fn acquire(&self) -> Result<Box<dyn StorageConnection>, HostStorageError>;
     /// The SQL dialect detected from the user's connection (e.g. `"sqlite"`).

@@ -3,15 +3,7 @@ import { StorageAdapter, ConnFactory } from './base.js';
 type MatcherFn = (conn: unknown) => boolean;
 type AdapterConstructor = new (conn: unknown) => StorageAdapter;
 
-/**
- * Auto-discovery registry for storage adapters.
- *
- * Adapters register themselves via side-effect imports in `StorageManager`.
- * `getAdapter` calls the factory once to obtain the connection, then inspects it
- * to find the right adapter class. The factory (not the connection itself) is the
- * public API boundary — Memori never holds a reference to pools or engines, only
- * to the individual connection the factory returned.
- */
+// Adapters self-register via side-effect imports; getAdapter probes the connection to pick the right one.
 export class Registry {
   private static adapters = new Map<MatcherFn, AdapterConstructor>();
 

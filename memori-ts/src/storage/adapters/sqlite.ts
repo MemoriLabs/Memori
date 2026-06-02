@@ -16,14 +16,12 @@ export class SqliteAdapter implements StorageAdapter {
     this.client = conn as Database;
     // WAL mode allows concurrent reads during a write — important for the async bridge callbacks
     this.client.pragma('journal_mode = WAL');
-    // Enforce referential integrity at the DB level as a safety net
     this.client.pragma('foreign_keys = ON');
   }
 
   public execute<T = Record<string, unknown>>(operation: string, binds: SqlBindValue[] = []): T[] {
     if (!this.client.open) return [];
     const stmt = this.client.prepare(operation);
-    // stmt.reader is true for SELECT-like statements that return rows; false for INSERT/UPDATE/DELETE
     return stmt.reader ? (stmt.all(...binds) as T[]) : (stmt.run(...binds), []);
   }
 
