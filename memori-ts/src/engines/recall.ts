@@ -173,8 +173,7 @@ export class RecallEngine {
     for (const [key, value] of Object.entries(params)) {
       if (value != null && value !== '') {
         if (value instanceof Date) {
-          // Properly serialize Date objects to ISO 8601 strings for the backend
-          qs.set(key, value.toISOString());
+          qs.set(key, value.toISOString()); // backend expects ISO 8601
         } else {
           qs.set(key, String(value));
         }
@@ -204,11 +203,8 @@ export class RecallEngine {
         // Fetch long-term vector facts from the Rust core
         facts = await this.retrieveLocal(userQuery);
 
-        if (this.config.storage) {
-          const rawHistory = await this.config.storage.getConversationHistory(sessionId);
-
-          historyMessages = sanitizeHistoryMessages(rawHistory);
-        }
+        const rawHistory = await this.engine.getConversationHistory(sessionId);
+        historyMessages = sanitizeHistoryMessages(rawHistory);
       } catch (e) {
         console.warn('Local Recall Hook failed:', e);
         return req;

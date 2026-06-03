@@ -302,7 +302,7 @@ Memories are tracked at several different levels:
 
 Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs in the background incurring no latency.
 
-By default, Memori Advanced Augmentation is available without an account but rate limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or use the Memori CLI:
+By default, Memori Advanced Augmentation is available without an account but rate-limited. When you need increased limits, [sign up for Memori Advanced Augmentation](https://app.memorilabs.ai/signup) or use the Memori CLI:
 
 ```bash
 # Install the CLI via pip to manage your account
@@ -329,7 +329,7 @@ python -m memori quota
 
 Or by checking your account at [https://app.memorilabs.ai/](https://app.memorilabs.ai/). If you have reached your IP address quota, sign up and get an API key for increased limits.
 
-If your API key exceeds its quota limits we will email you and let you know.
+If your API key exceeds its quota limits, we will email you and let you know.
 
 ## Command Line Interface (CLI)
 

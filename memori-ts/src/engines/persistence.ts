@@ -4,7 +4,7 @@ import { Config } from '../core/config.js';
 import { SessionManager } from '../core/session.js';
 import { NativeEngine } from '../core/engine.js';
 import { extractLastUserMessageString } from '../utils/utils.js';
-import { WriteBatch } from 'src/types/storage.js';
+import { WriteBatch } from '../types/storage.js';
 
 /**
  * Saves conversation messages to the Memori Cloud after each LLM response.
@@ -31,7 +31,7 @@ export class PersistenceEngine {
     const lastUserMessage = extractLastUserMessageString(req.messages);
     if (!lastUserMessage) return res;
 
-    if (this.engine.hasStorage && this.config.storage) {
+    if (this.engine.hasStorage) {
       const batch: WriteBatch = {
         ops: [
           {
@@ -39,16 +39,19 @@ export class PersistenceEngine {
             payload: {
               conversation_id: sessionId,
               messages: [
-                { role: 'user', content: lastUserMessage },
-                { role: 'assistant', content: res.content },
+                { role: 'user', type: 'text', content: lastUserMessage },
+                { role: 'assistant', type: 'text', content: res.content },
               ],
             },
           },
         ],
       };
 
-      await this.config.storage.writeBatch(batch);
-
+      try {
+        await this.engine.writeBatch(batch);
+      } catch (e) {
+        console.warn('Memori Persistence (BYODB) failed:', e);
+      }
       return res;
     }
 

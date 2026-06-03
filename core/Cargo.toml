@@ -29,10 +29,15 @@ parking_lot = "0.12"
 reqwest = { version = "0.12", features = ["json"] }
 serde = "1.0.228"
 serde_json = "1.0"
+rand = "0.8"
 sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
 thiserror.workspace = true
 tokenizers = "0.22"
 tokio.workspace = true
+
+[dev-dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [workspace]
 members = [

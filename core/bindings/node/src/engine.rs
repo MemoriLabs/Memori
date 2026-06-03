@@ -1,146 +1,151 @@
-use crate::bridge::*;
+use crate::bridge::NodeConnectionFactory;
 use crate::types::*;
-use dashmap::DashMap;
 use engine_orchestrator::EngineOrchestrator;
 use engine_orchestrator::search::FactId;
-use engine_orchestrator::storage::{CandidateFactRow, EmbeddingRow, RankedFact, WriteAck};
+use engine_orchestrator::storage::models::RankedFact;
+use engine_orchestrator::storage::{Dialect, RustStorageManager, StorageBridge, WriteBatch};
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::panic::catch_unwind;
-use std::sync::atomic::AtomicU32;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[napi]
 pub struct MemoriEngine {
     pub(crate) inner: Arc<EngineOrchestrator>,
-    pub(crate) pending_embeddings: PendingEmbeddingsMap,
-    pub(crate) pending_facts: PendingFactsMap,
-    pub(crate) pending_writes: PendingWritesMap,
+    pub(crate) factory: Arc<NodeConnectionFactory>,
+    pub(crate) storage_manager: Arc<RustStorageManager>,
 }
 
 #[napi]
 impl MemoriEngine {
+    /// `dialect` is the SQL dialect of the user's connection (`"sqlite"`, `"postgresql"`, `"cockroachdb"`, `"mysql"`).
     #[napi(constructor)]
     pub fn new(
         env: Env,
         model_name: Option<String>,
-        fetch_embeddings_cb: ThreadsafeFunction<(u32, String)>,
-        fetch_facts_by_ids_cb: ThreadsafeFunction<(u32, String)>,
-        write_batch_cb: ThreadsafeFunction<(u32, String)>,
+        storage_call_cb: ThreadsafeFunction<(u32, String)>,
+        dialect: String,
     ) -> Result<Self> {
-        // Unref all three callbacks so they don't keep the Node.js event loop
-        // alive. The callbacks remain fully functional when called from Rust;
-        // they just no longer prevent the process from exiting naturally once
-        // all other handles (e.g. the DB pool) are closed.
+        // Unref so the TSFN doesn't keep the Node event loop alive when idle.
         unsafe {
-            napi::sys::napi_unref_threadsafe_function(env.raw(), fetch_embeddings_cb.raw());
-            napi::sys::napi_unref_threadsafe_function(env.raw(), fetch_facts_by_ids_cb.raw());
-            napi::sys::napi_unref_threadsafe_function(env.raw(), write_batch_cb.raw());
+            napi::sys::napi_unref_threadsafe_function(env.raw(), storage_call_cb.raw());
         }
 
-        let pending_embeddings = Arc::new(DashMap::new());
-        let pending_facts = Arc::new(DashMap::new());
-        let pending_writes = Arc::new(DashMap::new());
+        let dialect_enum = dialect.parse::<Dialect>().map_err(Error::from_reason)?;
 
-        let bridge = Arc::new(NodeStorageBridge {
-            fetch_embeddings_tsfn: Mutex::new(Some(fetch_embeddings_cb)),
-            fetch_facts_by_ids_tsfn: Mutex::new(Some(fetch_facts_by_ids_cb)),
-            write_batch_tsfn: Mutex::new(Some(write_batch_cb)),
-            pending_embeddings: pending_embeddings.clone(),
-            pending_facts: pending_facts.clone(),
-            pending_writes: pending_writes.clone(),
-            next_id: AtomicU32::new(1),
-        });
+        let factory = Arc::new(NodeConnectionFactory::new(storage_call_cb, dialect));
+        let storage_manager = Arc::new(RustStorageManager::new(factory.clone(), dialect_enum));
 
-        let inner = EngineOrchestrator::new_with_storage(model_name.as_deref(), Some(bridge))
-            .map_err(|e| Error::from_reason(e.to_string()))?;
+        let inner = EngineOrchestrator::new_with_storage(
+            model_name.as_deref(),
+            Some(storage_manager.clone()),
+        )
+        .map_err(|e| Error::from_reason(e.to_string()))?;
+
+        let inner = Arc::new(inner);
+        // Weak reference breaks the cycle: EngineOrchestrator → storage_manager → embedder → EngineOrchestrator.
+        let embed_handle = Arc::downgrade(&inner);
+        storage_manager.set_embedder(Box::new(move |texts: Vec<String>| {
+            let Some(engine) = embed_handle.upgrade() else {
+                return vec![];
+            };
+            let (flat, shape) = engine.embed(texts);
+            if shape[0] == 0 || shape[1] == 0 {
+                return vec![];
+            }
+            let dim = shape[1];
+            flat.chunks(dim).map(|c| c.to_vec()).collect()
+        }));
 
         Ok(Self {
-            inner: Arc::new(inner),
-            pending_embeddings,
-            pending_facts,
-            pending_writes,
+            inner,
+            factory,
+            storage_manager,
         })
     }
 
+    /// Called by TS to unblock a pending Rust storage call.
+    ///
+    /// `result_json` is one of:
+    ///   `{ "conn_id": N }` (for acquire), `{ "rows": [...] }` (for execute),
+    ///   `{ "ok": true }` (for begin/commit/rollback/close),
+    ///   or `{ "error": { "code": "...", "message": "..." } }`.
     #[napi]
-    pub fn resolve_embeddings_callback(&self, id: u32, result: Vec<NapiEmbeddingRow>) {
-        let rows: Vec<EmbeddingRow> = result
-            .into_iter()
-            .map(|r| EmbeddingRow {
-                id: match r.id {
-                    Either::A(num) => FactId::Int(num),
-                    Either::B(s) => FactId::String(s),
-                },
-                content_embedding: r.content_embedding.to_vec(),
-                content_embedding_b64: None,
-            })
-            .collect();
+    pub fn resolve_storage_call(&self, id: u32, result_json: String) {
+        self.factory.resolve(id, result_json);
+    }
 
-        // DashMap returns an Option<(K, V)> tuple on removal
-        if let Some((_, tx)) = self.pending_embeddings.remove(&id) {
-            let _ = tx.send(rows);
-        }
+    /// Runs database migrations. Must be called once after construction.
+    #[napi]
+    pub async fn build(&self) -> Result<()> {
+        let storage = self.storage_manager.clone();
+        tokio::task::spawn_blocking(move || {
+            storage
+                .build()
+                .map_err(|e| Error::from_reason(e.to_string()))
+        })
+        .await
+        .map_err(|e| Error::from_reason(e.to_string()))?
+    }
+
+    /// For immediate writes before the augmentation pipeline completes (e.g. conversation messages).
+    #[napi]
+    pub async fn write_batch(&self, json: String) -> Result<NapiWriteAck> {
+        let storage = self.storage_manager.clone();
+        tokio::task::spawn_blocking(move || {
+            let batch: WriteBatch = serde_json::from_str(&json)
+                .map_err(|e| Error::from_reason(format!("invalid batch JSON: {e}")))?;
+            storage
+                .write_batch(&batch)
+                .map_err(|e| Error::from_reason(e.to_string()))
+                .map(|ack| NapiWriteAck {
+                    written_ops: ack.written_ops as u32,
+                })
+        })
+        .await
+        .map_err(|e| Error::from_reason(e.to_string()))?
+    }
+
+    /// Returns conversation messages for the given session ID as a JSON array of
+    /// `{ role, content }` objects. Returns `"[]"` when no storage is configured.
+    #[napi]
+    pub async fn get_conversation_history(&self, session_id: String) -> Result<String> {
+        let storage = self.storage_manager.clone();
+        tokio::task::spawn_blocking(move || {
+            storage
+                .get_conversation_history(&session_id)
+                .map_err(|e| Error::from_reason(e.to_string()))
+                .and_then(|messages| {
+                    serde_json::to_string(&messages).map_err(|e| Error::from_reason(e.to_string()))
+                })
+        })
+        .await
+        .map_err(|e| Error::from_reason(e.to_string()))?
     }
 
     #[napi]
-    pub fn resolve_facts_callback(&self, id: u32, result: Vec<NapiCandidateFactRow>) {
-        let rows: Vec<CandidateFactRow> = result
-            .into_iter()
-            .map(|r| {
-                let id_val = match r.id {
-                    Either::A(num) => serde_json::json!(num),
-                    Either::B(s) => serde_json::json!(s),
-                };
-                let mut obj = serde_json::Map::new();
-                obj.insert("id".to_string(), id_val);
-                obj.insert("content".to_string(), serde_json::json!(r.content));
-                obj.insert(
-                    "date_created".to_string(),
-                    serde_json::json!(r.date_created),
-                );
-                if let Some(sums) = r.summaries {
-                    obj.insert("summaries".to_string(), serde_json::to_value(sums).unwrap());
+    pub async fn embed_texts(&self, texts: Vec<String>) -> Result<Vec<Float32Array>> {
+        let inner = self.inner.clone();
+        // Run ONNX inference on a blocking thread so the Node event loop stays free.
+        let chunks: Vec<Vec<f32>> = tokio::task::spawn_blocking(move || {
+            let result = catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let (flat, shape) = inner.embed(texts);
+                if shape[0] == 0 || shape[1] == 0 {
+                    return Ok(vec![]);
                 }
-                serde_json::from_value(serde_json::Value::Object(obj)).unwrap()
-            })
-            .collect();
-
-        if let Some((_, tx)) = self.pending_facts.remove(&id) {
-            let _ = tx.send(rows);
-        }
-    }
-
-    #[napi]
-    pub fn resolve_write_callback(&self, id: u32, result: NapiWriteAck) {
-        if let Some((_, tx)) = self.pending_writes.remove(&id) {
-            let ack = WriteAck {
-                written_ops: result.written_ops as usize,
-            };
-            let _ = tx.send(ack);
-        }
-    }
-
-    #[napi]
-    pub fn embed_texts(&self, texts: Vec<String>) -> Result<Vec<Float32Array>> {
-        let result = catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let (flat_vectors, shape) = self.inner.embed(texts);
-            let mut out = Vec::with_capacity(shape[0]);
-            let dim = shape[1];
-            for chunk in flat_vectors.chunks(dim) {
-                out.push(Float32Array::new(chunk.to_vec()));
+                let dim = shape[1];
+                Ok::<Vec<Vec<f32>>, Error>(flat.chunks(dim).map(|c| c.to_vec()).collect())
+            }));
+            match result {
+                Ok(Ok(v)) => Ok(v),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(Error::from_reason("Rust panicked during embed_texts!")),
             }
-            Ok(out)
-        }));
-
-        match result {
-            Ok(Ok(arr)) => Ok(arr),
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(Error::from_reason(
-                "Rust panicked during embed_texts!".to_string(),
-            )),
-        }
+        })
+        .await
+        .map_err(|e| Error::from_reason(e.to_string()))??;
+        Ok(chunks.into_iter().map(Float32Array::new).collect())
     }
 
     #[napi]
@@ -223,7 +228,7 @@ impl MemoriEngine {
             Ok(Ok(id)) => Ok(id),
             Ok(Err(e)) => Err(e),
             Err(_) => Err(Error::from_reason(
-                "Rust panicked during augmentation submit!".to_string(),
+                "Rust panicked during augmentation submit!",
             )),
         }
     }

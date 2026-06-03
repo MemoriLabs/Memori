@@ -27,14 +27,10 @@ async function main(): Promise<void> {
   mem.attribution('rust-core-user', 'sqlite-example');
 
   if (!mem.config.storage) {
-    throw new Error('Storage not initialized');
+    throw new Error('Storage bridge is not active. Pass conn= to Memori.');
   }
 
   await mem.config.storage.build();
-
-  if (!mem.engine.hasStorage) {
-    throw new Error('Storage bridge is not active. Pass conn= to Memori.');
-  }
 
   console.log('\nYou: What is my favorite season?');
   const first = await client.chat.completions.create({

@@ -302,27 +302,35 @@ fn init_augmentation_runtime(
                                 .await
                                 {
                                     Ok(batch) => batch,
-                                    Err(error) => {
+                                    Err(join_err) => {
                                         log::error!(
-                                            "[orchestrator augmentation worker] job {} embedding failed: {}",
+                                            "[orchestrator augmentation worker] job {} embedding task panicked: {}",
                                             job.job_id,
-                                            error
+                                            join_err
                                         );
                                         fallback_batch
                                     }
                                 };
 
-                                if let Err(error) = storage.write_batch(&batch) {
-                                    log::error!(
-                                        "[orchestrator augmentation worker] job {} write failed: {}",
-                                        job.job_id, error
-                                    );
-                                } else {
-                                    log::info!(
+                                let op_count = batch.ops.len();
+                                match tokio::task::spawn_blocking(move || storage.write_batch(&batch))
+                                    .await
+                                {
+                                    Ok(Ok(_)) => log::info!(
                                         "[orchestrator augmentation worker] job {} persisted {} op(s)",
                                         job.job_id,
-                                        batch.ops.len()
-                                    );
+                                        op_count
+                                    ),
+                                    Ok(Err(error)) => log::error!(
+                                        "[orchestrator augmentation worker] job {} write failed: {}",
+                                        job.job_id,
+                                        error
+                                    ),
+                                    Err(join_err) => log::error!(
+                                        "[orchestrator augmentation worker] job {} write task panicked: {}",
+                                        job.job_id,
+                                        join_err
+                                    ),
                                 }
                             }
                             None => {

@@ -1,243 +1,374 @@
-import { StorageAdapter, BaseDriver, ConnFactory } from './base.js';
+import { StorageAdapter, ConnFactory, SqlBindValue } from './base.js';
 import { Registry } from './registry.js';
-import { Builder } from './builder.js';
-import { Config } from '../core/config.js';
-import {
-  StorageBridge,
-  WriteBatch,
-  WriteAck,
-  CandidateFactRow,
-  EmbeddingRow,
-} from '../types/storage.js';
 
-// Side-effect imports: each module calls Registry.registerAdapter / Registry.registerDriver
-// on load, so the Registry can auto-detect the connection type at runtime.
+// Side-effect imports: each module calls Registry.registerAdapter on load,
+// so the Registry can auto-detect the connection type at runtime.
 import './adapters/postgresql.js';
-import './drivers/postgresql.js';
 import './adapters/sqlite.js';
-import './drivers/sqlite.js';
 import './adapters/mysql.js';
-import './drivers/mysql.js';
 
-/**
- * The host-side implementation of `StorageBridge`.
- *
- * Sits between the Rust core (which calls `fetchEmbeddings`, `fetchFactsByIds`, `writeBatch`)
- * and the user's database connection. Auto-detects the ORM/driver from the raw connection
- * object via the `Registry` and delegates all SQL to the appropriate `BaseDriver`.
- */
-export class StorageManager implements StorageBridge {
+type StorageCallPayload = {
+  op: string;
+  conn_id?: number;
+  sql?: string;
+  binds?: Array<{ t: string; v: unknown }>;
+};
+
+// Binary embeddings arrive as base64 strings and are decoded to Buffer; ints arrive as strings (CockroachDB i64).
+function deserializeBinds(binds: Array<{ t: string; v: unknown }>): SqlBindValue[] {
+  return binds.map((bind) => {
+    switch (bind.t) {
+      case 'null':
+        return null;
+      case 'int': // string: CockroachDB returns i64s that exceed JS Number.MAX_SAFE_INTEGER
+      case 'text':
+        return bind.v as string;
+      case 'float':
+        return bind.v as number;
+      case 'bytes':
+        return Buffer.from(bind.v as string, 'base64');
+      default:
+        console.warn(`[Memori] unknown bind type "${bind.t}" — treating as NULL`);
+        return null;
+    }
+  });
+}
+
+const CONN_TTL_MS = 30_000;
+const STALE_TX_TTL_MS = 60_000;
+const SWEEP_INTERVAL_MS = 60_000;
+
+function normalizeRowValue(v: unknown): unknown {
+  if (Buffer.isBuffer(v)) return v.toString('base64');
+  if (v instanceof Uint8Array) return Buffer.from(v).toString('base64');
+  if (typeof v === 'bigint') return v.toString();
+  return v;
+}
+
+function normalizeRows(rows: unknown[]): Record<string, unknown>[] {
+  return rows.map((row) => {
+    const out: Record<string, unknown> = {};
+    if (typeof row === 'object' && row !== null) {
+      const r = row as Record<string, unknown>;
+      for (const key of Object.keys(r)) out[key] = normalizeRowValue(r[key]);
+    }
+    return out;
+  });
+}
+
+type TrackedAdapter = {
+  adapter: StorageAdapter;
+  lastUsed: number;
+  isBusy: boolean;
+  inTransaction: boolean;
+  // Held from acquire until close to serialize access for adapters that require it (SQLite, MySQL direct).
+  releaseSerialLock?: () => void;
+};
+
+export class StorageManager {
   private readonly factory: ConnFactory;
-  private readonly adapter: StorageAdapter;
-  private readonly driver: BaseDriver;
-  private readonly config: Config;
-  private embedder?: (texts: string[]) => Float32Array[];
+  private readonly cachedDialect: string;
+  private readonly dialectOverride?: string;
+  private readonly connections = new Map<number, TrackedAdapter>();
+  private readonly inFlight = new Set<Promise<void>>();
+  private nextConnId = 1;
+  // Serializes acquire→close for adapters that require it (SQLite, MySQL direct).
+  private serialQueue: Promise<void> = Promise.resolve();
+  private readonly needsSerialAccess: boolean;
   private engineShutdown?: () => void;
+  private engineBuild?: () => Promise<void>;
+  private sweepHandle?: ReturnType<typeof setInterval>;
 
-  constructor(factory: ConnFactory) {
+  constructor(factory: ConnFactory, dialectOverride?: string) {
     this.factory = factory;
-    this.config = new Config();
-    this.adapter = Registry.getAdapter(factory);
-    this.driver = Registry.getDriver(this.adapter);
+    this.dialectOverride = dialectOverride;
+    const probe = Registry.getAdapter(factory);
+    this.cachedDialect = probe.getDialect();
+    this.needsSerialAccess = probe.requiresSerialAccess?.() ?? false;
+    void Promise.resolve(probe.close()).catch(() => {});
+    const handle = setInterval(() => {
+      this.sweepOrphanedConnections();
+    }, SWEEP_INTERVAL_MS);
+    handle.unref();
+    this.sweepHandle = handle;
   }
 
-  /**
-   * Wires the native engine's embed function into the storage manager.
-   * Called after construction because the engine is built with a reference to this manager,
-   * so we can't pass the embedder in the constructor without a circular dependency.
-   */
-  public setEmbedder(fn: (texts: string[]) => Float32Array[]): void {
-    this.embedder = fn;
+  public getDialect(): string {
+    return this.dialectOverride ?? this.cachedDialect;
   }
 
   public setEngineShutdown(fn: () => void): void {
     this.engineShutdown = fn;
   }
 
+  public setEngineBuild(fn: () => Promise<void>): void {
+    this.engineBuild = fn;
+  }
+
+  /** Runs database migrations. Call once after construction, before any SDK operations. */
   public async build(): Promise<void> {
-    const builder = new Builder(this.config, this.adapter, this.driver);
-    await builder.execute();
+    if (this.engineBuild) {
+      await this.engineBuild();
+    }
+  }
+
+  // `resolve` must be called exactly once — it unblocks the waiting Rust thread.
+  public handleStorageCall(
+    _id: number,
+    payloadJson: string,
+    resolve: (result: object) => void
+  ): void {
+    let payload: StorageCallPayload;
+    try {
+      payload = JSON.parse(payloadJson) as StorageCallPayload;
+    } catch {
+      resolve({ error: { code: 'JSON_ERR', message: 'invalid JSON from Rust' } });
+      return;
+    }
+
+    const p = this.dispatchOp(payload, resolve).catch((e: unknown) => {
+      // Prefer sqlState over code: mysql2 reports serialization failures (e.g. deadlock)
+      // as sqlState "40001" while code is a symbolic name like ER_LOCK_DEADLOCK. Rust's
+      // retry logic matches on the numeric SQLSTATE, so normalize here for all dialects.
+      let code = 'ERR';
+      if (typeof e === 'object' && e !== null) {
+        const err = e as Record<string, unknown>;
+        const raw = err['sqlState'] ?? err['code'];
+        if (typeof raw === 'string' || typeof raw === 'number') code = String(raw);
+      }
+      resolve({ error: { code, message: String(e) } });
+    });
+    this.inFlight.add(p);
+    void p.finally(() => this.inFlight.delete(p));
+  }
+
+  /**
+   * Releases connections that Rust acquired but never closed — e.g. after a panic
+   * mid-sequence that bypassed the normal `{ op: "close" }` message. Called on
+   * every `acquire` so orphan cleanup is driven by natural activity with no timer.
+   */
+  private sweepOrphanedConnections(): void {
+    const cutoff = Date.now() - CONN_TTL_MS;
+    const txCutoff = Date.now() - STALE_TX_TTL_MS;
+    for (const [id, entry] of this.connections) {
+      const isStaleIdle = !entry.isBusy && !entry.inTransaction && entry.lastUsed < cutoff;
+      const isStaleTx = !entry.isBusy && entry.inTransaction && entry.lastUsed < txCutoff;
+      if (!isStaleIdle && !isStaleTx) continue;
+
+      this.connections.delete(id);
+      entry.releaseSerialLock?.();
+      entry.releaseSerialLock = undefined;
+
+      const p = isStaleTx
+        ? Promise.resolve(entry.adapter.rollback())
+            .catch(() => {})
+            .then(() => entry.adapter.close())
+            .catch((e: unknown) => {
+              console.warn(`[Memori] failed to close orphaned transaction ${id}:`, e);
+            })
+        : Promise.resolve(entry.adapter.close()).catch((e: unknown) => {
+            console.warn(`[Memori] failed to close orphaned connection ${id}:`, e);
+          });
+      this.inFlight.add(p);
+      void p.finally(() => this.inFlight.delete(p));
+    }
+  }
+
+  private requireEntry(
+    connId: number | undefined,
+    resolve: (result: object) => void
+  ): TrackedAdapter | undefined {
+    const entry = this.connections.get(connId ?? -1);
+    if (!entry) resolve({ error: { code: 'NO_CONN', message: `unknown conn_id: ${connId}` } });
+    return entry;
+  }
+
+  private async dispatchOp(
+    payload: StorageCallPayload,
+    resolve: (result: object) => void
+  ): Promise<void> {
+    switch (payload.op) {
+      case 'acquire': {
+        this.sweepOrphanedConnections();
+        const adapter = Registry.getAdapter(this.factory);
+        const connId = this.nextConnId++;
+
+        let releaseSerialLock: (() => void) | undefined;
+        if (this.needsSerialAccess) {
+          const prev = this.serialQueue;
+          let releaseLock!: () => void;
+          this.serialQueue = new Promise<void>((r) => {
+            releaseLock = r;
+          });
+          await prev;
+          if (this.sweepHandle === undefined) {
+            releaseLock();
+            resolve({
+              error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
+            });
+            return;
+          }
+          releaseSerialLock = releaseLock;
+        }
+
+        this.connections.set(connId, {
+          adapter,
+          lastUsed: Date.now(),
+          isBusy: false,
+          inTransaction: false,
+          releaseSerialLock,
+        });
+        resolve({ conn_id: connId });
+        break;
+      }
+
+      case 'execute': {
+        const entry = this.requireEntry(payload.conn_id, resolve);
+        if (!entry) return;
+        entry.lastUsed = Date.now();
+        entry.isBusy = true;
+        try {
+          const binds = deserializeBinds(payload.binds ?? []);
+          const rawRows = await entry.adapter.execute(payload.sql ?? '', binds);
+          resolve({ rows: normalizeRows(rawRows) });
+        } finally {
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
+        break;
+      }
+
+      case 'begin': {
+        const entry = this.requireEntry(payload.conn_id, resolve);
+        if (!entry) return;
+        // Serial-access serialization is enforced at acquire time (lock spans acquire→close),
+        // so we only need a shutdown guard here in case close() was called after acquire.
+        if (this.needsSerialAccess && this.sweepHandle === undefined) {
+          resolve({
+            error: { code: 'SHUTTING_DOWN', message: 'storage manager is shutting down' },
+          });
+          return;
+        }
+        entry.lastUsed = Date.now();
+        entry.isBusy = true;
+        let began = false;
+        try {
+          await entry.adapter.begin();
+          began = true;
+          entry.inTransaction = true;
+          resolve({ ok: true });
+        } finally {
+          if (!began) {
+            // begin failed — release the lock so the queue doesn't get stuck waiting for a close that may not come.
+            entry.releaseSerialLock?.();
+            entry.releaseSerialLock = undefined;
+          }
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
+        break;
+      }
+
+      case 'commit': {
+        const entry = this.requireEntry(payload.conn_id, resolve);
+        if (!entry) return;
+        entry.lastUsed = Date.now();
+        entry.isBusy = true;
+        try {
+          await entry.adapter.commit();
+          resolve({ ok: true });
+        } finally {
+          entry.inTransaction = false;
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
+        break;
+      }
+
+      case 'rollback': {
+        const connId = payload.conn_id ?? -1;
+        const entry = this.connections.get(connId);
+        if (!entry) {
+          // Rollback failure is non-fatal — connection may already be gone.
+          resolve({ ok: true });
+          return;
+        }
+        entry.lastUsed = Date.now();
+        entry.isBusy = true;
+        try {
+          await entry.adapter.rollback();
+        } catch {
+          // non-fatal
+        } finally {
+          entry.inTransaction = false;
+          entry.isBusy = false;
+          entry.lastUsed = Date.now();
+        }
+        resolve({ ok: true });
+        break;
+      }
+
+      case 'close': {
+        const connId = payload.conn_id ?? -1;
+        const entry = this.connections.get(connId);
+        this.connections.delete(connId);
+        if (entry) {
+          try {
+            if (entry.inTransaction) {
+              await entry.adapter.rollback();
+            }
+            await entry.adapter.close();
+          } catch {
+            // non-fatal
+          } finally {
+            // Release the SQLite lock only after rollback/close so the next acquire
+            // doesn't start on the shared sqlite3* handle before cleanup finishes.
+            entry.releaseSerialLock?.();
+            entry.releaseSerialLock = undefined;
+          }
+        }
+        resolve({ ok: true });
+        break;
+      }
+
+      default:
+        resolve({ error: { code: 'UNKNOWN_OP', message: `unknown op: ${payload.op}` } });
+    }
   }
 
   public async close(): Promise<void> {
+    clearInterval(this.sweepHandle);
+    this.sweepHandle = undefined;
     if (this.engineShutdown) {
       this.engineShutdown();
       this.engineShutdown = undefined;
     }
-    // Brief delay to let any in-flight async write callbacks settle before
-    // closing the underlying connection (e.g. SQLite WAL checkpointing).
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    await this.adapter.close();
-  }
-
-  public getDialect(): string {
-    return this.adapter.getDialect();
-  }
-
-  public async fetchEmbeddings(entityId: string, limit: number): Promise<EmbeddingRow[]> {
-    const eId = await this.driver.entity.create(entityId);
-    const rows = await this.driver.entityFact.getEmbeddings(eId || entityId, limit);
-    return rows;
-  }
-
-  public async fetchFactsByIds(ids: (number | string)[]): Promise<CandidateFactRow[]> {
-    return await this.driver.entityFact.getFactsByIds(ids);
-  }
-
-  public async getConversationHistory(
-    sessionId: string
-  ): Promise<Array<{ role: string; content: string }>> {
-    const sId = await this.driver.session.create(sessionId, null, null);
-    const convId = await this.driver.conversation.create(sId || sessionId, 30);
-    const internalConvId = convId || sessionId;
-
-    return await this.driver.conversationMessages.read(internalConvId);
-  }
-
-  public writeBatch(batch: WriteBatch): Promise<WriteAck> {
-    return this.writeBatchAsync(batch);
-  }
-
-  /**
-   * Executes all write operations from an augmentation batch inside a single transaction.
-   *
-   * Each `op_type` maps to a specific set of driver calls. The entire batch rolls back on
-   * any failure — `written_ops: 0` is returned rather than throwing so the Rust caller
-   * (which called this via the storage bridge) gets a clean, non-panicking result.
-   */
-  private async writeBatchAsync(batch: WriteBatch): Promise<WriteAck> {
-    if (batch.ops.length === 0) return { written_ops: 0 };
-
-    // CockroachDB (and PostgreSQL with SERIALIZABLE) can return code 40001 when a
-    // transaction conflicts with a recent commit. The correct response is to retry
-    // the entire transaction from scratch with a fresh connection.
-    const MAX_RETRIES = 5;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      let written = 0;
-
-      // Each write batch gets its own adapter+driver pair so its dedicated
-      // transaction connection never races with concurrent reads on this.adapter.
-      const txAdapter = Registry.getAdapter(this.factory);
-      const txDriver = Registry.getDriver(txAdapter);
-
-      try {
-        await txAdapter.begin();
-
-        for (const op of batch.ops) {
-          switch (op.op_type) {
-            case 'conversation_message.create': {
-              const sId = await txDriver.session.create(op.payload.conversation_id, null, null);
-              const convId = await txDriver.conversation.create(
-                sId || op.payload.conversation_id,
-                30
-              );
-              const internalConvId = convId || op.payload.conversation_id;
-              for (const message of op.payload.messages) {
-                await txDriver.conversationMessage.create(
-                  internalConvId,
-                  message.role,
-                  'text',
-                  message.content
-                );
-              }
-              break;
-            }
-            case 'entity_fact.create': {
-              const eId = await txDriver.entity.create(op.payload.entity_id);
-              // driver.entity.create uses INSERT OR IGNORE and returns the internal row ID;
-              // fall back to external_id if the row pre-existed and no ID was returned
-              const internalEntityId = eId || op.payload.entity_id;
-              let factEmbeddings = op.payload.fact_embeddings;
-              if (
-                (!factEmbeddings || factEmbeddings.length === 0) &&
-                this.embedder &&
-                op.payload.facts.length > 0
-              ) {
-                factEmbeddings = this.embedder(op.payload.facts);
-              }
-              let internalConvId = null;
-              if (op.payload.conversation_id) {
-                const sId = await txDriver.session.create(
-                  op.payload.conversation_id,
-                  internalEntityId,
-                  null
-                );
-                // 30 = conversation inactivity timeout in minutes before a new one is created
-                internalConvId = await txDriver.conversation.create(
-                  sId || op.payload.conversation_id,
-                  30
-                );
-              }
-              await txDriver.entityFact.create(
-                internalEntityId,
-                op.payload.facts,
-                factEmbeddings,
-                internalConvId
-              );
-              break;
-            }
-            case 'knowledge_graph.create': {
-              const eId = await txDriver.entity.create(op.payload.entity_id);
-              await txDriver.knowledgeGraph.create(
-                eId || op.payload.entity_id,
-                op.payload.semantic_triples
-              );
-              break;
-            }
-            case 'process_attribute.create': {
-              const pId = await txDriver.process.create(op.payload.process_id);
-              await txDriver.processAttribute.create(
-                pId || op.payload.process_id,
-                Array.isArray(op.payload.attributes)
-                  ? op.payload.attributes
-                  : Object.values(op.payload.attributes)
-              );
-              break;
-            }
-            case 'conversation.update': {
-              const sId = await txDriver.session.create(op.payload.conversation_id, null, null);
-              const convId = await txDriver.conversation.create(
-                sId || op.payload.conversation_id,
-                30
-              );
-              await txDriver.conversation.update(
-                convId || op.payload.conversation_id,
-                op.payload.summary
-              );
-              break;
-            }
-            case 'upsert_fact': {
-              const eId = await txDriver.entity.create(op.payload.entity_id);
-              if (op.payload.content)
-                await txDriver.entityFact.createWithoutEmbedding(
-                  eId || op.payload.entity_id,
-                  op.payload.content
-                );
-              break;
-            }
-            default: {
-              throw new Error(`Unsupported write op type: ${(op as { op_type: string }).op_type}`);
-            }
-          }
-          written++;
-        }
-
-        await txAdapter.commit();
-        return { written_ops: written };
-      } catch (e) {
+    // Signal shutdown and release all held SQLite locks before draining. Any begin
+    // calls queued behind an open transaction will see isShuttingDown, call their own
+    // releaseLock (unwinding the full chain), and resolve with a SHUTTING_DOWN error
+    // rather than hanging forever waiting for a commit that will never arrive.
+    for (const entry of this.connections.values()) {
+      entry.releaseSerialLock?.();
+      entry.releaseSerialLock = undefined;
+    }
+    // Drain all in-flight dispatchOp calls before touching adapters.
+    await Promise.allSettled(this.inFlight);
+    // Release any connections that Rust left open (e.g. due to an in-flight shutdown).
+    // Roll back any open transactions first so the DB isn't left in a dirty state.
+    for (const entry of this.connections.values()) {
+      if (entry.inTransaction) {
         try {
-          await txAdapter.rollback();
+          await entry.adapter.rollback();
         } catch {
-          // rollback failure is non-fatal
+          // non-fatal
         }
-        if ((e as { code?: string }).code === '40001' && attempt < MAX_RETRIES) {
-          await new Promise((r) => setTimeout(r, Math.min(50 * 2 ** attempt, 1000)));
-          continue;
-        }
-        console.error(`[Memori] Async WriteBatch failed, rolling back:`, e);
-        return { written_ops: 0 };
+      }
+      try {
+        await entry.adapter.close();
+      } catch {
+        // non-fatal
       }
     }
-    return { written_ops: 0 };
+    this.connections.clear();
   }
 }

@@ -93,65 +93,116 @@ describe('SqliteAdapter', () => {
     const adapter = new SqliteAdapter(makeSqliteDb());
     expect(adapter.getDialect()).toBe('sqlite');
   });
+
+  it('requiresSerialAccess() returns true', () => {
+    expect(new SqliteAdapter(makeSqliteDb()).requiresSerialAccess()).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
 // MysqlAdapter
 // ---------------------------------------------------------------------------
 
-function makeMysqlPool(overrides = {}) {
+function makeMysqlConn(overrides = {}) {
   return {
     execute: vi.fn().mockResolvedValue([[{ id: 1 }], []]),
     query: vi.fn().mockResolvedValue({}),
+    beginTransaction: vi.fn().mockResolvedValue(undefined),
+    commit: vi.fn().mockResolvedValue(undefined),
+    rollback: vi.fn().mockResolvedValue(undefined),
     release: vi.fn(),
     ...overrides,
   };
 }
 
+function makeMysqlPool(connOverrides = {}, poolOverrides = {}) {
+  const conn = makeMysqlConn(connOverrides);
+  return {
+    pool: {
+      execute: vi.fn().mockResolvedValue([[{ id: 1 }], []]),
+      query: vi.fn().mockResolvedValue({}),
+      getConnection: vi.fn().mockResolvedValue(conn),
+      ...poolOverrides,
+    },
+    conn,
+  };
+}
+
 describe('MysqlAdapter', () => {
   it('execute() returns the first element of the result tuple', async () => {
-    const pool = makeMysqlPool({ execute: vi.fn().mockResolvedValue([[{ id: 42 }], []]) });
+    const { pool } = makeMysqlPool({}, { execute: vi.fn().mockResolvedValue([[{ id: 42 }], []]) });
     const adapter = new MysqlAdapter(pool);
     const rows = await adapter.execute('SELECT 1');
     expect(rows).toEqual([{ id: 42 }]);
   });
 
   it('execute() returns [] when rows is not an array', async () => {
-    const pool = makeMysqlPool({ execute: vi.fn().mockResolvedValue([null, []]) });
+    const { pool } = makeMysqlPool({}, { execute: vi.fn().mockResolvedValue([null, []]) });
     const adapter = new MysqlAdapter(pool);
     expect(await adapter.execute('INSERT')).toEqual([]);
   });
 
-  it('begin() sends BEGIN query', async () => {
-    const pool = makeMysqlPool();
+  it('begin() checks out a dedicated connection and calls beginTransaction()', async () => {
+    const { pool, conn } = makeMysqlPool();
     const adapter = new MysqlAdapter(pool);
     await adapter.begin();
-    expect(pool.query).toHaveBeenCalledWith('BEGIN');
+    expect(pool.getConnection).toHaveBeenCalled();
+    expect(conn.beginTransaction).toHaveBeenCalled();
   });
 
-  it('commit() sends COMMIT query', async () => {
-    const pool = makeMysqlPool();
+  it('execute() routes through txConn after begin()', async () => {
+    const { pool, conn } = makeMysqlPool();
     const adapter = new MysqlAdapter(pool);
+    await adapter.begin();
+    await adapter.execute('SELECT 1');
+    expect(conn.execute).toHaveBeenCalledWith('SELECT 1', []);
+    expect(pool.execute).not.toHaveBeenCalled();
+  });
+
+  it('commit() calls commit() on txConn and releases it', async () => {
+    const { pool, conn } = makeMysqlPool();
+    const adapter = new MysqlAdapter(pool);
+    await adapter.begin();
     await adapter.commit();
-    expect(pool.query).toHaveBeenCalledWith('COMMIT');
+    expect(conn.commit).toHaveBeenCalled();
+    expect(conn.release).toHaveBeenCalled();
   });
 
-  it('rollback() sends ROLLBACK query', async () => {
-    const pool = makeMysqlPool();
+  it('commit() releases connection and rethrows if commit() fails', async () => {
+    const { pool, conn } = makeMysqlPool({
+      commit: vi.fn().mockRejectedValue(new Error('deadlock')),
+    });
     const adapter = new MysqlAdapter(pool);
+    await adapter.begin();
+    await expect(adapter.commit()).rejects.toThrow('deadlock');
+    expect(conn.release).toHaveBeenCalled();
+  });
+
+  it('rollback() calls rollback() on txConn and releases it', async () => {
+    const { pool, conn } = makeMysqlPool();
+    const adapter = new MysqlAdapter(pool);
+    await adapter.begin();
     await adapter.rollback();
-    expect(pool.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(conn.rollback).toHaveBeenCalled();
+    expect(conn.release).toHaveBeenCalled();
   });
 
-  it('close() calls release() if available (PoolConnection)', () => {
-    const pool = makeMysqlPool();
+  it('rollback() is a no-op when no transaction is active', async () => {
+    const { pool } = makeMysqlPool();
     const adapter = new MysqlAdapter(pool);
-    adapter.close();
-    expect(pool.release).toHaveBeenCalled();
+    await expect(adapter.rollback()).resolves.toBeUndefined();
   });
 
-  it('close() does nothing when release is not available (Pool)', () => {
-    const pool = { execute: vi.fn(), query: vi.fn() };
+  it('close() releases txConn if a transaction is in flight', async () => {
+    const { pool, conn } = makeMysqlPool();
+    const adapter = new MysqlAdapter(pool);
+    await adapter.begin();
+    adapter.close();
+    expect(conn.release).toHaveBeenCalled();
+  });
+
+  it('close() does nothing when no transaction is active', () => {
+    const { pool } = makeMysqlPool();
     const adapter = new MysqlAdapter(pool);
     expect(() => {
       adapter.close();
@@ -159,7 +210,79 @@ describe('MysqlAdapter', () => {
   });
 
   it('getDialect() returns "mysql"', () => {
-    expect(new MysqlAdapter(makeMysqlPool()).getDialect()).toBe('mysql');
+    const { pool } = makeMysqlPool();
+    expect(new MysqlAdapter(pool).getDialect()).toBe('mysql');
+  });
+
+  it('accepts a direct connection (no getConnection) without throwing', () => {
+    const conn = makeMysqlConn();
+    expect(() => new MysqlAdapter(conn)).not.toThrow();
+  });
+
+  it('direct: execute() routes to the connection directly, not a pool', async () => {
+    const conn = makeMysqlConn({ execute: vi.fn().mockResolvedValue([[{ id: 7 }], []]) });
+    const adapter = new MysqlAdapter(conn);
+    const rows = await adapter.execute('SELECT 1');
+    expect(conn.execute).toHaveBeenCalledWith('SELECT 1', []);
+    expect(rows).toEqual([{ id: 7 }]);
+  });
+
+  it('direct: begin() calls beginTransaction() on the connection, not getConnection()', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    expect(conn.beginTransaction).toHaveBeenCalled();
+    // No pool, so getConnection should never be called.
+    expect((conn as Record<string, unknown>)['getConnection']).toBeUndefined();
+  });
+
+  it('direct: execute() still routes to the connection after begin()', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    await adapter.execute('SELECT 1');
+    expect(conn.execute).toHaveBeenCalledWith('SELECT 1', []);
+  });
+
+  it('direct: commit() calls commit() on the connection directly', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    await adapter.commit();
+    expect(conn.commit).toHaveBeenCalled();
+    // release() is pool-only — must not be called on a direct connection.
+    expect(conn.release).not.toHaveBeenCalled();
+  });
+
+  it('direct: rollback() calls rollback() on the connection directly', async () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    await adapter.begin();
+    await adapter.rollback();
+    expect(conn.rollback).toHaveBeenCalled();
+    expect(conn.release).not.toHaveBeenCalled();
+  });
+
+  it('direct: close() is a no-op — caller owns the connection lifecycle', () => {
+    const conn = makeMysqlConn();
+    const adapter = new MysqlAdapter(conn);
+    expect(() => {
+      adapter.close();
+    }).not.toThrow();
+    expect(conn.release).not.toHaveBeenCalled();
+  });
+
+  it('direct: getDialect() returns "mysql"', () => {
+    expect(new MysqlAdapter(makeMysqlConn()).getDialect()).toBe('mysql');
+  });
+
+  it('requiresSerialAccess() returns true for a direct connection', () => {
+    expect(new MysqlAdapter(makeMysqlConn()).requiresSerialAccess()).toBe(true);
+  });
+
+  it('requiresSerialAccess() returns false for a pool', () => {
+    const { pool } = makeMysqlPool();
+    expect(new MysqlAdapter(pool).requiresSerialAccess()).toBe(false);
   });
 });
 
