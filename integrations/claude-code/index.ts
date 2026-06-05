@@ -25,6 +25,7 @@
  *                     default session_id so retrieval stays project-scoped
  *                     across new Claude Code sessions and /clear.
  *   MEMORI_PROCESS_ID (optional) process attribution
+ *   MEMORI_API_URL_BASE (optional) Memori API base URL override
  *
  * --projectId and --sessionId override the defaults per call.
  *
@@ -94,9 +95,25 @@ const DEFAULT_PROJECT_ID =
 
 const DEFAULT_SESSION_ID = process.env.MEMORI_SESSION_ID ?? CLAUDE_SESSION_ID;
 
-const BASE_URL = "https://api.memorilabs.ai/v1";
-const COLLECTOR_URL = "https://collector.memorilabs.ai/v1";
-const X_API_KEY = "96a7ea3e-11c2-428c-b9ae-5a168363dc80";
+const PUBLIC_PROD_KEY = "96a7ea3e-11c2-428c-b9ae-5a168363dc80";
+const PUBLIC_STAGING_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0";
+
+function env(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+}
+
+function versionedBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
+}
+
+const API_URL_BASE = env("MEMORI_API_URL_BASE");
+const BASE_URL = versionedBaseUrl(API_URL_BASE ?? "https://api.memorilabs.ai");
+const COLLECTOR_URL = versionedBaseUrl(
+  API_URL_BASE ?? "https://collector.memorilabs.ai"
+);
+const X_API_KEY = API_URL_BASE ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
 
 type HttpMethod = "GET" | "POST";
 
