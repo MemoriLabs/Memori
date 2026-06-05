@@ -26,13 +26,8 @@ export class Api {
   constructor(config: Config, subdomain: ApiSubdomain = ApiSubdomain.DEFAULT) {
     this.config = config;
 
-    if (subdomain === ApiSubdomain.COLLECTOR) {
-      this.baseUrl = this.config.baseUrl
-        .replace('://api.', '://collector.')
-        .replace('://staging-api.', '://staging-collector.');
-    } else {
-      this.baseUrl = this.config.baseUrl;
-    }
+    this.baseUrl =
+      subdomain === ApiSubdomain.DEFAULT ? this.config.baseUrl : this.config.resolveUrl(subdomain);
 
     this.xApiKey = this.config.xApiKey;
   }

@@ -22,8 +22,8 @@ export class Config {
   public apiKey: string | null;
 
   /**
-   * The base URL for the Memori API.
-   * Automatically switches between production and staging based on `testMode`.
+   * The base URL for the Memori API (always the `api` subdomain).
+   * Use `resolveUrl(subdomain)` to get the URL for a specific subdomain.
    */
   public baseUrl: string;
 
@@ -33,8 +33,8 @@ export class Config {
   public xApiKey: string;
 
   /**
-   * Whether the SDK is running in staging mode.
-   * Defaults to `true` if `MEMORI_ENV` is set to 'staging'.
+   * Whether the SDK is running in a non-production environment.
+   * True when `MEMORI_ENV` is set to any non-empty value.
    */
   public testMode: boolean;
 
@@ -72,30 +72,43 @@ export class Config {
    */
   public storage?: StorageManager;
 
-  constructor() {
-    const envPrefix = getEnv('MEMORI_ENV')?.trim() ?? '';
-    this.testMode = envPrefix !== '';
+  private readonly _envPrefix: string;
+  private readonly _domain: string | undefined;
+  private readonly _apiUrlBase: string | undefined;
 
-    const domain = getEnv('MEMORI_DOMAIN')?.trim();
-    if (domain) {
-      this.baseUrl = envPrefix ? `https://${envPrefix}-api.${domain}` : `https://api.${domain}`;
-      this.xApiKey = envPrefix ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
-    } else {
-      const envUrl = getEnv('MEMORI_API_URL_BASE');
-      if (envUrl) {
-        this.baseUrl = envUrl;
-        this.xApiKey = PUBLIC_STAGING_KEY;
-      } else {
-        this.baseUrl = envPrefix
-          ? `https://${envPrefix}-api.memorilabs.ai`
-          : 'https://api.memorilabs.ai';
-        this.xApiKey = envPrefix ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
-      }
-    }
+  constructor() {
+    this._envPrefix = getEnv('MEMORI_ENV')?.trim() ?? '';
+    this._domain = getEnv('MEMORI_DOMAIN')?.trim() || undefined;
+    this._apiUrlBase = getEnv('MEMORI_API_URL_BASE') || undefined;
+
+    this.testMode = this._envPrefix !== '';
+    this.baseUrl = this.resolveUrl('api');
+    this.xApiKey =
+      this._domain || !this._apiUrlBase
+        ? this._envPrefix
+          ? PUBLIC_STAGING_KEY
+          : PUBLIC_PROD_KEY
+        : PUBLIC_STAGING_KEY;
 
     this.apiKey = getEnv('MEMORI_API_KEY') ?? null;
     this.sessionId = randomUUID();
     this.recallRelevanceThreshold = 0.1;
     this.timeout = 30000;
+  }
+
+  /**
+   * Builds the full base URL for the given subdomain (e.g. `'api'`, `'collector'`).
+   * Mirrors the Python `_resolve_api_config` logic.
+   */
+  public resolveUrl(subdomain: string): string {
+    if (this._domain) {
+      return this._envPrefix
+        ? `https://${this._envPrefix}-${subdomain}.${this._domain}`
+        : `https://${subdomain}.${this._domain}`;
+    }
+    if (this._apiUrlBase) return this._apiUrlBase;
+    return this._envPrefix
+      ? `https://${this._envPrefix}-${subdomain}.memorilabs.ai`
+      : `https://${subdomain}.memorilabs.ai`;
   }
 }

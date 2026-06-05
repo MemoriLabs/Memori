@@ -34,9 +34,30 @@ describe('Api Class', () => {
     vi.useRealTimers();
   });
 
-  it('should initialize with the correct collector subdomain', () => {
-    const collectorApi = new Api(config, ApiSubdomain.COLLECTOR);
-    expect(collectorApi).toBeDefined();
+  it('should resolve collector URL for public production', () => {
+    delete process.env.MEMORI_ENV;
+    delete process.env.MEMORI_DOMAIN;
+    const prodConfig = new Config();
+    const collectorApi = new Api(prodConfig, ApiSubdomain.COLLECTOR);
+    expect((collectorApi as any).baseUrl).toBe('https://collector.memorilabs.ai');
+  });
+
+  it('should resolve collector URL for staging env', () => {
+    process.env.MEMORI_ENV = 'staging';
+    const stagingConfig = new Config();
+    const collectorApi = new Api(stagingConfig, ApiSubdomain.COLLECTOR);
+    expect((collectorApi as any).baseUrl).toBe('https://staging-collector.memorilabs.ai');
+    delete process.env.MEMORI_ENV;
+  });
+
+  it('should resolve collector URL for arbitrary env prefix with tenant domain', () => {
+    process.env.MEMORI_ENV = 'qa';
+    process.env.MEMORI_DOMAIN = 'acme.memorilabs.ai';
+    const qaConfig = new Config();
+    const collectorApi = new Api(qaConfig, ApiSubdomain.COLLECTOR);
+    expect((collectorApi as any).baseUrl).toBe('https://qa-collector.acme.memorilabs.ai');
+    delete process.env.MEMORI_ENV;
+    delete process.env.MEMORI_DOMAIN;
   });
 
   it('should make a successful GET request', async () => {
