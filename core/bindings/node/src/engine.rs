@@ -1,6 +1,9 @@
 use crate::bridge::NodeConnectionFactory;
 use crate::types::*;
 use engine_orchestrator::EngineOrchestrator;
+use engine_orchestrator::network::{
+    ApiSubdomain, resolve_base_url, resolve_x_api_key as core_resolve_x_api_key,
+};
 use engine_orchestrator::search::FactId;
 use engine_orchestrator::storage::models::RankedFact;
 use engine_orchestrator::storage::{Dialect, RustStorageManager, StorageBridge, WriteBatch};
@@ -255,4 +258,18 @@ fn fact_id_from_json(v: &serde_json::Value) -> Option<Either<i64, String>> {
         serde_json::Value::String(s) => Some(Either::B(s.clone())),
         _ => None,
     }
+}
+
+#[napi]
+pub fn resolve_api_base_url(subdomain: String) -> String {
+    let sub = match subdomain.as_str() {
+        "collector" => ApiSubdomain::Collector,
+        _ => ApiSubdomain::Default,
+    };
+    resolve_base_url(&sub)
+}
+
+#[napi]
+pub fn resolve_x_api_key() -> String {
+    core_resolve_x_api_key()
 }

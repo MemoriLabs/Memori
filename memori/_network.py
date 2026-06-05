@@ -12,6 +12,7 @@ import asyncio
 import logging
 import os
 import ssl
+import sys
 from enum import Enum
 
 import aiohttp
@@ -31,6 +32,38 @@ from memori._exceptions import (
 
 logger = logging.getLogger(__name__)
 
+_PUBLIC_PROD_KEY = "96a7ea3e-11c2-428c-b9ae-5a168363dc80"
+_PUBLIC_STAGING_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
+
+
+def _resolve_api_config(subdomain_value: str) -> tuple[str, str]:
+    """Returns (base_url, x_api_key). Delegates to Rust when available."""
+    mp = sys.modules.get("memori_python")
+    if mp is not None and hasattr(mp, "resolve_api_base_url"):
+        return mp.resolve_api_base_url(subdomain_value), mp.resolve_x_api_key()
+
+    # Fallback mirrors Rust resolution order (used in test environments without Rust binary).
+    enterprise_prod = os.environ.get("MEMORI_ENTERPRISE_PRODUCTION_DOMAIN", "").strip()
+    if enterprise_prod:
+        return f"https://{subdomain_value}.{enterprise_prod}", _PUBLIC_PROD_KEY
+
+    enterprise_staging = os.environ.get("MEMORI_ENTERPRISE_STAGING_DOMAIN", "").strip()
+    if enterprise_staging:
+        return (
+            f"https://staging-{subdomain_value}.{enterprise_staging}",
+            _PUBLIC_STAGING_KEY,
+        )
+
+    custom_url = os.environ.get("MEMORI_API_URL_BASE", "").strip()
+    if custom_url:
+        return custom_url, _PUBLIC_STAGING_KEY
+
+    test_mode = os.environ.get("MEMORI_TEST_MODE") == "1"
+    if test_mode:
+        return f"https://staging-{subdomain_value}.memorilabs.ai", _PUBLIC_STAGING_KEY
+
+    return f"https://{subdomain_value}.memorilabs.ai", _PUBLIC_PROD_KEY
+
 
 class ApiSubdomain(str, Enum):
     DEFAULT = "api"
@@ -39,23 +72,7 @@ class ApiSubdomain(str, Enum):
 
 class Api:
     def __init__(self, config: Config, subdomain: ApiSubdomain = ApiSubdomain.DEFAULT):
-        test_mode = os.environ.get("MEMORI_TEST_MODE") == "1"
-
-        self.__base = config.api_url_base or os.environ.get("MEMORI_API_URL_BASE")
-
-        if self.__base is None:
-            if test_mode:
-                # Use staging for test mode
-                self.__x_api_key = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
-                self.__base = f"https://staging-{subdomain.value}.memorilabs.ai"
-            else:
-                # Use production
-                self.__x_api_key = "96a7ea3e-11c2-428c-b9ae-5a168363dc80"
-                self.__base = f"https://{subdomain.value}.memorilabs.ai"
-        else:
-            # Custom URL provided, use staging key as default
-            self.__x_api_key = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
-
+        self.__base, self.__x_api_key = _resolve_api_config(subdomain.value)
         self.config = config
 
     async def augmentation_async(self, payload: dict) -> dict:

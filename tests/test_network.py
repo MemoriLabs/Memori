@@ -109,6 +109,79 @@ class TestApiInitialization:
             del os.environ["MEMORI_TEST_MODE"]
 
 
+class TestApiEnterpriseDomain:
+    _ENTERPRISE_VARS = (
+        "MEMORI_ENTERPRISE_PRODUCTION_DOMAIN",
+        "MEMORI_ENTERPRISE_STAGING_DOMAIN",
+        "MEMORI_API_URL_BASE",
+        "MEMORI_TEST_MODE",
+    )
+
+    def _clean_env(self):
+        for v in self._ENTERPRISE_VARS:
+            os.environ.pop(v, None)
+
+    def test_enterprise_production_domain_api(self):
+        self._clean_env()
+        os.environ["MEMORI_ENTERPRISE_PRODUCTION_DOMAIN"] = "linkedin.memorilabs.ai"
+        try:
+            api = Api(Config())
+            assert api._Api__base == "https://api.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__x_api_key == "96a7ea3e-11c2-428c-b9ae-5a168363dc80"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+    def test_enterprise_production_domain_collector(self):
+        self._clean_env()
+        os.environ["MEMORI_ENTERPRISE_PRODUCTION_DOMAIN"] = "linkedin.memorilabs.ai"
+        try:
+            api = Api(Config(), subdomain=ApiSubdomain.COLLECTOR)
+            assert api._Api__base == "https://collector.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__x_api_key == "96a7ea3e-11c2-428c-b9ae-5a168363dc80"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+    def test_enterprise_staging_domain_api(self):
+        self._clean_env()
+        os.environ["MEMORI_ENTERPRISE_STAGING_DOMAIN"] = "linkedin.memorilabs.ai"
+        try:
+            api = Api(Config())
+            assert api._Api__base == "https://staging-api.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+    def test_enterprise_staging_domain_collector(self):
+        self._clean_env()
+        os.environ["MEMORI_ENTERPRISE_STAGING_DOMAIN"] = "linkedin.memorilabs.ai"
+        try:
+            api = Api(Config(), subdomain=ApiSubdomain.COLLECTOR)
+            assert api._Api__base == "https://staging-collector.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+    def test_enterprise_production_takes_priority_over_staging(self):
+        self._clean_env()
+        os.environ["MEMORI_ENTERPRISE_PRODUCTION_DOMAIN"] = "acme.memorilabs.ai"
+        os.environ["MEMORI_ENTERPRISE_STAGING_DOMAIN"] = "acme.memorilabs.ai"
+        try:
+            api = Api(Config())
+            assert api._Api__base == "https://api.acme.memorilabs.ai"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+    def test_enterprise_production_takes_priority_over_api_url_base(self):
+        self._clean_env()
+        os.environ["MEMORI_ENTERPRISE_PRODUCTION_DOMAIN"] = "acme.memorilabs.ai"
+        os.environ["MEMORI_API_URL_BASE"] = "https://custom.api.com"
+        try:
+            api = Api(Config())
+            assert api._Api__base == "https://api.acme.memorilabs.ai"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+
 class TestApiUrl:
     def test_url_construction(self, api):
         assert api.url("test/route") == "https://test.api.com/v1/test/route"

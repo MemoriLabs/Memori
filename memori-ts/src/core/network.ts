@@ -12,9 +12,6 @@ export enum ApiSubdomain {
   COLLECTOR = 'collector',
 }
 
-const PUBLIC_PROD_KEY = '96a7ea3e-11c2-428c-b9ae-5a168363dc80';
-const PUBLIC_STAGING_KEY = 'c18b1022-7fe2-42af-ab01-b1f9139184f0';
-
 interface FetchOptions extends RequestInit {
   maxRetries?: number;
 }
@@ -37,7 +34,7 @@ export class Api {
       this.baseUrl = this.config.baseUrl;
     }
 
-    this.xApiKey = this.config.testMode ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
+    this.xApiKey = this.config.xApiKey;
   }
 
   private getHeaders(): HeadersInit {
