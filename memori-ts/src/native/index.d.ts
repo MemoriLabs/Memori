@@ -99,4 +99,5 @@ export interface NapiWriteAck {
 }
 
 export declare function resolveApiBaseUrl(subdomain: string): string
+
 export declare function resolveXApiKey(): string

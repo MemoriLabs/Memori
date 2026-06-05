@@ -577,3 +577,5 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.MemoriEngine = nativeBinding.MemoriEngine
+module.exports.resolveApiBaseUrl = nativeBinding.resolveApiBaseUrl
+module.exports.resolveXApiKey = nativeBinding.resolveXApiKey

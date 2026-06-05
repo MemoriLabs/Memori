@@ -1,20 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Config } from '../../src/core/config.js';
 
-const ENTERPRISE_VARS = [
-  'MEMORI_ENTERPRISE_PRODUCTION_DOMAIN',
-  'MEMORI_ENTERPRISE_STAGING_DOMAIN',
-  'MEMORI_API_URL_BASE',
-  'MEMORI_TEST_MODE',
-];
-
 describe('Config', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
-    ENTERPRISE_VARS.forEach((v) => delete process.env[v]);
   });
 
   afterEach(() => {
@@ -41,6 +33,8 @@ describe('Config', () => {
   });
 
   it('should default to production URL if no env vars set', () => {
+    delete process.env.MEMORI_TEST_MODE;
+    delete process.env.MEMORI_API_URL_BASE;
     const config = new Config();
     expect(config.baseUrl).toBe('https://api.memorilabs.ai');
   });
