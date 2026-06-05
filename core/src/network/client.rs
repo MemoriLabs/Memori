@@ -37,7 +37,9 @@ impl MemoriClient {
     /// Initializes the client from environment variables.
     pub fn new(subdomain: ApiSubdomain) -> Result<Self, ApiError> {
         let prefix = subdomain.as_str();
-        let is_staging = env::var("MEMORI_ENV").unwrap_or_default() == "staging";
+        let env_prefix = env::var("MEMORI_ENV").unwrap_or_default();
+        let env_prefix = env_prefix.trim();
+        let is_production = env_prefix.is_empty();
 
         let (base_url, x_api_key) = {
             let x_key = env::var("MEMORI_X_API_KEY");
@@ -45,25 +47,25 @@ impl MemoriClient {
             if let Ok(domain) = env::var("MEMORI_DOMAIN") {
                 let domain = domain.trim().to_string();
                 if !domain.is_empty() {
-                    let url = if is_staging {
-                        format!("https://staging-{}.{}", prefix, domain)
-                    } else {
+                    let url = if is_production {
                         format!("https://{}.{}", prefix, domain)
+                    } else {
+                        format!("https://{}-{}.{}", env_prefix, prefix, domain)
                     };
                     let key = x_key.unwrap_or_else(|_| {
-                        if is_staging {
-                            PUBLIC_STAGING_KEY
-                        } else {
+                        if is_production {
                             PUBLIC_PROD_KEY
+                        } else {
+                            PUBLIC_STAGING_KEY
                         }
                         .to_string()
                     });
                     (url, key)
                 } else {
-                    Self::resolve_fallback(prefix, is_staging, x_key)
+                    Self::resolve_fallback(prefix, env_prefix, is_production, x_key)
                 }
             } else {
-                Self::resolve_fallback(prefix, is_staging, x_key)
+                Self::resolve_fallback(prefix, env_prefix, is_production, x_key)
             }
         };
 
@@ -84,7 +86,8 @@ impl MemoriClient {
 
     fn resolve_fallback(
         prefix: &str,
-        is_staging: bool,
+        env_prefix: &str,
+        is_production: bool,
         x_key: Result<String, env::VarError>,
     ) -> (String, String) {
         if let Ok(url) = env::var("MEMORI_API_URL_BASE") {
@@ -95,17 +98,20 @@ impl MemoriClient {
             }
         }
         let key = x_key.unwrap_or_else(|_| {
-            if is_staging {
-                PUBLIC_STAGING_KEY
-            } else {
+            if is_production {
                 PUBLIC_PROD_KEY
+            } else {
+                PUBLIC_STAGING_KEY
             }
             .to_string()
         });
-        if is_staging {
-            (format!("https://staging-{}.memorilabs.ai", prefix), key)
-        } else {
+        if is_production {
             (format!("https://{}.memorilabs.ai", prefix), key)
+        } else {
+            (
+                format!("https://{}-{}.memorilabs.ai", env_prefix, prefix),
+                key,
+            )
         }
     }
 

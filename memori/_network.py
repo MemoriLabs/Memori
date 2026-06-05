@@ -36,22 +36,23 @@ _PUBLIC_STAGING_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
 
 
 def _resolve_api_config(subdomain_value: str) -> tuple[str, str]:
-    is_staging = os.environ.get("MEMORI_ENV") == "staging"
+    env_prefix = os.environ.get("MEMORI_ENV", "").strip()
+    is_production = not env_prefix
 
     domain = os.environ.get("MEMORI_DOMAIN", "").strip()
     if domain:
-        if is_staging:
-            return f"https://staging-{subdomain_value}.{domain}", _PUBLIC_STAGING_KEY
-        return f"https://{subdomain_value}.{domain}", _PUBLIC_PROD_KEY
+        if is_production:
+            return f"https://{subdomain_value}.{domain}", _PUBLIC_PROD_KEY
+        return f"https://{env_prefix}-{subdomain_value}.{domain}", _PUBLIC_STAGING_KEY
 
     custom_url = os.environ.get("MEMORI_API_URL_BASE", "").strip()
     if custom_url:
         return custom_url, _PUBLIC_STAGING_KEY
 
-    if is_staging:
-        return f"https://staging-{subdomain_value}.memorilabs.ai", _PUBLIC_STAGING_KEY
+    if is_production:
+        return f"https://{subdomain_value}.memorilabs.ai", _PUBLIC_PROD_KEY
 
-    return f"https://{subdomain_value}.memorilabs.ai", _PUBLIC_PROD_KEY
+    return f"https://{env_prefix}-{subdomain_value}.memorilabs.ai", _PUBLIC_STAGING_KEY
 
 
 class ApiSubdomain(str, Enum):

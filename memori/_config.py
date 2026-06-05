@@ -104,7 +104,7 @@ class Config:
         self.version = version("memori")
 
     def is_test_mode(self):
-        return os.environ.get("MEMORI_ENV") == "staging"
+        return bool(os.environ.get("MEMORI_ENV", "").strip())
 
     def reset_cache(self):
         self.cache = Cache()

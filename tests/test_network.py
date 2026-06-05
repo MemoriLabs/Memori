@@ -67,7 +67,7 @@ class TestApiInitialization:
         assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
         assert api._Api__base == "https://custom.api.com"  # type: ignore[attr-defined]
 
-    def test_init_uses_staging_when_memori_env_staging(self):
+    def test_init_uses_env_prefix_when_memori_env_set(self):
         os.environ.pop("MEMORI_API_URL_BASE", None)
         os.environ["MEMORI_ENV"] = "staging"
 
@@ -78,14 +78,14 @@ class TestApiInitialization:
         finally:
             del os.environ["MEMORI_ENV"]
 
-    def test_init_uses_staging_subdomain_when_memori_env_staging(self):
+    def test_init_uses_arbitrary_env_prefix(self):
         os.environ.pop("MEMORI_API_URL_BASE", None)
-        os.environ["MEMORI_ENV"] = "staging"
+        os.environ["MEMORI_ENV"] = "qa"
 
         try:
-            api = Api(Config(), subdomain=ApiSubdomain.DEFAULT)
+            api = Api(Config())
             assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
-            assert api._Api__base == "https://staging-api.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://qa-api.memorilabs.ai"  # type: ignore[attr-defined]
         finally:
             del os.environ["MEMORI_ENV"]
 
@@ -143,6 +143,17 @@ class TestApiTenantDomain:
         try:
             api = Api(Config(), subdomain=ApiSubdomain.COLLECTOR)
             assert api._Api__base == "https://staging-collector.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
+        finally:
+            self._clean_env()
+
+    def test_tenant_arbitrary_env_prefix(self):
+        self._clean_env()
+        os.environ["MEMORI_DOMAIN"] = "linkedin.memorilabs.ai"
+        os.environ["MEMORI_ENV"] = "qa"
+        try:
+            api = Api(Config())
+            assert api._Api__base == "https://qa-api.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
             assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
         finally:
             self._clean_env()

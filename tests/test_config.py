@@ -15,6 +15,12 @@ def test_is_test_mode():
     finally:
         os.environ.pop("MEMORI_ENV", None)
 
+    try:
+        os.environ["MEMORI_ENV"] = "qa"
+        assert config.is_test_mode() is True
+    finally:
+        os.environ.pop("MEMORI_ENV", None)
+
 
 def test_reset_cache():
     config = Config()

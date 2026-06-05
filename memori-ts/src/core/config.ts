@@ -73,22 +73,23 @@ export class Config {
   public storage?: StorageManager;
 
   constructor() {
-    this.testMode = getEnv('MEMORI_ENV') === 'staging';
+    const envPrefix = getEnv('MEMORI_ENV')?.trim() ?? '';
+    this.testMode = envPrefix !== '';
 
     const domain = getEnv('MEMORI_DOMAIN')?.trim();
     if (domain) {
-      this.baseUrl = this.testMode ? `https://staging-api.${domain}` : `https://api.${domain}`;
-      this.xApiKey = this.testMode ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
+      this.baseUrl = envPrefix ? `https://${envPrefix}-api.${domain}` : `https://api.${domain}`;
+      this.xApiKey = envPrefix ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
     } else {
       const envUrl = getEnv('MEMORI_API_URL_BASE');
       if (envUrl) {
         this.baseUrl = envUrl;
         this.xApiKey = PUBLIC_STAGING_KEY;
       } else {
-        this.baseUrl = this.testMode
-          ? 'https://staging-api.memorilabs.ai'
+        this.baseUrl = envPrefix
+          ? `https://${envPrefix}-api.memorilabs.ai`
           : 'https://api.memorilabs.ai';
-        this.xApiKey = this.testMode ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
+        this.xApiKey = envPrefix ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
       }
     }
 
