@@ -51,25 +51,25 @@ describe('Config', () => {
 
   describe('tenant domain', () => {
     it('should use MEMORI_DOMAIN for production api subdomain', () => {
-      process.env.MEMORI_DOMAIN = 'linkedin.memorilabs.ai';
+      process.env.MEMORI_DOMAIN = 'acme.memorilabs.ai';
       const config = new Config();
-      expect(config.baseUrl).toBe('https://api.linkedin.memorilabs.ai');
+      expect(config.baseUrl).toBe('https://api.acme.memorilabs.ai');
       expect(config.xApiKey).toBe('96a7ea3e-11c2-428c-b9ae-5a168363dc80');
     });
 
     it('should use MEMORI_DOMAIN with env prefix when MEMORI_ENV=staging', () => {
-      process.env.MEMORI_DOMAIN = 'linkedin.memorilabs.ai';
+      process.env.MEMORI_DOMAIN = 'acme.memorilabs.ai';
       process.env.MEMORI_ENV = 'staging';
       const config = new Config();
-      expect(config.baseUrl).toBe('https://staging-api.linkedin.memorilabs.ai');
+      expect(config.baseUrl).toBe('https://staging-api.acme.memorilabs.ai');
       expect(config.xApiKey).toBe('c18b1022-7fe2-42af-ab01-b1f9139184f0');
     });
 
     it('should use MEMORI_DOMAIN with arbitrary env prefix when MEMORI_ENV=qa', () => {
-      process.env.MEMORI_DOMAIN = 'linkedin.memorilabs.ai';
+      process.env.MEMORI_DOMAIN = 'acme.memorilabs.ai';
       process.env.MEMORI_ENV = 'qa';
       const config = new Config();
-      expect(config.baseUrl).toBe('https://qa-api.linkedin.memorilabs.ai');
+      expect(config.baseUrl).toBe('https://qa-api.acme.memorilabs.ai');
       expect(config.xApiKey).toBe('c18b1022-7fe2-42af-ab01-b1f9139184f0');
     });
 

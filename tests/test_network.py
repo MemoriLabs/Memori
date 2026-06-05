@@ -107,53 +107,53 @@ class TestApiTenantDomain:
 
     def test_tenant_production_api(self):
         self._clean_env()
-        os.environ["MEMORI_DOMAIN"] = "linkedin.memorilabs.ai"
+        os.environ["MEMORI_DOMAIN"] = "acme.memorilabs.ai"
         try:
             api = Api(Config())
-            assert api._Api__base == "https://api.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://api.acme.memorilabs.ai"  # type: ignore[attr-defined]
             assert api._Api__x_api_key == "96a7ea3e-11c2-428c-b9ae-5a168363dc80"  # type: ignore[attr-defined]
         finally:
             self._clean_env()
 
     def test_tenant_production_collector(self):
         self._clean_env()
-        os.environ["MEMORI_DOMAIN"] = "linkedin.memorilabs.ai"
+        os.environ["MEMORI_DOMAIN"] = "acme.memorilabs.ai"
         try:
             api = Api(Config(), subdomain=ApiSubdomain.COLLECTOR)
-            assert api._Api__base == "https://collector.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://collector.acme.memorilabs.ai"  # type: ignore[attr-defined]
             assert api._Api__x_api_key == "96a7ea3e-11c2-428c-b9ae-5a168363dc80"  # type: ignore[attr-defined]
         finally:
             self._clean_env()
 
     def test_tenant_staging_api(self):
         self._clean_env()
-        os.environ["MEMORI_DOMAIN"] = "linkedin.memorilabs.ai"
+        os.environ["MEMORI_DOMAIN"] = "acme.memorilabs.ai"
         os.environ["MEMORI_ENV"] = "staging"
         try:
             api = Api(Config())
-            assert api._Api__base == "https://staging-api.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://staging-api.acme.memorilabs.ai"  # type: ignore[attr-defined]
             assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
         finally:
             self._clean_env()
 
     def test_tenant_staging_collector(self):
         self._clean_env()
-        os.environ["MEMORI_DOMAIN"] = "linkedin.memorilabs.ai"
+        os.environ["MEMORI_DOMAIN"] = "acme.memorilabs.ai"
         os.environ["MEMORI_ENV"] = "staging"
         try:
             api = Api(Config(), subdomain=ApiSubdomain.COLLECTOR)
-            assert api._Api__base == "https://staging-collector.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://staging-collector.acme.memorilabs.ai"  # type: ignore[attr-defined]
             assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
         finally:
             self._clean_env()
 
     def test_tenant_arbitrary_env_prefix(self):
         self._clean_env()
-        os.environ["MEMORI_DOMAIN"] = "linkedin.memorilabs.ai"
+        os.environ["MEMORI_DOMAIN"] = "acme.memorilabs.ai"
         os.environ["MEMORI_ENV"] = "qa"
         try:
             api = Api(Config())
-            assert api._Api__base == "https://qa-api.linkedin.memorilabs.ai"  # type: ignore[attr-defined]
+            assert api._Api__base == "https://qa-api.acme.memorilabs.ai"  # type: ignore[attr-defined]
             assert api._Api__x_api_key == "c18b1022-7fe2-42af-ab01-b1f9139184f0"  # type: ignore[attr-defined]
         finally:
             self._clean_env()
