@@ -5,15 +5,15 @@ from memori._config import Config
 
 def test_is_test_mode():
     config = Config()
-    os.environ.pop("MEMORI_TEST_MODE", None)
+    os.environ.pop("MEMORI_ENV", None)
 
     assert config.is_test_mode() is False
 
     try:
-        os.environ["MEMORI_TEST_MODE"] = "1"
+        os.environ["MEMORI_ENV"] = "staging"
         assert config.is_test_mode() is True
     finally:
-        os.environ.pop("MEMORI_TEST_MODE", None)
+        os.environ.pop("MEMORI_ENV", None)
 
 
 def test_reset_cache():

@@ -120,19 +120,19 @@ def mongodb_client():
 
 
 @pytest.fixture
-def memori_test_mode():
+def memori_staging_env():
     """Enable Memori test mode."""
-    original = os.environ.get("MEMORI_TEST_MODE")
-    os.environ["MEMORI_TEST_MODE"] = "1"
+    original = os.environ.get("MEMORI_ENV")
+    os.environ["MEMORI_ENV"] = "staging"
     yield
     if original is None:
-        os.environ.pop("MEMORI_TEST_MODE", None)
+        os.environ.pop("MEMORI_ENV", None)
     else:
-        os.environ["MEMORI_TEST_MODE"] = original
+        os.environ["MEMORI_ENV"] = original
 
 
 @pytest.fixture
-def sqlite_memori(sqlite_session_factory, memori_test_mode):
+def sqlite_memori(sqlite_session_factory, memori_staging_env):
     """Create a Memori instance with SQLite backend."""
     from memori import Memori
 
@@ -146,7 +146,7 @@ def sqlite_memori(sqlite_session_factory, memori_test_mode):
 
 
 @pytest.fixture
-def postgres_memori(postgres_session_factory, memori_test_mode):
+def postgres_memori(postgres_session_factory, memori_staging_env):
     """Create a Memori instance with PostgreSQL backend."""
     from memori import Memori
 
@@ -160,7 +160,7 @@ def postgres_memori(postgres_session_factory, memori_test_mode):
 
 
 @pytest.fixture
-def mysql_memori(mysql_session_factory, memori_test_mode):
+def mysql_memori(mysql_session_factory, memori_staging_env):
     """Create a Memori instance with MySQL backend."""
     from memori import Memori
 
@@ -174,7 +174,7 @@ def mysql_memori(mysql_session_factory, memori_test_mode):
 
 
 @pytest.fixture
-def mongodb_memori(mongodb_client, memori_test_mode):
+def mongodb_memori(mongodb_client, memori_staging_env):
     """Create a Memori instance with MongoDB backend."""
     from memori import Memori
 

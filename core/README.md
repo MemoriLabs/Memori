@@ -86,7 +86,8 @@ Runtime knobs read from the environment (all optional):
 | `MEMORI_API_URL_BASE`           | Override the Memori API base URL                            | `https://api.memorilabs.ai`          |
 | `MEMORI_X_API_KEY`              | Override the `X-Memori-API-Key` header                      | built-in public key                  |
 | `MEMORI_API_KEY`                | Optional bearer token for per-tenant quota                  | unset                                |
-| `MEMORI_TEST_MODE`              | When `1`, point at `staging-*.memorilabs.ai`                | `0`                                  |
+| `MEMORI_ENV`                    | When `staging`, point at `staging-*.memorilabs.ai`          | unset (production)                   |
+| `MEMORI_DOMAIN`                 | Tenant domain for private VPC (e.g. `acme.memorilabs.ai`)  | unset (public endpoints)             |
 | `MEMORI_RECALL_LEX_WEIGHT`      | Lexical weight for hybrid re-rank (clamped `[0.05, 0.40]`)  | `0.15`                               |
 | `MEMORI_RECALL_LEX_WEIGHT_SHORT`| Lexical weight for short queries (≤ 2 tokens)               | `0.30`                               |
 

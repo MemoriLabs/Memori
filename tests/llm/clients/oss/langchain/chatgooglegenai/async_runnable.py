@@ -13,7 +13,7 @@ from tests.database.core import TestDBSession
 if os.environ.get("GEMINI_API_KEY", None) is None:
     raise RuntimeError("GEMINI_API_KEY is not set")
 
-os.environ["MEMORI_TEST_MODE"] = "1"
+os.environ["MEMORI_ENV"] = "staging"
 
 
 async def main():

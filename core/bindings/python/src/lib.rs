@@ -13,7 +13,6 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use engine_orchestrator::augmentation::AugmentationInput;
-use engine_orchestrator::network::{ApiSubdomain, resolve_base_url, resolve_x_api_key};
 use engine_orchestrator::retrieval::RetrievalRequest;
 use engine_orchestrator::search::FactId;
 use engine_orchestrator::storage::{
@@ -271,21 +270,6 @@ fn core_postprocess_request(payload: &str) -> PyResult<u64> {
 }
 
 #[pyfunction]
-fn resolve_api_base_url(subdomain: &str) -> String {
-    let sub = match subdomain {
-        "collector" => ApiSubdomain::Collector,
-        _ => ApiSubdomain::Default,
-    };
-    resolve_base_url(&sub)
-}
-
-#[pyfunction]
-#[pyo3(name = "resolve_x_api_key")]
-fn resolve_x_api_key_py() -> String {
-    resolve_x_api_key()
-}
-
-#[pyfunction]
 #[pyo3(signature = (texts, model_name=None))]
 fn embed_texts(
     py: Python<'_>,
@@ -351,7 +335,5 @@ fn memori_python(_py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> 
     module.add_function(wrap_pyfunction!(hello_world, module)?)?;
     module.add_function(wrap_pyfunction!(core_postprocess_request, module)?)?;
     module.add_function(wrap_pyfunction!(embed_texts, module)?)?;
-    module.add_function(wrap_pyfunction!(resolve_api_base_url, module)?)?;
-    module.add_function(wrap_pyfunction!(resolve_x_api_key_py, module)?)?;
     Ok(())
 }

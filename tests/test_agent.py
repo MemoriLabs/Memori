@@ -8,7 +8,7 @@ from memori import Memori
 def test_memori_accepts_programmatic_api_key(monkeypatch):
     monkeypatch.delenv("MEMORI_API_KEY", raising=False)
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
 
     mem = Memori(api_key="programmatic-key")
 
@@ -19,7 +19,7 @@ def test_memori_accepts_programmatic_api_key(monkeypatch):
 def test_memori_accepts_programmatic_base_url(monkeypatch):
     monkeypatch.delenv("MEMORI_API_URL_BASE", raising=False)
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
 
     mem = Memori(api_key="key", base_url="https://api.example.com")
 
@@ -35,7 +35,7 @@ def test_memori_accepts_programmatic_base_url(monkeypatch):
 
 def test_sync_api_uses_configured_timeout(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
     mem.config.request_secs_timeout = 12
 
@@ -59,7 +59,7 @@ def test_sync_api_uses_configured_timeout(monkeypatch, mocker):
 
 def test_agent_recall_builds_query_string(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key").attribution("entity", "process")
 
     get = mocker.patch.object(
@@ -91,7 +91,7 @@ def test_agent_recall_builds_query_string(monkeypatch, mocker):
 
 def test_agent_recall_rejects_session_without_project(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
 
     with pytest.raises(ValueError, match="session_id cannot be provided"):
@@ -100,7 +100,7 @@ def test_agent_recall_rejects_session_without_project(monkeypatch):
 
 def test_agent_recall_summary_builds_query_string(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
 
     get = mocker.patch.object(
@@ -119,7 +119,7 @@ def test_agent_recall_summary_builds_query_string(monkeypatch, mocker):
 
 def test_agent_compaction_builds_query_string(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
 
     get = mocker.patch.object(
@@ -142,7 +142,7 @@ def test_agent_compaction_builds_query_string(monkeypatch, mocker):
 
 def test_agent_compaction_requires_project(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
 
     with pytest.raises(ValueError, match="project_id is required"):
@@ -151,7 +151,7 @@ def test_agent_compaction_requires_project(monkeypatch):
 
 def test_capture_agent_turn_writes_turn_then_collector(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key").attribution("entity", "process")
     mem.set_session("session")
 
@@ -202,7 +202,7 @@ def test_capture_agent_turn_writes_turn_then_collector(monkeypatch, mocker):
 
 def test_capture_agent_turn_swallow_collector_failure(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
 
     default_post = mocker.patch.object(mem.agent.default_api, "post", return_value={})
@@ -223,7 +223,7 @@ def test_capture_agent_turn_swallow_collector_failure(monkeypatch, mocker):
 
 def test_agent_feedback_posts_content(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori(api_key="key")
 
     post = mocker.patch.object(mem.agent.default_api, "post", return_value={})

@@ -21,7 +21,7 @@ def main() -> None:
     if not openai_api_key:
         raise RuntimeError("Set OPENAI_API_KEY before running this example.")
 
-    os.environ["MEMORI_TEST_MODE"] = "1"
+    os.environ["MEMORI_ENV"] = "staging"
 
     client = OpenAI(api_key=openai_api_key, timeout=30.0)
     engine = create_engine("sqlite:///memori_rust_core.db")

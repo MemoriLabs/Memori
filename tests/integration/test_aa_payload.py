@@ -7,7 +7,7 @@ import pytest
 
 from tests.integration.conftest import requires_openai
 
-os.environ.setdefault("MEMORI_TEST_MODE", "1")
+os.environ.setdefault("MEMORI_ENV", "staging")
 
 MODEL = "gpt-4o-mini"
 MAX_TOKENS = 50
@@ -219,12 +219,12 @@ class TestAAEdgeCases:
 
 
 class TestTestModeConfiguration:
-    def test_memori_test_mode_is_enabled(self):
-        assert os.environ.get("MEMORI_TEST_MODE") == "1"
+    def test_memori_staging_env_is_enabled(self):
+        assert os.environ.get("MEMORI_ENV") == "staging"
 
     @requires_openai
     @pytest.mark.integration
     def test_memori_instance_in_test_mode(self, memori_instance):
-        assert os.environ.get("MEMORI_TEST_MODE") is not None
+        assert os.environ.get("MEMORI_ENV") is not None
         assert memori_instance is not None
         assert memori_instance.config is not None

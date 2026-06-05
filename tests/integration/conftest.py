@@ -87,14 +87,14 @@ def sqlite_session_factory(tmp_path):
 
 
 @pytest.fixture
-def memori_test_mode():
-    original = os.environ.get("MEMORI_TEST_MODE")
-    os.environ["MEMORI_TEST_MODE"] = "1"
+def memori_staging_env():
+    original = os.environ.get("MEMORI_ENV")
+    os.environ["MEMORI_ENV"] = "staging"
     yield
     if original is None:
-        os.environ.pop("MEMORI_TEST_MODE", None)
+        os.environ.pop("MEMORI_ENV", None)
     else:
-        os.environ["MEMORI_TEST_MODE"] = original
+        os.environ["MEMORI_ENV"] = original
 
 
 @pytest.fixture
@@ -112,7 +112,7 @@ def async_openai_client(openai_api_key):
 
 
 @pytest.fixture
-def memori_instance(sqlite_session_factory, memori_test_mode):
+def memori_instance(sqlite_session_factory, memori_staging_env):
     from memori import Memori
 
     mem = Memori(conn=sqlite_session_factory)
@@ -382,7 +382,7 @@ def aa_payload_capture():
 
 @pytest.fixture
 def memori_instance_with_capture(
-    sqlite_session_factory, memori_test_mode, aa_payload_capture
+    sqlite_session_factory, memori_staging_env, aa_payload_capture
 ):
     from memori import Memori
 

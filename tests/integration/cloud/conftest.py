@@ -13,18 +13,18 @@ requires_memori_api_key = pytest.mark.skipif(
 
 @pytest.fixture
 def cloud_test_mode():
-    """Set MEMORI_TEST_MODE=1 so cloud API calls hit staging.
+    """Set MEMORI_ENV=staging so cloud API calls hit staging.
 
     Production cloud-api.memorilabs.ai does not exist yet.
     Only staging-cloud-api.memorilabs.ai is live.
     """
-    original = os.environ.get("MEMORI_TEST_MODE")
-    os.environ["MEMORI_TEST_MODE"] = "1"
+    original = os.environ.get("MEMORI_ENV")
+    os.environ["MEMORI_ENV"] = "staging"
     yield
     if original is None:
-        os.environ.pop("MEMORI_TEST_MODE", None)
+        os.environ.pop("MEMORI_ENV", None)
     else:
-        os.environ["MEMORI_TEST_MODE"] = original
+        os.environ["MEMORI_ENV"] = original
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def cloud_memori_instance(sqlite_session_factory, cloud_test_mode):
 
     Uses conn for local storage (conversation/message verification) but sets
     config.cloud = True so augmentation and recall hit the staging cloud API.
-    Requires MEMORI_API_KEY and MEMORI_TEST_MODE=1 (set automatically).
+    Requires MEMORI_API_KEY and MEMORI_ENV=staging (set automatically).
     """
     if not MEMORI_API_KEY:
         pytest.skip("MEMORI_API_KEY not set (required for cloud tests)")

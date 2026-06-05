@@ -12,7 +12,6 @@ import asyncio
 import logging
 import os
 import ssl
-import sys
 from enum import Enum
 
 import aiohttp
@@ -37,29 +36,19 @@ _PUBLIC_STAGING_KEY = "c18b1022-7fe2-42af-ab01-b1f9139184f0"
 
 
 def _resolve_api_config(subdomain_value: str) -> tuple[str, str]:
-    """Returns (base_url, x_api_key). Delegates to Rust when available."""
-    mp = sys.modules.get("memori_python")
-    if mp is not None and hasattr(mp, "resolve_api_base_url"):
-        return mp.resolve_api_base_url(subdomain_value), mp.resolve_x_api_key()
+    is_staging = os.environ.get("MEMORI_ENV") == "staging"
 
-    # Fallback mirrors Rust resolution order (used in test environments without Rust binary).
-    enterprise_prod = os.environ.get("MEMORI_ENTERPRISE_PRODUCTION_DOMAIN", "").strip()
-    if enterprise_prod:
-        return f"https://{subdomain_value}.{enterprise_prod}", _PUBLIC_PROD_KEY
-
-    enterprise_staging = os.environ.get("MEMORI_ENTERPRISE_STAGING_DOMAIN", "").strip()
-    if enterprise_staging:
-        return (
-            f"https://staging-{subdomain_value}.{enterprise_staging}",
-            _PUBLIC_STAGING_KEY,
-        )
+    domain = os.environ.get("MEMORI_DOMAIN", "").strip()
+    if domain:
+        if is_staging:
+            return f"https://staging-{subdomain_value}.{domain}", _PUBLIC_STAGING_KEY
+        return f"https://{subdomain_value}.{domain}", _PUBLIC_PROD_KEY
 
     custom_url = os.environ.get("MEMORI_API_URL_BASE", "").strip()
     if custom_url:
         return custom_url, _PUBLIC_STAGING_KEY
 
-    test_mode = os.environ.get("MEMORI_TEST_MODE") == "1"
-    if test_mode:
+    if is_staging:
         return f"https://staging-{subdomain_value}.memorilabs.ai", _PUBLIC_STAGING_KEY
 
     return f"https://{subdomain_value}.memorilabs.ai", _PUBLIC_PROD_KEY
@@ -72,7 +61,13 @@ class ApiSubdomain(str, Enum):
 
 class Api:
     def __init__(self, config: Config, subdomain: ApiSubdomain = ApiSubdomain.DEFAULT):
-        self.__base, self.__x_api_key = _resolve_api_config(subdomain.value)
+        env_base = os.environ.get("MEMORI_API_URL_BASE", "").strip()
+        if config.api_url_base and config.api_url_base != env_base:
+            # Programmatic base_url — takes precedence over env vars
+            self.__base = config.api_url_base
+            self.__x_api_key = _PUBLIC_STAGING_KEY
+        else:
+            self.__base, self.__x_api_key = _resolve_api_config(subdomain.value)
         self.config = config
 
     async def augmentation_async(self, payload: dict) -> dict:

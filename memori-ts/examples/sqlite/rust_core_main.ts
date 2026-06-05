@@ -17,7 +17,7 @@ async function main(): Promise<void> {
     throw new Error('Set OPENAI_API_KEY before running this example.');
   }
 
-  process.env.MEMORI_TEST_MODE = '1';
+  process.env.MEMORI_ENV = 'staging';
 
   const client = new OpenAI({ apiKey: openaiApiKey, timeout: 30_000 });
   const db = new Database('memori_rust_core.db');

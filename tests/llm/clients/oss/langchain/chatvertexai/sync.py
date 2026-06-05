@@ -10,7 +10,7 @@ from tests.database.core import TestDBSession
 if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", None) is None:
     raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS is not set")
 
-os.environ["MEMORI_TEST_MODE"] = "1"
+os.environ["MEMORI_ENV"] = "staging"
 
 session = TestDBSession
 client = ChatVertexAI(

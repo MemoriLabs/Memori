@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import type { StorageManager } from '../storage/manager.js';
 
@@ -34,8 +33,8 @@ export class Config {
   public xApiKey: string;
 
   /**
-   * Whether the SDK is running in test/staging mode.
-   * Defaults to `true` if `MEMORI_TEST_MODE` is set to '1'.
+   * Whether the SDK is running in staging mode.
+   * Defaults to `true` if `MEMORI_ENV` is set to 'staging'.
    */
   public testMode: boolean;
 
@@ -74,54 +73,28 @@ export class Config {
   public storage?: StorageManager;
 
   constructor() {
-    this.testMode = getEnv('MEMORI_TEST_MODE') === '1';
+    this.testMode = getEnv('MEMORI_ENV') === 'staging';
 
-    // Delegate URL and key resolution to Rust so the enterprise domain env vars
-    // have a single source of truth. Falls back to reading env vars directly
-    // when native bindings are unavailable (e.g. unit tests).
-    try {
-      const require = createRequire(import.meta.url);
-      const native = require('../native/index.js') as {
-        resolveApiBaseUrl: (subdomain: string) => string;
-        resolveXApiKey: () => string;
-      };
-      this.baseUrl = native.resolveApiBaseUrl('api');
-      this.xApiKey = native.resolveXApiKey();
-    } catch {
-      this.baseUrl = this._resolveBaseUrlFallback();
-      this.xApiKey = this._resolveXApiKeyFallback();
+    const domain = getEnv('MEMORI_DOMAIN')?.trim();
+    if (domain) {
+      this.baseUrl = this.testMode ? `https://staging-api.${domain}` : `https://api.${domain}`;
+      this.xApiKey = this.testMode ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
+    } else {
+      const envUrl = getEnv('MEMORI_API_URL_BASE');
+      if (envUrl) {
+        this.baseUrl = envUrl;
+        this.xApiKey = PUBLIC_STAGING_KEY;
+      } else {
+        this.baseUrl = this.testMode
+          ? 'https://staging-api.memorilabs.ai'
+          : 'https://api.memorilabs.ai';
+        this.xApiKey = this.testMode ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
+      }
     }
 
     this.apiKey = getEnv('MEMORI_API_KEY') ?? null;
     this.sessionId = randomUUID();
     this.recallRelevanceThreshold = 0.1;
     this.timeout = 30000;
-  }
-
-  // Mirrors Rust resolve_base_url — used only when native bindings are unavailable.
-  private _resolveBaseUrlFallback(): string {
-    const enterpriseProd = getEnv('MEMORI_ENTERPRISE_PRODUCTION_DOMAIN')?.trim();
-    if (enterpriseProd) return `https://api.${enterpriseProd}`;
-
-    const enterpriseStaging = getEnv('MEMORI_ENTERPRISE_STAGING_DOMAIN')?.trim();
-    if (enterpriseStaging) return `https://staging-api.${enterpriseStaging}`;
-
-    const envUrl = getEnv('MEMORI_API_URL_BASE');
-    if (envUrl) return envUrl;
-
-    return this.testMode ? 'https://staging-api.memorilabs.ai' : 'https://api.memorilabs.ai';
-  }
-
-  // Mirrors Rust resolve_x_api_key — used only when native bindings are unavailable.
-  private _resolveXApiKeyFallback(): string {
-    const enterpriseProd = getEnv('MEMORI_ENTERPRISE_PRODUCTION_DOMAIN')?.trim();
-    if (enterpriseProd) return PUBLIC_PROD_KEY;
-
-    const usesStaging =
-      !!getEnv('MEMORI_ENTERPRISE_STAGING_DOMAIN')?.trim() ||
-      !!getEnv('MEMORI_API_URL_BASE') ||
-      this.testMode;
-
-    return usesStaging ? PUBLIC_STAGING_KEY : PUBLIC_PROD_KEY;
   }
 }

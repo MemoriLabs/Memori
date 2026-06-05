@@ -13,7 +13,7 @@ from memori import Memori
 if os.environ.get("AWS_BEARER_TOKEN_BEDROCK", None) is None:
     raise RuntimeError("AWS_BEARER_TOKEN_BEDROCK is not set")
 
-os.environ["MEMORI_TEST_MODE"] = "1"
+os.environ["MEMORI_ENV"] = "staging"
 
 
 async def main():

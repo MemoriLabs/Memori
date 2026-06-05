@@ -7,6 +7,9 @@ describe('Config', () => {
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.MEMORI_ENV;
+    delete process.env.MEMORI_DOMAIN;
+    delete process.env.MEMORI_API_URL_BASE;
   });
 
   afterEach(() => {
@@ -19,8 +22,8 @@ describe('Config', () => {
     expect(config.apiKey).toBe('env-key');
   });
 
-  it('should use staging URL if test mode is enabled via env', () => {
-    process.env.MEMORI_TEST_MODE = '1';
+  it('should use staging URL when MEMORI_ENV=staging', () => {
+    process.env.MEMORI_ENV = 'staging';
     const config = new Config();
     expect(config.testMode).toBe(true);
     expect(config.baseUrl).toContain('staging-api');
@@ -33,36 +36,30 @@ describe('Config', () => {
   });
 
   it('should default to production URL if no env vars set', () => {
-    delete process.env.MEMORI_TEST_MODE;
+    delete process.env.MEMORI_ENV;
     delete process.env.MEMORI_API_URL_BASE;
     const config = new Config();
     expect(config.baseUrl).toBe('https://api.memorilabs.ai');
   });
 
-  describe('enterprise domain', () => {
-    it('should use enterprise production domain for api subdomain', () => {
-      process.env.MEMORI_ENTERPRISE_PRODUCTION_DOMAIN = 'linkedin.memorilabs.ai';
+  describe('tenant domain', () => {
+    it('should use MEMORI_DOMAIN for production api subdomain', () => {
+      process.env.MEMORI_DOMAIN = 'linkedin.memorilabs.ai';
       const config = new Config();
       expect(config.baseUrl).toBe('https://api.linkedin.memorilabs.ai');
       expect(config.xApiKey).toBe('96a7ea3e-11c2-428c-b9ae-5a168363dc80');
     });
 
-    it('should use enterprise staging domain with staging prefix', () => {
-      process.env.MEMORI_ENTERPRISE_STAGING_DOMAIN = 'linkedin.memorilabs.ai';
+    it('should use MEMORI_DOMAIN with staging prefix when MEMORI_ENV=staging', () => {
+      process.env.MEMORI_DOMAIN = 'linkedin.memorilabs.ai';
+      process.env.MEMORI_ENV = 'staging';
       const config = new Config();
       expect(config.baseUrl).toBe('https://staging-api.linkedin.memorilabs.ai');
       expect(config.xApiKey).toBe('c18b1022-7fe2-42af-ab01-b1f9139184f0');
     });
 
-    it('should prefer enterprise production domain over staging domain', () => {
-      process.env.MEMORI_ENTERPRISE_PRODUCTION_DOMAIN = 'acme.memorilabs.ai';
-      process.env.MEMORI_ENTERPRISE_STAGING_DOMAIN = 'acme.memorilabs.ai';
-      const config = new Config();
-      expect(config.baseUrl).toBe('https://api.acme.memorilabs.ai');
-    });
-
-    it('should prefer enterprise production domain over MEMORI_API_URL_BASE', () => {
-      process.env.MEMORI_ENTERPRISE_PRODUCTION_DOMAIN = 'acme.memorilabs.ai';
+    it('should prefer MEMORI_DOMAIN over MEMORI_API_URL_BASE', () => {
+      process.env.MEMORI_DOMAIN = 'acme.memorilabs.ai';
       process.env.MEMORI_API_URL_BASE = 'https://custom.api.com';
       const config = new Config();
       expect(config.baseUrl).toBe('https://api.acme.memorilabs.ai');

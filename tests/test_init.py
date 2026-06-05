@@ -55,7 +55,7 @@ def test_memori_use_rust_core_kwarg_false(mocker):
 def test_cloud_true_when_no_conn(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori()
     assert mem.config.cloud is True
 
@@ -211,7 +211,7 @@ def test_embed_texts_uses_config_defaults(mocker):
 def test_recall_defaults_to_config_limit_in_cloud(monkeypatch, mocker):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
 
     mem = Memori().attribution(entity_id="entity-id", process_id="process-id")
     mem.config.recall_facts_limit = 10
@@ -280,7 +280,7 @@ def test_delete_entity_memories_supported_in_explicit_conn_mode(mocker):
 def test_delete_entity_memories_rejected_in_cloud_mode(monkeypatch):
     monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
     monkeypatch.setenv("MEMORI_API_KEY", "test-api-key")
-    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    monkeypatch.setenv("MEMORI_ENV", "staging")
     mem = Memori()
 
     with pytest.raises(RuntimeError) as e:

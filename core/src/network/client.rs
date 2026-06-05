@@ -25,76 +25,6 @@ impl ApiSubdomain {
     }
 }
 
-/// Resolves the API base URL from environment variables.
-///
-/// Priority:
-/// 1. `MEMORI_ENTERPRISE_PRODUCTION_DOMAIN` → `https://{subdomain}.{domain}`
-/// 2. `MEMORI_ENTERPRISE_STAGING_DOMAIN`    → `https://staging-{subdomain}.{domain}`
-/// 3. `MEMORI_API_URL_BASE`                 → verbatim (backward compat)
-/// 4. `MEMORI_TEST_MODE=1`                  → `https://staging-{subdomain}.memorilabs.ai`
-/// 5. Default                               → `https://{subdomain}.memorilabs.ai`
-pub fn resolve_base_url(subdomain: &ApiSubdomain) -> String {
-    let prefix = subdomain.as_str();
-
-    if let Ok(domain) = env::var("MEMORI_ENTERPRISE_PRODUCTION_DOMAIN") {
-        let domain = domain.trim().to_string();
-        if !domain.is_empty() {
-            return format!("https://{}.{}", prefix, domain);
-        }
-    }
-
-    if let Ok(domain) = env::var("MEMORI_ENTERPRISE_STAGING_DOMAIN") {
-        let domain = domain.trim().to_string();
-        if !domain.is_empty() {
-            return format!("https://staging-{}.{}", prefix, domain);
-        }
-    }
-
-    if let Ok(url) = env::var("MEMORI_API_URL_BASE") {
-        let url = url.trim().to_string();
-        if !url.is_empty() {
-            return url;
-        }
-    }
-
-    let test_mode = env::var("MEMORI_TEST_MODE").unwrap_or_default() == "1";
-    if test_mode {
-        format!("https://staging-{}.memorilabs.ai", prefix)
-    } else {
-        format!("https://{}.memorilabs.ai", prefix)
-    }
-}
-
-/// Resolves the X-Memori-API-Key from environment variables.
-///
-/// Returns the production key for enterprise production and default production,
-/// the staging key for all other cases. Always respects `MEMORI_X_API_KEY` override.
-pub fn resolve_x_api_key() -> String {
-    let override_key = env::var("MEMORI_X_API_KEY");
-
-    let enterprise_prod = env::var("MEMORI_ENTERPRISE_PRODUCTION_DOMAIN")
-        .map(|d| !d.trim().is_empty())
-        .unwrap_or(false);
-
-    if enterprise_prod {
-        return override_key.unwrap_or_else(|_| PUBLIC_PROD_KEY.to_string());
-    }
-
-    let uses_staging = env::var("MEMORI_ENTERPRISE_STAGING_DOMAIN")
-        .map(|d| !d.trim().is_empty())
-        .unwrap_or(false)
-        || env::var("MEMORI_API_URL_BASE")
-            .map(|u| !u.trim().is_empty())
-            .unwrap_or(false)
-        || env::var("MEMORI_TEST_MODE").unwrap_or_default() == "1";
-
-    if uses_staging {
-        override_key.unwrap_or_else(|_| PUBLIC_STAGING_KEY.to_string())
-    } else {
-        override_key.unwrap_or_else(|_| PUBLIC_PROD_KEY.to_string())
-    }
-}
-
 #[derive(Clone)]
 pub struct MemoriClient {
     client: Client,
@@ -106,8 +36,37 @@ pub struct MemoriClient {
 impl MemoriClient {
     /// Initializes the client from environment variables.
     pub fn new(subdomain: ApiSubdomain) -> Result<Self, ApiError> {
-        let base_url = resolve_base_url(&subdomain);
-        let x_api_key = resolve_x_api_key();
+        let prefix = subdomain.as_str();
+        let is_staging = env::var("MEMORI_ENV").unwrap_or_default() == "staging";
+
+        let (base_url, x_api_key) = {
+            let x_key = env::var("MEMORI_X_API_KEY");
+
+            if let Ok(domain) = env::var("MEMORI_DOMAIN") {
+                let domain = domain.trim().to_string();
+                if !domain.is_empty() {
+                    let url = if is_staging {
+                        format!("https://staging-{}.{}", prefix, domain)
+                    } else {
+                        format!("https://{}.{}", prefix, domain)
+                    };
+                    let key = x_key.unwrap_or_else(|_| {
+                        if is_staging {
+                            PUBLIC_STAGING_KEY
+                        } else {
+                            PUBLIC_PROD_KEY
+                        }
+                        .to_string()
+                    });
+                    (url, key)
+                } else {
+                    Self::resolve_fallback(prefix, is_staging, x_key)
+                }
+            } else {
+                Self::resolve_fallback(prefix, is_staging, x_key)
+            }
+        };
+
         let api_key = env::var("MEMORI_API_KEY").ok();
 
         let client = Client::builder()
@@ -121,6 +80,33 @@ impl MemoriClient {
             x_api_key,
             api_key,
         })
+    }
+
+    fn resolve_fallback(
+        prefix: &str,
+        is_staging: bool,
+        x_key: Result<String, env::VarError>,
+    ) -> (String, String) {
+        if let Ok(url) = env::var("MEMORI_API_URL_BASE") {
+            let url = url.trim().to_string();
+            if !url.is_empty() {
+                let key = x_key.unwrap_or_else(|_| PUBLIC_STAGING_KEY.to_string());
+                return (url, key);
+            }
+        }
+        let key = x_key.unwrap_or_else(|_| {
+            if is_staging {
+                PUBLIC_STAGING_KEY
+            } else {
+                PUBLIC_PROD_KEY
+            }
+            .to_string()
+        });
+        if is_staging {
+            (format!("https://staging-{}.memorilabs.ai", prefix), key)
+        } else {
+            (format!("https://{}.memorilabs.ai", prefix), key)
+        }
     }
 
     fn url(&self, route: &str) -> String {

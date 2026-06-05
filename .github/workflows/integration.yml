@@ -66,7 +66,7 @@ jobs:
           - 27017:27017
 
     env:
-      MEMORI_TEST_MODE: "1"
+      MEMORI_ENV: "staging"
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
@@ -177,7 +177,7 @@ jobs:
           echo "=========================================="
           echo "Integration Test Summary"
           echo "=========================================="
-          echo "MEMORI_TEST_MODE: $MEMORI_TEST_MODE (staging)"
+          echo "MEMORI_ENV: $MEMORI_ENV"
           echo ""
           echo "Tests run:"
           echo "  - AA Payload Unit Tests: Yes (no API keys needed)"

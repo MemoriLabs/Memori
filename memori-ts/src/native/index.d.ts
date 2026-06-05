@@ -97,7 +97,3 @@ export interface NapiRetrievalRequest {
 export interface NapiWriteAck {
   writtenOps: number
 }
-
-export declare function resolveApiBaseUrl(subdomain: string): string
-
-export declare function resolveXApiKey(): string

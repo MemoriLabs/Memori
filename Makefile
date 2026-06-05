@@ -57,12 +57,12 @@ run-unit: ## Run unit tests (no API keys needed)
 	uv run pytest tests/ --ignore=tests/integration --ignore=tests/benchmarks -v --tb=short
 
 run-integration: ## Run all integration tests (requires API keys)
-	@echo "Running all integration tests with MEMORI_TEST_MODE=1..."
-	MEMORI_TEST_MODE=1 uv run pytest tests/integration/ -v -m integration --tb=short
+	@echo "Running all integration tests with MEMORI_ENV=staging..."
+	MEMORI_ENV=staging uv run pytest tests/integration/ -v -m integration --tb=short
 
 run-integration-provider: ## Run specific provider tests (e.g., make run-integration-provider P=openai)
 	@echo "Running $(P) integration tests..."
-	MEMORI_TEST_MODE=1 uv run pytest tests/integration/providers/test_$(P).py -v -m integration --tb=short
+	MEMORI_ENV=staging uv run pytest tests/integration/providers/test_$(P).py -v -m integration --tb=short
 
 run-integration-cloud: ## Run cloud integration tests (production API, requires MEMORI_API_KEY)
 	@echo "Running cloud integration tests..."
