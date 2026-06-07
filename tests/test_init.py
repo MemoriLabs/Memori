@@ -138,6 +138,32 @@ def test_attribution_requires_string_or_none_process_id(mocker):
     assert mem.config.process_id is None
 
 
+def test_attribution_rejects_empty_entity_id(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).attribution(entity_id="")
+
+    assert str(e.value) == "entity_id cannot be empty"
+
+
+def test_attribution_rejects_empty_process_id(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).attribution(entity_id="user-1", process_id="")
+
+    assert str(e.value) == "process_id cannot be empty"
+
+
 def test_new_session(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
