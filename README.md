@@ -299,6 +299,7 @@ Memories are tracked at several different levels:
 - relationships
 - rules
 - skills
+- Problem Solving
 
 Memori knows who your user is, what tasks your agent handles and creates unparalleled context between the two. Augmentation occurs in the background incurring no latency.
 
@@ -350,7 +351,7 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 - Code style and standards
 - Submitting pull requests
 - Reporting issues
-
+- 
 ---
 
 ## Support
@@ -359,7 +360,7 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 - [**Memori BYODB Documentation**](https://memorilabs.ai/docs/memori-byodb)
 - [**Discord**](https://discord.gg/FpytKAxnFb)
 - [**Issues**](https://github.com/MemoriLabs/Memori/issues)
----
+  
 
 ## License
 
