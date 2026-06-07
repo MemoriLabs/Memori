@@ -194,11 +194,17 @@ class Memori:
         if not isinstance(entity_id, str):
             raise TypeError("entity_id must be a string")
 
+        if not entity_id:
+            raise ValueError("entity_id cannot be empty")
+
         if len(entity_id) > 100:
             raise RuntimeError("entity_id cannot be greater than 100 characters")
 
         if process_id is not None and not isinstance(process_id, str):
             raise TypeError("process_id must be a string or None")
+
+        if process_id is not None and not process_id:
+            raise ValueError("process_id cannot be empty")
 
         if process_id is not None and len(process_id) > 100:
             raise RuntimeError("process_id cannot be greater than 100 characters")
