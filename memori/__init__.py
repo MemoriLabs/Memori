@@ -229,6 +229,12 @@ class Memori:
         self, query: str, limit: int | None = None
     ) -> list[RecallFact] | CloudRecallResponse:
         """Return relevant memories for a query."""
+        if limit is not None:
+            if not isinstance(limit, int):
+                raise TypeError("limit must be an integer or None")
+            if limit <= 0:
+                raise ValueError("limit must be greater than 0")
+
         if self.config.cloud is False and self.config.rust_core is not None:
             resolved_limit = self.config.recall_facts_limit if limit is None else limit
             if not self.config.entity_id:

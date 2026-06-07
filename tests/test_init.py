@@ -212,6 +212,37 @@ def test_set_session_resets_cache(mocker):
     assert mem.config.cache.session_id is None
 
 
+def test_recall_rejects_non_integer_limit(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(TypeError) as e:
+        Memori(conn=lambda: mock_conn).recall("test", limit="5")
+
+    assert str(e.value) == "limit must be an integer or None"
+
+
+def test_recall_rejects_zero_or_negative_limit(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("test", limit=0)
+
+    assert str(e.value) == "limit must be greater than 0"
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("test", limit=-5)
+
+    assert str(e.value) == "limit must be greater than 0"
+
+
 def test_embed_texts_uses_config_defaults(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
