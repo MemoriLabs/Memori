@@ -71,6 +71,7 @@ def test_install_plugin_uses_hermes_home_env(
     monkeypatch,
 ) -> None:
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setattr(paths, "_hermes_home_from_hermes", lambda: None)
 
     target = install_plugin()
 
@@ -78,7 +79,20 @@ def test_install_plugin_uses_hermes_home_env(
     assert is_installed()
 
 
-def test_hermes_home_prefers_explicit_env_over_hermes_resolver(
+def test_hermes_home_prefers_explicit_argument_over_resolver(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    explicit_home = tmp_path / "explicit-home"
+    env_home = tmp_path / "env-home"
+    resolver_home = tmp_path / "resolver-home"
+    monkeypatch.setenv("HERMES_HOME", str(env_home))
+    monkeypatch.setattr(paths, "_hermes_home_from_hermes", lambda: resolver_home)
+
+    assert plugin_target_dir(explicit_home) == explicit_home / "plugins" / "memori"
+
+
+def test_hermes_home_prefers_hermes_resolver_over_env(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -87,7 +101,7 @@ def test_hermes_home_prefers_explicit_env_over_hermes_resolver(
     monkeypatch.setenv("HERMES_HOME", str(env_home))
     monkeypatch.setattr(paths, "_hermes_home_from_hermes", lambda: resolver_home)
 
-    assert hermes_home() == env_home
+    assert hermes_home() == resolver_home
 
 
 def test_hermes_home_uses_hermes_resolver_when_available(

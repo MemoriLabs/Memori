@@ -33,13 +33,13 @@ def resolve_hermes_home(hermes_home_path: str | Path | None = None) -> Path:
     if hermes_home_path:
         return Path(hermes_home_path).expanduser()
 
-    env_home = os.environ.get("HERMES_HOME", "").strip()
-    if env_home:
-        return Path(env_home).expanduser()
-
     hermes_home = _hermes_home_from_hermes()
     if hermes_home is not None:
         return hermes_home
+
+    env_home = os.environ.get("HERMES_HOME", "").strip()
+    if env_home:
+        return Path(env_home).expanduser()
 
     return _platform_default_hermes_home()
 

@@ -64,7 +64,7 @@ def test_config_path_uses_shared_hermes_home_resolver(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    monkeypatch.delenv("HERMES_HOME", raising=False)
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path / "env-home"))
     monkeypatch.setattr(paths, "_hermes_home_from_hermes", lambda: tmp_path)
 
     assert provider_module._config_path() == tmp_path / "memori.json"

@@ -178,8 +178,9 @@ hermes-memori install --force
 
 The `hermes-memori install` command registers the provider in Hermes' active
 memory plugin directory under `plugins/memori`. It honors `--hermes-home` and
-`HERMES_HOME`, uses Hermes' own home resolver when available, then falls back to
-the Windows `%LOCALAPPDATA%\hermes` default or `~/.hermes` on POSIX systems.
+otherwise uses Hermes' own home resolver when available, including active
+profile overrides. If Hermes is not importable, it falls back to `HERMES_HOME`,
+the Windows `%LOCALAPPDATA%\hermes` default, or `~/.hermes` on POSIX systems.
 
 ### 2. Configure
 
