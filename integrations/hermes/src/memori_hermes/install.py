@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import sys
 from pathlib import Path
 
-PLUGIN_NAME = "memori"
+try:
+    from . import _paths
+except ImportError:  # pragma: no cover - supports direct file execution.
+    import _paths  # type: ignore[no-redef]
+
+PLUGIN_NAME = _paths.PLUGIN_NAME
+
 EXCLUDED_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
 
 
 def hermes_home() -> Path:
     """Return the Hermes home directory used for user-installed plugins."""
-    return Path(os.environ.get("HERMES_HOME") or "~/.hermes").expanduser()
+    return _paths.resolve_hermes_home()
 
 
 def plugin_source_dir() -> Path:
@@ -25,8 +30,7 @@ def plugin_source_dir() -> Path:
 
 def plugin_target_dir(hermes_home_path: str | Path | None = None) -> Path:
     """Return the Hermes memory plugin destination for Memori."""
-    base = Path(hermes_home_path).expanduser() if hermes_home_path else hermes_home()
-    return base / "plugins" / PLUGIN_NAME
+    return _paths.plugin_target_dir(hermes_home_path)
 
 
 def _ignore_copy_names(_directory: str, names: list[str]) -> set[str]:
@@ -80,7 +84,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--hermes-home",
-        help="Hermes home directory. Defaults to HERMES_HOME or ~/.hermes.",
+        help=(
+            "Hermes home directory. Defaults to HERMES_HOME, Hermes' own "
+            "resolver, or the platform default."
+        ),
     )
 
     subparsers = parser.add_subparsers(dest="command")

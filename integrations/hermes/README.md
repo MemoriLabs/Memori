@@ -176,9 +176,10 @@ pip install -e integrations/hermes
 hermes-memori install --force
 ```
 
-The `hermes-memori install` command registers the provider in Hermes' memory
-plugin directory at `$HERMES_HOME/plugins/memori`, which is where Hermes scans
-for user-installed memory providers.
+The `hermes-memori install` command registers the provider in Hermes' active
+memory plugin directory under `plugins/memori`. It honors `--hermes-home` and
+`HERMES_HOME`, uses Hermes' own home resolver when available, then falls back to
+the Windows `%LOCALAPPDATA%\hermes` default or `~/.hermes` on POSIX systems.
 
 ### 2. Configure
 

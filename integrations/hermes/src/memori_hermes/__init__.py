@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ._paths import PLUGIN_NAME, config_path
 from .client import MemoriAgentClient, MemoriApiError
 from .tools import TOOL_SCHEMAS
 
@@ -23,7 +24,6 @@ except Exception:  # noqa: BLE001
 
 logger = logging.getLogger(__name__)
 
-PLUGIN_NAME = "memori"
 SYNC_JOIN_TIMEOUT_SECS = 5.0
 HERMES_PLATFORM = "hermes"
 
@@ -45,13 +45,8 @@ def _env(name: str) -> str | None:
     return value or None
 
 
-def _hermes_home_from_env() -> Path:
-    return Path(_env("HERMES_HOME") or "~/.hermes").expanduser()
-
-
 def _config_path(hermes_home: str | Path | None = None) -> Path:
-    base = Path(hermes_home).expanduser() if hermes_home else _hermes_home_from_env()
-    return base / "memori.json"
+    return config_path(hermes_home)
 
 
 def _read_file_config(hermes_home: str | Path | None = None) -> dict[str, Any]:
