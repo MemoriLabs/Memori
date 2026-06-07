@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from importlib import import_module
 from pathlib import Path
 
 PLUGIN_NAME = "memori"
@@ -12,8 +13,12 @@ PLUGIN_NAME = "memori"
 def _hermes_home_from_hermes() -> Path | None:
     """Return Hermes' own home path when Hermes is importable."""
     try:
-        from hermes_constants import get_hermes_home  # type: ignore[import-not-found]
+        hermes_constants = import_module("hermes_constants")
     except Exception:  # noqa: BLE001
+        return None
+
+    get_hermes_home = getattr(hermes_constants, "get_hermes_home", None)
+    if not callable(get_hermes_home):
         return None
     return Path(get_hermes_home()).expanduser()
 

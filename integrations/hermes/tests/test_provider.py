@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import memori_hermes as provider_module  # noqa: E402
 import memori_hermes._paths as paths  # noqa: E402
+from memori_hermes import MemoriMemoryProvider  # noqa: E402
 
 
 class FakeClient:
