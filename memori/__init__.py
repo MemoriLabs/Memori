@@ -229,6 +229,10 @@ class Memori:
         self, query: str, limit: int | None = None
     ) -> list[RecallFact] | CloudRecallResponse:
         """Return relevant memories for a query."""
+        if not isinstance(query, str):
+            raise TypeError("query must be a string")
+        if not query.strip():
+            raise ValueError("query cannot be empty")
         if limit is not None:
             if not isinstance(limit, int):
                 raise TypeError("limit must be an integer or None")
