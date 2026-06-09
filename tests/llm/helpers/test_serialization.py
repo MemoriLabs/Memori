@@ -74,23 +74,20 @@ def test_convert_to_json_handles_datetime_and_date():
     objects into standard ISO 8601 strings.
     """
     from datetime import date, datetime
+
     from memori.llm.helpers.serialization import convert_to_json
 
     dt = datetime(2025, 1, 1, 15, 30, 45)
     d = date(2025, 1, 1)
 
-    payload = {
-        "timestamp": dt,
-        "day": d,
-        "nested": {"time": dt}
-    }
+    payload = {"timestamp": dt, "day": d, "nested": {"time": dt}}
 
     result = convert_to_json(payload)
 
     assert result == {
         "timestamp": "2025-01-01T15:30:45",
         "day": "2025-01-01",
-        "nested": {"time": "2025-01-01T15:30:45"}
+        "nested": {"time": "2025-01-01T15:30:45"},
     }
 
 

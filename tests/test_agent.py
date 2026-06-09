@@ -254,21 +254,21 @@ def test_capture_agent_turn_safely_serializes_complex_traces(monkeypatch, mocker
         def __init__(self):
             self.val = "custom"
             self._private = "secret"
-            
+
         def some_method(self):
             pass
 
     class MockPydanticModel:
         def __init__(self, created_at):
             self.created_at = created_at
-            
+
         def model_dump(self):
             # Simulate Pydantic V2 behavior which returns raw datetimes
             return {"created_at": self.created_at}
 
     dt = datetime(2025, 1, 1, 15, 30, 45)
     d = date(2025, 1, 1)
-    
+
     circular_dict = {}
     circular_dict["self"] = circular_dict
 
@@ -278,7 +278,7 @@ def test_capture_agent_turn_safely_serializes_complex_traces(monkeypatch, mocker
         "custom": CustomClass(),
         "pydantic": MockPydanticModel(dt),
         "circular": circular_dict,
-        "empty": None
+        "empty": None,
     }
 
     mem.capture_agent_turn(
@@ -294,7 +294,7 @@ def test_capture_agent_turn_safely_serializes_complex_traces(monkeypatch, mocker
         "custom": {"val": "custom"},
         "pydantic": {"created_at": "2025-01-01T15:30:45"},
         "circular": {"self": None},
-        "empty": None
+        "empty": None,
     }
 
     turn_payload = default_post.call_args.args[1]

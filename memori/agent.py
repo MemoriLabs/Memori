@@ -114,10 +114,10 @@ class Agent:
         """
         resolved_session_id = str(session_id or self.config.session_id)
         attribution = self._attribution()
-        
+
         if trace is not None:
             trace = convert_to_json(trace)
-            
+
         messages = [
             {"role": "user", "content": user_content, "type": "text", "trace": None},
             {
