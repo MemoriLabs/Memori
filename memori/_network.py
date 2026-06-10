@@ -205,13 +205,16 @@ class Api:
     async def patch_async(self, route, json=None):
         return await self.__request_async("PATCH", route, json=json)
 
-    def post(self, route, json=None, status_code: bool = False):
+    def post(self, route, json=None, status_code: bool = False, timeout: int = None):
+        if timeout is None:
+            timeout = self.config.request_secs_timeout
+
         logger.debug("POST request to %s", route)
         r = self.__session().post(
             self.url(route),
             headers=self.headers(),
             json=json,
-            timeout=self.config.request_secs_timeout,
+            timeout=timeout,
         )
         logger.debug("POST response - status: %d", r.status_code)
 

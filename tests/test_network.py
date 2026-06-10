@@ -160,6 +160,39 @@ class TestApiPost:
         with pytest.raises(requests.HTTPError):
             api.post("test/endpoint")
 
+    def test_post_uses_configured_timeout_by_default(self, api, mocker):
+        custom_timeout = 42
+        api.config.request_secs_timeout = custom_timeout
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response
+        mocker.patch.object(api, "_Api__session", return_value=mock_session)
+
+        api.post("test/endpoint")
+
+        _, kwargs = mock_session.post.call_args
+        assert kwargs["timeout"] == custom_timeout
+
+    def test_post_uses_custom_timeout_when_provided(self, api, mocker):
+        api.config.request_secs_timeout = 5
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response
+        mocker.patch.object(api, "_Api__session", return_value=mock_session)
+
+        api.post("test/endpoint", timeout=60)
+
+        _, kwargs = mock_session.post.call_args
+        assert kwargs["timeout"] == 60
+
 
 class TestApiPostAsync:
     @pytest.mark.asyncio

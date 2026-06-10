@@ -120,6 +120,7 @@ class ClusterManager:
             finalized = Api(Config()).post(
                 f"cockroachdb/cluster/finalize/{started['cluster']['uuid']}",
                 json={"cluster": {"id": started["cluster"]["id"]}},
+                timeout=60,
             )
             if finalized["status"] == 1:
                 break
