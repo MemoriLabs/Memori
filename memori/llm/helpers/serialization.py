@@ -1,6 +1,7 @@
 import copy
 import json
 from collections.abc import Mapping
+from datetime import date, datetime
 from typing import Any, cast
 
 from google.protobuf import json_format
@@ -26,6 +27,8 @@ def convert_to_json(obj, _seen=None):
     try:
         if obj is None or isinstance(obj, (bool, int, float, str)):
             return obj
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
         if isinstance(obj, list):
             return [convert_to_json(item, _seen.copy()) for item in obj]
         if isinstance(obj, dict):
@@ -36,7 +39,7 @@ def convert_to_json(obj, _seen=None):
             }
         if hasattr(obj, "model_dump"):
             try:
-                return obj.model_dump()
+                return convert_to_json(obj.model_dump(), _seen.copy())
             except Exception:
                 pass
         if hasattr(obj, "__dict__"):
