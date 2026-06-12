@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added Neon Launchpad BYODB provisioning via `Memori.provision(provider="neon-launchpad", ...)`,
+  the `python -m memori provision neon-launchpad` CLI command, and the `neon-launchpad` optional
+  dependency extra. The provider creates a disposable serverless PostgreSQL database through the
+  Neon Launchpad API and returns a standard PostgreSQL DSN for the existing PostgreSQL storage path. (Refs #566)
+
 ## [3.3.6] - 2026-05-27
 
 ### Added
