@@ -29,7 +29,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "aiohttp>=3.13.2",
+    "aiohttp>=3.14.1",
     "botocore>=1.34.0",
     "faiss-cpu>=1.7.0",
     "grpcio>=1.60.0",

@@ -1,11 +1,13 @@
 import os
 import ssl
+from http.cookies import SimpleCookie
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
 import requests
 from requests.adapters import HTTPAdapter
+from yarl import URL
 
 from memori._config import Config
 from memori._exceptions import (
@@ -16,6 +18,21 @@ from memori._exceptions import (
     QuotaExceededError,
 )
 from memori._network import Api, ApiSubdomain, _ApiRetryRecoverable
+
+
+@pytest.mark.asyncio
+async def test_aiohttp_cookiejar_load_preserves_host_only_cookies(tmp_path):
+    jar = aiohttp.CookieJar()
+    jar.update_cookies(SimpleCookie("sid=abc"), URL("https://example.com/"))
+
+    cookie_path = tmp_path / "cookies.pickle"
+    jar.save(cookie_path)
+
+    loaded = aiohttp.CookieJar()
+    loaded.load(cookie_path)
+
+    assert loaded.filter_cookies(URL("https://example.com/")).output()
+    assert loaded.filter_cookies(URL("https://sub.example.com/")).output() == ""
 
 
 @pytest.fixture
