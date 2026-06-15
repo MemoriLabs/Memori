@@ -1,11 +1,13 @@
 import os
 import ssl
+from http.cookies import SimpleCookie
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
 import requests
 from requests.adapters import HTTPAdapter
+from yarl import URL
 
 from memori._config import Config
 from memori._exceptions import (
@@ -16,6 +18,21 @@ from memori._exceptions import (
     QuotaExceededError,
 )
 from memori._network import Api, ApiSubdomain, _ApiRetryRecoverable
+
+
+@pytest.mark.asyncio
+async def test_aiohttp_cookiejar_load_preserves_host_only_cookies(tmp_path):
+    jar = aiohttp.CookieJar()
+    jar.update_cookies(SimpleCookie("sid=abc"), URL("https://example.com/"))
+
+    cookie_path = tmp_path / "cookies.pickle"
+    jar.save(cookie_path)
+
+    loaded = aiohttp.CookieJar()
+    loaded.load(cookie_path)
+
+    assert loaded.filter_cookies(URL("https://example.com/")).output()
+    assert loaded.filter_cookies(URL("https://sub.example.com/")).output() == ""
 
 
 @pytest.fixture
@@ -159,6 +176,39 @@ class TestApiPost:
 
         with pytest.raises(requests.HTTPError):
             api.post("test/endpoint")
+
+    def test_post_uses_configured_timeout_by_default(self, api, mocker):
+        custom_timeout = 42
+        api.config.request_secs_timeout = custom_timeout
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response
+        mocker.patch.object(api, "_Api__session", return_value=mock_session)
+
+        api.post("test/endpoint")
+
+        _, kwargs = mock_session.post.call_args
+        assert kwargs["timeout"] == custom_timeout
+
+    def test_post_uses_custom_timeout_when_provided(self, api, mocker):
+        api.config.request_secs_timeout = 5
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": "success"}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response
+        mocker.patch.object(api, "_Api__session", return_value=mock_session)
+
+        api.post("test/endpoint", timeout=60)
+
+        _, kwargs = mock_session.post.call_args
+        assert kwargs["timeout"] == 60
 
 
 class TestApiPostAsync:
