@@ -7,18 +7,20 @@ import { fileURLToPath } from 'node:url';
 // This gives us a single shared MemoriEngine vi.fn() instance that both the ESM import
 // (test file) and the createRequire path (engine.ts lazy load) refer to.
 const { mockNativeModule } = vi.hoisted(() => {
-  const stub = () => ({
-    build: vi.fn().mockResolvedValue(undefined),
-    writeBatch: vi.fn().mockResolvedValue({ writtenOps: 0 }),
-    getConversationHistory: vi.fn().mockResolvedValue('[]'),
-    retrieve: vi.fn().mockResolvedValue([]),
-    recall: vi.fn().mockResolvedValue(''),
-    embedTexts: vi.fn().mockReturnValue([]),
-    submitAugmentation: vi.fn().mockReturnValue('00000000-0000-0000-0000-000000000000'),
-    waitForAugmentation: vi.fn().mockResolvedValue(true),
-    shutdown: vi.fn(),
-    resolveStorageCall: vi.fn(),
-  });
+  const stub = function () {
+    return {
+      build: vi.fn().mockResolvedValue(undefined),
+      writeBatch: vi.fn().mockResolvedValue({ writtenOps: 0 }),
+      getConversationHistory: vi.fn().mockResolvedValue('[]'),
+      retrieve: vi.fn().mockResolvedValue([]),
+      recall: vi.fn().mockResolvedValue(''),
+      embedTexts: vi.fn().mockReturnValue([]),
+      submitAugmentation: vi.fn().mockReturnValue('00000000-0000-0000-0000-000000000000'),
+      waitForAugmentation: vi.fn().mockResolvedValue(true),
+      shutdown: vi.fn(),
+      resolveStorageCall: vi.fn(),
+    };
+  };
 
   return { mockNativeModule: { MemoriEngine: vi.fn().mockImplementation(stub) } };
 });
