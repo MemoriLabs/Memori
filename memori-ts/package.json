@@ -127,7 +127,7 @@
     "vitest": "^4.0.0"
   },
   "engines": {
-    "node": ">=20.12.0"
+    "node": ">=20.19.0"
   },
   "dependencies": {
     "@memorilabs/axon": "^0.1.5"
