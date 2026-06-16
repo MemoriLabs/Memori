@@ -6,12 +6,12 @@ import { MemoriEngine } from '../../src/native/index.js';
 
 const RETRIEVE_REQ = { entity_id: 'u-1', query_text: 'q', dense_limit: 5, limit: 3 };
 
-function makeBridge() {
+function makeStorageManager() {
   return {
-    fetchEmbeddings: vi.fn().mockResolvedValue([{ id: 1, content_embedding: new Float32Array(3) }]),
-    fetchFactsByIds: vi.fn().mockResolvedValue([{ id: 1, content: 'fact', date_created: null }]),
-    writeBatch: vi.fn().mockResolvedValue({ written_ops: 2 }),
-    getConversationHistory: vi.fn().mockResolvedValue([]),
+    getDialect: vi.fn().mockReturnValue('sqlite'),
+    handleStorageCall: vi.fn(),
+    setEngineShutdown: vi.fn(),
+    close: vi.fn(),
   };
 }
 
@@ -30,12 +30,12 @@ describe('NativeEngine', () => {
   // Construction
   // -------------------------------------------------------------------------
 
-  it('hasStorage is false when no storageBridge is provided', () => {
+  it('hasStorage is false when no storageManager is provided', () => {
     expect(new NativeEngine().hasStorage).toBe(false);
   });
 
-  it('hasStorage is true when a storageBridge is provided', () => {
-    expect(new NativeEngine(makeBridge()).hasStorage).toBe(true);
+  it('hasStorage is true when a storageManager is provided', () => {
+    expect(new NativeEngine(makeStorageManager() as any).hasStorage).toBe(true);
   });
 
   it('lazily constructs MemoriEngine on first use', async () => {
@@ -49,6 +49,128 @@ describe('NativeEngine', () => {
     await engine.retrieve(RETRIEVE_REQ);
     await engine.retrieve(RETRIEVE_REQ);
     expect(MemoriEngine).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes dialect from storageManager to MemoriEngine constructor', async () => {
+    const sm = makeStorageManager();
+    sm.getDialect.mockReturnValue('postgresql');
+    const engine = new NativeEngine(sm as any);
+    await bootEngine(engine);
+    // Third arg to MemoriEngine constructor is the dialect
+    expect((MemoriEngine as any).mock.calls.at(-1)[2]).toBe('postgresql');
+  });
+
+  // -------------------------------------------------------------------------
+  // build
+  // -------------------------------------------------------------------------
+
+  it('build() is a no-op when no storage is configured', async () => {
+    const engine = new NativeEngine();
+    await expect(engine.build()).resolves.toBeUndefined();
+    expect(MemoriEngine).not.toHaveBeenCalled();
+  });
+
+  it('build() delegates to native engine when storage is configured', async () => {
+    const engine = new NativeEngine(makeStorageManager() as any);
+    const instance = await bootEngine(engine);
+    instance.build.mockResolvedValue(undefined);
+    await engine.build();
+    expect(instance.build).toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // writeBatch
+  // -------------------------------------------------------------------------
+
+  it('writeBatch() returns zero when no storage is configured', async () => {
+    const engine = new NativeEngine();
+    const result = await engine.writeBatch({ ops: [] });
+    expect(result.written_ops).toBe(0);
+  });
+
+  it('writeBatch() serializes batch to JSON and delegates to native engine', async () => {
+    const engine = new NativeEngine(makeStorageManager() as any);
+    const instance = await bootEngine(engine);
+    instance.writeBatch.mockResolvedValue({ writtenOps: 3 });
+    const result = await engine.writeBatch({ ops: [] });
+    expect(result.written_ops).toBe(3);
+    expect(instance.writeBatch).toHaveBeenCalledWith(JSON.stringify({ ops: [] }));
+  });
+
+  // -------------------------------------------------------------------------
+  // getConversationHistory
+  // -------------------------------------------------------------------------
+
+  it('getConversationHistory() returns empty array when no storage is configured', async () => {
+    const engine = new NativeEngine();
+    const result = await engine.getConversationHistory('sess-1');
+    expect(result).toEqual([]);
+  });
+
+  it('getConversationHistory() parses JSON response from native engine', async () => {
+    const engine = new NativeEngine(makeStorageManager() as any);
+    const instance = await bootEngine(engine);
+    instance.getConversationHistory.mockResolvedValue(
+      JSON.stringify([{ role: 'user', content: 'hello' }])
+    );
+    const result = await engine.getConversationHistory('sess-1');
+    expect(result).toEqual([{ role: 'user', content: 'hello' }]);
+  });
+
+  // -------------------------------------------------------------------------
+  // storageCallCb wiring
+  // -------------------------------------------------------------------------
+
+  it('storageCallCb routes calls to storageManager.handleStorageCall', async () => {
+    const sm = makeStorageManager();
+    const engine = new NativeEngine(sm as any);
+    await bootEngine(engine);
+    const instance = (MemoriEngine as any).mock.results.at(-1).value;
+
+    // Extract the storageCallCb (2nd arg to MemoriEngine constructor)
+    const storageCallCb: (err: Error | null, args: [number, string]) => void = (
+      MemoriEngine as any
+    ).mock.calls.at(-1)[1];
+
+    storageCallCb(null, [42, '{"op":"acquire"}']);
+    expect(sm.handleStorageCall).toHaveBeenCalledWith(42, '{"op":"acquire"}', expect.any(Function));
+
+    // The resolve callback should call resolveStorageCall on the engine
+    const resolveFn = sm.handleStorageCall.mock.calls[0][2];
+    resolveFn({ conn_id: 1 });
+    expect(instance.resolveStorageCall).toHaveBeenCalledWith(42, JSON.stringify({ conn_id: 1 }));
+  });
+
+  it('storageCallCb logs and resolves with NAPI_ERR on error', async () => {
+    const sm = makeStorageManager();
+    const engine = new NativeEngine(sm as any);
+    const instance = await bootEngine(engine);
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const storageCallCb: (err: Error | null, args: [number, string]) => void = (
+      MemoriEngine as any
+    ).mock.calls.at(-1)[1];
+    storageCallCb(new Error('bridge error'), [42, '']);
+    expect(sm.handleStorageCall).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(instance.resolveStorageCall).toHaveBeenCalledWith(
+      42,
+      expect.stringContaining('NAPI_ERR')
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('no-storage storageCallCb resolves with NO_STORAGE error', async () => {
+    const engine = new NativeEngine();
+    await bootEngine(engine);
+    const instance = (MemoriEngine as any).mock.results.at(-1).value;
+    const noopCb: (err: Error | null, args: [number, string]) => void = (
+      MemoriEngine as any
+    ).mock.calls.at(-1)[1];
+    noopCb(null, [9, '{"op":"acquire"}']);
+    expect(instance.resolveStorageCall).toHaveBeenCalledWith(
+      9,
+      expect.stringContaining('NO_STORAGE')
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -90,28 +212,26 @@ describe('NativeEngine', () => {
   // embedTexts
   // -------------------------------------------------------------------------
 
-  it('embedTexts() returns empty array for empty input without touching engine', () => {
+  it('embedTexts() returns empty array for empty input without touching engine', async () => {
     const engine = new NativeEngine();
-    expect(engine.embedTexts([])).toEqual([]);
+    expect(await engine.embedTexts([])).toEqual([]);
     expect(MemoriEngine).not.toHaveBeenCalled();
   });
 
   it('embedTexts() delegates to native engine', async () => {
     const engine = new NativeEngine();
     const instance = await bootEngine(engine);
-    instance.embedTexts.mockReturnValue([new Float32Array(3)]);
-    const result = engine.embedTexts(['hello']);
+    instance.embedTexts.mockResolvedValue([new Float32Array(3)]);
+    const result = await engine.embedTexts(['hello']);
     expect(result).toHaveLength(1);
   });
 
   it('embedTexts() returns [] and logs error if native throws', async () => {
     const engine = new NativeEngine();
     const instance = await bootEngine(engine);
-    instance.embedTexts.mockImplementation(() => {
-      throw new Error('embed fail');
-    });
+    instance.embedTexts.mockRejectedValue(new Error('embed fail'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(engine.embedTexts(['hello'])).toEqual([]);
+    expect(await engine.embedTexts(['hello'])).toEqual([]);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
@@ -166,107 +286,11 @@ describe('NativeEngine', () => {
   });
 
   it('shutdown() calls native shutdown and resets state', async () => {
-    const engine = new NativeEngine(makeBridge());
+    const sm = makeStorageManager();
+    const engine = new NativeEngine(sm as any);
     const instance = await bootEngine(engine);
     engine.shutdown();
     expect(instance.shutdown).toHaveBeenCalled();
     expect(engine.hasStorage).toBe(false);
-  });
-
-  // -------------------------------------------------------------------------
-  // Bridge callbacks — no-storage path
-  // -------------------------------------------------------------------------
-
-  it('no-storage fetchEmbeddingsCb resolves with empty array', async () => {
-    const engine = new NativeEngine();
-    await bootEngine(engine);
-    const instance = (MemoriEngine as any).mock.results.at(-1).value;
-    // The fetchEmbeddingsCb is the 2nd arg passed to the MemoriEngine constructor
-    const fetchCb: (err: Error | null, id: number, payload: string) => void = (
-      MemoriEngine as any
-    ).mock.calls.at(-1)[1];
-    fetchCb(null, 1, '{}');
-    expect(instance.resolveEmbeddingsCallback).toHaveBeenCalledWith(1, []);
-  });
-
-  it('no-storage writeBatchCb resolves with zero written ops', async () => {
-    const engine = new NativeEngine();
-    await bootEngine(engine);
-    const instance = (MemoriEngine as any).mock.results.at(-1).value;
-    const writeCb: (err: Error | null, id: number, payload: string) => void = (
-      MemoriEngine as any
-    ).mock.calls.at(-1)[3];
-    writeCb(null, 2, JSON.stringify({ ops: [] }));
-    expect(instance.resolveWriteCallback).toHaveBeenCalledWith(2, { writtenOps: 0 });
-  });
-
-  // -------------------------------------------------------------------------
-  // Bridge callbacks — with-storage path
-  // -------------------------------------------------------------------------
-
-  it('storage writeBatchCb calls bridge.writeBatch and resolves with written ops', async () => {
-    const bridge = makeBridge();
-    const engine = new NativeEngine(bridge);
-    await bootEngine(engine);
-    const instance = (MemoriEngine as any).mock.results.at(-1).value;
-    const writeCb: (err: Error | null, id: number, payload: string) => void = (
-      MemoriEngine as any
-    ).mock.calls.at(-1)[3];
-
-    writeCb(null, 7, JSON.stringify({ ops: [] }));
-    await new Promise(process.nextTick);
-
-    // bridge.writeBatch returns { written_ops: 2 }
-    expect(instance.resolveWriteCallback).toHaveBeenCalledWith(7, { writtenOps: 2 });
-  });
-
-  it('storage fetchEmbeddingsCb resolves and maps result rows', async () => {
-    const bridge = makeBridge();
-    const engine = new NativeEngine(bridge);
-    await bootEngine(engine);
-    const instance = (MemoriEngine as any).mock.results.at(-1).value;
-    const fetchCb: (err: Error | null, id: number, payload: string) => void = (
-      MemoriEngine as any
-    ).mock.calls.at(-1)[1];
-
-    fetchCb(null, 5, JSON.stringify({ entity_id: 'u-1', limit: 5 }));
-    await new Promise(process.nextTick);
-
-    expect(instance.resolveEmbeddingsCallback).toHaveBeenCalledWith(
-      5,
-      expect.arrayContaining([expect.objectContaining({ id: 1 })])
-    );
-  });
-
-  it('bridge error in fetchEmbeddings logs and calls fallback', async () => {
-    const bridge = makeBridge();
-    bridge.fetchEmbeddings.mockRejectedValue(new Error('fetch fail'));
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const engine = new NativeEngine(bridge);
-    await bootEngine(engine);
-    const instance = (MemoriEngine as any).mock.results.at(-1).value;
-    const fetchCb: (err: Error | null, id: number, payload: string) => void = (
-      MemoriEngine as any
-    ).mock.calls.at(-1)[1];
-
-    fetchCb(null, 5, JSON.stringify({ entity_id: 'u-1', limit: 5 }));
-    await new Promise(process.nextTick);
-
-    expect(consoleSpy).toHaveBeenCalled();
-    expect(instance.resolveEmbeddingsCallback).toHaveBeenCalledWith(5, []);
-    consoleSpy.mockRestore();
-  });
-
-  it('bridge error callback logs and returns early', async () => {
-    const engine = new NativeEngine(makeBridge());
-    await bootEngine(engine);
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const fetchCb: (err: Error | null, id: number, payload: string) => void = (
-      MemoriEngine as any
-    ).mock.calls.at(-1)[1];
-    fetchCb(new Error('bridge error'), 0, '{}');
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
   });
 });

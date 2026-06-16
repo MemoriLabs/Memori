@@ -3,19 +3,56 @@
 from __future__ import annotations
 
 import argparse
-import os
+import importlib.util
 import shutil
 import sys
 from pathlib import Path
+from types import ModuleType
+from typing import Protocol, cast
 
-PLUGIN_NAME = "memori"
+
+class _PathsModule(Protocol):
+    PLUGIN_NAME: str
+
+    def resolve_hermes_home(
+        self,
+        hermes_home_path: str | Path | None = None,
+    ) -> Path: ...
+
+    def plugin_target_dir(
+        self,
+        hermes_home_path: str | Path | None = None,
+    ) -> Path: ...
+
+
+def _load_direct_paths_module() -> ModuleType:
+    """Load _paths.py when this file is executed outside its package."""
+    paths_file = Path(__file__).resolve().with_name("_paths.py")
+    spec = importlib.util.spec_from_file_location("memori_hermes._paths", paths_file)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load Hermes path helpers from {paths_file}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+try:
+    from . import _paths as _paths_module
+except ImportError:  # pragma: no cover - supports direct file execution.
+    _paths: _PathsModule = cast(_PathsModule, _load_direct_paths_module())
+else:
+    _paths = _paths_module
+
+PLUGIN_NAME = _paths.PLUGIN_NAME
+
 EXCLUDED_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
 
 
 def hermes_home() -> Path:
     """Return the Hermes home directory used for user-installed plugins."""
-    return Path(os.environ.get("HERMES_HOME") or "~/.hermes").expanduser()
+    return _paths.resolve_hermes_home()
 
 
 def plugin_source_dir() -> Path:
@@ -25,8 +62,7 @@ def plugin_source_dir() -> Path:
 
 def plugin_target_dir(hermes_home_path: str | Path | None = None) -> Path:
     """Return the Hermes memory plugin destination for Memori."""
-    base = Path(hermes_home_path).expanduser() if hermes_home_path else hermes_home()
-    return base / "plugins" / PLUGIN_NAME
+    return _paths.plugin_target_dir(hermes_home_path)
 
 
 def _ignore_copy_names(_directory: str, names: list[str]) -> set[str]:
@@ -80,7 +116,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--hermes-home",
-        help="Hermes home directory. Defaults to HERMES_HOME or ~/.hermes.",
+        help=(
+            "Hermes home directory. Defaults to Hermes' own resolver, "
+            "HERMES_HOME, or the platform default."
+        ),
     )
 
     subparsers = parser.add_subparsers(dest="command")

@@ -11,9 +11,6 @@ export class SessionManager {
     this._id = randomUUID();
   }
 
-  /**
-   * The current active session UUID.
-   */
   public get id(): string {
     return this._id;
   }

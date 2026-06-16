@@ -194,11 +194,17 @@ class Memori:
         if not isinstance(entity_id, str):
             raise TypeError("entity_id must be a string")
 
+        if not entity_id:
+            raise ValueError("entity_id cannot be empty")
+
         if len(entity_id) > 100:
             raise RuntimeError("entity_id cannot be greater than 100 characters")
 
         if process_id is not None and not isinstance(process_id, str):
             raise TypeError("process_id must be a string or None")
+
+        if process_id is not None and not process_id:
+            raise ValueError("process_id cannot be empty")
 
         if process_id is not None and len(process_id) > 100:
             raise RuntimeError("process_id cannot be greater than 100 characters")
@@ -223,6 +229,16 @@ class Memori:
         self, query: str, limit: int | None = None
     ) -> list[RecallFact] | CloudRecallResponse:
         """Return relevant memories for a query."""
+        if not isinstance(query, str):
+            raise TypeError("query must be a string")
+        if not query.strip():
+            raise ValueError("query cannot be empty")
+        if limit is not None:
+            if not isinstance(limit, int):
+                raise TypeError("limit must be an integer or None")
+            if limit <= 0:
+                raise ValueError("limit must be greater than 0")
+
         if self.config.cloud is False and self.config.rust_core is not None:
             resolved_limit = self.config.recall_facts_limit if limit is None else limit
             if not self.config.entity_id:

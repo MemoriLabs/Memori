@@ -3,8 +3,6 @@ use napi::bindgen_prelude::Float32Array;
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
-// --- Core API Structs ---
-
 #[napi(object)]
 #[derive(Serialize, Deserialize)]
 pub struct NapiRetrievalRequest {
@@ -76,8 +74,6 @@ pub struct NapiAugmentationInput {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
 }
-
-// --- Storage Bridge Structs ---
 
 #[napi(object)]
 pub struct NapiEmbeddingRow {

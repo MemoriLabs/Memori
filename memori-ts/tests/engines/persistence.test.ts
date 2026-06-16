@@ -33,7 +33,7 @@ describe('PersistenceEngine', () => {
 
   it('should skip cloud API if local storage is active', async () => {
     (mockNativeEngine as any).hasStorage = true;
-    (mockConfig as any).storage = { writeBatch: vi.fn().mockResolvedValue({ written_ops: 2 }) };
+    (mockNativeEngine as any).writeBatch = vi.fn().mockResolvedValue({ written_ops: 2 });
     const req = { messages: [{ role: 'user', content: 'hello' }] } as unknown as LLMRequest;
     const res = { content: 'world' } as LLMResponse;
 
@@ -44,7 +44,7 @@ describe('PersistenceEngine', () => {
   it('should write a conversation_message.create batch to local storage', async () => {
     const mockWriteBatch = vi.fn().mockResolvedValue({ written_ops: 2 });
     (mockNativeEngine as any).hasStorage = true;
-    (mockConfig as any).storage = { writeBatch: mockWriteBatch };
+    (mockNativeEngine as any).writeBatch = mockWriteBatch;
 
     const req = { messages: [{ role: 'user', content: 'hello' }] } as unknown as LLMRequest;
     const res = { content: 'world' } as LLMResponse;
@@ -59,8 +59,8 @@ describe('PersistenceEngine', () => {
             payload: expect.objectContaining({
               conversation_id: 'sess-1',
               messages: [
-                { role: 'user', content: 'hello' },
-                { role: 'assistant', content: 'world' },
+                { role: 'user', type: 'text', content: 'hello' },
+                { role: 'assistant', type: 'text', content: 'world' },
               ],
             }),
           }),

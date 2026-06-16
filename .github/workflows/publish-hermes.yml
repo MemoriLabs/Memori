@@ -41,7 +41,7 @@ jobs:
           python -m pip install -e integrations/hermes
 
       - name: Run Hermes integration tests
-        run: python -m pytest tests/test_agent.py integrations/hermes/tests -q
+        run: python -m pytest -c integrations/hermes/pyproject.toml tests/test_agent.py integrations/hermes/tests -q
 
       - name: Run Ruff
         run: python -m ruff check memori integrations/hermes tests/test_agent.py

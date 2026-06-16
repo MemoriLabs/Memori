@@ -138,6 +138,32 @@ def test_attribution_requires_string_or_none_process_id(mocker):
     assert mem.config.process_id is None
 
 
+def test_attribution_rejects_empty_entity_id(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).attribution(entity_id="")
+
+    assert str(e.value) == "entity_id cannot be empty"
+
+
+def test_attribution_rejects_empty_process_id(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).attribution(entity_id="user-1", process_id="")
+
+    assert str(e.value) == "process_id cannot be empty"
+
+
 def test_new_session(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"
@@ -184,6 +210,68 @@ def test_set_session_resets_cache(mocker):
 
     assert mem.config.cache.conversation_id is None
     assert mem.config.cache.session_id is None
+
+
+def test_recall_rejects_non_integer_limit(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(TypeError) as e:
+        Memori(conn=lambda: mock_conn).recall("test", limit="5")
+
+    assert str(e.value) == "limit must be an integer or None"
+
+
+def test_recall_rejects_zero_or_negative_limit(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("test", limit=0)
+
+    assert str(e.value) == "limit must be greater than 0"
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("test", limit=-5)
+
+    assert str(e.value) == "limit must be greater than 0"
+
+
+def test_recall_rejects_non_string_query(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(TypeError) as e:
+        Memori(conn=lambda: mock_conn).recall(123)
+
+    assert str(e.value) == "query must be a string"
+
+
+def test_recall_rejects_empty_query(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("")
+
+    assert str(e.value) == "query cannot be empty"
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("   ")
+
+    assert str(e.value) == "query cannot be empty"
 
 
 def test_embed_texts_uses_config_defaults(mocker):

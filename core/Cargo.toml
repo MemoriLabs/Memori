@@ -29,10 +29,15 @@ parking_lot = "0.12"
 reqwest = { version = "0.12", features = ["json"] }
 serde = "1.0.228"
 serde_json = "1.0"
+rand = "0.8"
 sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
 thiserror.workspace = true
 tokenizers = "0.22"
 tokio.workspace = true
+
+[dev-dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [workspace]
 members = [
@@ -50,7 +55,7 @@ rust-version = "1.86"
 [workspace.dependencies]
 thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
-pyo3 = "0.28"
+pyo3 = "0.29"
 napi = "3"
 napi-derive = "3"
 napi-build = "2"

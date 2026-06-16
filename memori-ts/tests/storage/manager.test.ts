@@ -8,49 +8,20 @@ const {
   mockRollback,
   mockClose,
   mockGetDialect,
-  mockDriverOps,
-} = vi.hoisted(() => {
-  const mockDriverOps = {
-    session: { create: vi.fn().mockResolvedValue('sess-1') },
-    conversation: {
-      create: vi.fn().mockResolvedValue('conv-1'),
-      update: vi.fn().mockResolvedValue(undefined),
-    },
-    conversationMessage: { create: vi.fn().mockResolvedValue(undefined) },
-    entity: { create: vi.fn().mockResolvedValue('ent-1') },
-    entityFact: {
-      create: vi.fn().mockResolvedValue(undefined),
-      createWithoutEmbedding: vi.fn().mockResolvedValue(undefined),
-      getEmbeddings: vi.fn().mockResolvedValue([]),
-      getFactsByIds: vi.fn().mockResolvedValue([]),
-    },
-    knowledgeGraph: { create: vi.fn().mockResolvedValue(undefined) },
-    process: { create: vi.fn().mockResolvedValue('proc-1') },
-    processAttribute: { create: vi.fn().mockResolvedValue(undefined) },
-    schema: {
-      version: {
-        read: vi.fn().mockResolvedValue(0),
-        delete: vi.fn().mockResolvedValue(undefined),
-        create: vi.fn().mockResolvedValue(undefined),
-      },
-    },
-  };
-
-  return {
-    mockExecute: vi.fn().mockResolvedValue([]),
-    mockBegin: vi.fn().mockResolvedValue(undefined),
-    mockCommit: vi.fn().mockResolvedValue(undefined),
-    mockRollback: vi.fn().mockResolvedValue(undefined),
-    mockClose: vi.fn().mockResolvedValue(undefined),
-    mockGetDialect: vi.fn().mockReturnValue('sqlite'),
-    mockDriverOps,
-  };
-});
+  mockRequiresSerialAccess,
+} = vi.hoisted(() => ({
+  mockExecute: vi.fn().mockResolvedValue([{ id: 1 }]),
+  mockBegin: vi.fn().mockResolvedValue(undefined),
+  mockCommit: vi.fn().mockResolvedValue(undefined),
+  mockRollback: vi.fn().mockResolvedValue(undefined),
+  mockClose: vi.fn().mockResolvedValue(undefined),
+  mockGetDialect: vi.fn().mockReturnValue('sqlite'),
+  mockRequiresSerialAccess: vi.fn().mockReturnValue(false),
+}));
 
 vi.mock('../../src/storage/registry.js', () => ({
   Registry: {
     registerAdapter: vi.fn(),
-    registerDriver: vi.fn(),
     getAdapter: vi.fn().mockReturnValue({
       execute: (...args: unknown[]) => mockExecute(...args),
       begin: (...args: unknown[]) => mockBegin(...args),
@@ -58,276 +29,400 @@ vi.mock('../../src/storage/registry.js', () => ({
       rollback: (...args: unknown[]) => mockRollback(...args),
       close: (...args: unknown[]) => mockClose(...args),
       getDialect: () => mockGetDialect(),
-    }),
-    getDriver: vi.fn().mockReturnValue({
-      requiresRollbackOnError: false,
-      migrations: {},
-      session: { create: (...a: unknown[]) => mockDriverOps.session.create(...a) },
-      conversation: {
-        create: (...a: unknown[]) => mockDriverOps.conversation.create(...a),
-        update: (...a: unknown[]) => mockDriverOps.conversation.update(...a),
-      },
-      conversationMessage: {
-        create: (...a: unknown[]) => mockDriverOps.conversationMessage.create(...a),
-      },
-      entity: { create: (...a: unknown[]) => mockDriverOps.entity.create(...a) },
-      entityFact: {
-        create: (...a: unknown[]) => mockDriverOps.entityFact.create(...a),
-        createWithoutEmbedding: (...a: unknown[]) =>
-          mockDriverOps.entityFact.createWithoutEmbedding(...a),
-        getEmbeddings: (...a: unknown[]) => mockDriverOps.entityFact.getEmbeddings(...a),
-        getFactsByIds: (...a: unknown[]) => mockDriverOps.entityFact.getFactsByIds(...a),
-      },
-      knowledgeGraph: { create: (...a: unknown[]) => mockDriverOps.knowledgeGraph.create(...a) },
-      process: { create: (...a: unknown[]) => mockDriverOps.process.create(...a) },
-      processAttribute: {
-        create: (...a: unknown[]) => mockDriverOps.processAttribute.create(...a),
-      },
-      schema: {
-        version: {
-          read: (...a: unknown[]) => mockDriverOps.schema.version.read(...a),
-          delete: (...a: unknown[]) => mockDriverOps.schema.version.delete(...a),
-          create: (...a: unknown[]) => mockDriverOps.schema.version.create(...a),
-        },
-      },
+      requiresSerialAccess: () => mockRequiresSerialAccess(),
     }),
   },
 }));
 
 import { StorageManager } from '../../src/storage/manager.js';
 import { Registry } from '../../src/storage/registry.js';
-import type { WriteBatch } from '../../src/types/storage.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const makeFactory = () => () => ({});
 
-const makeFactory = () => () => ({ __test: true });
-
-function makeConversationMessageBatch(): WriteBatch {
-  return {
-    ops: [
-      {
-        op_type: 'conversation_message.create',
-        payload: {
-          conversation_id: 'conv-123',
-          messages: [
-            { role: 'user', content: 'hello' },
-            { role: 'assistant', content: 'hi' },
-          ],
-        },
-      },
-    ],
-  };
+/** Calls handleStorageCall and returns the result via the resolve callback. */
+function dispatchCall(manager: StorageManager, payloadJson: string): Promise<object> {
+  return new Promise((resolve) => {
+    manager.handleStorageCall(0, payloadJson, resolve);
+  });
 }
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 describe('StorageManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCommit.mockResolvedValue(undefined);
-    mockRollback.mockResolvedValue(undefined);
-    mockBegin.mockResolvedValue(undefined);
-    mockDriverOps.session.create.mockResolvedValue('sess-1');
-    mockDriverOps.conversation.create.mockResolvedValue('conv-1');
   });
 
-  it('initialises adapter and driver from the factory', () => {
-    const factory = makeFactory();
-    new StorageManager(factory);
-    expect(Registry.getAdapter).toHaveBeenCalledWith(factory);
+  // -------------------------------------------------------------------------
+  // Construction & dialect detection
+  // -------------------------------------------------------------------------
+
+  it('constructs without throwing', () => {
+    expect(() => new StorageManager(makeFactory())).not.toThrow();
   });
 
-  it('getDialect() returns the adapter dialect', () => {
+  it('getDialect() returns the dialect from the adapter', () => {
+    mockGetDialect.mockReturnValue('postgresql');
     const manager = new StorageManager(makeFactory());
-    expect(manager.getDialect()).toBe('sqlite');
+    expect(manager.getDialect()).toBe('postgresql');
   });
 
-  it('writeBatch() returns { written_ops: 0 } for empty ops', async () => {
+  // -------------------------------------------------------------------------
+  // handleStorageCall — acquire
+  // -------------------------------------------------------------------------
+
+  it('acquire op acquires a new adapter and returns a conn_id', async () => {
     const manager = new StorageManager(makeFactory());
-    expect(await manager.writeBatch({ ops: [] })).toEqual({ written_ops: 0 });
+    const result = await dispatchCall(manager, JSON.stringify({ op: 'acquire' }));
+    expect(result).toHaveProperty('conn_id');
+    expect((result as any).conn_id).toBeGreaterThan(0);
+    expect(Registry.getAdapter).toHaveBeenCalledTimes(2); // once in constructor, once for acquire
   });
 
-  it('writeBatch() processes conversation_message.create and commits', async () => {
+  it('consecutive acquire ops return distinct conn_ids', async () => {
     const manager = new StorageManager(makeFactory());
-    const result = await manager.writeBatch(makeConversationMessageBatch());
-    expect(mockBegin).toHaveBeenCalled();
-    expect(mockCommit).toHaveBeenCalled();
-    expect(result.written_ops).toBe(1);
+    const r1 = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    // Close first before acquiring again — SQLite serializes at acquire level.
+    await dispatchCall(manager, JSON.stringify({ op: 'close', conn_id: r1.conn_id }));
+    const r2 = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    expect(r1.conn_id).not.toBe(r2.conn_id);
   });
 
-  it('writeBatch() rolls back and returns 0 written_ops on driver error', async () => {
-    mockDriverOps.session.create.mockRejectedValueOnce(new Error('DB error'));
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('sqlite: second acquire waits for first connection to close before proceeding', async () => {
+    // Regression: the sqliteQueue previously only serialized begin→commit/rollback.
+    // A second conn_id's execute would run inside the first conn_id's open transaction
+    // and could be committed or rolled back by the wrong caller.
+    // The queue now spans acquire→close so only one connection is live at a time.
+    // mockReturnValueOnce so only the constructor probe sees true; doesn't bleed into later tests.
+    mockRequiresSerialAccess.mockReturnValueOnce(true);
     const manager = new StorageManager(makeFactory());
-    const result = await manager.writeBatch(makeConversationMessageBatch());
-    expect(mockRollback).toHaveBeenCalled();
-    expect(result).toEqual({ written_ops: 0 });
-    consoleSpy.mockRestore();
-  });
 
-  it('writeBatch() retries on error code 40001 and succeeds on second attempt', async () => {
-    mockCommit
-      .mockRejectedValueOnce(Object.assign(new Error('retry'), { code: '40001' }))
-      .mockResolvedValue(undefined);
+    const { conn_id: id1 } = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'acquire' })
+    )) as any;
 
-    vi.useFakeTimers();
-    const manager = new StorageManager(makeFactory());
-    const resultPromise = manager.writeBatch(makeConversationMessageBatch());
-    await vi.runAllTimersAsync();
-    const result = await resultPromise;
-
-    expect(mockCommit).toHaveBeenCalledTimes(2);
-    expect(result.written_ops).toBe(1);
-    vi.useRealTimers();
-  });
-
-  it('writeBatch() gives up after max retries and logs the error', async () => {
-    const serialErr = Object.assign(new Error('keep retrying'), { code: '40001' });
-    mockCommit.mockRejectedValue(serialErr);
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    vi.useFakeTimers();
-    const manager = new StorageManager(makeFactory());
-    const resultPromise = manager.writeBatch(makeConversationMessageBatch());
-    await vi.runAllTimersAsync();
-    const result = await resultPromise;
-
-    expect(result).toEqual({ written_ops: 0 });
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
-    vi.useRealTimers();
-  });
-
-  it('writeBatch() processes entity_fact.create', async () => {
-    const manager = new StorageManager(makeFactory());
-    const batch: WriteBatch = {
-      ops: [
-        {
-          op_type: 'entity_fact.create',
-          payload: { entity_id: 'ent-1', facts: ['fact A'], conversation_id: 'conv-1' },
-        },
-      ],
-    };
-    const result = await manager.writeBatch(batch);
-    expect(result.written_ops).toBe(1);
-    expect(mockDriverOps.entityFact.create).toHaveBeenCalled();
-  });
-
-  it('writeBatch() processes knowledge_graph.create', async () => {
-    const manager = new StorageManager(makeFactory());
-    const batch: WriteBatch = {
-      ops: [
-        {
-          op_type: 'knowledge_graph.create',
-          payload: { entity_id: 'ent-1', semantic_triples: [] },
-        },
-      ],
-    };
-    const result = await manager.writeBatch(batch);
-    expect(result.written_ops).toBe(1);
-    expect(mockDriverOps.knowledgeGraph.create).toHaveBeenCalled();
-  });
-
-  it('writeBatch() processes process_attribute.create with array attributes', async () => {
-    const manager = new StorageManager(makeFactory());
-    const batch: WriteBatch = {
-      ops: [
-        {
-          op_type: 'process_attribute.create',
-          payload: { process_id: 'proc-1', attributes: ['attr1', 'attr2'] },
-        },
-      ],
-    };
-    const result = await manager.writeBatch(batch);
-    expect(result.written_ops).toBe(1);
-    expect(mockDriverOps.processAttribute.create).toHaveBeenCalledWith('proc-1', [
-      'attr1',
-      'attr2',
-    ]);
-  });
-
-  it('writeBatch() processes process_attribute.create with object attributes', async () => {
-    const manager = new StorageManager(makeFactory());
-    const batch: WriteBatch = {
-      ops: [
-        {
-          op_type: 'process_attribute.create',
-          payload: { process_id: 'proc-1', attributes: { key: 'val' } },
-        },
-      ],
-    };
-    const result = await manager.writeBatch(batch);
-    expect(result.written_ops).toBe(1);
-    expect(mockDriverOps.processAttribute.create).toHaveBeenCalledWith('proc-1', ['val']);
-  });
-
-  it('writeBatch() processes conversation.update', async () => {
-    const manager = new StorageManager(makeFactory());
-    const batch: WriteBatch = {
-      ops: [
-        {
-          op_type: 'conversation.update',
-          payload: { conversation_id: 'conv-1', summary: 'session summary' },
-        },
-      ],
-    };
-    const result = await manager.writeBatch(batch);
-    expect(result.written_ops).toBe(1);
-    expect(mockDriverOps.conversation.update).toHaveBeenCalled();
-  });
-
-  it('writeBatch() processes upsert_fact', async () => {
-    const manager = new StorageManager(makeFactory());
-    const batch: WriteBatch = {
-      ops: [
-        {
-          op_type: 'upsert_fact',
-          payload: { entity_id: 'ent-1', content: 'User likes coffee' },
-        },
-      ],
-    };
-    const result = await manager.writeBatch(batch);
-    expect(result.written_ops).toBe(1);
-    expect(mockDriverOps.entityFact.createWithoutEmbedding).toHaveBeenCalledWith(
-      'ent-1',
-      'User likes coffee'
-    );
-  });
-
-  it('writeBatch() logs error on unknown op_type and returns 0', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const manager = new StorageManager(makeFactory());
-    const result = await manager.writeBatch({
-      ops: [{ op_type: '__unknown__', payload: {} } as any],
+    // Start a second acquire — should be blocked behind id1.
+    let conn2Resolved = false;
+    const acquire2Promise = dispatchCall(manager, JSON.stringify({ op: 'acquire' })).then((r) => {
+      conn2Resolved = true;
+      return r;
     });
-    expect(result).toEqual({ written_ops: 0 });
-    consoleSpy.mockRestore();
+
+    // Yield to the event loop — id1 is still open so id2 must still be waiting.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(conn2Resolved).toBe(false);
+
+    // Close id1 — unblocks the second acquire.
+    await dispatchCall(manager, JSON.stringify({ op: 'close', conn_id: id1 }));
+    const r2 = (await acquire2Promise) as any;
+
+    expect(conn2Resolved).toBe(true);
+    expect(r2).toHaveProperty('conn_id');
+    expect(r2.conn_id).not.toBe(id1);
   });
 
-  it('fetchEmbeddings() delegates to driver', async () => {
-    mockDriverOps.entityFact.getEmbeddings.mockResolvedValue([
-      { id: 1, content_embedding: new Float32Array(3) },
-    ]);
+  // -------------------------------------------------------------------------
+  // handleStorageCall — execute
+  // -------------------------------------------------------------------------
+
+  it('execute op runs SQL on the connection and returns rows', async () => {
     const manager = new StorageManager(makeFactory());
-    const rows = await manager.fetchEmbeddings('ent-1', 10);
-    expect(mockDriverOps.entityFact.getEmbeddings).toHaveBeenCalledWith('ent-1', 10);
-    expect(rows).toHaveLength(1);
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(result.rows).toEqual([{ id: 1 }]);
+    expect(mockExecute).toHaveBeenCalledWith('SELECT 1', []);
   });
 
-  it('fetchFactsByIds() delegates to driver', async () => {
-    mockDriverOps.entityFact.getFactsByIds.mockResolvedValue([{ id: 1, content: 'fact' }]);
+  it('execute op deserializes typed binds including Bytes as Buffer', async () => {
     const manager = new StorageManager(makeFactory());
-    const rows = await manager.fetchFactsByIds([1, 2]);
-    expect(rows).toHaveLength(1);
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const binds = [
+      { t: 'int', v: 42 },
+      { t: 'text', v: 'hello' },
+      { t: 'null', v: null },
+      { t: 'bytes', v: Buffer.from('data').toString('base64') },
+    ];
+    await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'INSERT INTO t VALUES (?,?,?,?)', binds })
+    );
+    const [, calledBinds] = mockExecute.mock.calls.at(-1)!;
+    expect(calledBinds[0]).toBe(42);
+    expect(calledBinds[1]).toBe('hello');
+    expect(calledBinds[2]).toBeNull();
+    expect(Buffer.isBuffer(calledBinds[3])).toBe(true);
   });
 
-  it('close() calls adapter.close()', async () => {
+  it('begin op returns error object for unknown conn_id', async () => {
     const manager = new StorageManager(makeFactory());
-    await manager.close();
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'begin', conn_id: 9999 })
+    )) as any;
+    expect(result.error).toBeDefined();
+    expect(result.error.code).toBe('NO_CONN');
+  });
+
+  it('execute op returns error object for unknown conn_id', async () => {
+    const manager = new StorageManager(makeFactory());
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id: 9999, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(result.error).toBeDefined();
+    expect(result.error.code).toBe('NO_CONN');
+  });
+
+  // -------------------------------------------------------------------------
+  // handleStorageCall — begin / commit / rollback / close
+  // -------------------------------------------------------------------------
+
+  it('begin op calls adapter.begin() and returns { ok: true }', async () => {
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = await dispatchCall(manager, JSON.stringify({ op: 'begin', conn_id }));
+    expect(result).toEqual({ ok: true });
+    expect(mockBegin).toHaveBeenCalled();
+  });
+
+  it('commit op calls adapter.commit() and returns { ok: true }', async () => {
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = await dispatchCall(manager, JSON.stringify({ op: 'commit', conn_id }));
+    expect(result).toEqual({ ok: true });
+    expect(mockCommit).toHaveBeenCalled();
+  });
+
+  it('rollback op calls adapter.rollback() and returns { ok: true }', async () => {
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = await dispatchCall(manager, JSON.stringify({ op: 'rollback', conn_id }));
+    expect(result).toEqual({ ok: true });
+    expect(mockRollback).toHaveBeenCalled();
+  });
+
+  it('rollback op returns { ok: true } even for unknown conn_id (non-fatal)', async () => {
+    const manager = new StorageManager(makeFactory());
+    const result = await dispatchCall(manager, JSON.stringify({ op: 'rollback', conn_id: 9999 }));
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('close op calls adapter.close(), removes conn, and returns { ok: true }', async () => {
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = await dispatchCall(manager, JSON.stringify({ op: 'close', conn_id }));
+    expect(result).toEqual({ ok: true });
     expect(mockClose).toHaveBeenCalled();
+
+    // Subsequent execute on the closed conn_id should fail
+    const execResult = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(execResult.error).toBeDefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // handleStorageCall — error cases
+  // -------------------------------------------------------------------------
+
+  it('returns JSON_ERR for malformed JSON payload', async () => {
+    const manager = new StorageManager(makeFactory());
+    const result = (await dispatchCall(manager, 'not-valid-json')) as any;
+    expect(result.error.code).toBe('JSON_ERR');
+  });
+
+  it('returns UNKNOWN_OP for unrecognised op', async () => {
+    const manager = new StorageManager(makeFactory());
+    const result = (await dispatchCall(manager, JSON.stringify({ op: 'explode' }))) as any;
+    expect(result.error.code).toBe('UNKNOWN_OP');
+  });
+
+  it('returns ERR when execute adapter throws', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('db gone'));
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'BOOM', binds: [] })
+    )) as any;
+    expect(result.error.code).toBe('ERR');
+    expect(result.error.message).toContain('db gone');
+  });
+
+  // -------------------------------------------------------------------------
+  // P0 regression: Buffer rows must be base64-normalised before JSON transport
+  // -------------------------------------------------------------------------
+
+  it('execute op converts Buffer values in rows to base64 strings', async () => {
+    const raw = Buffer.from([0x01, 0x02, 0x03, 0x04]);
+    mockExecute.mockResolvedValueOnce([{ id: 1, content_embedding: raw }]);
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({
+        op: 'execute',
+        conn_id,
+        sql: 'SELECT id, content_embedding FROM t',
+        binds: [],
+      })
+    )) as any;
+    expect(typeof result.rows[0].content_embedding).toBe('string');
+    expect(result.rows[0].content_embedding).toBe(raw.toString('base64'));
+  });
+
+  it('execute op converts Uint8Array values in rows to base64 strings', async () => {
+    const raw = new Uint8Array([0xde, 0xad, 0xbe, 0xef]);
+    mockExecute.mockResolvedValueOnce([{ blob: raw }]);
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT blob FROM t', binds: [] })
+    )) as any;
+    expect(typeof result.rows[0].blob).toBe('string');
+    expect(result.rows[0].blob).toBe(Buffer.from(raw).toString('base64'));
+  });
+
+  it('execute op converts BigInt row values to strings', async () => {
+    mockExecute.mockResolvedValueOnce([{ id: BigInt('9007199254740993') }]);
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT id FROM t', binds: [] })
+    )) as any;
+    expect(typeof result.rows[0].id).toBe('string');
+    expect(result.rows[0].id).toBe('9007199254740993');
+  });
+
+  it('execute op leaves non-binary row values untouched', async () => {
+    mockExecute.mockResolvedValueOnce([{ id: 42, content: 'hello', score: 0.9 }]);
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT id, content, score FROM t', binds: [] })
+    )) as any;
+    expect(result.rows[0]).toEqual({ id: 42, content: 'hello', score: 0.9 });
+  });
+
+  // -------------------------------------------------------------------------
+  // P2 regression: DB error codes must survive the TS bridge
+  // -------------------------------------------------------------------------
+
+  it('preserves the DB error code when the adapter throws with a code property', async () => {
+    const err = Object.assign(new Error('serialization failure'), { code: '40001' });
+    mockExecute.mockRejectedValueOnce(err);
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(result.error.code).toBe('40001');
+  });
+
+  it('falls back to ERR code when the thrown error has no code property', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('generic failure'));
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(result.error.code).toBe('ERR');
+  });
+
+  // -------------------------------------------------------------------------
+  // P4 regression: lastUsed refresh keeps active connections alive past TTL
+  // -------------------------------------------------------------------------
+
+  it('refreshes lastUsed on execute so an active connection survives the TTL sweep', async () => {
+    mockGetDialect.mockReturnValue('postgresql');
+    vi.useFakeTimers();
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+
+    // Advance to just before the 30s TTL
+    vi.advanceTimersByTime(29_000);
+
+    // Touch the connection — refreshes lastUsed
+    await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    );
+
+    // Advance 2s more: 31s since acquire, but only 2s since last use
+    vi.advanceTimersByTime(2_000);
+
+    // A new acquire triggers the sweep — our connection should survive
+    await dispatchCall(manager, JSON.stringify({ op: 'acquire' }));
+
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(result.error).toBeUndefined();
+
+    vi.useRealTimers();
+  });
+
+  it('sqlite: orphaned transaction is swept and SQLite lock released after stale TTL', async () => {
+    // Regression: inTransaction entries were skipped by the sweep forever.
+    // With the acquire-to-close serial lock, an orphaned transaction blocks future acquires.
+    // After STALE_TX_TTL_MS the sweep must force-rollback/close and release the lock.
+    mockRequiresSerialAccess.mockReturnValueOnce(true);
+    vi.useFakeTimers();
+    const manager = new StorageManager(makeFactory());
+
+    const { conn_id: id1 } = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'acquire' })
+    )) as any;
+    await dispatchCall(manager, JSON.stringify({ op: 'begin', conn_id: id1 }));
+
+    // Advance past STALE_TX_TTL_MS (60s) with no further activity on id1.
+    vi.advanceTimersByTime(61_000);
+
+    // A new acquire triggers the sweep. The sweep must release id1's SQLite lock so
+    // this acquire can proceed rather than block forever.
+    const r2 = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+    expect(r2).toHaveProperty('conn_id');
+
+    // id1 should have been swept.
+    const execResult = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id: id1, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(execResult.error).toBeDefined();
+    expect(execResult.error.code).toBe('NO_CONN');
+
+    vi.useRealTimers();
+  });
+
+  it('sweeps a connection that has been idle past the TTL', async () => {
+    mockGetDialect.mockReturnValue('postgresql');
+    vi.useFakeTimers();
+    const manager = new StorageManager(makeFactory());
+    const { conn_id } = (await dispatchCall(manager, JSON.stringify({ op: 'acquire' }))) as any;
+
+    // Advance past TTL with no activity
+    vi.advanceTimersByTime(31_000);
+
+    // New acquire triggers sweep — idle connection should be removed
+    await dispatchCall(manager, JSON.stringify({ op: 'acquire' }));
+
+    const result = (await dispatchCall(
+      manager,
+      JSON.stringify({ op: 'execute', conn_id, sql: 'SELECT 1', binds: [] })
+    )) as any;
+    expect(result.error).toBeDefined();
+    expect(result.error.code).toBe('NO_CONN');
+
+    vi.useRealTimers();
   });
 });

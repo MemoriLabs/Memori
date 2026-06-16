@@ -6,6 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+import memori_hermes as provider_module  # noqa: E402
+import memori_hermes._paths as paths  # noqa: E402
 from memori_hermes import MemoriMemoryProvider  # noqa: E402
 
 
@@ -48,7 +50,7 @@ class FakeClient:
 
 
 def test_save_config_writes_profile_scoped_memori_json(tmp_path: Path) -> None:
-    provider = MemoriMemoryProvider()
+    provider = provider_module.MemoriMemoryProvider()
 
     provider.save_config(
         {"entity_id": "user-1", "project_id": "project-1"},
@@ -59,8 +61,18 @@ def test_save_config_writes_profile_scoped_memori_json(tmp_path: Path) -> None:
     assert data == {"entityId": "user-1", "projectId": "project-1"}
 
 
+def test_config_path_uses_shared_hermes_home_resolver(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path / "env-home"))
+    monkeypatch.setattr(paths, "_hermes_home_from_hermes", lambda: tmp_path)
+
+    assert provider_module._config_path() == tmp_path / "memori.json"
+
+
 def test_prefetch_does_not_auto_recall() -> None:
-    provider = MemoriMemoryProvider(client=FakeClient())
+    provider = provider_module.MemoriMemoryProvider(client=FakeClient())
 
     result = provider.prefetch("database")
 
@@ -69,7 +81,7 @@ def test_prefetch_does_not_auto_recall() -> None:
 
 def test_sync_turn_runs_background_capture() -> None:
     client = FakeClient()
-    provider = MemoriMemoryProvider(client=client)
+    provider = provider_module.MemoriMemoryProvider(client=client)
     provider._session_id = "session-1"
 
     provider.sync_turn("hello", "hi")
