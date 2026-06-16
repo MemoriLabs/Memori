@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse, urlunparse
 
 import certifi
 
-from memori._exceptions import MissingPyMySQLError, MissingPsycopgError
+from memori._exceptions import MissingPsycopgError, MissingPyMySQLError
 
 DEFAULT_MYSQL_DATABASE = "memori"
 DEFAULT_POSTGRESQL_DATABASE = "memori"
