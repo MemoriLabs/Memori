@@ -203,3 +203,47 @@ def test_get_response_content_unknown_type_passthrough():
     # The exact same object reference must be returned unmodified
     assert result is raw_response
     assert result.content == "Normal response data"
+
+
+def test_convert_to_json_scalar_types():
+    """
+    Behavioral Guarantee: convert_to_json normalizes common scalar types and
+    iterables so the final payload is completely json.dumps() safe, without
+    relying on a generic string fallback that could degrade telemetry.
+    """
+    import decimal
+    import enum
+    import json
+    import pathlib
+    import uuid
+
+    from memori.llm.helpers.serialization import convert_to_json
+
+    class MockEnum(enum.Enum):
+        A = decimal.Decimal("4.56")
+
+    payload = {
+        "id": uuid.UUID("12345678-1234-5678-1234-567812345678"),
+        "cost": decimal.Decimal("1.23"),
+        "file": pathlib.Path("/tmp/foo.txt"),
+        "status": MockEnum.A,
+        "tags": {"a", "b"},
+        "coords": (1, 2)
+    }
+
+    result = convert_to_json(payload)
+
+    # 1. Assert full JSON serializability
+    json_str = json.dumps(result)
+    assert json_str is not None
+
+    # 2. Assert specific structure preservation
+    assert result["id"] == "12345678-1234-5678-1234-567812345678"
+    assert result["cost"] == "1.23"
+    # Note: Path separator might differ on Windows/Linux, so check ends_with or just type
+    assert isinstance(result["file"], str)
+    assert result["file"].endswith("foo.txt")
+    assert result["status"] == "4.56"
+    assert isinstance(result["tags"], list)
+    assert len(result["tags"]) == 2
+    assert result["coords"] == [1, 2]

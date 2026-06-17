@@ -1,5 +1,9 @@
 import copy
+import decimal
+import enum
 import json
+import pathlib
+import uuid
 from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any, cast
@@ -37,6 +41,12 @@ def convert_to_json(obj, _seen=None):
                 for key, value in obj.items()
                 if not key.startswith("_")
             }
+        if isinstance(obj, enum.Enum):
+            return convert_to_json(obj.value, _seen.copy())
+        if isinstance(obj, (uuid.UUID, pathlib.Path, decimal.Decimal)):
+            return str(obj)
+        if isinstance(obj, (set, frozenset, tuple)):
+            return [convert_to_json(item, _seen.copy()) for item in obj]
         if hasattr(obj, "model_dump"):
             try:
                 return convert_to_json(obj.model_dump(), _seen.copy())
