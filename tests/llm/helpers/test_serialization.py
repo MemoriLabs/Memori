@@ -228,7 +228,7 @@ def test_convert_to_json_scalar_types():
         "file": pathlib.Path("/tmp/foo.txt"),
         "status": MockEnum.A,
         "tags": {"a", "b"},
-        "coords": (1, 2)
+        "coords": (1, 2),
     }
 
     result = convert_to_json(payload)
