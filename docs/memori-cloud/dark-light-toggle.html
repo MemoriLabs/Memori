@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memori Dark/Light Toggle Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f8fafc;
+      color: #0f172a;
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+    }
+
+    .demo {
+      width: min(980px, 100%);
+    }
+
+    .card {
+      border-radius: 24px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: #ffffff;
+      box-shadow: 0 28px 80px rgba(15, 23, 42, 0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+    }
+
+    .card-header h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .toggle input {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .switch {
+      position: relative;
+      width: 3.4rem;
+      height: 1.8rem;
+      border-radius: 999px;
+      background: #e2e8f0;
+      transition: background 160ms ease;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem;
+    }
+
+    .handle {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+      transform: translateX(0);
+      transition: transform 160ms ease, background 160ms ease;
+    }
+
+    .toggle input:checked + .switch {
+      background: #6366f1;
+    }
+
+    .toggle input:checked + .switch .handle {
+      transform: translateX(1.6rem);
+      background: #f8fafc;
+    }
+
+    .preview {
+      padding: 2rem;
+      display: grid;
+      gap: 1.5rem;
+      background: #f8fafc;
+      color: #0f172a;
+      transition: background 160ms ease, color 160ms ease;
+    }
+
+    .preview h2 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .preview p,
+    .preview li {
+      margin: 0;
+      color: #475569;
+    }
+
+    .preview pre {
+      margin: 0;
+      padding: 1rem;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.04);
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color: #0f172a;
+    }
+
+    .theme-input {
+      display: none;
+    }
+
+    .theme-input:checked ~ .card .preview {
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .theme-input:checked ~ .card {
+      border-color: rgba(148, 163, 184, 0.35);
+      box-shadow: 0 32px 90px rgba(15, 23, 42, 0.12);
+      background: #0b1123;
+    }
+
+    .theme-input:checked ~ .card .card-header {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 1) 100%);
+      color: #e2e8f0;
+    }
+
+    .theme-input:checked ~ .card .preview h2 {
+      color: #ffffff;
+    }
+
+    .theme-input:checked ~ .card .preview p,
+    .theme-input:checked ~ .card .preview li {
+      color: #cbd5e1;
+    }
+
+    .theme-input:checked ~ .card .preview pre {
+      background: #151f38;
+      color: #e2e8f0;
+    }
+
+    .note {
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      color: #64748b;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 1rem;
+      }
+      .card-header,
+      .preview {
+        padding: 1.5rem;
+      }
+      .switch {
+        width: 3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <input id="themeToggle" class="theme-input" type="checkbox" />
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h1>Dark / Light Theme Toggle</h1>
+          <p class="note">A live theme toggle demo that switches between light and dark styles without JavaScript.</p>
+        </div>
+        <label class="toggle" for="themeToggle">
+          <span>Dark mode</span>
+          <span class="switch"><span class="handle"></span></span>
+        </label>
+      </div>
+      <section class="preview">
+        <div>
+          <h2>Live theme preview</h2>
+          <p>Flip the switch to test a fully working dark/light mode experience. The preview uses CSS-only toggling, so it works without any scripts.</p>
+        </div>
+        <div>
+          <h3>Sample content</h3>
+          <ul>
+            <li>Primary text and background update automatically.</li>
+            <li>Card UI, headings, and code sample all adapt to the selected theme.</li>
+            <li>No external libraries or side effects are required.</li>
+          </ul>
+        </div>
+        <pre><code>// Toggle the checkbox to switch themes.
+function renderThemeDemo() {
+  return "Dark and light mode are now available.";
+}</code></pre>
+      </section>
+    </div>
+  </div>
+</body>
+</html>
