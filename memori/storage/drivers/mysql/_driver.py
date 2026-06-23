@@ -599,15 +599,10 @@ class EntityFact(BaseEntityFact):
 
         return [facts_by_id[fact_id] for fact_id in fact_ids if fact_id in facts_by_id]
 
-    def delete_by_entity(self, entity_id: int):
-        self.conn.execute(
-            """
-            DELETE
-              FROM memori_entity_fact
-             WHERE entity_id = %s
-            """,
-            (entity_id,),
-        )
+    def delete(self, entity_id: str) -> self:
+        """Deletes memories associated with a specific entity id from the database."""
+        query = "DELETE FROM memori_entity_fact WHERE entity_id = %s"
+        self.conn.execute(query, (entity_id,))
         self.conn.commit()
         return self
 
