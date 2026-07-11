@@ -185,6 +185,8 @@ mkdir -p "$HERMES_HOME"
 echo "MEMORI_API_KEY=YOUR_MEMORI_API_KEY" >> "$HERMES_HOME/.env"
 echo "MEMORI_ENTITY_ID=your-app-user-id" >> "$HERMES_HOME/.env"
 ```
+> [!NOTE]
+> Due to recent Hermes plugin architecture and bundling policies, third-party memory providers cannot be embedded natively. `hermes-memori` must remain a separately installed provider via the manual steps above.
 
 `MEMORI_PROJECT_ID` is optional; when omitted, the provider uses Hermes' active project context for scoping.
 
