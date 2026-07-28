@@ -4,7 +4,7 @@ This repository is a simplified Rust workspace for the Memori engine.
 
 ## Layout
 
-- Root `src/`: the main engine crate.
+- Root `src/`:  for the main engine crate.
 - `bindings/python`: PyO3 adapter for Python SDK calls.
 - `bindings/node`: napi-rs adapter for Node SDK calls.
 - `examples/`: small integration demos.
@@ -28,8 +28,8 @@ No reverse dependencies are allowed.
 
 ### `bindings/python` and `bindings/node`
 
-- Expose thin language-native functions and exceptions/errors.
-- Convert SDK inputs into engine calls.
+- Exposes thin language-native functions and exceptions/errors.
+- Converts the SDK inputs into engine calls.
 - Must not bypass the engine crate and call runtime internals directly.
 
 ## Contribution Guardrails
