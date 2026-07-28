@@ -16,6 +16,7 @@ from memori.llm.clients import Agno as AgnoMemoriClient
 from memori.llm.clients import Anthropic as AnthropicMemoriClient
 from memori.llm.clients import Google as GoogleMemoriClient
 from memori.llm.clients import LangChain as LangChainMemoriClient
+from memori.llm.clients import LlamaIndex as LlamaIndexMemoriClient
 from memori.llm.clients import OpenAi as OpenAiMemoriClient
 from memori.llm.clients import PydanticAi as PydanticAiMemoriClient
 from memori.llm.clients import XAi as XAiMemoriClient
@@ -163,5 +164,22 @@ class XAi(BaseProvider):
         )
         if self.client is None:
             self.client = XAiMemoriClient(self.config).register(client, stream=stream)
+
+        return self.entity
+
+
+class LlamaIndex(BaseProvider):
+    def register(self, client: Any) -> "Memori":
+        """Register a LlamaIndex LLM object.
+
+        Deprecated: use `memori.llm.register(client=...)` instead.
+        """
+        warnings.warn(
+            "memori.llamaindex.register() is deprecated. Use memori.llm.register(client) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if self.client is None:
+            self.client = LlamaIndexMemoriClient(self.config).register(client)
 
         return self.entity

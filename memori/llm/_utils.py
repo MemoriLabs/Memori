@@ -73,6 +73,19 @@ def client_is_litellm(client) -> bool:
     return _client_module(client).startswith("litellm")
 
 
+def client_is_llamaindex(client) -> bool:
+    """Match any LlamaIndex LLM wrapper object.
+
+    LlamaIndex LLM classes live under ``llama_index.llms.*`` or
+    ``llama_index.core.llms.*``.  We detect them by module path so the
+    core ``memori`` package does not need ``llama-index`` installed.
+    """
+    module = _client_module(client)
+    return module.startswith("llama_index.llms") or module.startswith(
+        "llama_index.core.llms"
+    )
+
+
 def client_is_bedrock(provider, title):
     return (
         provider_is_langchain(provider) and title == LANGCHAIN_CHATBEDROCK_LLM_PROVIDER
