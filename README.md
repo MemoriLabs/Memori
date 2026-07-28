@@ -15,7 +15,7 @@
   <a href="https://trendshift.io/repositories/15435" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15435" alt="MemoriLabs%2FMemori | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-<div align="center"><table border="0" cellpadding="0" cellspacing="0"><tr><td><a href="https://badge.fury.io/py/memori"><img src="https://badge.fury.io/py/memori.svg" alt="PyPI version"></a></td><td><a href="https://www.npmjs.com/package/@memorilabs/memori"><img src="https://img.shields.io/npm/v/@memorilabs/memori.svg" alt="NPM version"></a></td><td><a href="https://pepy.tech/projects/memori"><img src="https://static.pepy.tech/badge/memori" alt="Downloads"></a></td><td><a href="https://opensource.org/license/apache-2-0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"></a></td><td><a href="https://discord.gg/abD4eGym6v"><img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord"></a></td></tr></table></div>
+<p align="center"><a href="https://badge.fury.io/py/memori"><img src="https://badge.fury.io/py/memori.svg" alt="PyPI version"></a> <a href="https://www.npmjs.com/package/@memorilabs/memori"><img src="https://img.shields.io/npm/v/@memorilabs/memori.svg" alt="NPM version"></a> <a href="https://pepy.tech/projects/memori"><img src="https://static.pepy.tech/badge/memori" alt="Downloads"></a> <a href="https://opensource.org/license/apache-2-0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"></a> <a href="https://discord.gg/abD4eGym6v"><img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord"></a></p>
 
 <p align="center">
   <a href="https://github.com/MemoriLabs/Memori/stargazers">
