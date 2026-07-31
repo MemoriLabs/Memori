@@ -1,0 +1,115 @@
+---
+title: Memory Pool
+description: Memory Pools are shared, permissioned collections of memories available to agents across users, teams, workflows, and applications — without exposing individual user memories across permission boundaries.
+---
+
+# Memory Pool
+
+A Memory Pool is a shared collection of memories that multiple agents can read from and write to. Pools let you build institutional knowledge that persists across users, teams, and workflows — separate from any individual user's private memory.
+
+## What Pools Are For
+
+Individual entity memory tracks what a specific user has said and done. Pools hold knowledge that belongs to the organization or a team rather than any one person:
+
+| Use case | What the pool holds |
+| -------- | ------------------- |
+| Product knowledge base | Feature definitions, known issues, escalation paths |
+| Support team | Resolutions to common problems, customer tier information |
+| Research pipeline | Findings, source evaluations, synthesis from multiple sessions |
+| Multi-agent workflow | Shared state passed between specialized agents |
+
+## Creating a Pool
+
+```python
+from memori import Memori
+
+mem = Memori()
+
+pool = mem.pool.create(
+    pool_id="support-team",
+    name="Support Team Knowledge",
+    description="Shared resolutions and escalation context for support agents",
+)
+```
+
+## Writing to a Pool
+
+Agents write to a pool using the same attribution model as entity memory, but scoped to the pool rather than a user:
+
+```python
+mem.pool.write(
+    pool_id="support-team",
+    content="Billing disputes over $500 must be escalated to tier-2 within 24 hours.",
+    tags=["billing", "escalation"],
+)
+```
+
+Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
+
+## Reading from a Pool
+
+Agents recall from a pool explicitly, or Intelligent Recall can include pool results automatically when the pool is attached to a process:
+
+```python
+# Explicit pool recall
+results = mem.pool.recall(
+    pool_id="support-team",
+    query="billing escalation policy",
+)
+
+# Attach pool to a process so recall includes it automatically
+mem.pool.attach(pool_id="support-team", process_id="support_agent")
+```
+
+## Permissions
+
+Pool access is governed by the same ReBAC model as entity memory. Each pool has its own access control list:
+
+| Role | Capabilities |
+| ---- | ------------ |
+| `reader` | Recall from the pool; no writes |
+| `writer` | Recall and write to the pool |
+| `admin` | Full access: recall, write, manage membership and permissions |
+
+```python
+# Grant a process write access to a pool
+mem.pool.grant(
+    pool_id="support-team",
+    process_id="support_agent",
+    role="writer",
+)
+
+# Grant a process read-only access
+mem.pool.grant(
+    pool_id="support-team",
+    process_id="summary_agent",
+    role="reader",
+)
+```
+
+Permissions are evaluated at runtime for every pool operation and recorded in the audit log.
+
+## Pool Isolation
+
+Pools are fully isolated from each other and from individual entity memory:
+
+- An agent with access to `support-team` cannot read from `engineering-team` unless explicitly granted
+- A pool member's writes are attributed to the pool, not their personal entity memory
+- Pool recall results are clearly distinguished from entity recall results in the response
+
+## Retention
+
+Apply a TTL to pool entries independently of entity memory retention:
+
+```javascript
+db.memori_pool_entries.createIndex(
+  { created_at: 1 },
+  { expireAfterSeconds: 60 * 60 * 24 * 90 } // 90 days
+);
+```
+
+Pool entries can also be deleted individually or by tag:
+
+```python
+mem.pool.delete(pool_id="support-team", tags=["billing"])
+```

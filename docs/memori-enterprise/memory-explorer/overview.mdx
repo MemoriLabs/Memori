@@ -1,0 +1,89 @@
+---
+title: Memory Explorer
+description: Memory Explorer is a visual interface for browsing, searching, and inspecting the memories your agents have created — available in the Memori Enterprise dashboard.
+---
+
+# Memory Explorer
+
+Memory Explorer is the visual interface for browsing, searching, and inspecting memories across your entire deployment. It gives your team direct visibility into what agents know, how memories were formed, and which facts are driving agent behavior — without writing queries against the database.
+
+## Accessing Memory Explorer
+
+Memory Explorer is available in the Memori Enterprise dashboard. Navigate to **Dashboard → Memory Explorer**.
+
+Access is governed by your organization's ReBAC policy. Users with `admin` or `read` roles on a given entity or pool can view its memories in the Explorer.
+
+## What You Can Do
+
+### Search and Browse
+
+Search across all memories by entity, pool, keyword, or tag. Results show the memory content, its type (fact, preference, rule, event, relationship), and when it was created and last recalled.
+
+Filter by:
+
+- **Entity** — view all memories for a specific user or agent
+- **Pool** — inspect the contents of a Memory Pool
+- **Memory type** — facts, preferences, rules, events, relationships, skills
+- **Date range** — memories created or updated within a window
+- **Tag** — memories labeled with a specific tag
+
+### Inspect Individual Memories
+
+Click any memory to see its full detail:
+
+- **Content** — the structured fact or summary
+- **Source** — the session and conversation turn it was extracted from
+- **Confidence** — the augmentation pipeline's confidence score
+- **Recall count** — how many times this memory has been retrieved
+- **Last recalled** — when it was last used to ground an agent response
+- **Linked memories** — related facts in the knowledge graph
+
+### Edit and Delete
+
+Users with `admin` role can edit memory content or delete individual memories directly from the Explorer. All edits and deletions are recorded in the audit log with the acting user and timestamp.
+
+### Knowledge Graph View
+
+Switch to **Graph View** to see memories as a network. Nodes represent entities, facts, and relationships. Edges show how memories connect — which facts reference the same entity, which preferences were inferred from the same session, and how the knowledge graph evolved over time.
+
+Graph View is useful for:
+
+- Understanding why an agent responded the way it did
+- Identifying contradictory or stale facts before they affect agent behavior
+- Visualizing which users or topics have the densest memory coverage
+
+## Exporting Memories
+
+Export memories for a specific entity or pool as JSON or CSV from the Explorer toolbar. Exports are logged in the audit trail and respect your organization's data handling policies.
+
+```json
+{
+  "entity_id": "user_123",
+  "exported_at": "2026-07-31T10:00:00Z",
+  "memories": [
+    {
+      "id": "mem_abc123",
+      "type": "preference",
+      "content": "Prefers responses in bullet-point format",
+      "created_at": "2026-06-15T09:23:11Z",
+      "recall_count": 47
+    }
+  ]
+}
+```
+
+## Programmatic Access
+
+The same data visible in the Explorer is accessible via the Memori API for building custom dashboards or integrating memory inspection into your internal tooling:
+
+```python
+from memori import Memori
+
+mem = Memori()
+
+# List memories for an entity
+memories = mem.entity.memories(entity_id="user_123", limit=50)
+
+# Search memories by keyword
+results = mem.recall("billing escalation", entity_id="user_123")
+```
