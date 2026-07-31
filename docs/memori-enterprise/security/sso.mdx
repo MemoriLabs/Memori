@@ -1,0 +1,57 @@
+---
+title: SSO Integration
+description: Integrate your identity provider with Memori Enterprise to centrally manage agent and user permissions using SAML, OIDC, or OAuth 2.0.
+---
+
+# SSO Integration
+
+Memori Enterprise integrates with your identity provider (IdP) so that agent and user permissions are managed centrally through your existing systems. Once connected, team membership, role assignments, and access policies in your IdP drive Memori permissions automatically.
+
+## Supported Protocols
+
+| Protocol | Use case |
+| -------- | -------- |
+| **SAML 2.0** | Enterprise SSO for dashboard access and administrative actions |
+| **OIDC (OpenID Connect)** | Token-based authentication for API access and agent identity |
+| **OAuth 2.0** | Scope-based authorization for agent memory operations |
+
+## Supported Identity Providers
+
+Memori Enterprise works with any standards-compliant IdP. Tested integrations include:
+
+- Okta
+- Microsoft Entra ID (Azure AD)
+- Google Workspace
+- Ping Identity
+- Auth0
+- OneLogin
+
+Custom or on-premises IdPs that support SAML 2.0 or OIDC are also supported.
+
+## How It Works
+
+**Dashboard access** — Administrators authenticate to the Memori Enterprise dashboard using your organization's SSO. Group membership in your IdP maps to Memori administrative roles.
+
+**Agent identity** — Agents obtain short-lived tokens from your IdP and present them to Memori on each request. Memori validates the token and resolves the agent's permissions from your IdP's claims.
+
+**Permission sync** — Memori Enterprise can be configured to pull group and role assignments from your IdP on a schedule, or to evaluate them in real time on each request using OIDC introspection.
+
+## Configuration
+
+Your solutions engineer will provide the full configuration guide for your IdP during onboarding. The general steps are:
+
+1. Register a Memori Enterprise application in your IdP
+2. Configure the redirect URI and token endpoint in Memori Enterprise
+3. Map IdP groups or roles to Memori permission levels
+4. Test authentication for dashboard users and agent tokens
+5. Enable SSO enforcement (disables local credentials for dashboard access)
+
+## Enforcing SSO
+
+Once SSO is configured and validated, you can enforce it organization-wide. With SSO enforcement enabled:
+
+- Local password authentication for dashboard access is disabled
+- All dashboard sessions must originate from your IdP
+- API access requires tokens issued by your IdP
+
+Contact your solutions engineer to configure SSO enforcement during or after initial deployment.

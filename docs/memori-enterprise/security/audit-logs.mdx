@@ -1,0 +1,85 @@
+---
+title: Audit Logs & Observability
+description: Memori Enterprise maintains immutable audit logs for all memory operations, with full telemetry export into your existing observability stack.
+---
+
+# Audit Logs & Observability
+
+Memori Enterprise records every memory operation in an immutable audit log and exports telemetry into your existing observability infrastructure. Your security and compliance teams have a complete, tamper-proof record of what happened, who did it, and when.
+
+## Audit Log
+
+Every memory operation generates an audit event containing:
+
+| Field | Description |
+| ----- | ----------- |
+| `timestamp` | UTC timestamp with millisecond precision |
+| `operation` | The operation type (`capture`, `recall`, `delete`, `permission_change`) |
+| `entity_id` | The entity whose memory was accessed |
+| `process_id` | The agent or application that performed the operation |
+| `session_id` | The session in which the operation occurred |
+| `result` | Whether the operation succeeded or was denied |
+| `denial_reason` | If denied: the access control rule that blocked the operation |
+| `memory_ids` | The specific memory records affected |
+
+### Immutability
+
+Audit log records cannot be modified or deleted by Memori administrators or your team. The log is append-only and stored separately from operational data. For on-premises deployments, Memori provides guidance on write-once storage configuration to satisfy specific compliance requirements.
+
+### Retention
+
+Audit log retention is configurable independently of memory retention. Common configurations:
+
+| Requirement | Configuration |
+| ----------- | ------------- |
+| 90-day default | TTL index on audit collection: `expireAfterSeconds: 7776000` |
+| 1-year HIPAA | TTL index: `expireAfterSeconds: 31536000` |
+| Indefinite | No TTL index; archive to cold storage on a schedule |
+
+## Observability and Telemetry
+
+Memori Enterprise exports metrics and traces into your existing stack. Supported export targets:
+
+- **OpenTelemetry (OTLP)** — Export traces and metrics to any OTLP-compatible backend (Datadog, Grafana, Honeycomb, Jaeger, and others)
+- **Prometheus** — Scrape Memori's metrics endpoint directly
+- **CloudWatch / Cloud Monitoring / Azure Monitor** — Available for BYOC deployments on the respective cloud provider
+
+### Key Metrics
+
+| Metric | Description |
+| ------ | ----------- |
+| `memori_captures_total` | Total memory capture operations |
+| `memori_recalls_total` | Total recall operations |
+| `memori_augmentation_latency_seconds` | Augmentation pipeline duration |
+| `memori_recall_latency_seconds` | Recall query duration |
+| `memori_access_denials_total` | Operations blocked by access control |
+| `memori_entity_memory_count` | Memory count per entity |
+
+### Traces
+
+Memori emits OpenTelemetry spans for every operation in the capture and recall paths. Traces include:
+
+- End-to-end latency for capture and recall
+- Augmentation pipeline stages (extraction, embedding, storage)
+- Database query timing
+- Access control evaluation
+
+## Querying the Audit Log
+
+The audit log is stored in your database and queryable directly. Example queries:
+
+**All operations for a specific entity in the last 24 hours:**
+```javascript
+db.memori_audit_log.find({
+  entity_id: "user_123",
+  timestamp: { $gte: new Date(Date.now() - 86400000) }
+}).sort({ timestamp: -1 })
+```
+
+**All denied operations in the last 7 days:**
+```javascript
+db.memori_audit_log.find({
+  result: "denied",
+  timestamp: { $gte: new Date(Date.now() - 604800000) }
+})
+```

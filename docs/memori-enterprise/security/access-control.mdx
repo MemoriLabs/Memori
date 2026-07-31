@@ -1,0 +1,60 @@
+---
+title: Access Control
+description: Memori Enterprise uses role and relationship-based access control (ReBAC) to govern which agents can read, write, or administer which memories.
+---
+
+# Access Control
+
+Memori Enterprise uses role and relationship-based access control (ReBAC) to govern memory operations at a granular level. You decide which agents can read which memories, which can write, and which have administrative access — and those decisions map directly to your existing permission structure.
+
+## Access Model
+
+Memory operations in Memori are governed by three dimensions:
+
+| Dimension | Description | Example |
+| --------- | ----------- | ------- |
+| **Entity** | The user, customer, or subject the memory belongs to | `user_123` |
+| **Process** | The agent or application performing the operation | `support_agent` |
+| **Role** | The permission level granted to the process for the entity | `read`, `write`, `admin` |
+
+Roles are assigned at the entity-process level, so different agents can have different permissions for the same user's memories.
+
+## Roles
+
+| Role | Capabilities |
+| ---- | ------------ |
+| `read` | Recall memories; no capture or modification |
+| `write` | Capture and recall memories; no administrative actions |
+| `admin` | Full access: capture, recall, modify, delete, and manage permissions |
+
+## Relationship-Based Control
+
+ReBAC allows permissions to follow organizational relationships rather than requiring explicit per-agent grants. For example:
+
+- Members of a support team automatically inherit `read` access to customer memories scoped to that team
+- A manager role automatically receives `admin` access to all memories within their department
+- An escalation path grants a senior agent `write` access when a case is transferred
+
+Relationship rules are defined in your Memori Enterprise configuration and evaluated at runtime for every operation.
+
+## Policy Integration
+
+Memori Enterprise can import your existing access policies directly:
+
+- **RBAC policies** — Map your existing role definitions to Memori permission levels
+- **OAuth scopes** — Bind Memori permissions to OAuth token scopes issued by your IdP
+- **Attribute-based rules** — Use attributes from your identity provider (department, team, clearance level) to drive Memori permissions
+
+## Memory Pools
+
+Memory pools are shared, permissioned collections of memories available to multiple agents. Pools are governed by the same ReBAC model:
+
+- Define which entities contribute to a pool
+- Control which agents can read from or write to the pool
+- Scope pools by team, workflow, or application
+
+Pools let agents share institutional knowledge without exposing individual user memories across permission boundaries.
+
+## Audit
+
+All access control decisions are recorded in the immutable audit log. Every memory read, write, and permission change is logged with the requesting agent, the entity context, the decision made, and the timestamp. See [Audit Logs](/docs/memori-enterprise/security/audit-logs).

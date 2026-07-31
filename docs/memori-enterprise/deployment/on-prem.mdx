@@ -1,0 +1,59 @@
+---
+title: On-Premises
+description: Deploy and operate Memori entirely on your own hardware or private cloud, with full operational control and Memori-supported runbooks and SLA.
+---
+
+# On-Premises
+
+On-premises deployment gives you complete operational control. Memori runs on your own hardware or private cloud, operated by your team with Memori-supported runbooks, upgrade procedures, and SLA-backed support. No external network access is required.
+
+## When to Choose On-Premises
+
+- Regulated industries with strict data residency or sovereignty requirements
+- Air-gapped environments where outbound internet access is restricted or prohibited
+- Organizations that require full operational control over all infrastructure
+- Compliance requirements that prohibit third-party management of production systems
+
+## Architecture
+
+Memori installs on your infrastructure and connects directly to your existing databases over your private network. The only external communication is optional telemetry (fully opt-out) and SLA-covered support channels.
+
+```
+Your Infrastructure
+├── Application layer (your agents)
+├── Memori Enterprise (installed and operated by your team)
+│   ├── Memory capture and augmentation
+│   ├── Intelligent Recall
+│   └── Enterprise controls (RBAC, SSO, audit)
+└── Your database (MongoDB, PostgreSQL, etc.)
+    └── All memory data stored here
+```
+
+## Infrastructure Requirements
+
+Your solutions engineer will provide exact sizing guidance based on your workload. General requirements:
+
+| Component | Minimum | Notes |
+| --------- | ------- | ----- |
+| Compute | 4 vCPU, 16 GB RAM | Per Memori node; scales horizontally |
+| Storage | 50 GB | For Memori operational data; memory data lives in your DB |
+| Network | Private access to your database | No public internet required |
+| OS | Linux (Ubuntu 22.04+, RHEL 8+) | Container runtime required |
+
+## What Memori Provides
+
+- Installation packages and deployment automation scripts
+- Detailed runbooks for installation, upgrades, scaling, and incident response
+- Configuration templates for your database backend and identity provider
+- SLA-backed support with defined escalation paths
+- Scheduled upgrade coordination — Memori tests releases before you apply them
+
+## Deployment Process
+
+1. **Architecture review** — Solutions engineer reviews your environment, confirms sizing, and documents connectivity requirements.
+2. **Installation package** — Memori provides versioned installation packages and runbooks.
+3. **Installation** — Your team installs Memori following the provided runbooks. Memori is available throughout.
+4. **Validation** — End-to-end validation against your environment, with Memori engineers on the call.
+5. **Handoff** — Your team owns ongoing operations; Memori provides support and upgrade coordination under your SLA.
+
+Contact [Memori Enterprise Sales](https://memorilabs.ai/contact) to begin an on-premises engagement.

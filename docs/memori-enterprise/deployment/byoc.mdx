@@ -1,0 +1,56 @@
+---
+title: Bring Your Own Cloud (BYOC)
+description: Deploy Memori inside your own cloud account or VPC. Memori handles deployment, upgrades, and operations. Your data never leaves your environment.
+---
+
+# Bring Your Own Cloud (BYOC)
+
+BYOC deploys Memori entirely inside your cloud account or VPC. Memori's team handles deployment, upgrades, and day-to-day operations, while your data stays within the boundary you control. You get managed operations without a second vendor holding your memory data.
+
+## How It Works
+
+Memori is deployed into a dedicated environment within your cloud account. All compute, storage connections, and network paths are provisioned inside your VPC. Your data never transits to Memori's infrastructure.
+
+```
+Your VPC
+├── Application layer (your agents)
+├── Memori Enterprise (deployed by Memori, inside your VPC)
+│   ├── Memory capture and augmentation
+│   ├── Intelligent Recall
+│   └── Enterprise controls (RBAC, SSO, audit)
+└── Your database (MongoDB, PostgreSQL, etc.)
+    └── All memory data stored here
+```
+
+## What You Provide
+
+- A cloud account (AWS, GCP, or Azure) with sufficient quota for Memori's resource requirements
+- VPC with private network access to your database
+- IAM roles or equivalent permissions for Memori's deployment automation
+- Your solutions engineer will provide a detailed requirements checklist during onboarding
+
+## What Memori Provides
+
+- Full deployment automation — Memori provisions and configures everything inside your account
+- Upgrade management — Memori coordinates all version upgrades with you, tested before rollout
+- Monitoring and alerting — Memori monitors availability and performance under your SLA
+- Runbooks — Documented operational procedures shared with your team
+- On-call support — SLA-backed incident response
+
+## Supported Cloud Providers
+
+- Amazon Web Services (AWS)
+- Google Cloud Platform (GCP)
+- Microsoft Azure
+
+Private cloud and sovereign cloud deployments are available on request.
+
+## Deployment Process
+
+1. **Scoping call** — Your solutions engineer reviews your architecture, confirms cloud provider and region, and identifies your database endpoints.
+2. **Requirements checklist** — Memori provides a preflight checklist covering IAM requirements, network configuration, and quota.
+3. **Deployment** — Memori provisions the environment inside your account. Typical deployment takes one business day after prerequisites are complete.
+4. **Validation** — Memori and your team run end-to-end validation against your environment.
+5. **Go-live** — Your agents connect to the Memori endpoint inside your VPC.
+
+Contact [Memori Enterprise Sales](https://memorilabs.ai/contact) to start the process.

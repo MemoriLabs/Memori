@@ -1,0 +1,44 @@
+---
+title: Deployment Overview
+description: Memori Enterprise supports two deployment models — Bring Your Own Cloud (BYOC) and On-Premises — both running fully inside your infrastructure boundary.
+---
+
+# Deployment Overview
+
+Memori Enterprise runs entirely inside your environment. No memory data, augmentation output, or recall queries leave the boundary you control. Memori handles deployment, upgrades, and operations under your SLA; you retain full data sovereignty.
+
+## Deployment Models
+
+| Model | Who operates Memori | Where data lives | Best for |
+| ----- | ------------------- | ---------------- | -------- |
+| **Bring Your Own Cloud (BYOC)** | Memori (inside your account) | Your cloud account or VPC | Teams that want managed operations without a second vendor holding data |
+| **On-Premises** | Your team, with Memori support | Your own hardware or private cloud | Regulated industries, air-gapped environments, strict residency requirements |
+
+Both models connect privately to the databases you already run — MongoDB, PostgreSQL, and others — inside your infrastructure boundary.
+
+## What Memori Manages
+
+Regardless of deployment model, Memori provides:
+
+- Deployment automation and runbooks
+- Upgrade procedures and release management
+- SLA-backed support with defined response windows
+- Solutions engineering during onboarding and beyond
+
+## Database Connectivity
+
+Memori Enterprise connects to your existing databases over private network paths. No public endpoints are required and no data transits the public internet.
+
+Supported storage backends:
+
+- **MongoDB** — Full support including Atlas and self-managed replica sets. TTL indexes for retention, replica sets for durability.
+- **PostgreSQL** — Including AWS RDS, Aurora, Neon, Supabase, and self-managed instances.
+- **MySQL / MariaDB** — Including AWS RDS and Aurora.
+- **Additional backends** — Available on request. Contact your solutions engineer.
+
+## Getting Started
+
+Contact [Memori Enterprise Sales](https://memorilabs.ai/contact) to start a scoping conversation. Your solutions engineer will review your architecture, confirm database connectivity requirements, and plan your deployment.
+
+- [Bring Your Own Cloud (BYOC)](/docs/memori-enterprise/deployment/byoc)
+- [On-Premises](/docs/memori-enterprise/deployment/on-prem)
