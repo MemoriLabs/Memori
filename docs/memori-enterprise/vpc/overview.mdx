@@ -1,0 +1,61 @@
+---
+title: VPC
+description: Run Memori Enterprise inside your own Virtual Private Cloud. All memory capture, augmentation, and recall happen within your network boundary, with private connectivity to the databases and services you already run.
+---
+
+# VPC
+
+Memori Enterprise deploys inside your Virtual Private Cloud on AWS, GCP, or Azure. Every component — memory capture, Advanced Augmentation, Intelligent Recall, and the enterprise control plane — runs within your network boundary. No traffic leaves your VPC.
+
+## What Runs Inside Your VPC
+
+```
+Your VPC
+├── Memori Enterprise (compute)
+│   ├── Capture service
+│   ├── Augmentation pipeline
+│   ├── Recall service
+│   └── Enterprise control plane (RBAC, SSO, audit)
+└── Your databases (private subnets)
+    ├── MongoDB (Atlas private endpoint or self-managed)
+    ├── PostgreSQL, MySQL, or other supported backends
+    └── Audit log storage
+```
+
+All connections between Memori and your databases are over private network paths. No public endpoints are required.
+
+## Private Connectivity
+
+Memori connects to your existing databases using the private connectivity options native to your cloud provider:
+
+| Cloud | Private connectivity options |
+| ----- | ---------------------------- |
+| **AWS** | VPC endpoints, PrivateLink, VPC peering, Transit Gateway |
+| **GCP** | Private Service Connect, VPC peering, internal load balancers |
+| **Azure** | Private Endpoints, VNet peering, Private Link |
+
+For MongoDB Atlas, Memori uses Atlas private endpoints to keep all traffic inside your cloud network. For self-managed databases, Memori connects over your existing private subnets.
+
+## Network Requirements
+
+Your solutions engineer will provide a complete network requirements checklist during scoping. At a high level:
+
+- **Inbound:** Your application layer reaches Memori's capture and recall endpoints over private subnets. No public IP required.
+- **Outbound:** Memori reaches your database over private subnets. No public database exposure required.
+- **Egress:** Optional telemetry export and SLA-covered support channels. Fully configurable; air-gapped operation is available for on-premises deployments.
+
+## Security Groups and Firewall Rules
+
+Memori's deployment automation generates a minimal set of security group rules during provisioning. Rules follow the principle of least privilege:
+
+- Memori compute accepts traffic only from your application subnets on the Memori API port
+- Memori compute reaches only your designated database endpoints on their native ports
+- No inbound rules are opened to the public internet
+
+Your security team reviews all rules before deployment goes live.
+
+## Deployment
+
+VPC deployment is handled by Memori's deployment automation inside your account. Your team grants the required IAM permissions; Memori provisions all resources within your VPC and hands you a private endpoint for your agents to connect to.
+
+Contact [Memori Enterprise Sales](https://memorilabs.ai/contact) to start a scoping conversation.
