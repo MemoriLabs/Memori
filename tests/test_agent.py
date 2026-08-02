@@ -231,3 +231,74 @@ def test_agent_feedback_posts_content(monkeypatch, mocker):
     mem.agent_feedback("Great integration")
 
     post.assert_called_once_with("agent/feedback", {"content": "Great integration"})
+
+
+def test_capture_agent_turn_safely_serializes_complex_traces(monkeypatch, mocker):
+    """
+    Behavioral Guarantee: capture_turn safely serializes complex trace
+    dictionaries containing non-JSON-serializable objects (like datetimes,
+    Pydantic models, and custom classes) using convert_to_json.
+    """
+    from datetime import date, datetime
+
+    monkeypatch.delenv("MEMORI_COCKROACHDB_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("MEMORI_TEST_MODE", "1")
+    mem = Memori(api_key="key")
+
+    default_post = mocker.patch.object(mem.agent.default_api, "post", return_value={})
+    collector_post = mocker.patch.object(
+        mem.agent.collector_api, "post", return_value={}
+    )
+
+    class CustomClass:
+        def __init__(self):
+            self.val = "custom"
+            self._private = "secret"
+
+        def some_method(self):
+            pass
+
+    class MockPydanticModel:
+        def __init__(self, created_at):
+            self.created_at = created_at
+
+        def model_dump(self):
+            # Simulate Pydantic V2 behavior which returns raw datetimes
+            return {"created_at": self.created_at}
+
+    dt = datetime(2025, 1, 1, 15, 30, 45)
+    d = date(2025, 1, 1)
+
+    circular_dict = {}
+    circular_dict["self"] = circular_dict
+
+    complex_trace = {
+        "timestamp": dt,
+        "day": d,
+        "custom": CustomClass(),
+        "pydantic": MockPydanticModel(dt),
+        "circular": circular_dict,
+        "empty": None,
+    }
+
+    mem.capture_agent_turn(
+        user_content="hello",
+        assistant_content="hi",
+        project_id="project",
+        trace=complex_trace,
+    )
+
+    expected_trace = {
+        "timestamp": "2025-01-01T15:30:45",
+        "day": "2025-01-01",
+        "custom": {"val": "custom"},
+        "pydantic": {"created_at": "2025-01-01T15:30:45"},
+        "circular": {"self": None},
+        "empty": None,
+    }
+
+    turn_payload = default_post.call_args.args[1]
+    assert turn_payload["messages"][1]["trace"] == expected_trace
+
+    aug_payload = collector_post.call_args.args[1]
+    assert aug_payload["trace"] == expected_trace
