@@ -15,23 +15,7 @@
   <a href="https://trendshift.io/repositories/15435" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15435" alt="MemoriLabs%2FMemori | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-<p align="center">
-  <a href="https://badge.fury.io/py/memori">
-    <img src="https://badge.fury.io/py/memori.svg" alt="PyPI version">
-  </a>
-  <a href="https://www.npmjs.com/package/@memorilabs/memori">
-    <img src="https://img.shields.io/npm/v/@memorilabs/memori.svg" alt="NPM version">
-  </a>
-  <a href="https://pepy.tech/projects/memori">
-    <img src="https://static.pepy.tech/badge/memori" alt="Downloads">
-  </a>
-  <a href="https://opensource.org/license/apache-2-0">
-    <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
-  </a>
-  <a href="https://discord.gg/abD4eGym6v">
-    <img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord">
-  </a>
-</p>
+<p align="center"><a href="https://badge.fury.io/py/memori"><img src="https://badge.fury.io/py/memori.svg" alt="PyPI version"></a> <a href="https://www.npmjs.com/package/@memorilabs/memori"><img src="https://img.shields.io/npm/v/@memorilabs/memori.svg" alt="NPM version"></a> <a href="https://pepy.tech/projects/memori"><img src="https://static.pepy.tech/badge/memori" alt="Downloads"></a> <a href="https://opensource.org/license/apache-2-0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"></a> <a href="https://discord.gg/abD4eGym6v"><img src="https://img.shields.io/discord/1042405378304004156?logo=discord" alt="Discord"></a></p>
 
 <p align="center">
   <a href="https://github.com/MemoriLabs/Memori/stargazers">
@@ -45,15 +29,15 @@
 
 
 
-[![Memori Labs](https://images.memorilabs.ai/stats.jpg)](https://memorilabs.ai/benchmark)
+[![Memori Labs](images/stats.png)](https://memorilabs.ai/benchmark)
 
----
+<hr>
 
 ## Getting Started
 
 ### Installation
 
-<details open>
+<details>
 <summary><b>TypeScript SDK</b></summary>
 
 ```bash
@@ -61,7 +45,7 @@ npm install @memorilabs/memori
 ```
 </details>
 
-<details open>
+<details>
 <summary><b>Python SDK</b></summary>
 
 ```bash
@@ -75,7 +59,7 @@ Sign up at [app.memorilabs.ai](https://app.memorilabs.ai), get a Memori API key,
 
 Set `MEMORI_API_KEY` and your LLM API key (e.g. `OPENAI_API_KEY`), then:
 
-<details open>
+<details>
 <summary><b>TypeScript SDK</b></summary>
 
 ```typescript
@@ -104,7 +88,7 @@ async function main() {
 ```
 </details>
 
-<details open>
+<details>
 <summary><b>Python SDK</b></summary>
 
 ```python
@@ -143,13 +127,13 @@ Use the [Dashboard](https://app.memorilabs.ai) — Memories, Analytics, Playgrou
 
 ## LoCoMo Benchmark
 
-Memori was evaluated on the LoCoMo benchmark for long-conversation memory and achieved **81.95% overall accuracy** while using an average of **1,294 tokens per query**. That is just **4.97% of the full-context footprint**, showing that structured memory can preserve reasoning quality without forcing large prompts into every request.
+Memori was evaluated on the LoCoMo benchmark for long-conversation memory and achieved **87% overall accuracy** while using an average of **721 tokens per query**. That is just **2.8% of the full-context footprint**, showing that structured memory can preserve reasoning quality without forcing large prompts into every request.
 
-Compared with other retrieval-based memory systems, Memori outperformed Zep, LangMem, and Mem0 while reducing prompt size by roughly **67% vs. Zep** and lowering context cost by more than **20x vs. full-context prompting**.
+Compared with other retrieval-based memory systems, Memori outperformed Zep, LangMem, and Mem0 while reducing prompt size by roughly **67% vs. Zep** and lowering context cost by more than **36x vs. full-context prompting**.
 
 Read the [benchmark overview](docs/memori-cloud/benchmark/overview.mdx), see the [results](docs/memori-cloud/benchmark/results.mdx), or download the [paper](https://arxiv.org/abs/2603.19935).
 
-!["Memori's average accuracy along with the standard deviation"](https://images.memorilabs.ai/docs/memori-locomo-benchmark.webp)
+!["Memori's average accuracy along with the standard deviation"](images/benchmark.png)
 
 ## OpenClaw (Persistent Memory for Your Gateway)
 
@@ -213,7 +197,7 @@ To get the most out of Memori, you want to attribute your LLM interactions to an
 
 If you do not provide any attribution, Memori cannot make memories for you.
 
-<details open>
+<details>
 <summary><b>TypeScript SDK</b></summary>
 
 ```typescript
@@ -221,7 +205,7 @@ mem.attribution("12345", "my-ai-bot");
 ```
 </details>
 
-<details open>
+<details>
 <summary><b>Python SDK</b></summary>
 
 ```python
@@ -235,7 +219,7 @@ Memori uses sessions to group your LLM interactions together. For example, if yo
 
 By default, Memori handles setting the session for you but you can start a new session or override the session by executing the following:
 
-<details open>
+<details>
 <summary><b>TypeScript SDK</b></summary>
 
 ```typescript
@@ -245,7 +229,7 @@ mem.setSession(sessionId);
 ```
 </details>
 
-<details open>
+<details>
 <summary><b>Python SDK</b></summary>
 
 ```python

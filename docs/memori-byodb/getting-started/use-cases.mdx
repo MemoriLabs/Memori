@@ -30,7 +30,7 @@ from sqlalchemy.orm import sessionmaker
 from memori import Memori
 from openai import OpenAI
 
-engine = create_engine("sqlite:///memori.db")
+engine = create_engine("cockroachdb+psycopg2://user:password@localhost:26257/memori_db")
 SessionLocal = sessionmaker(bind=engine)
 
 client = OpenAI()
@@ -71,7 +71,7 @@ from sqlalchemy.orm import sessionmaker
 from memori import Memori
 from anthropic import Anthropic
 
-engine = create_engine("sqlite:///memori.db")
+engine = create_engine("cockroachdb+psycopg2://user:password@localhost:26257/memori_db")
 SessionLocal = sessionmaker(bind=engine)
 
 client = Anthropic()
@@ -113,7 +113,7 @@ from sqlalchemy.orm import sessionmaker
 from memori import Memori
 from openai import OpenAI
 
-engine = create_engine("sqlite:///memori.db")
+engine = create_engine("cockroachdb+psycopg2://user:password@localhost:26257/memori_db")
 SessionLocal = sessionmaker(bind=engine)
 
 client = OpenAI()
@@ -139,4 +139,118 @@ mem.attribution(
 )
 # Memori shares context across agents
 # for the same entity
+```
+
+## Enterprise IT Operations — Incident Response
+
+Large enterprises run hundreds of services across complex infrastructure. When incidents strike, response time is critical. Memori captures every tool call, diagnostic decision, and resolution outcome as structured trace memory — so agents accumulate institutional knowledge across incidents and come back faster each time.
+
+**Benefits:**
+
+- Recall past incidents with similar error patterns and known resolutions
+- Build a persistent knowledge base of system behavior across thousands of incidents
+- Reduce mean time to resolution by surfacing what worked before
+- Audit the full decision trail: which tools ran, what they returned, and what action was taken
+- Route incident context across specialized agents — triage, escalation, and remediation
+
+```python
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine("cockroachdb+psycopg2://user:password@localhost:26257/memori_db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=SessionLocal).llm.register(client)
+
+# Each service gets its own memory space; the agent is the process
+mem.attribution(
+    entity_id="payment-service-prod",
+    process_id="incident_response_agent"
+)
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "query_logs",
+            "description": "Query application logs for a time range and filter",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "service": {"type": "string"},
+                    "time_range": {"type": "string"},
+                    "filter": {"type": "string"}
+                },
+                "required": ["service", "time_range"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_metrics",
+            "description": "Retrieve service metrics from the monitoring system",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "service": {"type": "string"},
+                    "metric": {"type": "string"}
+                },
+                "required": ["service", "metric"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "restart_pod",
+            "description": "Restart a service pod in the specified region",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "service": {"type": "string"},
+                    "region": {"type": "string"}
+                },
+                "required": ["service", "region"]
+            }
+        }
+    }
+]
+
+# Memori intercepts this call — tool calls, results, and decisions
+# are captured as trace events and converted into structured memory
+response = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are an enterprise IT operations agent. Diagnose and resolve infrastructure incidents."
+        },
+        {
+            "role": "user",
+            "content": (
+                "P1 Alert: payment-service-prod returning 503 errors. "
+                "Error rate 42%, p99 latency 8.2s. Started 14 minutes ago. "
+                "Diagnose and resolve."
+            )
+        }
+    ],
+    tools=tools
+)
+
+# After resolution, Memori has stored:
+# - The alert conditions that triggered the incident
+# - Every tool call made and what it returned
+# - The diagnostic path and decisions taken
+# - The resolution action and outcome
+#
+# Next incident: the agent automatically recalls
+# "Last time payment-service-prod had 503s with elevated p99 latency,
+#  logs showed DB connection pool exhaustion — resolved by restarting
+#  the us-east-1 pod. Resolution time: 6 minutes."
+mem.augmentation.wait()
 ```

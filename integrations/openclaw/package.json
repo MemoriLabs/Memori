@@ -70,7 +70,8 @@
     "node": ">=22.0.0"
   },
   "overrides": {
-    "@hono/node-server": "^1.19.10"
+    "@hono/node-server": "^1.19.10",
+    "js-yaml": "4.2.0"
   },
   "dependencies": {
     "@memorilabs/memori": "^0.1.24-beta"

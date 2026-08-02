@@ -243,6 +243,37 @@ def test_recall_rejects_zero_or_negative_limit(mocker):
     assert str(e.value) == "limit must be greater than 0"
 
 
+def test_recall_rejects_non_string_query(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(TypeError) as e:
+        Memori(conn=lambda: mock_conn).recall(123)
+
+    assert str(e.value) == "query must be a string"
+
+
+def test_recall_rejects_empty_query(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_cursor = mocker.MagicMock()
+    mock_conn.cursor = mocker.MagicMock(return_value=mock_cursor)
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("")
+
+    assert str(e.value) == "query cannot be empty"
+
+    with pytest.raises(ValueError) as e:
+        Memori(conn=lambda: mock_conn).recall("   ")
+
+    assert str(e.value) == "query cannot be empty"
+
+
 def test_embed_texts_uses_config_defaults(mocker):
     mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
     mock_conn.__module__ = "psycopg"

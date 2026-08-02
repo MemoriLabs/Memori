@@ -27,5 +27,8 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.0.0"
+  },
+  "overrides": {
+    "js-yaml": "4.2.0"
   }
 }
