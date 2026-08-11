@@ -19,7 +19,7 @@ Documentation is available under NDA for security reviews. Contact [support@memo
 
 ## Data Residency
 
-In Enterprise deployments, all memory data is stored in the database you designate. Memori does not copy, cache, or index data outside the boundary you define. For VPC deployments, the boundary is your cloud account. For on-premises deployments, it is your own hardware.
+In Enterprise deployments, all memory data stays inside the boundary you control. Memori does not copy, cache, or index data outside that boundary. For VPC deployments, the boundary is your cloud account. For on-premises deployments, it is your own hardware.
 
 If your compliance program requires data to stay within a specific geography, choose a region for your VPC deployment or an on-premises environment that satisfies the requirement. Memori's compute also runs in the same region as your data.
 
@@ -39,7 +39,7 @@ Memori Enterprise supports GDPR compliance through:
 - **Data residency**: Store all memories in EU infrastructure under your control
 - **Right to erasure**: Delete all memories associated with a specific entity on demand
 - **Data processing agreement (DPA)**: Available from Memori Labs
-- **Retention controls**: TTL-based retention policies at the database level; memories expire automatically
+- **Retention controls**: TTL-based retention policies; memories expire automatically
 
 ### Erasing an Entity's Memories
 
@@ -52,7 +52,7 @@ mem = Memori()
 mem.entity.delete(entity_id="user_123")
 ```
 
-This removes all facts, session records, and knowledge graph nodes associated with that entity from your database.
+This removes all facts, session records, and knowledge graph nodes associated with that entity.
 
 ## SOC 2 Type II
 
@@ -67,6 +67,6 @@ The SOC 2 Type II report is available under NDA for enterprise customers and pro
 ## Encryption
 
 - **In transit**: TLS 1.2 or higher for all internal and external connections
-- **At rest**: Encryption managed by your database and cloud provider; Memori does not manage encryption keys
+- **At rest**: Encryption managed by your infrastructure and cloud provider; Memori does not manage encryption keys
 
 For key management requirements, your solutions engineer can review your configuration during onboarding.
