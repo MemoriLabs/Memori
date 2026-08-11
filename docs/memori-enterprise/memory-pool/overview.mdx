@@ -22,46 +22,13 @@ Individual entity memory tracks what a specific user has said and done. Pools ho
 
 Owners and admins can create pools. No role is automatically added to a pool at creation, including the creator. To access a pool's memories, the creator must add themselves explicitly, either by checking "Add creator to pool" during creation or by adding themselves afterward the same way they would add any other member.
 
-```python
-from memori import Memori
-
-mem = Memori()
-
-pool = mem.pool.create(
-    pool_id="support-team",
-    name="Support Team Knowledge",
-    description="Shared resolutions and escalation context for support agents",
-)
-```
-
 ## Writing to a Pool
 
-Agents write to a pool using the same attribution model as entity memory, but scoped to the pool rather than a user:
-
-```python
-mem.pool.write(
-    pool_id="support-team",
-    content="Billing disputes over $500 must be escalated to tier-2 within 24 hours.",
-    tags=["billing", "escalation"],
-)
-```
-
-Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
+Agents write to a pool using the same attribution model as entity memory, but scoped to the pool rather than a user. Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
 
 ## Reading from a Pool
 
-Agents recall from a pool explicitly, or Intelligent Recall can include pool results automatically when the pool is attached to a process:
-
-```python
-# Explicit pool recall
-results = mem.pool.recall(
-    pool_id="support-team",
-    query="billing escalation policy",
-)
-
-# Attach pool to a process so recall includes it automatically
-mem.pool.attach(pool_id="support-team", process_id="support_agent")
-```
+Agents recall from a pool explicitly, or Intelligent Recall can include pool results automatically when the pool is attached to a process.
 
 ## Permissions
 
@@ -81,22 +48,6 @@ Pool access is governed by the same ReBAC model as entity memory. Each pool has 
 Owners and admins see the full list of pools in Settings and can manage access from there. A status column indicates whether they have been granted access to each pool. On the `/memories/pools` page, only pools the viewer has been explicitly added to are shown.
 
 User counts and member lists for a pool include only those who have been explicitly granted access. Owners and admins are not counted unless they have been added.
-
-```python
-# Grant a user access to a pool
-mem.pool.grant(
-    pool_id="support-team",
-    process_id="support_agent",
-    role="admin",
-)
-
-# Grant read-only access
-mem.pool.grant(
-    pool_id="support-team",
-    process_id="summary_agent",
-    role="user",
-)
-```
 
 Permissions are evaluated at runtime for every pool operation and recorded in the audit log.
 
@@ -126,17 +77,4 @@ Pools are fully isolated from each other and from individual entity memory:
 
 ## Retention
 
-Apply a TTL to pool entries independently of entity memory retention:
-
-```javascript
-db.memori_pool_entries.createIndex(
-  { created_at: 1 },
-  { expireAfterSeconds: 60 * 60 * 24 * 90 } // 90 days
-);
-```
-
-Pool entries can also be deleted individually or by tag:
-
-```python
-mem.pool.delete(pool_id="support-team", tags=["billing"])
-```
+Pool entry retention is configured independently of entity memory retention using TTL policies at the database level. Pool entries can also be deleted individually or by tag from the Memori dashboard.
