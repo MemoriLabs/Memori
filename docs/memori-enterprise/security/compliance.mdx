@@ -1,11 +1,11 @@
 ---
 title: Compliance
-description: Memori Enterprise is built for regulated workloads — compliant across SOC 2 Type II, HIPAA, and GDPR, with controls designed into the architecture rather than added after the fact.
+description: Memori Enterprise is built for regulated workloads, compliant across SOC 2 Type II, HIPAA, and GDPR, with controls designed into the architecture rather than added after the fact.
 ---
 
 # Compliance
 
-Memori Enterprise is designed for regulated industries. Compliance controls — data residency, access governance, audit logging, and retention — are built into the architecture, not bolted on.
+Memori Enterprise is designed for regulated industries. Compliance controls (data residency, access governance, audit logging, and retention) are built into the architecture, not bolted on.
 
 ## Certifications and Standards
 
@@ -15,13 +15,13 @@ Memori Enterprise is designed for regulated industries. Compliance controls — 
 | **HIPAA** | Compliant | BAA available for healthcare deployments |
 | **GDPR** | Compliant | Data residency controls, right-to-erasure support, and DPA available |
 
-Documentation is available under NDA for security reviews. Contact [enterprise@memorilabs.ai](mailto:enterprise@memorilabs.ai).
+Documentation is available under NDA for security reviews. Contact [support@memorilabs.ai](mailto:support@memorilabs.ai).
 
 ## Data Residency
 
-In Enterprise deployments, all memory data is stored in the database you designate. Memori does not copy, cache, or index data outside the boundary you define. For BYOC deployments, the boundary is your VPC. For on-premises deployments, it is your own hardware.
+In Enterprise deployments, all memory data is stored in the database you designate. Memori does not copy, cache, or index data outside the boundary you define. For VPC deployments, the boundary is your cloud account. For on-premises deployments, it is your own hardware.
 
-If your compliance program requires data to stay within a specific geography, choose a region for your BYOC deployment or an on-premises environment that satisfies the requirement. Memori's compute also runs in the same region as your data.
+If your compliance program requires data to stay within a specific geography, choose a region for your VPC deployment or an on-premises environment that satisfies the requirement. Memori's compute also runs in the same region as your data.
 
 ## HIPAA
 
@@ -36,10 +36,10 @@ For healthcare organizations, Memori Enterprise supports:
 
 Memori Enterprise supports GDPR compliance through:
 
-- **Data residency** — Store all memories in EU infrastructure under your control
-- **Right to erasure** — Delete all memories associated with a specific entity on demand
-- **Data processing agreement (DPA)** — Available from Memori Labs
-- **Retention controls** — TTL-based retention policies at the database level; memories expire automatically
+- **Data residency**: Store all memories in EU infrastructure under your control
+- **Right to erasure**: Delete all memories associated with a specific entity on demand
+- **Data processing agreement (DPA)**: Available from Memori Labs
+- **Retention controls**: TTL-based retention policies at the database level; memories expire automatically
 
 ### Erasing an Entity's Memories
 
@@ -58,15 +58,15 @@ This removes all facts, session records, and knowledge graph nodes associated wi
 
 Memori Labs maintains SOC 2 Type II compliance covering:
 
-- **Security** — Access controls, encryption at rest and in transit, vulnerability management
-- **Availability** — Uptime commitments, incident response, and disaster recovery procedures
-- **Confidentiality** — Data handling policies and contractual commitments
+- **Security**: Access controls, encryption at rest and in transit, vulnerability management
+- **Availability**: Uptime commitments, incident response, and disaster recovery procedures
+- **Confidentiality**: Data handling policies and contractual commitments
 
 The SOC 2 Type II report is available under NDA for enterprise customers and prospects.
 
 ## Encryption
 
-- **In transit** — TLS 1.2 or higher for all internal and external connections
-- **At rest** — Encryption managed by your database and cloud provider; Memori does not manage encryption keys
+- **In transit**: TLS 1.2 or higher for all internal and external connections
+- **At rest**: Encryption managed by your database and cloud provider; Memori does not manage encryption keys
 
 For key management requirements, your solutions engineer can review your configuration during onboarding.

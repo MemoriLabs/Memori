@@ -5,7 +5,7 @@ description: Run Memori Enterprise inside your own Virtual Private Cloud. All me
 
 # VPC
 
-Memori Enterprise deploys inside your Virtual Private Cloud on AWS, GCP, or Azure. Every component — memory capture, Advanced Augmentation, Intelligent Recall, and the enterprise control plane — runs within your network boundary. No traffic leaves your VPC.
+Memori Enterprise deploys inside your Virtual Private Cloud on AWS, GCP, or Azure. Every component (memory capture, Advanced Augmentation, Intelligent Recall, and the enterprise control plane) runs within your network boundary. No traffic leaves your VPC.
 
 ## What Runs Inside Your VPC
 
@@ -15,7 +15,7 @@ Your VPC
 │   ├── Capture service
 │   ├── Augmentation pipeline
 │   ├── Recall service
-│   └── Enterprise control plane (RBAC, SSO, audit)
+│   └── Enterprise control plane (ReBAC, SSO, audit)
 └── Your databases (private subnets)
     ├── MongoDB (Atlas private endpoint or self-managed)
     ├── PostgreSQL, MySQL, or other supported backends
@@ -58,4 +58,4 @@ Your security team reviews all rules before deployment goes live.
 
 VPC deployment is handled by Memori's deployment automation inside your account. Your team grants the required IAM permissions; Memori provisions all resources within your VPC and hands you a private endpoint for your agents to connect to.
 
-Contact [Memori Enterprise Sales](https://memorilabs.ai/contact) to start a scoping conversation.
+Email [support@memorilabs.ai](mailto:support@memorilabs.ai) to start a scoping conversation.

@@ -1,0 +1,39 @@
+---
+title: Enterprise Benchmark Overview
+description: Memori Enterprise achieves 97.2% token-cost reduction on the LoCoMo benchmark while matching full-context accuracy, powered by Advanced Augmentation and shared Memory Pools.
+---
+
+# Enterprise Benchmark Overview
+
+Memori Enterprise delivers the same Advanced Augmentation pipeline as Memori Cloud, extended with shared Memory Pools that let agents draw on institutional knowledge across users, teams, and workflows. The result is higher accuracy per query and lower token cost per agent, because relevant context doesn't need to be re-derived from scratch for every session.
+
+## Key Results
+
+| Metric | Memori Enterprise |
+| ------ | ----------------- |
+| Accuracy (LoCoMo benchmark) | **87.0%**: matches full-context ceiling |
+| Token-cost reduction vs. full context | **97.2%** |
+| Average tokens added to context | **721** |
+| Context footprint vs. full context | **2.8%** |
+
+Enterprise deployments operating shared Memory Pools see additional gains beyond single-agent baselines: pool recall surfaces institutional knowledge that would otherwise require per-session re-processing, compressing the effective token footprint further across multi-agent workflows.
+
+## Why Enterprise Outperforms Cloud on Token Cost
+
+In a standard Cloud deployment, each agent session operates against its own entity memory. Shared organizational knowledge (escalation policies, product facts, known issues) must be injected into the prompt by the application, or re-derived from conversation each time.
+
+In an Enterprise deployment with Memory Pools:
+
+- Agents recall shared institutional knowledge directly from the pool
+- Facts captured by one agent are immediately available to all agents with pool access
+- Retrieval draws from both entity memory and pool memory in a single query, with no additional prompt engineering
+
+This means less context is required per query, and agents that would otherwise hallucinate on organizational policy can now recall it directly.
+
+## Benchmark Methodology
+
+Enterprise results use the same evaluation framework as Memori Cloud: the [LoCoMo benchmark](https://arxiv.org/abs/2603.19935) with LLM-as-a-Judge scoring across four reasoning categories: Single-Hop, Multi-Hop, Temporal, and Open-Domain. See [Benchmark Results](/docs/memori-enterprise/benchmark/results) for the full breakdown.
+
+<Admonition type="tip">
+  Download the Paper &rarr; [Memori LoCoMo Benchmark PDF](https://arxiv.org/abs/2603.19935)
+</Admonition>

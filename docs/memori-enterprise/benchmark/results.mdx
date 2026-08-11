@@ -1,0 +1,45 @@
+---
+title: Benchmark Results
+description: Detailed LoCoMo benchmark results for Memori, including accuracy by reasoning category and token cost efficiency compared to full-context and competing memory systems.
+---
+
+# Benchmark Results
+
+Memori was evaluated on the [LoCoMo benchmark](https://arxiv.org/abs/2603.19935) using an LLM-as-a-Judge framework across four reasoning categories. Results are compared against competing memory systems and a full-context ceiling.
+
+## Accuracy
+
+| Method | Single-Hop (%) | Multi-Hop (%) | Open-Domain (%) | Temporal (%) | Overall (%) |
+| ------ | :------------: | :-----------: | :-------------: | :----------: | :---------: |
+| **Memori** | **88.5** | **83.7** | **72.9** | **90.3** | **87.0** |
+| Zep | 79.43 | 69.16 | 73.96 | 83.33 | 79.09 |
+| LangMem | 74.47 | 61.06 | 67.71 | 86.92 | 78.05 |
+| Mem0 | 62.41 | 57.32 | 44.79 | 66.47 | 62.47 |
+| Full-Context (Ceiling) | 88.53 | 77.70 | 71.88 | 92.70 | 87.52 |
+
+Memori achieves 87.0% overall accuracy, matching the full-context ceiling (87.52%) while using 2.8% of the tokens.
+
+## Token Cost Efficiency
+
+| Method | Tokens Added to Context (mean) | Context Cost ($) | Context Footprint (%) |
+| ------ | :----------------------------: | :--------------: | :-------------------: |
+| **Memori** | **721** | **0.000577** | **2.8** |
+| Mem0 | 1,764 | 0.001411 | 6.78 |
+| Zep | 3,911 | 0.003129 | 15.02 |
+| Full-Context | 26,031 | 0.020825 | 100.00 |
+
+Costs computed at gpt-4.1-mini pricing ($0.8 per 1M tokens).
+
+## Performance by Category
+
+**Single-Hop (88.5%)**: Direct fact retrieval. Memori's structured triples minimize noise and deliver exact facts, outperforming Zep (79.43%) and LangMem (74.47%).
+
+**Temporal (90.3%)**: Tracking how user state changes over time. Memori's conversation summaries reconstruct the timeline of changes across sessions, outperforming all retrieval-based systems including LangMem (86.92%) and Zep (83.33%).
+
+**Multi-Hop (83.7%)**: Connecting disparate facts across sessions. The combination of semantic triples and summaries gives the LLM enough context to chain reasoning without injecting the full transcript.
+
+**Open-Domain (72.9%)**: Broad synthesis questions without clear retrieval anchors. The most challenging category for all retrieval-based systems; Memori outperforms LangMem (67.71%) while keeping token usage low.
+
+## Enterprise Context
+
+In Enterprise deployments with shared Memory Pools, the effective token footprint per agent decreases further. Institutional knowledge captured by one agent (escalation policies, product facts, known issues) is recalled by all agents with pool access in the same query that retrieves entity memory. This eliminates the need to inject shared context via prompt engineering, compressing per-query token usage across multi-agent workflows and driving the 97.2% token-cost reduction seen on Enterprise production plans.

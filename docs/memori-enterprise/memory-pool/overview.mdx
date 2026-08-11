@@ -1,11 +1,11 @@
 ---
 title: Memory Pool
-description: Memory Pools are shared, permissioned collections of memories available to agents across users, teams, workflows, and applications — without exposing individual user memories across permission boundaries.
+description: Memory Pools are shared, permissioned collections of memories available to agents across users, teams, workflows, and applications, without exposing individual user memories across permission boundaries.
 ---
 
 # Memory Pool
 
-A Memory Pool is a shared collection of memories that multiple agents can read from and write to. Pools let you build institutional knowledge that persists across users, teams, and workflows — separate from any individual user's private memory.
+A Memory Pool is a shared collection of memories that multiple agents can read from and write to. Pools let you build institutional knowledge that persists across users, teams, and workflows, separate from any individual user's private memory.
 
 ## What Pools Are For
 
@@ -19,6 +19,8 @@ Individual entity memory tracks what a specific user has said and done. Pools ho
 | Multi-agent workflow | Shared state passed between specialized agents |
 
 ## Creating a Pool
+
+Owners and admins can create pools. No role is automatically added to a pool at creation, including the creator. To access a pool's memories, the creator must add themselves explicitly, either by checking "Add creator to pool" during creation or by adding themselves afterward the same way they would add any other member.
 
 ```python
 from memori import Memori
@@ -63,31 +65,56 @@ mem.pool.attach(pool_id="support-team", process_id="support_agent")
 
 ## Permissions
 
-Pool access is governed by the same ReBAC model as entity memory. Each pool has its own access control list:
+Pool access is governed by the same ReBAC model as entity memory. Each pool has its own access control list. No user is added to a pool automatically regardless of their organization role; owners and admins must be explicitly added to see a pool's memories.
 
-| Role | Capabilities |
-| ---- | ------------ |
-| `reader` | Recall from the pool; no writes |
-| `writer` | Recall and write to the pool |
-| `admin` | Full access: recall, write, manage membership and permissions |
+### Pool membership rules
+
+| Action | Who can do it |
+| ------ | ------------- |
+| Create a pool | Owners and admins |
+| Add users or identities to a pool | Owners and admins |
+| Remove a user from a pool | Owners can remove anyone. Admins can remove themselves or other admins, but cannot remove owners. Users can remove themselves. |
+| Add themselves to a pool they did not create | Owners and admins |
+
+### Visibility
+
+Owners and admins see the full list of pools in Settings and can manage access from there. A status column indicates whether they have been granted access to each pool. On the `/memories/pools` page, only pools the viewer has been explicitly added to are shown.
+
+User counts and member lists for a pool include only those who have been explicitly granted access. Owners and admins are not counted unless they have been added.
 
 ```python
-# Grant a process write access to a pool
+# Grant a user access to a pool
 mem.pool.grant(
     pool_id="support-team",
     process_id="support_agent",
-    role="writer",
+    role="admin",
 )
 
-# Grant a process read-only access
+# Grant read-only access
 mem.pool.grant(
     pool_id="support-team",
     process_id="summary_agent",
-    role="reader",
+    role="user",
 )
 ```
 
 Permissions are evaluated at runtime for every pool operation and recorded in the audit log.
+
+### Assigned users
+
+When you add a user to a pool, two per-user settings are available:
+
+**Remove memories**: Allow this user to remove memories from this pool. The memory stays in the memory bank and in any other pools it belongs to. It does not delete it from the memory bank.
+
+**Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this user in this pool. Other pool access is unchanged. Recommend toggled on for customer-facing roles.
+
+### Assigned identities
+
+Grant identities access to this memory pool. Identities can read memories by default and can be given permission to write memories.
+
+**Write memories**: Allow this identity to add new memories to this pool. Writing is additive only; identities cannot remove or delete memories. Every new memory it writes is recorded in the audit log.
+
+**Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this identity. Recommended to disable for identities who shouldn't access customer-specific information.
 
 ## Pool Isolation
 

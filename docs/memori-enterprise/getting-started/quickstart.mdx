@@ -1,0 +1,75 @@
+---
+title: Quickstart
+description: Connect Claude Code to your Memori Enterprise instance.
+---
+
+# Quickstart
+
+Connect Claude Code to your Memori Enterprise instance using the Memori plugin.
+
+## Before you start
+
+You need three values from your Memori administrator or dashboard:
+
+- **API URL**, such as `https://api.your-domain.com`
+- **Identity token**, which starts with `id_`
+- **Entity ID**, a lowercase name for the person whose memories this plugin should use, such as `jane-doe`
+
+Double-check your identity token and entity ID. The identity token should match the one shown in your dashboard, and your entity ID is entered during the configure step. If the identity token is mistyped or you forget to enter an entity ID, you won't see memories stored or recalled in your assigned pools. A mistyped entity ID won't error either - memories will be created under the wrong entity, so the dashboard will look off. If your memory dashboard looks off, verify these two values first.
+
+Use the same entity ID in every Memori client.
+
+Once enabled and configured, the plugin sends your full conversation to your Memori server with no redaction: prompts, replies, tool calls, tool results and attachments.
+
+## 1. Install
+
+```
+claude plugin marketplace add MemoriLabs/integrations
+claude plugin install memori@memorilabs
+claude plugin enable memori@memorilabs
+```
+
+The plugin starts disabled, so the final command is required. Then start a new session so the hooks load.
+
+## 2. Configure
+
+Start a session and run:
+
+```
+/memori:configure
+```
+
+Claude asks for the three values and writes them to `~/.claude/memori/config.json`, readable only by you. Give them in one go if you prefer:
+
+```
+/memori:configure https://api.your-domain.com id_your_identity_token_here jane-doe
+```
+
+Run it again any time to see what is set or to change something.
+
+## 3. Check if it worked
+
+Ask Claude:
+
+> Is Memori working?
+
+It reads your configuration back; the check itself does not contact your Memori server and changes nothing.
+
+Memori now recalls relevant memories before each prompt and captures new ones after each completed turn.
+
+## If something is wrong
+
+Nothing else about the plugin is visible from inside a session: the only thing it ever adds to a conversation is the memories it recalled, so a failure is silent by design. Work through these in order.
+
+- Confirm the plugin is enabled with `claude plugin list`.
+- Confirm your configuration with `/memori:configure`, and that every Memori client uses the same entity ID.
+- Check the Memori dashboard, the only place that shows whether memories are accumulating. On a new account it stays empty until a turn or two has been captured and extracted.
+- Read the hook's own errors:
+
+  ```
+  claude --debug-file memori.log
+  ```
+
+  A rejected token, an entity that cannot read its pool, a URL that is not a Memori server, and a config file that cannot be parsed are all written there in full.
+
+For further help, contact [support@memorilabs.ai](mailto:support@memorilabs.ai).

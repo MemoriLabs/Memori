@@ -1,50 +1,69 @@
 ---
 title: Memory Explorer
-description: Memory Explorer is a visual interface for browsing, searching, and inspecting the memories your agents have created — available in the Memori Enterprise dashboard.
+description: Memory Explorer is a visual interface for browsing, searching, and inspecting the memories your agents have created, available in the Memori Enterprise dashboard.
 ---
 
 # Memory Explorer
 
-Memory Explorer is the visual interface for browsing, searching, and inspecting memories across your entire deployment. It gives your team direct visibility into what agents know, how memories were formed, and which facts are driving agent behavior — without writing queries against the database.
+Memory Explorer is the visual interface for browsing, searching, and inspecting memories across your entire deployment. It gives your team direct visibility into what agents know, how memories were formed, and which facts are driving agent behavior, without writing queries against the database.
 
 ## Accessing Memory Explorer
 
 Memory Explorer is available in the Memori Enterprise dashboard. Navigate to **Dashboard → Memory Explorer**.
 
-Access is governed by your organization's ReBAC policy. Users with `admin` or `read` roles on a given entity or pool can view its memories in the Explorer.
+Access is governed by your organization's ReBAC policy. Owners and admins have full access to Memory Explorer. Users can view memories within their assigned pools.
 
 ## What You Can Do
 
 ### Search and Browse
 
-Search across all memories by entity, pool, keyword, or tag. Results show the memory content, its type (fact, preference, rule, event, relationship), and when it was created and last recalled.
+Search across all memories by entity, pool, keyword, or tag. Results show the memory content, its signal type, horizon, and when it was created and last recalled.
 
 Filter by:
 
-- **Entity** — view all memories for a specific user or agent
-- **Pool** — inspect the contents of a Memory Pool
-- **Memory type** — facts, preferences, rules, events, relationships, skills
-- **Date range** — memories created or updated within a window
-- **Tag** — memories labeled with a specific tag
+- **Entity**: view all memories for a specific user or agent
+- **Pool**: inspect the contents of a Memory Pool
+- **Memory type**: what the memory is about: a concept (Domain), person or thing (Entity), or task output (Process). Signal types within each memory:
+
+  | Signal | Description |
+  | ------ | ----------- |
+  | **Constraint** | A rule or limit the agent must respect when acting or responding. |
+  | **Fact** | A piece of information that is known to be true about the entity or domain. |
+  | **Failure** | Something that was attempted and did not work, preventing the agent from repeating it. |
+  | **Goal** | An objective the entity is trying to achieve, used to orient agent behavior. |
+  | **Outcome** | The result of a completed action or decision, used to inform future reasoning. |
+  | **Preference** | How the entity wants things done: tone, format, approach, or priority. |
+  | **Strategy** | A higher-level approach the agent should apply when working toward a goal. |
+  | **Workflow** | A sequence of steps or process the agent should follow for a given task. |
+- **Horizon**: how long the memory persists. The three horizon types:
+
+  | Horizon | Description |
+  | ------- | ----------- |
+  | **Decaying** | A memory that loses relevance over time and is deprioritized in recall as it ages. |
+  | **Standing** | A persistent memory that remains equally relevant until explicitly updated or removed. |
+  | **Volatile** | A short-lived memory tied to the current session or task, discarded once it is no longer needed. |
+
+- **Date range**: memories created or updated within a window
+- **Tag**: memories labeled with a specific tag
 
 ### Inspect Individual Memories
 
 Click any memory to see its full detail:
 
-- **Content** — the structured fact or summary
-- **Source** — the session and conversation turn it was extracted from
-- **Confidence** — the augmentation pipeline's confidence score
-- **Recall count** — how many times this memory has been retrieved
-- **Last recalled** — when it was last used to ground an agent response
-- **Linked memories** — related facts in the knowledge graph
+- **Content**: the structured fact or summary
+- **Source**: the session and conversation turn it was extracted from
+- **Confidence**: the augmentation pipeline's confidence score
+- **Recall count**: how many times this memory has been retrieved
+- **Last recalled**: when it was last used to ground an agent response
+- **Linked memories**: related facts in the knowledge graph
 
 ### Edit and Delete
 
-Users with `admin` role can edit memory content or delete individual memories directly from the Explorer. All edits and deletions are recorded in the audit log with the acting user and timestamp.
+Owners can edit memory content or permanently delete individual memories directly from the Explorer. Admins can remove memories from pools but cannot permanently delete them. All edits and deletions are recorded in the audit log with the acting user and timestamp.
 
 ### Knowledge Graph View
 
-Switch to **Graph View** to see memories as a network. Nodes represent entities, facts, and relationships. Edges show how memories connect — which facts reference the same entity, which preferences were inferred from the same session, and how the knowledge graph evolved over time.
+Switch to **Graph View** to see memories as a network. Nodes represent entities, facts, and relationships. Edges show how memories connect: which facts reference the same entity, which preferences were inferred from the same session, and how the knowledge graph evolved over time.
 
 Graph View is useful for:
 
@@ -52,38 +71,3 @@ Graph View is useful for:
 - Identifying contradictory or stale facts before they affect agent behavior
 - Visualizing which users or topics have the densest memory coverage
 
-## Exporting Memories
-
-Export memories for a specific entity or pool as JSON or CSV from the Explorer toolbar. Exports are logged in the audit trail and respect your organization's data handling policies.
-
-```json
-{
-  "entity_id": "user_123",
-  "exported_at": "2026-07-31T10:00:00Z",
-  "memories": [
-    {
-      "id": "mem_abc123",
-      "type": "preference",
-      "content": "Prefers responses in bullet-point format",
-      "created_at": "2026-06-15T09:23:11Z",
-      "recall_count": 47
-    }
-  ]
-}
-```
-
-## Programmatic Access
-
-The same data visible in the Explorer is accessible via the Memori API for building custom dashboards or integrating memory inspection into your internal tooling:
-
-```python
-from memori import Memori
-
-mem = Memori()
-
-# List memories for an entity
-memories = mem.entity.memories(entity_id="user_123", limit=50)
-
-# Search memories by keyword
-results = mem.recall("billing escalation", entity_id="user_123")
-```
