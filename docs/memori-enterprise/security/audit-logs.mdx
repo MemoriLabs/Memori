@@ -30,11 +30,11 @@ Audit log records cannot be modified or deleted by Memori administrators or your
 
 Audit log retention is configurable independently of memory retention. Common configurations:
 
-| Requirement | Configuration |
-| ----------- | ------------- |
-| 90-day default | TTL index on audit collection: `expireAfterSeconds: 7776000` |
-| 1-year HIPAA | TTL index: `expireAfterSeconds: 31536000` |
-| Indefinite | No TTL index; archive to cold storage on a schedule |
+| Requirement | Retention period |
+| ----------- | ---------------- |
+| 90-day default | 90 days |
+| 1-year HIPAA | 365 days |
+| Indefinite | No automatic expiry; archive to cold storage on a schedule |
 
 ## Observability and Telemetry
 
