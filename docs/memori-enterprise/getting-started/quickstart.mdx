@@ -11,7 +11,7 @@ Connect Claude Code to your Memori Enterprise instance using the Memori plugin.
 
 You need three values from your Memori administrator or dashboard:
 
-- **API URL**, such as `https://api.your-domain.com`
+- **API URL**, such as `https://api.<tenant_id>.memorilabs.ai`
 - **Identity token**, which starts with `id_`
 - **Entity ID**, a lowercase name for the person whose memories this plugin should use, such as `jane-doe`
 
@@ -42,7 +42,7 @@ Start a session and run:
 Claude asks for the three values and writes them to `~/.claude/memori/config.json`, readable only by you. Give them in one go if you prefer:
 
 ```
-/memori:configure https://api.your-domain.com id_your_identity_token_here jane-doe
+/memori:configure https://api.<tenant_id>.memorilabs.ai id_your_identity_token_here jane-doe
 ```
 
 Run it again any time to see what is set or to change something.
