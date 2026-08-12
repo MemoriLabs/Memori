@@ -40,6 +40,17 @@ Costs computed at gpt-4.1-mini pricing ($0.8 per 1M tokens).
 
 **Open-Domain (72.9%)**: Broad synthesis questions without clear retrieval anchors. The most challenging category for all retrieval-based systems; Memori outperforms LangMem (67.71%) while keeping token usage low.
 
+## STATE-Bench: Agent State Tracking
+
+Memori was also evaluated on STATE-Bench v0.4.4 using GPT-5.1, a benchmark designed to measure how accurately a memory system tracks evolving agent state across long interactions.
+
+| Method | STATE-Bench Score (%) |
+| ------ | :-------------------: |
+| **Memori** | **58.7** |
+| Microsoft Foundry Memory (baseline) | 56.3 |
+
+Memori outperforms Microsoft's Foundry Memory system on its own benchmark at the same model (GPT-5.1), demonstrating stronger agent state tracking across sessions.
+
 ## Enterprise Context
 
 In Enterprise deployments with shared Memory Pools, the effective token footprint per agent decreases further. Institutional knowledge captured by one agent (escalation policies, product facts, known issues) is recalled by all agents with pool access in the same query that retrieves entity memory. This eliminates the need to inject shared context via prompt engineering, compressing per-query token usage across multi-agent workflows and driving the 97.2% token-cost reduction seen on Enterprise production plans.
