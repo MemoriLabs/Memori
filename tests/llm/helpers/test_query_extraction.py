@@ -32,6 +32,26 @@ def test_extract_openai_multimodal_returns_string_not_list():
     assert result == "Can you analyze this diagram? What does the top box say?"
 
 
+def test_extract_openai_responses_query_joins_all_input_text_parts():
+    kwargs = {
+        "input": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": "Plan a trip"},
+                    {
+                        "type": "input_image",
+                        "image_url": "https://example.com/map.png",
+                    },
+                    {"type": "input_text", "text": "to Kyoto in autumn"},
+                ],
+            }
+        ]
+    }
+
+    assert extract_user_query(kwargs) == "Plan a trip to Kyoto in autumn"
+
+
 def test_extract_text_from_parts_ignores_non_strings():
     """
     Behavioral Guarantee: The helper must never append non-strings to the

@@ -64,17 +64,20 @@ def extract_user_query(kwargs: dict) -> str:
                     if isinstance(content, str):
                         return content
                     if isinstance(content, list):
+                        text_parts: list[str] = []
                         for c in content:
                             c_dict = str_object_mapping(c)
                             if (
                                 c_dict is not None
                                 and c_dict.get("type") == "input_text"
                             ):
-                                text = c_dict.get("text", "")
+                                text = c_dict.get("text")
                                 if isinstance(text, str):
-                                    return text
-                            if isinstance(c, str):
-                                return c
+                                    text_parts.append(text)
+                            elif isinstance(c, str):
+                                text_parts.append(c)
+                        if text_parts:
+                            return " ".join(text_parts)
 
     if "contents" in kwargs:
         result = extract_from_contents(kwargs["contents"])
