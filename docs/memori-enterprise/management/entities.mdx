@@ -19,17 +19,6 @@ support-case-19043
 
 The entity ID is the key that links an agent session to its memory space. An agent configured with `entity_id: jane-doe` reads from and writes to Jane Doe's memory, and no other entity's memory is accessible to that agent unless pool access has been granted.
 
-## Entity Memory vs Pool Memory
-
-Memori separates two types of memory:
-
-| Type | What it holds | Who can access it |
-| ---- | ------------- | ----------------- |
-| **Entity memory** | Facts, preferences, and history for a specific entity | The agent operating as that entity, and users or identities explicitly granted access |
-| **Pool memory** | Shared knowledge for a team, workflow, or application | Any user or identity added to the pool |
-
-Entity memory is private by default. Pool memory is shared within the granted membership. Both are recalled together in a single query when a pool is attached to a session.
-
 ## Consistency Across Clients
 
 If multiple agents or integrations write to the same entity, use the same entity ID in every client. Memori accumulates memories across all sessions for a given entity ID, so a mismatched ID creates a separate memory space rather than contributing to the existing one.
