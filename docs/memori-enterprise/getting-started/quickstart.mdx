@@ -12,10 +12,10 @@ Connect Claude Code to your Memori Enterprise instance using the Memori plugin.
 You need three values from your Memori administrator or dashboard:
 
 - **API URL**, such as `https://api.<tenant_id>.memorilabs.ai`
-- **Identity token**, which starts with `id_`
+- **Identity ID**, which starts with `id_`
 - **Entity ID**, a lowercase name for the person whose memories this plugin should use, such as `jane-doe`
 
-Double-check your identity token and entity ID. The identity token should match the one shown in your dashboard, and your entity ID is entered during the configure step. If the identity token is mistyped or you forget to enter an entity ID, you won't see memories stored or recalled in your assigned pools. A mistyped entity ID won't error. Memories will be created under the wrong entity, so the dashboard will look off. If your memory dashboard looks off, verify these two values first.
+Double-check your identity ID and entity ID. The identity ID should match the one shown in your dashboard, and your entity ID is entered during the configure step. If the identity ID is mistyped or you forget to enter an entity ID, you won't see memories stored or recalled in your assigned pools. A mistyped entity ID won't error. Memories will be created under the wrong entity, so the dashboard will look off. If your memory dashboard looks off, verify these two values first.
 
 Use the same entity ID in every Memori client.
 
@@ -42,7 +42,7 @@ Start a session and run:
 Claude asks for the three values and writes them to `~/.claude/memori/config.json`, readable only by you. Give them in one go if you prefer:
 
 ```
-/memori:configure <your api url> <your identity token> <your entity id>
+/memori:configure <your api url> <your identity id> <your entity id>
 ```
 
 Run it again any time to see what is set or to change something.
@@ -70,6 +70,6 @@ Nothing else about the plugin is visible from inside a session: the only thing i
   claude --debug-file memori.log
   ```
 
-  A rejected token, an entity that cannot read its pool, a URL that is not a Memori server, and a config file that cannot be parsed are all written there in full.
+  A rejected identity ID, an entity that cannot read its pool, a URL that is not a Memori server, and a config file that cannot be parsed are all written there in full.
 
 For further help, contact [support@memorilabs.ai](mailto:support@memorilabs.ai).
