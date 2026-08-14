@@ -1,0 +1,55 @@
+---
+title: Key Aspects
+description: Core properties of the Memori memory system: memory horizons, signal types, temporal tracking, and the knowledge graph.
+---
+
+# Key Aspects
+
+Understanding how Memori structures and ages memories helps you get accurate recall, configure retention correctly, and interpret what you see in the Memory Explorer.
+
+## Memory Horizons
+
+Every memory is assigned a horizon at extraction time. The horizon determines how the memory ages and how it is weighted in recall over time.
+
+| Horizon | Behavior |
+| ------- | -------- |
+| **Standing** | Persists at full weight until explicitly updated or removed. Used for durable facts, stable preferences, and long-term goals. |
+| **Decaying** | Relevance decreases as the memory ages. Used for context that matters now but becomes less important over time. |
+| **Volatile** | Short-lived; tied to the current session or task. Discarded once no longer needed. |
+
+Horizons are assigned by the Advanced Augmentation pipeline based on the nature of the extracted signal. A stated long-term goal is more likely to be classified as standing; a task-specific instruction within a single session is more likely to be volatile.
+
+## Signal Types
+
+The Advanced Augmentation pipeline extracts eight types of memory signal:
+
+| Signal | Description |
+| ------ | ----------- |
+| **Fact** | A piece of information known to be true about the entity or domain. |
+| **Preference** | How the entity wants things done: tone, format, approach, or priority. |
+| **Goal** | An objective the entity is working toward, used to orient agent behavior. |
+| **Constraint** | A rule or limit the agent must respect when acting or responding. |
+| **Strategy** | A higher-level approach the agent should apply when working toward a goal. |
+| **Workflow** | A sequence of steps the agent should follow for a given task. |
+| **Outcome** | The result of a completed action or decision, used to inform future reasoning. |
+| **Failure** | Something that was attempted and did not work, preventing the agent from repeating it. |
+
+Signal type and horizon are visible for every memory in the Memory Explorer and can be used as filters when browsing or auditing memory contents.
+
+## Temporal Tracking
+
+Memori tracks how entity state changes over time. When a fact is updated (a preference changes, a goal is completed, a constraint is lifted), the new memory is stored alongside the history rather than replacing it. This gives agents accurate temporal context: not just what is true now, but what changed and when.
+
+Temporal tracking is a core reason Memori achieves 90.3% accuracy on the Temporal reasoning category of the LoCoMo benchmark, outperforming all competing memory systems in that category. See [Benchmark Results](/docs/memori-enterprise/benchmark/results) for the full breakdown.
+
+## Knowledge Graph
+
+Memori stores memories as nodes in a knowledge graph, connected by relationships. Facts about the same entity are linked; facts that reference the same concept or person are related across entities. The graph structure lets Intelligent Recall chain across related facts in a single query without requiring the full conversation history.
+
+The knowledge graph is visible in Memory Explorer's **Graph View**, where nodes represent entities and facts and edges show how memories connect to each other. Graph View is useful for understanding why an agent responded the way it did and for identifying contradictory or stale facts before they affect agent behavior.
+
+## Confidence Scores
+
+Every extracted memory has a confidence score assigned by the augmentation pipeline. The score reflects how clearly the memory was stated in the source conversation. Explicit statements produce high-confidence memories; implied or ambiguous signals produce lower-confidence ones.
+
+Confidence is visible in the Memory Explorer detail view and can be used to prioritize manual review. Low-confidence memories are still recalled but ranked below higher-confidence ones when both are relevant to the same prompt.

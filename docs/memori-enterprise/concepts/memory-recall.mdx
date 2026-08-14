@@ -1,0 +1,50 @@
+---
+title: Memory Recall
+description: How Intelligent Recall retrieves relevant memories before each agent prompt, combining entity memory and pool memory in a single query.
+---
+
+# Memory Recall
+
+Before each prompt, Memori's Intelligent Recall engine retrieves memories relevant to the current conversation and adds them to the agent's context. This happens automatically with no prompt engineering required.
+
+## How Recall Works
+
+1. **Trigger**: When an agent submits a prompt, the recall hook runs before the prompt reaches the model.
+2. **Query**: Intelligent Recall queries the entity's memory space and any attached pools simultaneously.
+3. **Retrieval**: Relevant memories are ranked and selected. The selected set is injected into the context window ahead of the prompt.
+4. **Response**: The model sees the prompt and the recalled memories together, grounding its response in the entity's history.
+
+The entire recall path adds an average of 721 tokens to context, compared to 26,031 tokens for full-context prompting, a 97.2% token reduction.
+
+## What Is Recalled
+
+Recall draws from two sources in a single query:
+
+| Source | What it contains |
+| ------ | ---------------- |
+| **Entity memory** | Memories private to this entity: their preferences, goals, history, and facts |
+| **Pool memory** | Shared memories from any pools the identity is connected to: institutional knowledge, team context, workflow state |
+
+Pool and entity results are returned together and distinguished in the response. An agent with access to an entity and two pools recalls from all three in a single operation.
+
+## Relevance Ranking
+
+Intelligent Recall ranks memories by relevance to the current conversation context. Relevance factors include semantic similarity to the prompt, memory horizon (standing memories are weighted consistently; decaying memories are weighted based on age; volatile memories are weighted for the current session), and recall history.
+
+Memories that have been frequently recalled and acted on rank higher than memories that have rarely been used.
+
+## Recall and Pool Membership
+
+An identity recalls from pools it has been explicitly granted access to. If an identity's pool access changes (a pool is added or removed), the change takes effect on the next recall operation. No session restart is required.
+
+Pools that require entity memory access to be disabled do not surface entity-specific facts during pool recall for that identity. See [Memory Pools](/docs/memori-enterprise/memory-pool/overview) for pool access configuration.
+
+## When Recall Is Quiet
+
+A recall operation that returns nothing is not a failure. An empty recall result means no stored memories are relevant to the current prompt, which is expected early in a relationship or in domains the entity has not discussed before.
+
+If expected memories are not being recalled:
+
+- Verify the entity ID matches the one used when the memories were written.
+- Check the dashboard to confirm the memories exist and are attributed to the correct entity.
+- Confirm the identity is connected to the correct pool if the memories are pool-scoped.

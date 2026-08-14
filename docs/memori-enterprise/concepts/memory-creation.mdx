@@ -1,0 +1,51 @@
+---
+title: Memory Creation
+description: How Memori captures conversations and extracts structured memories through its Advanced Augmentation pipeline.
+---
+
+# Memory Creation
+
+Memories are not stored directly from conversations. Memori's Advanced Augmentation pipeline processes completed agent sessions, extracts structured facts and signals, and stores them in a form that can be recalled with precision. This pipeline is what allows Memori to achieve 87% accuracy on the LoCoMo benchmark while adding an average of 721 tokens to context.
+
+## The Capture Pipeline
+
+When a session ends, the capture hook sends the full conversation to your Memori server:
+
+1. **Capture**: The hook transmits the completed session, including prompts, responses, tool calls, tool results, and attachments.
+2. **Extraction**: The Advanced Augmentation pipeline processes the session and extracts discrete memory signals.
+3. **Storage**: Extracted memories are embedded, indexed, and stored in the entity's memory space and any pools the identity is configured to write to.
+
+The extraction step runs asynchronously. A memory is not immediately available for recall the moment a session ends; it becomes available after extraction completes. On the Memori dashboard, new memories appear once extraction has finished.
+
+## What Gets Extracted
+
+The pipeline identifies and stores memories by signal type:
+
+| Signal | What it captures |
+| ------ | ---------------- |
+| **Fact** | A piece of information known to be true about the entity or domain |
+| **Preference** | How the entity wants things done: tone, format, approach, or priority |
+| **Goal** | An objective the entity is working toward |
+| **Constraint** | A rule or limit the agent must respect |
+| **Strategy** | A higher-level approach the agent should apply toward a goal |
+| **Workflow** | A sequence of steps the agent should follow for a given task |
+| **Outcome** | The result of a completed action or decision |
+| **Failure** | Something that was attempted and did not work |
+
+Each extracted memory is assigned a horizon (how long it should remain relevant), a confidence score, and attribution metadata linking it back to the originating session.
+
+## Memory Horizons
+
+Every memory is assigned one of three horizons at extraction time:
+
+| Horizon | Behavior |
+| ------- | -------- |
+| **Standing** | Persists until explicitly updated or removed |
+| **Decaying** | Relevance decreases over time; deprioritized in recall as it ages |
+| **Volatile** | Short-lived; tied to the current session or task |
+
+## What to Expect in the Dashboard
+
+After a session ends, allow a short delay for extraction to complete before checking the dashboard. On a new entity with no prior sessions, the memory view stays empty until the first extraction run finishes. On subsequent sessions, new memories are added incrementally; they do not replace existing ones unless they contradict or update an earlier fact.
+
+If memories are not appearing after multiple sessions, check that the identity token and entity ID match the values configured in your dashboard. See [Entities](/docs/memori-enterprise/management/entities) for more on entity ID consistency.

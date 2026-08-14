@@ -1,0 +1,52 @@
+---
+title: Assign Users
+description: How to add users to your Memori Enterprise organization and grant them access to memory pools.
+---
+
+# Assign Users
+
+User access in Memori Enterprise has two layers: organization membership and pool membership. Organization membership determines what a user can do across the deployment; pool membership determines which shared memories they can read or write.
+
+## Organization Roles
+
+Every user in Memori Enterprise is assigned one of three roles:
+
+| Role | What they can do |
+| ---- | ---------------- |
+| **Owner** | Manage users, identities, domains, pools, and system settings. Permanently delete memories. Add themselves to any pool. |
+| **Admin** | Manage users, identities, domains, pools, and system settings. Remove memories from pools. Add themselves to any pool. Cannot remove owners from pools or permanently delete memories from the memory bank. |
+| **User** | Access the dashboard. View memories within pools they have been explicitly added to. Cannot perform administrative actions. |
+
+Owners and admins must be explicitly added to a pool to view its memories, even though they have the ability to add themselves.
+
+## Adding Users to the Organization
+
+Organization owners and admins invite users through the Memori Enterprise dashboard. An invitation email is sent to the user; on accepting, they are added to the organization with the assigned role.
+
+To change a user's role after they have joined, navigate to **Settings → Users**, select the user, and update their role.
+
+## Adding Users to a Pool
+
+Pool membership is separate from organization membership and must be granted explicitly. No user is automatically added to any pool, including the pool creator.
+
+To add a user to a pool:
+
+1. Navigate to **Settings → Pools** or open the pool from the Memory Explorer.
+2. Select **Add User** and choose the user.
+3. Assign their pool-level permissions.
+
+### Pool-Level Permissions
+
+Two additional settings are available for each user added to a pool:
+
+**Remove memories**: Allow this user to remove memories from this pool. Removing a memory from a pool does not delete it from the memory bank or other pools it belongs to.
+
+**Entity memory access**: When enabled, the user can see entity memories (facts about specific people and customers) when browsing this pool. Disable for users who should not see customer-specific information.
+
+## Removing Users
+
+- **Owners** can remove any user from a pool.
+- **Admins** can remove themselves or other admins, but cannot remove owners.
+- **Users** can remove themselves from a pool.
+
+To remove a user from the organization, navigate to **Settings → Users** and revoke their access. Removing a user from the organization does not delete their contributed memories; it removes their ability to log in and access the dashboard.
