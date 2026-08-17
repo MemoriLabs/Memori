@@ -9,26 +9,7 @@ Memory capture and extraction in Memori are asynchronous. When a Claude Code tur
 
 ## The Async Pipeline
 
-```
-Claude Code turn completes
-      │
-      ▼
-Stop hook fires → transmits completed turn to Memori server
-      │
-      ▼
-Turn stored (immediately available for audit)
-      │
-      ▼
-Augmentation worker picks up the turn (background)
-      │
-      ▼
-Advanced Augmentation extracts memory signals
-      │
-      ▼
-Memories indexed and available for recall
-```
-
-The transmission step is synchronous within the hook: the hook completes after the turn is accepted by the server. The extraction step runs in a background worker and completes independently.
+When a turn completes, the Stop hook transmits it to the Memori server. The hook completes once the turn is accepted and stored. Extraction runs in a background worker after that and completes independently of the hook.
 
 ## Timing Expectations
 
