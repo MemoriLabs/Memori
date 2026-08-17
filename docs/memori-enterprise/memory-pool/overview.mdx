@@ -1,13 +1,13 @@
 ---
 title: Memory Pool
-description: Memory Pools are shared, permissioned collections of memories available to agents across users, teams, workflows, and applications, without exposing individual user memories across permission boundaries.
+description: Memory pools are shared, permissioned collections of memories available across users, teams, and workflows, without exposing individual user memories across permission boundaries.
 ---
 
 # Memory Pool
 
-A Memory Pool is a shared collection of memories that multiple agents can read from and write to. Pools let you build institutional knowledge that persists across users, teams, and workflows, separate from any individual user's private memory.
+A memory pool is a shared collection of memories that multiple Claude Code sessions can read from and write to. Pools let you build institutional knowledge that persists across users, teams, and workflows, separate from any individual user's private memory.
 
-## What Pools Are For
+## What pools are for
 
 Individual entity memory tracks what a specific user has said and done. Pools hold knowledge that belongs to the organization or a team rather than any one person:
 
@@ -18,11 +18,11 @@ Individual entity memory tracks what a specific user has said and done. Pools ho
 | Support team | Resolutions to common problems, customer tier information |
 | Research pipeline | Findings, source evaluations, synthesis from multiple Claude Code sessions |
 
-## Creating a Pool
+## Creating a pool
 
 Owners and admins can create pools. No role is automatically added to a pool at creation, including the creator. To access a pool's memories, the creator must add themselves explicitly, either by checking "Add creator to pool" during creation or by adding themselves afterward the same way they would add any other member.
 
-## Writing to a Pool
+## Writing to a pool
 
 Claude Code sessions write to a pool using the same attribution model as entity memory, but scoped to the pool rather than the individual user. Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
 
@@ -30,7 +30,7 @@ Claude Code sessions write to a pool using the same attribution model as entity 
 
 Pool access is governed by the same ReBAC model as entity memory. Each pool has its own access control list. No user is added to a pool automatically regardless of their organization role; owners and admins must be explicitly added to see a pool's memories.
 
-### Pool Membership Rules
+### Pool membership rules
 
 | Action | Who can do it |
 | ------ | ------------- |
@@ -41,13 +41,13 @@ Pool access is governed by the same ReBAC model as entity memory. Each pool has 
 
 ### Visibility
 
-Owners and admins see the full list of pools in Settings and can manage access from there. A status column indicates whether they have been granted access to each pool. On the `/memories/pools` page, only pools the viewer has been explicitly added to are shown.
+Owners and admins see the full list of pools in settings and can manage access from there. A status column indicates whether they have been granted access to each pool. On the `/memories/pools` page, only pools the viewer has been explicitly added to are shown.
 
 User counts and member lists for a pool include only those who have been explicitly granted access. Owners and admins are not counted unless they have been added.
 
 Permissions are evaluated at runtime for every pool operation and recorded in the audit log.
 
-### Assigned Users
+### Assigned users
 
 When you add a user to a pool, two per-user settings are available:
 
@@ -55,7 +55,7 @@ When you add a user to a pool, two per-user settings are available:
 
 **Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this user in this pool. Other pool access is unchanged. Recommended for customer-facing roles.
 
-### Assigned Identities
+### Assigned identities
 
 Grant identities access to this memory pool. Identities can read memories by default and can be given permission to write memories.
 
@@ -63,7 +63,7 @@ Grant identities access to this memory pool. Identities can read memories by def
 
 **Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this identity. Recommended to disable for identities who shouldn't access customer-specific information.
 
-## Pool Isolation
+## Pool isolation
 
 Pools are fully isolated from each other and from individual entity memory:
 
