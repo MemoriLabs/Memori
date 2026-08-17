@@ -26,10 +26,6 @@ Owners and admins can create pools. No role is automatically added to a pool at 
 
 Claude Code sessions write to a pool using the same attribution model as entity memory, but scoped to the pool rather than the individual user. Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
 
-## Reading from a Pool
-
-Claude Code recalls from a pool explicitly, or Intelligent Recall can include pool results automatically when the pool is attached to a process.
-
 ## Permissions
 
 Pool access is governed by the same ReBAC model as entity memory. Each pool has its own access control list. No user is added to a pool automatically regardless of their organization role; owners and admins must be explicitly added to see a pool's memories.
