@@ -42,12 +42,11 @@ Grant identities access to this memory pool. Identities can read memories by def
 - **Write memories**: Allow this identity to add new memories to this pool. Identities cannot remove or delete memories. Every new memory it writes is recorded in the audit log.
 - **Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this identity. Recommended to disable for identities who shouldn't access customer-specific information.
 
-### 4. Verify
+### Verify
 
-Check that the pool is receiving memories after a Claude Code session completes.
+Check that the pool is receiving memories after a session ends.
 
-- Open **Memory Explorer** and filter by pool name to see memories accumulating
-- Confirm that sessions assigned to this pool receive both pool memories and their own entity memories in recall
+- Open Memory Explorer and filter by pool name to see your new memories
 
 ## Permissions
 
