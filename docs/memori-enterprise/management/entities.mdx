@@ -1,33 +1,34 @@
 ---
 title: Entities
-description: Entities are the people and subjects that memories belong to. Each entity has its own private memory space identified by an entity ID.
+description: Entities are the people that memories belong to. Each entity has its own private memory space identified by an entity ID.
 ---
 
 # Entities
 
-An entity is the person, user, or subject that a memory belongs to. Every memory in Memori is associated with an entity: the facts, preferences, and goals stored in Memori describe a specific entity's state and history.
+An entity is the person that a memory belongs to. Every memory in Memori is associated with an entity: the facts, preferences, goals, and working context stored in Memori describe a specific person's history with Claude Code.
 
 ## Entity IDs
 
-Each entity is identified by an entity ID: a lowercase string you assign when configuring the agent. Entity IDs can be any consistent identifier that maps to a person or subject in your system, such as a user ID, email slug, or username.
+Each entity is identified by an entity ID: a lowercase string set during Claude Code plugin configuration with `/memori:configure`. Entity IDs can be any consistent identifier that maps to a person in your system, such as a username or email slug.
 
 ```
 jane-doe
 user_8472
-support-case-19043
 ```
 
-The entity ID is the key that links an agent session to its memory space. An agent configured with `entity_id: jane-doe` reads from and writes to Jane Doe's memory, and no other entity's memory is accessible to that agent unless pool access has been granted.
+The entity ID is the key that links a Claude Code session to its memory space. A Claude Code instance configured with entity ID `jane-doe` reads from and writes to Jane Doe's memory. No other entity's memory is accessible unless explicit pool access has been granted.
 
 ## Consistency Across Clients
 
-If multiple agents or integrations write to the same entity, use the same entity ID in every client. Memori accumulates memories across all sessions for a given entity ID, so a mismatched ID creates a separate memory space rather than contributing to the existing one.
+If a person uses Claude Code on multiple machines or has other integrations writing to Memori, use the same entity ID everywhere. Memori accumulates memories across all sessions for a given entity ID, so a mismatched ID creates a separate memory space rather than contributing to the existing one.
 
-If memory recall looks incomplete or the dashboard shows fewer memories than expected, verify that all clients are configured with the same entity ID.
+If memory recall looks incomplete or the dashboard shows fewer memories than expected, verify that all of the person's clients are configured with the same entity ID.
 
 ## Entity Management
 
-Owners and admins can view all entities in the organization from the Memori Enterprise dashboard. From the entity view, you can:
+Owners and admins can view all entities in the organization from the Memori Enterprise dashboard. Entities are created automatically the first time a Claude Code session writes a memory under a given entity ID.
+
+From the entity view, you can:
 
 - Browse all memories attributed to an entity
 - Delete individual memories

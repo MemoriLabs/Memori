@@ -1,16 +1,16 @@
 ---
 title: Async Gateway
-description: How Memori processes memory capture and extraction asynchronously, and what this means for when memories become available after a session ends.
+description: How Memori processes memory capture and extraction asynchronously, and what this means for when memories become available after a Claude Code session ends.
 ---
 
 # Async Gateway
 
-Memory capture and extraction in Memori are asynchronous. When an agent session ends, the conversation is transmitted to the Memori server, but the memories extracted from it are not immediately queryable. Understanding this pipeline helps you set correct expectations for the dashboard and for recall timing in subsequent sessions.
+Memory capture and extraction in Memori are asynchronous. When a Claude Code session ends, the conversation is transmitted to the Memori server, but the memories extracted from it are not immediately queryable. Understanding this pipeline helps you set correct expectations for the dashboard and for recall timing in subsequent sessions.
 
 ## The Async Pipeline
 
 ```
-Agent session ends
+Claude Code session ends
       │
       ▼
 Stop hook fires → transmits completed turn to Memori server
@@ -40,11 +40,11 @@ If you check the dashboard immediately after a session and see no new memories, 
 
 ## Interrupted Sessions
 
-A session ended with `ESC` or terminated before the Stop hook fires is not transmitted. No turn is stored and no memories are extracted. Only completed turns reach the Memori server.
+A Claude Code session ended with `ESC` or terminated before the Stop hook fires is not transmitted. No turn is stored and no memories are extracted. Only completed turns reach the Memori server.
 
 ## Pool Writes
 
-Pool memory writes follow the same async pipeline. An agent writing to a pool submits the content for extraction; other agents with pool access will see the resulting memories after extraction completes, not at the moment of submission.
+Pool memory writes follow the same async pipeline. A Claude Code session writing to a pool submits the content for extraction; other sessions with pool access will see the resulting memories after extraction completes, not at the moment of submission.
 
 ## Hook Timeout Considerations
 

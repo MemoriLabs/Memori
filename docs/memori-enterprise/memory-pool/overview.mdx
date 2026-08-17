@@ -13,10 +13,10 @@ Individual entity memory tracks what a specific user has said and done. Pools ho
 
 | Use case | What the pool holds |
 | -------- | ------------------- |
-| Product knowledge base | Feature definitions, known issues, escalation paths |
+| Engineering team | Architecture decisions, known issues, coding conventions shared across all Claude Code users |
+| Product knowledge base | Feature definitions, roadmap context, escalation paths |
 | Support team | Resolutions to common problems, customer tier information |
-| Research pipeline | Findings, source evaluations, synthesis from multiple sessions |
-| Multi-agent workflow | Shared state passed between specialized agents |
+| Research pipeline | Findings, source evaluations, synthesis from multiple Claude Code sessions |
 
 ## Creating a Pool
 
@@ -24,11 +24,11 @@ Owners and admins can create pools. No role is automatically added to a pool at 
 
 ## Writing to a Pool
 
-Agents write to a pool using the same attribution model as entity memory, but scoped to the pool rather than a user. Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
+Claude Code sessions write to a pool using the same attribution model as entity memory, but scoped to the pool rather than the individual user. Pool writes go through Advanced Augmentation. Facts are extracted, embedded, and indexed alongside entity memories, so recall can draw from both the pool and the requesting user's history in a single query.
 
 ## Reading from a Pool
 
-Agents recall from a pool explicitly, or Intelligent Recall can include pool results automatically when the pool is attached to a process.
+Claude Code recalls from a pool explicitly, or Intelligent Recall can include pool results automatically when the pool is attached to a process.
 
 ## Permissions
 

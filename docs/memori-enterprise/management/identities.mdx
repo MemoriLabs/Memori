@@ -1,11 +1,11 @@
 ---
 title: Identities
-description: Identities are the API clients and agents that read from and write to Memori. Each identity has an identity ID and configurable pool access.
+description: Identities are the programmatic clients that read from and write to Memori, including every Claude Code plugin instance. Each identity has an identity ID and configurable pool access.
 ---
 
 # Identities
 
-An identity represents an API client or agent process that interacts with Memori. Where users log into the dashboard, identities authenticate programmatically using an identity ID. Every agent, integration, or application that reads from or writes to your Memori deployment does so as an identity.
+An identity represents a programmatic client that interacts with Memori. Where users log into the dashboard, identities authenticate using an identity ID. The Memori Claude Code plugin runs as an identity: every Claude Code session that sends memories to your deployment authenticates with the identity ID configured during setup. Other integrations or applications that read from or write to your deployment also do so as identities.
 
 ## Identity IDs
 
