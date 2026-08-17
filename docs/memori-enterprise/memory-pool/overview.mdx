@@ -18,13 +18,38 @@ Individual entity memory tracks what a specific user has said and done. Pools ho
 | Support team | Resolutions to common problems, customer tier information |
 | Research pipeline | Findings, source evaluations, synthesis from multiple Claude Code sessions |
 
-## Creating a pool
+## Setting up a pool
 
-Owners and admins can create pools. No role is automatically added to a pool at creation, including the creator. To access a pool's memories, the creator must add themselves explicitly, either by checking "Add creator to pool" during creation or by adding themselves afterward the same way they would add any other member.
+### 1. Create the pool
 
-## Writing to a pool
+Owners and admins can create pools from **Settings → Pools**. Give the pool a name that identifies its scope: a team, a project, or a shared workflow.
 
-Pool memories are written and recalled the same way as entity memories. Recall can draw from both the pool and the requesting user's own memory in a single query.
+- Navigate to **Settings → Pools** and select **New pool**
+- Enter a name and, optionally, a description
+- Check **Add creator to pool** if you want immediate access, or add yourself afterward
+
+### 2. Add users
+
+Pool membership is never granted automatically, even to owners and admins. Add each user who needs access from the pool's settings page.
+
+- Open the pool and select **Add user**
+- Enable **Remove memories** for users who should be able to prune pool content
+- Disable **Entity memory access** for users who should not see customer-specific facts
+
+### 3. Add identities
+
+Each Claude Code instance authenticates as an identity. Add the identities whose sessions should read from or write to this pool.
+
+- Open the pool and select **Add identity**
+- Enable **Write memories** if the identity's sessions should contribute memories to the pool
+- Disable **Entity memory access** for identities handling requests across multiple customers
+
+### 4. Verify
+
+Check that the pool is receiving memories after a Claude Code session completes.
+
+- Open **Memory Explorer** and filter by pool name to see memories accumulating
+- Confirm that sessions assigned to this pool receive both pool memories and their own entity memories in recall
 
 ## Permissions
 
