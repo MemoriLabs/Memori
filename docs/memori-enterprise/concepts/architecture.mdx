@@ -1,0 +1,39 @@
+---
+title: Architecture
+description: How Memori Enterprise fits into a Claude Code deployment, from memory capture through recall, deployed entirely inside your infrastructure.
+---
+
+# Architecture
+
+Memori Enterprise runs entirely inside your infrastructure, either in your VPC or on-premises. Claude Code sessions connect to your Memori server using the Memori plugin. No memory data, conversation content, or recall queries leave the boundary you control.
+
+## How it works
+
+Each Claude Code session interacts with Memori through two hooks:
+
+- **Before each prompt**: Memori recalls relevant memories from the user's history and any accessible memory pools, and injects them into the session context.
+- **After each completed turn**: The completed conversation turn is transmitted to your Memori server for extraction and storage.
+
+Memory capture is asynchronous. The turn is stored immediately; extraction runs in a background worker and completes independently. See [Async Gateway](/docs/memori-enterprise/concepts/async-gateway) for timing details.
+
+## Memory extraction
+
+Memori's Generation 3 augmentation pipeline processes each captured turn and extracts structured memories: facts, preferences, goals, constraints, outcomes, and other signal types. Extracted memories are indexed and made available for subsequent recall queries.
+
+## Memory pools
+
+Individual entity memory is private to each user. Memory pools extend this with shared, permissioned collections of memories accessible to multiple users and identities. A team's shared pool can hold architecture decisions, known issues, and project context that every Claude Code session on the team draws from.
+
+See [Memory Pool](/docs/memori-enterprise/memory-pool/overview) for pool setup.
+
+## Deployment boundary
+
+Memori Enterprise deploys inside your cloud or on-premises infrastructure:
+
+| Component | Where it runs |
+| --------- | ------------- |
+| Memori server | Your VPC or on-prem hardware |
+| Memory store | Your infrastructure |
+| Augmentation pipeline | Your infrastructure |
+
+All memory capture, extraction, and recall occurs within your environment. Telemetry is fully opt-out. See [VPC](/docs/memori-enterprise/vpc/overview) and [On-Premises](/docs/memori-enterprise/deployment/on-prem) for deployment options.
