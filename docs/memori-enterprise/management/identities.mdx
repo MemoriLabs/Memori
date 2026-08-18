@@ -13,11 +13,11 @@ Each identity has an identity ID that starts with `id_`. The identity ID is the 
 
 Identity IDs are created and managed in the Memori Enterprise dashboard under **Settings → Identities**. Treat identity IDs as secrets: store them in your secrets manager and rotate them on your credential rotation schedule.
 
-## Creating an Identity
+## Creating an identity
 
 Owners and admins can create identities from the dashboard. When creating an identity, you assign it a name (used for attribution in the audit log and memory records) and configure its initial pool access.
 
-## Assigning Identities to Pools
+## Assigning identities to pools
 
 Identities access memory pools through explicit grant, the same model as users. To give an identity access to a pool:
 
@@ -25,7 +25,7 @@ Identities access memory pools through explicit grant, the same model as users. 
 2. Select **Add Identity** and choose the identity.
 3. Configure the identity's pool permissions.
 
-### Pool Permissions for Identities
+### Pool permissions for identities
 
 **Write memories**: By default, an identity granted pool access can read memories from the pool. Enable this to also allow the identity to add new memories to the pool. Writes are additive; identities cannot remove or delete memories. Every memory written by an identity is attributed to it and recorded in the audit log.
 
@@ -35,10 +35,10 @@ Identities access memory pools through explicit grant, the same model as users. 
 
 Every memory created by an identity is attributed to it in the audit log. The `process_id` field on each audit record contains the identity name. This attribution is immutable: the record cannot be changed after the memory is written.
 
-## Rotating Identity IDs
+## Rotating identity IDs
 
 To rotate an identity ID, generate a new identity ID from the dashboard and update the secret in your deployment. The old identity ID is invalidated immediately on rotation. Audit records written under the old identity ID retain their original attribution.
 
-## Integration Example
+## Integration example
 
 For the Memori Claude Code plugin, the identity ID is configured with `/memori:configure` and stored in `~/.claude/memori/config.json`. Each agent session authenticates using this identity ID. See [Quickstart](/docs/memori-enterprise/getting-started/quickstart) for setup steps.

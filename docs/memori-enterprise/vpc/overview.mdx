@@ -7,7 +7,7 @@ description: Run Memori Enterprise inside your own Virtual Private Cloud. All me
 
 Memori Enterprise deploys inside your Virtual Private Cloud on AWS, GCP, or Azure. Every component (memory capture, Advanced Augmentation, Intelligent Recall, and the enterprise control plane) runs within your network boundary. No traffic leaves your VPC.
 
-## What Runs Inside Your VPC
+## What runs inside your VPC
 
 ```
 Your VPC
@@ -22,7 +22,7 @@ Your VPC
 
 All traffic stays within your VPC. No public endpoints are required.
 
-## Private Connectivity
+## Private connectivity
 
 Memori uses the private connectivity options native to your cloud provider:
 
@@ -32,7 +32,7 @@ Memori uses the private connectivity options native to your cloud provider:
 | **GCP** | Private Service Connect, VPC peering, internal load balancers |
 | **Azure** | Private Endpoints, VNet peering, Private Link |
 
-## Network Requirements
+## Network requirements
 
 We will provide a complete network requirements checklist during scoping. At a high level:
 
@@ -40,7 +40,7 @@ We will provide a complete network requirements checklist during scoping. At a h
 - **Outbound:** All outbound traffic stays within your private subnets. No public exposure required.
 - **Egress:** Optional telemetry export and SLA-covered support channels. Fully configurable; air-gapped operation is available for on-premises deployments.
 
-## Security Groups and Firewall Rules
+## Security groups and firewall rules
 
 Memori's deployment automation generates a minimal set of security group rules during provisioning. Rules follow the principle of least privilege:
 

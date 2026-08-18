@@ -7,7 +7,7 @@ description: Memori Enterprise uses role and relationship-based access control (
 
 Memori Enterprise uses role and relationship-based access control (ReBAC) to govern memory operations at a granular level. You decide which agents can read which memories, which can write, and which have administrative access; those decisions map directly to your existing permission structure.
 
-## Access Model
+## Access model
 
 Memory operations in Memori are governed by three dimensions:
 
@@ -27,7 +27,7 @@ Roles are assigned at the entity-process level, so different agents can have dif
 | `admin` | Manage users, identities, domains, pools, and system settings. Can add themselves to any pool. Can remove memories from pools but cannot permanently delete from the memory bank. Cannot remove owners from pools. Must be explicitly added to a pool to view its memories. |
 | `user` | Standard access to the Memori dashboard. View memories within assigned pools using the memory explorer. Cannot manage the organization or perform administrative actions. |
 
-## Relationship-Based Control
+## Relationship-based control
 
 ReBAC allows permissions to follow organizational relationships rather than requiring explicit per-agent grants. For example:
 
@@ -37,7 +37,7 @@ ReBAC allows permissions to follow organizational relationships rather than requ
 
 Relationship rules are defined in your Memori Enterprise configuration and evaluated at runtime for every operation.
 
-## Policy Integration
+## Policy integration
 
 Memori Enterprise can import your existing access policies directly:
 
@@ -45,7 +45,7 @@ Memori Enterprise can import your existing access policies directly:
 - **OAuth scopes**: Bind Memori permissions to OAuth token scopes issued by your IdP
 - **Attribute-based rules**: Use attributes from your identity provider (department, team, clearance level) to drive Memori permissions
 
-## Memory Pools
+## Memory pools
 
 Memory pools are shared, permissioned collections of memories available to multiple agents. Pools are governed by the same ReBAC model:
 

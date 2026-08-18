@@ -7,7 +7,7 @@ description: How to remove individual memories, pool memories, and all memories 
 
 Memori provides several paths for removing memories, each with its own permission requirements. Understanding the difference between removing a memory from a pool and permanently deleting it from the memory bank is important before performing any removal.
 
-## Removal vs Deletion
+## Removal vs deletion
 
 | Action | What it does | Who can do it |
 | ------ | ------------ | ------------- |
@@ -17,7 +17,7 @@ Memori provides several paths for removing memories, each with its own permissio
 
 All removal and deletion actions are recorded in the immutable audit log with the acting user and timestamp.
 
-## Removing Individual Memories
+## Removing individual memories
 
 To remove a memory from the Memory Explorer:
 
@@ -28,19 +28,19 @@ To remove a memory from the Memory Explorer:
 
 Owners see both options. Admins and users with remove-memories permission see pool removal only.
 
-## Removing from a Pool
+## Removing from a pool
 
 Pool removal is the appropriate action when a memory is no longer relevant to a specific pool's use case but should be preserved in the memory bank. For example, removing a customer-specific memory from a general knowledge pool while keeping it in the entity's private memory.
 
 The memory remains in the memory bank and in any other pools it belongs to. Only the association between this memory and this pool is severed.
 
-## Permanently Deleting a Memory
+## Permanently deleting a memory
 
 Permanent deletion removes the memory from the memory bank entirely. It is no longer accessible from any pool or through any recall query. This action is available to owners only and cannot be undone.
 
 Use permanent deletion when a memory contains incorrect information that should not persist anywhere, or when a specific record must be removed to comply with a data subject request.
 
-## Deleting All Memories for an Entity
+## Deleting all memories for an entity
 
 To delete all memories associated with a specific entity, including facts, session records, and knowledge graph nodes, use the SDK:
 

@@ -18,13 +18,13 @@ user_8472
 
 The entity ID is the key that links a Claude Code session to its memory space. A Claude Code instance configured with entity ID `jane-doe` reads from and writes to Jane Doe's memory. No other entity's memory is accessible unless explicit pool access has been granted.
 
-## Consistency Across Clients
+## Consistency across clients
 
 If a person uses Claude Code on multiple machines or has other integrations writing to Memori, use the same entity ID everywhere. Memori accumulates memories across all sessions for a given entity ID, so a mismatched ID creates a separate memory space rather than contributing to the existing one.
 
 If memory recall looks incomplete or the dashboard shows fewer memories than expected, verify that all of the person's clients are configured with the same entity ID.
 
-## Entity Management
+## Entity management
 
 Owners and admins can view all entities in the organization from the Memori Enterprise dashboard. Entities are created automatically the first time a Claude Code session writes a memory under a given entity ID.
 
@@ -34,7 +34,7 @@ From the entity view, you can:
 - Delete individual memories
 - Delete all memories for an entity (see [Remove Memories](/docs/memori-enterprise/management/remove-memories))
 
-## Entity Deletion
+## Entity deletion
 
 To delete all memories associated with an entity, including facts, session records, and knowledge graph nodes, use the SDK:
 
