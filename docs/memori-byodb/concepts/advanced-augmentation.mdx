@@ -31,67 +31,6 @@ The augmentation flow is fully asynchronous and designed to avoid blocking your 
 
 In short-lived scripts, call `mem.augmentation.wait()` to ensure processing completes before exit.
 
-<CodeGroup title="How It Works">
-
-```python {{ title: 'Python' }}
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from memori import Memori
-from openai import OpenAI
-
-engine = create_engine("sqlite:///memori.db")
-SessionLocal = sessionmaker(bind=engine)
-
-client = OpenAI()
-mem = Memori(conn=SessionLocal).llm.register(client)
-mem.attribution(entity_id="user_123", process_id="my_agent")
-mem.config.storage.build()
-
-# This returns immediately — no augmentation delay
-response = client.chat.completions.create(
-    model="gpt-4.1-mini",
-    messages=[
-        {"role": "user", "content": "I love hiking in the mountains."}
-    ]
-)
-print(response.choices[0].message.content)
-
-# Only needed in short-lived scripts
-mem.augmentation.wait()
-```
-
-```typescript {{ title: 'TypeScript' }}
-import 'dotenv/config';
-import Database from 'better-sqlite3';
-import { OpenAI } from 'openai';
-import { Memori } from '@memorilabs/memori';
-
-const db = new Database('memori.db');
-const client = new OpenAI();
-
-const mem = new Memori({ conn: () => db }).llm.register(client);
-mem.attribution('user_123', 'my_agent');
-
-if (!mem.config.storage) {
-  throw new Error('Storage not initialized');
-}
-
-await mem.config.storage.build();
-
-// This returns immediately — no augmentation delay
-const response = await client.chat.completions.create({
-  model: 'gpt-4.1-mini',
-  messages: [{ role: 'user', content: 'I love hiking in the mountains.' }],
-});
-console.log(response.choices[0]?.message?.content);
-
-// Only needed in short-lived scripts
-await mem.augmentation.wait();
-db.close();
-```
-
-</CodeGroup>
-
 ## Extraction Types
 
 | Type                   | What it captures                                        | Scope                                |
@@ -154,9 +93,3 @@ When a query is sent to an LLM through a wrapped client, Memori automatically:
 - You want personalized AI interactions
 - With multi-step workflows or agentic systems
 - For building relationships between entities
-
-<Admonition type="important" title="Attribution is Required">
-  For Memori to provide all Advanced Augmentation capabilities, attribution must
-  be set before making LLM calls. Without attribution, Memori cannot create or
-  recall memories.
-</Admonition>

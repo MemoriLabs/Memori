@@ -7,55 +7,35 @@ description: Memori Enterprise uses role and relationship-based access control (
 
 Memori Enterprise uses role and relationship-based access control (ReBAC) to govern memory operations at a granular level. You decide which agents can read which memories, which can write, and which have administrative access; those decisions map directly to your existing permission structure.
 
+## What access control is for
+
+ReBAC allows permissions to follow organizational relationships rather than requiring explicit per-agent grants. Members of a support team can automatically inherit access to customer memories scoped to that team, managers can receive owner access across their department, and escalation paths can grant senior agents admin access when a case is transferred.
+
 ## Access model
 
 Memory operations in Memori are governed by three dimensions:
 
-| Dimension | Description | Example |
-| --------- | ----------- | ------- |
-| **Entity** | The user, customer, or subject the memory belongs to | `user_123` |
-| **Process** | The agent or application performing the operation | `support_agent` |
-| **Role** | The permission level granted to the process for the entity | `user`, `admin`, `owner` |
+- **Entity**: the user, customer, or subject the memory belongs to (e.g. `user_123`)
+- **Process**: the agent or application performing the operation (e.g. `support_agent`)
+- **Role**: the permission level granted to the process for the entity (`user`, `admin`, `owner`)
 
 Roles are assigned at the entity-process level, so different agents can have different permissions for the same user's memories.
 
 ## Roles
 
-| Role | Capabilities |
-| ---- | ------------ |
-| `owner` | Manage users, identities, domains, pools, and system settings. Can add themselves to any pool. Only role that can permanently delete memories from the memory bank. Must be explicitly added to a pool to view its memories. |
-| `admin` | Manage users, identities, domains, pools, and system settings. Can add themselves to any pool. Can remove memories from pools but cannot permanently delete from the memory bank. Cannot remove owners from pools. Must be explicitly added to a pool to view its memories. |
-| `user` | Standard access to the Memori dashboard. View memories within assigned pools using the memory explorer. Cannot manage the organization or perform administrative actions. |
+**`owner`**: Manage users, identities, domains, pools, and system settings. Can add themselves to any pool. Only role that can permanently delete memories from the memory bank. Must be explicitly added to a pool to view its memories.
 
-## Relationship-based control
+**`admin`**: Manage users, identities, domains, pools, and system settings. Can add themselves to any pool. Can remove memories from pools but cannot permanently delete from the memory bank. Cannot remove owners from pools. Must be explicitly added to a pool to view its memories.
 
-ReBAC allows permissions to follow organizational relationships rather than requiring explicit per-agent grants. For example:
-
-- Members of a support team automatically inherit `user` access to customer memories scoped to that team
-- A manager role automatically receives `owner` access to all memories within their department
-- An escalation path grants a senior agent `admin` access when a case is transferred
-
-Relationship rules are defined in your Memori Enterprise configuration and evaluated at runtime for every operation.
+**`user`**: Standard access to the Memori dashboard. View memories within assigned pools using the memory explorer. Cannot manage the organization or perform administrative actions.
 
 ## Policy integration
 
-Memori Enterprise can import your existing access policies directly:
-
-- **ReBAC policies**: Map your existing role definitions to Memori permission levels
-- **OAuth scopes**: Bind Memori permissions to OAuth token scopes issued by your IdP
-- **Attribute-based rules**: Use attributes from your identity provider (department, team, clearance level) to drive Memori permissions
+Memori Enterprise can import your existing access policies directly. ReBAC policies map your existing role definitions to Memori permission levels. OAuth scopes bind Memori permissions to token scopes issued by your IdP. Attribute-based rules use attributes from your identity provider, such as department, team, or clearance level, to drive Memori permissions.
 
 ## Memory pools
 
-Memory pools are shared, permissioned collections of memories available to multiple agents. Pools are governed by the same ReBAC model:
-
-- Define which entities contribute to a pool
-- Control which agents can read from or write to the pool
-- Scope pools by team, workflow, or application
-
-No role is automatically granted pool membership, including owners and admins. Every user, including the pool creator, must be explicitly added to see a pool's memories. Owners and admins can add themselves to any pool, including ones they did not create. Admins cannot remove owners from a pool.
-
-Pools let agents share institutional knowledge without exposing individual user memories across permission boundaries.
+Memory pools are shared, permissioned collections of memories available to multiple agents. Pools are governed by the same ReBAC model. No role is automatically granted pool membership, including owners and admins. Every user, including the pool creator, must be explicitly added to see a pool's memories. Owners and admins can add themselves to any pool, including ones they did not create.
 
 ## Audit
 

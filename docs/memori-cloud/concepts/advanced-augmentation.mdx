@@ -29,45 +29,6 @@ The augmentation flow is fully asynchronous and designed to avoid blocking your 
 4. The augmentation engine extracts structured memories
 5. Memories are stored in Memori Cloud for future recall
 
-<CodeGroup title="Advanced Augmentation">
-
-```python {{ title: 'Python' }}
-from memori import Memori
-from openai import OpenAI
-
-client = OpenAI()
-mem = Memori().llm.register(client)
-mem.attribution(entity_id="user_123", process_id="my_agent")
-
-# This returns immediately — no augmentation delay
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "user", "content": "I love hiking in the mountains."}
-    ]
-)
-print(response.choices[0].message.content)
-```
-
-```typescript {{ title: 'TypeScript' }}
-import OpenAI from 'openai';
-import { Memori } from '@memorilabs/memori';
-
-const client = new OpenAI();
-const mem = new Memori().llm.register(client);
-mem.attribution('user_123', 'my_agent');
-
-// This returns immediately — no augmentation delay
-const response = await client.chat.completions.create({
-  model: 'gpt-4o-mini',
-  messages: [
-    { role: 'user', content: 'I love hiking in the mountains.' },
-  ],
-});
-console.log(response.choices[0].message.content);
-```
-
-</CodeGroup>
 
 ## Extraction Types
 
@@ -101,9 +62,3 @@ When a query is sent to an LLM through a wrapped client, Memori automatically:
 3. Ranks facts by vector similarity
 4. Injects the most relevant facts into the system prompt
 5. Forwards the enriched request to the LLM provider
-
-<Admonition type="important" title="Attribution is Required">
-  For Memori to provide all Advanced Augmentation capabilities, attribution must
-  be set before making LLM calls. Without attribution, Memori cannot create or
-  recall memories.
-</Admonition>

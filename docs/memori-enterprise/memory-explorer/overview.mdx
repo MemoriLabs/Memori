@@ -7,15 +7,11 @@ description: Memory Explorer is a visual interface for browsing, searching, and 
 
 Memory Explorer is the visual interface for browsing, searching, and inspecting memories across your entire deployment. It gives your team direct visibility into what Claude Code knows, how memories were formed, and which facts are shaping responses.
 
-## Accessing Memory Explorer
+## What it's for
 
-Memory Explorer is available in the Memori Enterprise dashboard. Navigate to **Dashboard → Memory Explorer**.
+Memory Explorer is where owners and admins verify that memories are accumulating correctly and investigate what Claude Code is drawing on before each response. It is also where incorrect or stale memories can be found and removed.
 
-Access is governed by your organization's ReBAC policy. Owners and admins have full access to Memory Explorer. Users can view memories within their assigned pools.
-
-## What you can do
-
-### Search and browse
+## Searching and browsing
 
 Search across all memories by entity, pool, keyword, or tag. Results show the memory content, its signal type, horizon, and when it was created and last recalled.
 
@@ -23,50 +19,20 @@ Filter by:
 
 - **Entity**: view all memories for a specific user
 - **Pool**: inspect the contents of a memory pool
-- **Memory type**: what the memory is about: a concept (Domain), person or thing (Entity), or task output (Process). Signal types within each memory:
-
-  | Signal | Description |
-  | ------ | ----------- |
-  | **Constraint** | A rule or limit the agent must respect when acting or responding. |
-  | **Fact** | A piece of information that is known to be true about the entity or domain. |
-  | **Failure** | Something that was attempted and did not work, preventing the agent from repeating it. |
-  | **Goal** | An objective the entity is trying to achieve, used to orient agent behavior. |
-  | **Outcome** | The result of a completed action or decision, used to inform future reasoning. |
-  | **Preference** | How the entity wants things done: tone, format, approach, or priority. |
-  | **Strategy** | A higher-level approach the agent should apply when working toward a goal. |
-  | **Workflow** | A sequence of steps or process the agent should follow for a given task. |
-- **Horizon**: how long the memory persists. The three horizon types:
-
-  | Horizon | Description |
-  | ------- | ----------- |
-  | **Decaying** | A memory that loses relevance over time and is deprioritized in recall as it ages. |
-  | **Standing** | A persistent memory that remains equally relevant until explicitly updated or removed. |
-  | **Volatile** | A short-lived memory tied to the current session or task, discarded once it is no longer needed. |
-
+- **Memory type**: Domain (concepts), Entity (people or things), or Process (task outputs)
+- **Signal**: Constraint, Fact, Failure, Goal, Outcome, Preference, Strategy, or Workflow
+- **Horizon**: Decaying (loses relevance over time), Standing (persists until removed), or Volatile (short-lived, tied to current session)
 - **Date range**: memories created or updated within a window
 - **Tag**: memories labeled with a specific tag
 
-### Inspect individual memories
+## Inspecting individual memories
 
-Click any memory to see its full detail:
+Click any memory to see its full detail: content, source session and turn, augmentation confidence score, recall count, last recalled timestamp, and linked memories in the knowledge graph.
 
-- **Content**: the structured fact or summary
-- **Source**: the session and conversation turn it was extracted from
-- **Confidence**: the augmentation pipeline's confidence score
-- **Recall count**: how many times this memory has been retrieved
-- **Last recalled**: when it was last used to ground an agent response
-- **Linked memories**: related facts in the knowledge graph
-
-### Edit and delete
+## Edit and delete
 
 Owners can edit memory content or permanently delete individual memories directly from the Explorer. Admins can remove memories from pools but cannot permanently delete them. All edits and deletions are recorded in the audit log with the acting user and timestamp.
 
-### Knowledge graph view
+## Knowledge graph view
 
-Switch to **Graph View** to see memories as a network. Nodes represent entities, facts, and relationships. Edges show how memories connect: which facts reference the same entity, which preferences were inferred from the same session, and how the knowledge graph evolved over time.
-
-Graph View is useful for:
-
-- Understanding why Claude Code responded the way it did in a session
-- Identifying contradictory or stale facts before they affect future responses
-- Visualizing which users or topics have the densest memory coverage
+Switch to **Graph View** to see memories as a network of entities, facts, and relationships. Graph View is useful for understanding why Claude Code responded a certain way, identifying contradictory or stale facts before they affect future responses, and visualizing which users or topics have the densest memory coverage.

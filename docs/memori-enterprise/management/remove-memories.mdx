@@ -7,13 +7,13 @@ description: How to remove individual memories, pool memories, and all memories 
 
 Memori provides several paths for removing memories, each with its own permission requirements. Understanding the difference between removing a memory from a pool and permanently deleting it from the memory bank is important before performing any removal.
 
-## Removal vs deletion
+## What removal means
 
-| Action | What it does | Who can do it |
-| ------ | ------------ | ------------- |
-| **Remove from pool** | Removes the memory from that pool only. The memory remains in the memory bank and in any other pools it belongs to. | Owners, admins, and users with pool remove-memories permission |
-| **Permanently delete** | Removes the memory from the memory bank and all pools. Irreversible. | Owners only |
-| **Delete all entity memories** | Removes all memories for a specific entity, including facts, session records, and knowledge graph nodes. | Owners, via the SDK |
+**Remove from pool** takes the memory out of that pool only. The memory remains in the memory bank and in any other pools it belongs to. Owners, admins, and users with pool remove-memories permission can do this.
+
+**Permanently delete** removes the memory from the memory bank and all pools. This action is irreversible and available to owners only.
+
+**Delete all entity memories** removes all memories for a specific entity, including facts, session records, and knowledge graph nodes. Owners can do this via the SDK.
 
 All removal and deletion actions are recorded in the immutable audit log with the acting user and timestamp.
 
@@ -30,19 +30,15 @@ Owners see both options. Admins and users with remove-memories permission see po
 
 ## Removing from a pool
 
-Pool removal is the appropriate action when a memory is no longer relevant to a specific pool's use case but should be preserved in the memory bank. For example, removing a customer-specific memory from a general knowledge pool while keeping it in the entity's private memory.
-
-The memory remains in the memory bank and in any other pools it belongs to. Only the association between this memory and this pool is severed.
+Pool removal is the appropriate action when a memory is no longer relevant to a specific pool but should be preserved in the memory bank. The memory remains in the memory bank and in any other pools it belongs to. Only the association between this memory and this pool is severed.
 
 ## Permanently deleting a memory
 
-Permanent deletion removes the memory from the memory bank entirely. It is no longer accessible from any pool or through any recall query. This action is available to owners only and cannot be undone.
-
-Use permanent deletion when a memory contains incorrect information that should not persist anywhere, or when a specific record must be removed to comply with a data subject request.
+Permanent deletion removes the memory from the memory bank entirely. It is no longer accessible from any pool or through any recall query. Use permanent deletion when a memory contains incorrect information that should not persist anywhere, or when a specific record must be removed to comply with a data subject request.
 
 ## Deleting all memories for an entity
 
-To delete all memories associated with a specific entity, including facts, session records, and knowledge graph nodes, use the SDK:
+To delete all memories associated with a specific entity, use the SDK:
 
 ```python
 from memori import Memori

@@ -5,94 +5,20 @@ description: Memory pools are shared, permissioned collections of memories avail
 
 # Memory Pool
 
-A memory pool is a shared collection of memories that multiple Claude Code sessions can read from and write to. Pools let you build institutional knowledge that persists across users, teams, and workflows, separate from any individual user's private memory.
+A memory pool is a shared collection of memories that agents can read from and write to. Pools let you build knowledge that persists across users, teams, and workflows, separate from any individual user's private memory.
 
 ## What pools are for
 
-Individual entity memory tracks what a specific user has said and done. Pools hold knowledge that belongs to the organization or a team rather than any one person:
+Individual entity memory tracks what a specific user has said and done. Pools hold knowledge that belongs to the organization or a team rather than any one person.
 
-| Use case | What the pool holds |
-| -------- | ------------------- |
-| Engineering team | Architecture decisions, known issues, coding conventions shared across all Claude Code users |
-| Product knowledge base | Feature definitions, roadmap context, escalation paths |
-| Support team | Resolutions to common problems, customer tier information |
-| Research pipeline | Findings, source evaluations, synthesis from multiple Claude Code sessions |
+## Creating a pool
 
-## Setting up a pool
+Owners and admins can create pools. No role is automatically added to a pool at creation, including the creator. To access a pool's memories, the creator must add themselves explicitly, either by checking "Add creator to pool" during creation or by adding themselves afterward the same way they would add any other member.
 
-### 1. Create the pool
+## Writing to a pool
 
-Owners and admins can create pools from **Settings → Memory pools**. Give the pool a name that identifies its scope.
-
-- Navigate to **Settings → Memory pools** and select the + sign on the top right corner
-- Enter a name and a description
-
-### 2. Add users
-
-Add each user who needs access from the pool's settings page.
-
-- Open the pool and select Add a user from your organization
-- **Remove memories**: It allows this user to remove memories from this pool. The memory stays in the memory bank and in any other pools it belongs to. It does not delete it from the memory bank.
-- **Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this user in this pool. Other pool access is unchanged. Recommend toggled on for customer-facing roles.
-
-### 3. Add identities
-
-Grant identities access to this memory pool. Identities can read memories by default and can be given permission to write memories.
-
-- **Write memories**: Allow this identity to add new memories to this pool. Identities cannot remove or delete memories. Every new memory it writes is recorded in the audit log.
-- **Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this identity. Recommended to disable for identities who shouldn't access customer-specific information.
-
-### Verify
-
-Check that the pool is receiving memories after a session ends.
-
-- Open Memory Explorer and filter by pool name to see your new memories
+Pool memories are written and recalled the same way as entity memories. Recall can draw from both the pool and the requesting user's own memory in a single query.
 
 ## Permissions
 
 Pool access is governed by the same ReBAC model. Each pool has its own access control list. Admins and users must be explicitly added to see a pool's memories.
-
-### Pool membership rules
-
-| Action | Who can do it |
-| ------ | ------------- |
-| Create a pool | Owners and admins |
-| Add users or identities to a pool | Owners and admins |
-| Remove a user from a pool | Owners can remove anyone. Admins can remove themselves or other admins, but cannot remove owners. Users can remove themselves. |
-| Add themselves to a pool they did not create | Owners and admins |
-
-### Visibility
-
-Owners and admins see the full list of pools in settings and can manage access from there. A status column indicates whether they have been granted access to each pool. On the `/memories/pools` page, only pools the viewer has been explicitly added to are shown.
-
-User counts and member lists for a pool include only those who have been explicitly granted access. Owners and admins are not counted unless they have been added.
-
-Permissions are evaluated at runtime for every pool operation and recorded in the audit log.
-
-### Assigned users
-
-When you add a user to a pool, two per-user settings are available:
-
-**Remove memories**: Allow this user to remove memories from this pool. The memory stays in the memory bank and in any other pools it belongs to. It does not delete it from the memory bank.
-
-**Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this user in this pool. Other pool access is unchanged. Recommended for customer-facing roles.
-
-### Assigned identities
-
-Grant identities access to this memory pool. Identities can read memories by default and can be given permission to write memories.
-
-**Write memories**: Allow this identity to add new memories to this pool. Writing is additive only; identities cannot remove or delete memories. Every new memory it writes is recorded in the audit log.
-
-**Entity memory access**: Entity memories are facts about specific people and customers. When off, they're hidden from this identity. Recommended to disable for identities who shouldn't access customer-specific information.
-
-## Pool isolation
-
-Pools are fully isolated from each other and from individual entity memory:
-
-- An agent with access to `support-team` cannot read from `engineering-team` unless explicitly granted
-- A pool member's writes are attributed to the pool, not their personal entity memory
-- Pool recall results are clearly distinguished from entity recall results in the response
-
-## Retention
-
-Pool entry retention is configured independently of entity memory retention. Pool entries can also be deleted individually or by tag from the Memori dashboard.
