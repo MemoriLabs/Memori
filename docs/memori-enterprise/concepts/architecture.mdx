@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: How Memori Enterprise fits into a Claude Code deployment, from memory capture through recall, deployed entirely inside your infrastructure.
+description: How Memori Enterprise fits into a harness deployment, from memory capture through recall, deployed entirely inside your infrastructure.
 ---
 
 # Architecture
@@ -9,7 +9,7 @@ Memori Enterprise runs entirely inside your infrastructure, either in your VPC o
 
 ## How it works
 
-Each Claude Code session interacts with Memori through two hooks:
+Each harness session interacts with Memori through two hooks:
 
 - **Before each prompt**: Memori recalls relevant memories from the user's history and any accessible memory pools, and injects them into the session context.
 - **After each completed turn**: The completed conversation turn is transmitted to your Memori server for extraction and storage.
@@ -22,7 +22,7 @@ Memori's Generation 3 augmentation pipeline processes each captured turn and ext
 
 ## Memory pools
 
-Individual entity memory is private to each user. Memory pools extend this with shared, permissioned collections of memories accessible to multiple users and identities. A team's shared pool can hold architecture decisions, known issues, and project context that every Claude Code session on the team draws from.
+Individual entity memory is private to each user. Memory pools extend this with shared, permissioned collections of memories accessible to multiple users and identities. A team's shared pool can hold architecture decisions, known issues, and project context that every harness session on the team draws from.
 
 See [Memory Pools](/docs/memori-enterprise/memory-pool/overview) for pool setup.
 

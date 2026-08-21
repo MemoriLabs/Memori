@@ -1,11 +1,11 @@
 ---
 title: Identities
-description: Identities are the programmatic clients that read from and write to Memori, including every Claude Code plugin instance. Each identity has an identity ID and configurable pool access.
+description: Identities are the programmatic clients that read from and write to Memori, including every harness plugin instance. Each identity has an identity ID and configurable pool access.
 ---
 
 # Identities
 
-An identity is a programmatic client that interacts with Memori. The Memori Claude Code plugin runs as an identity: every Claude Code session that sends memories to your deployment authenticates with the identity ID configured during setup. Other integrations or applications that read from or write to your deployment also do so as identities.
+An identity is a programmatic client that interacts with Memori. The Memori harness plugin runs as an identity: every harness session that sends memories to your deployment authenticates with the identity ID configured during setup. Other integrations or applications that read from or write to your deployment also do so as identities.
 
 ## What identities are for
 
@@ -45,7 +45,7 @@ Open the pool from **Settings → Pools** or Memory Explorer, then select **Add 
 
 ### 3. Configure the plugin
 
-Store the identity ID in your secrets manager and configure the Claude Code plugin using `/memori:configure`. The plugin authenticates every session using this identity ID.
+Store the identity ID in your secrets manager and configure the harness plugin using `/memori:configure`. The plugin authenticates every session using this identity ID.
 
 ### 4. Rotate an identity ID
 

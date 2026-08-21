@@ -1,6 +1,6 @@
 ---
 title: Async Gateway
-description: How Memori processes memory capture and extraction asynchronously, and what this means for when memories become available after a Claude Code turn completes.
+description: How Memori processes memory capture and extraction asynchronously, and what this means for when memories become available after a harness turn completes.
 ---
 
 # Async Gateway
@@ -25,7 +25,7 @@ A turn interrupted with `ESC` or otherwise terminated before the Stop hook fires
 
 ## Pool Writes
 
-Pool memory writes follow the same async pipeline. A Claude Code session writing to a pool submits the content for extraction; other sessions with pool access will see the resulting memories after extraction completes, not at the moment of submission.
+Pool memory writes follow the same async pipeline. A harness session writing to a pool submits the content for extraction; other sessions with pool access will see the resulting memories after extraction completes, not at the moment of submission.
 
 ## Hook Timeout Considerations
 
