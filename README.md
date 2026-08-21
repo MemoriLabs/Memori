@@ -345,6 +345,14 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 - [**Issues**](https://github.com/MemoriLabs/Memori/issues)
 ---
 
+## Memori Enterprise
+
+By integrating Memori's latest enterprise build into our clients' SDLC and QA automation workflows, they are seeing token cost savings in the seven-figure range.
+
+Please email us at hello@memorilabs.ai if you'd like a preview.
+
+---
+
 ## License
 
 Apache 2.0 - see [LICENSE](https://github.com/MemoriLabs/Memori/blob/main/LICENSE)
