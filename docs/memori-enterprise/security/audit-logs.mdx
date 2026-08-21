@@ -38,48 +38,6 @@ For on-premises deployments, Memori provides guidance on write-once storage conf
 
 ## Observability and telemetry
 
-Memori Enterprise exports metrics and traces into your existing stack:
+Memori Enterprise exports metrics and traces into your existing observability stack via OpenTelemetry (OTLP) and Prometheus. For VPC deployments, native cloud monitoring integrations are available for the respective cloud provider.
 
-- **OpenTelemetry (OTLP)**: export traces and metrics to any OTLP-compatible backend (Datadog, Grafana, Honeycomb, Jaeger, and others)
-- **Prometheus**: scrape Memori's metrics endpoint directly
-- **CloudWatch / Cloud Monitoring / Azure Monitor**: available for VPC deployments on the respective cloud provider
-
-## Key metrics
-
-<Properties>
-  <Property name="memori_captures_total">Total memory capture operations.</Property>
-  <Property name="memori_recalls_total">Total recall operations.</Property>
-  <Property name="memori_augmentation_latency_seconds">Augmentation pipeline duration.</Property>
-  <Property name="memori_recall_latency_seconds">Recall query duration.</Property>
-  <Property name="memori_access_denials_total">Operations blocked by access control.</Property>
-  <Property name="memori_entity_memory_count">Memory count per entity.</Property>
-</Properties>
-
-Memori emits OpenTelemetry spans for every operation in the capture and recall paths, including end-to-end latency, augmentation pipeline stages, and access control evaluation.
-
----
-
-## Setting up telemetry
-
-### 1. Configure the export target
-
-Set your telemetry export target in the Memori Enterprise configuration. Choose the backend that matches your observability stack.
-
-- **OTLP**: set `telemetry.otlp.endpoint` to your collector URL
-- **Prometheus**: enable the `/metrics` scrape endpoint
-- **Cloud monitoring**: use the provider-specific integration for your VPC region
-
-### 2. Set retention policy
-
-Configure audit log retention to match your compliance requirements in **Settings → Audit**.
-
-- Navigate to **Settings → Audit**
-- Set the retention period in days, or select **Indefinite** to disable automatic expiry
-
-### 3. Verify events are flowing
-
-After your first harness session runs, confirm events are arriving in your observability stack.
-
-<Admonition type="tip">
-  Filter by `process_id` in your observability backend to see all operations from a specific identity. This is the fastest way to confirm a new integration is writing memories correctly.
-</Admonition>
+Memori emits spans for every operation in the capture and recall paths, covering end-to-end latency, augmentation pipeline stages, and access control evaluation.

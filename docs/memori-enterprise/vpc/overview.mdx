@@ -39,19 +39,15 @@ Memori's deployment automation generates a minimal set of security group rules d
 
 ### 1. Start a scoping conversation
 
-Email [support@memorilabs.ai](mailto:support@memorilabs.ai) to begin. We review your architecture, confirm region and connectivity requirements, and document the IAM permissions needed.
+Contact Memori Labs to begin. We review your architecture and confirm region and connectivity requirements.
 
-### 2. Grant account permissions
+### 2. Deployment
 
-Your team grants the required IAM permissions to Memori's deployment account. Memori does not retain standing access; permissions are scoped to the deployment operation.
+Memori provisions all resources inside your VPC.
 
-### 3. Deployment
+### 3. Validate
 
-Memori's deployment automation provisions all resources inside your VPC and hands you a private endpoint for your agents to connect to.
-
-### 4. Validate
-
-End-to-end validation runs against your environment with Memori engineers on the call.
+End-to-end validation runs against your environment.
 
 <Admonition type="tip">
   After validation, configure the Memori harness plugin with your private endpoint URL. Run a short harness session and confirm memories appear in Memory Explorer.
