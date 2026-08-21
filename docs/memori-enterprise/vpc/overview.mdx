@@ -5,53 +5,54 @@ description: Run Memori Enterprise inside your own Virtual Private Cloud. All me
 
 # VPC
 
-Memori Enterprise deploys inside your Virtual Private Cloud on AWS, GCP, or Azure. Every component (memory capture, Advanced Augmentation, Intelligent Recall, and the enterprise control plane) runs within your network boundary. No traffic leaves your VPC.
+Memori Enterprise deploys inside your Virtual Private Cloud on AWS, GCP, or Azure. Every component — memory capture, Advanced Augmentation, Intelligent Recall, and the enterprise control plane — runs within your network boundary. No traffic leaves your VPC.
 
 ## What runs inside your VPC
 
-```
-Your VPC
-├── Memori Enterprise (compute)
-│   ├── Capture service
-│   ├── Augmentation pipeline
-│   ├── Recall service
-│   └── Enterprise control plane (ReBAC, SSO, audit)
-└── Your storage (private subnets)
-    └── Audit log storage
-```
-
-All traffic stays within your VPC. No public endpoints are required.
+All Memori services run on compute inside your VPC, connected to storage on your private subnets. No public endpoints are required. The services include the capture service, augmentation pipeline, recall service, and enterprise control plane (ReBAC, SSO, audit).
 
 ## Private connectivity
 
 Memori uses the private connectivity options native to your cloud provider:
 
-| Cloud | Private connectivity options |
-| ----- | ---------------------------- |
-| **AWS** | VPC endpoints, PrivateLink, VPC peering, Transit Gateway |
-| **GCP** | Private Service Connect, VPC peering, internal load balancers |
-| **Azure** | Private Endpoints, VNet peering, Private Link |
+- **AWS**: VPC endpoints, PrivateLink, VPC peering, Transit Gateway
+- **GCP**: Private Service Connect, VPC peering, internal load balancers
+- **Azure**: Private Endpoints, VNet peering, Private Link
 
 ## Network requirements
 
-We will provide a complete network requirements checklist during scoping. At a high level:
+At a high level:
 
-- **Inbound:** Your application layer reaches Memori's capture and recall endpoints over private subnets. No public IP required.
-- **Outbound:** All outbound traffic stays within your private subnets. No public exposure required.
-- **Egress:** Optional telemetry export and SLA-covered support channels. Fully configurable; air-gapped operation is available for on-premises deployments.
+- **Inbound**: your application layer reaches Memori's capture and recall endpoints over private subnets. No public IP required.
+- **Outbound**: all outbound traffic stays within your private subnets. No public exposure required.
+- **Egress**: optional telemetry export and SLA-covered support channels. Fully configurable; air-gapped operation is available.
+
+We provide a complete network requirements checklist during scoping.
 
 ## Security groups and firewall rules
 
-Memori's deployment automation generates a minimal set of security group rules during provisioning. Rules follow the principle of least privilege:
+Memori's deployment automation generates a minimal set of security group rules during provisioning. Rules follow the principle of least privilege: Memori compute accepts traffic only from your application subnets on the Memori API port, reaches only your designated internal endpoints, and opens no inbound rules to the public internet. Your security team reviews all rules before deployment goes live.
 
-- Memori compute accepts traffic only from your application subnets on the Memori API port
-- Memori compute reaches only your designated internal endpoints
-- No inbound rules are opened to the public internet
+---
 
-Your security team reviews all rules before deployment goes live.
+## Deploying to your VPC
 
-## Deployment
+### 1. Start a scoping conversation
 
-VPC deployment is handled by Memori's deployment automation inside your account. Your team grants the required IAM permissions; Memori provisions all resources within your VPC and hands you a private endpoint for your agents to connect to.
+Email [support@memorilabs.ai](mailto:support@memorilabs.ai) to begin. We review your architecture, confirm region and connectivity requirements, and document the IAM permissions needed.
 
-Email [support@memorilabs.ai](mailto:support@memorilabs.ai) to start a scoping conversation.
+### 2. Grant account permissions
+
+Your team grants the required IAM permissions to Memori's deployment account. Memori does not retain standing access; permissions are scoped to the deployment operation.
+
+### 3. Deployment
+
+Memori's deployment automation provisions all resources inside your VPC and hands you a private endpoint for your agents to connect to.
+
+### 4. Validate
+
+End-to-end validation runs against your environment with Memori engineers on the call.
+
+<Admonition type="tip">
+  After validation, configure the Memori Claude Code plugin with your private endpoint URL. Run a short Claude Code session and confirm memories appear in Memory Explorer.
+</Admonition>

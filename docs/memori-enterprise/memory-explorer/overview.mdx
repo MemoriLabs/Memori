@@ -15,15 +15,7 @@ Memory Explorer is where owners and admins verify that memories are accumulating
 
 Search across all memories by entity, pool, keyword, or tag. Results show the memory content, its signal type, horizon, and when it was created and last recalled.
 
-Filter by:
-
-- **Entity**: view all memories for a specific user
-- **Pool**: inspect the contents of a memory pool
-- **Memory type**: Domain (concepts), Entity (people or things), or Process (task outputs)
-- **Signal**: Constraint, Fact, Failure, Goal, Outcome, Preference, Strategy, or Workflow
-- **Horizon**: Decaying (loses relevance over time), Standing (persists until removed), or Volatile (short-lived, tied to current session)
-- **Date range**: memories created or updated within a window
-- **Tag**: memories labeled with a specific tag
+Filter by entity, pool, memory type (Domain, Entity, or Process), signal type (Constraint, Fact, Failure, Goal, Outcome, Preference, Strategy, or Workflow), horizon (Decaying, Standing, or Volatile), date range, or tag.
 
 ## Inspecting individual memories
 
@@ -35,4 +27,38 @@ Owners can edit memory content or permanently delete individual memories directl
 
 ## Knowledge graph view
 
-Switch to **Graph View** to see memories as a network of entities, facts, and relationships. Graph View is useful for understanding why Claude Code responded a certain way, identifying contradictory or stale facts before they affect future responses, and visualizing which users or topics have the densest memory coverage.
+Switch to **Graph View** to see memories as a network of entities, facts, and relationships. Graph View is useful for understanding why Claude Code responded a certain way, identifying contradictory or stale facts, and visualizing which users or topics have the densest memory coverage.
+
+---
+
+## Using Memory Explorer
+
+### 1. Search for memories
+
+Navigate to **Dashboard → Memory Explorer**. Use the search bar or apply filters to locate memories by entity, pool, keyword, tag, signal type, or date range.
+
+- Select a filter type from the left panel and enter a value
+- Combine filters to narrow results across large deployments
+
+### 2. Inspect a memory
+
+Select any memory from the results list to open its detail view.
+
+- Review the memory content and its signal type
+- Check the source session and turn it was extracted from
+- Review the recall count to see how often this memory is being used
+
+### 3. Edit or delete
+
+Select **Edit** to correct a memory's content, or choose a removal action based on your role and intent.
+
+- **Remove from pool**: removes the memory from this pool only; the memory remains in the memory bank
+- **Delete permanently**: removes the memory from the memory bank and all pools (owners only)
+
+### 4. Explore the knowledge graph
+
+Select **Graph View** to switch to the network visualization. Click any node to see the memories and relationships connected to it.
+
+<Admonition type="tip">
+  Use Graph View to verify that related facts are connected correctly before rolling out a new memory pool to your team.
+</Admonition>

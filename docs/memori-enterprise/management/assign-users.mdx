@@ -7,46 +7,68 @@ description: How to add users to your Memori Enterprise organization and grant t
 
 User access in Memori Enterprise has two layers: organization membership and pool membership. Organization membership determines what a user can do across the deployment; pool membership determines which shared memories they can read or write.
 
-## Organization Roles
+## What it's for
+
+Organization roles govern dashboard access and administrative capabilities. Pool membership is granted separately and controls which shared memory collections a user can see and interact with.
+
+## Organization roles
 
 Every user in Memori Enterprise is assigned one of three roles:
 
-| Role | What they can do |
-| ---- | ---------------- |
-| **Owner** | Manage users, identities, domains, pools, and system settings. Permanently delete memories. Add themselves to any pool. |
-| **Admin** | Manage users, identities, domains, pools, and system settings. Remove memories from pools. Add themselves to any pool. Cannot remove owners from pools or permanently delete memories from the memory bank. |
-| **User** | Access the dashboard. View memories within pools they have been explicitly added to. Cannot perform administrative actions. |
+<Properties>
+  <Property name="owner">
+    Manage users, identities, domains, pools, and system settings. Permanently delete memories from the memory bank. Add themselves to any pool. Must be explicitly added to a pool to view its memories.
+  </Property>
+  <Property name="admin">
+    Manage users, identities, domains, pools, and system settings. Remove memories from pools. Add themselves to any pool. Cannot remove owners from pools or permanently delete memories from the memory bank. Must be explicitly added to a pool to view its memories.
+  </Property>
+  <Property name="user">
+    Access the dashboard. View memories within pools they have been explicitly added to. Cannot perform administrative actions.
+  </Property>
+</Properties>
 
-Owners and admins must be explicitly added to a pool to view its memories, even though they have the ability to add themselves.
+## Pool membership
 
-## Adding Users to the Organization
+Pool membership is separate from organization membership and must be granted explicitly. No user is automatically added to any pool, including the pool creator. Owners and admins can add themselves to any pool.
 
-Organization owners and admins invite users through the Memori Enterprise dashboard. An invitation email is sent to the user; on accepting, they are added to the organization with the assigned role.
+## Permissions
+
+Pool membership grants read access to the pool's memories. Two additional permissions can be granted per user when adding them to a pool.
+
+---
+
+## Managing user access
+
+### 1. Invite a user
+
+Owners and admins invite users through the Memori Enterprise dashboard. An invitation email is sent to the user; on accepting, they are added to the organization with the assigned role.
+
+- Navigate to **Settings → Users** and select **Invite user**
+- Enter their email address and select a role
+
+### 2. Update a user's role
 
 To change a user's role after they have joined, navigate to **Settings → Users**, select the user, and update their role.
 
-## Adding Users to a Pool
+### 3. Add a user to a pool
 
-Pool membership is separate from organization membership and must be granted explicitly. No user is automatically added to any pool, including the pool creator.
+Open the pool from **Settings → Pools** or Memory Explorer, then select **Add user** and choose the user.
 
-To add a user to a pool:
+<Properties>
+  <Property name="Remove memories">
+    Allows this user to remove memories from this pool. The memory stays in the memory bank and in any other pools it belongs to. It does not delete it from the memory bank.
+  </Property>
+  <Property name="Entity memory access">
+    Entity memories are facts about specific people and customers. When off, they're hidden from this user in this pool. Other pool access is unchanged. Recommended on for customer-facing roles.
+  </Property>
+</Properties>
 
-1. Navigate to **Settings → Pools** or open the pool from the Memory Explorer.
-2. Select **Add User** and choose the user.
-3. Assign their pool-level permissions.
+### 4. Remove a user from a pool
 
-### Pool-Level Permissions
+- Owners can remove any user from a pool
+- Admins can remove themselves or other admins, but cannot remove owners
+- Users can remove themselves from a pool
 
-Two additional settings are available for each user added to a pool:
-
-**Remove memories**: Allow this user to remove memories from this pool. Removing a memory from a pool does not delete it from the memory bank or other pools it belongs to.
-
-**Entity memory access**: When enabled, the user can see entity memories (facts about specific people and customers) when browsing this pool. Disable for users who should not see customer-specific information.
-
-## Removing Users
-
-- **Owners** can remove any user from a pool.
-- **Admins** can remove themselves or other admins, but cannot remove owners.
-- **Users** can remove themselves from a pool.
-
-To remove a user from the organization, navigate to **Settings → Users** and revoke their access. Removing a user from the organization does not delete their contributed memories; it removes their ability to log in and access the dashboard.
+<Admonition type="tip">
+  Removing a user from a pool does not delete their contributed memories. It removes their ability to see the pool's memories and to write new ones.
+</Admonition>

@@ -24,15 +24,27 @@ user_8472
 
 If a person uses Claude Code on multiple machines or has other integrations writing to Memori, use the same entity ID everywhere. A mismatched ID creates a separate memory space rather than contributing to the existing one. If memory recall looks incomplete, verify that all of a person's clients are configured with the same entity ID.
 
-## Entity management
+---
 
-Owners and admins can view all entities in the organization from the Memori Enterprise dashboard. Entities are created automatically the first time a Claude Code session writes a memory under a given entity ID.
+## Managing entities
 
-From the entity view, you can browse all memories attributed to an entity, delete individual memories, or delete all memories for an entity.
+### 1. Configure the entity ID
 
-## Entity deletion
+Set the entity ID during plugin configuration with `/memori:configure`. Use any consistent identifier that maps to a person in your system.
 
-To delete all memories associated with an entity, including facts, session records, and knowledge graph nodes, use the SDK:
+- Run `/memori:configure` in a Claude Code session
+- Enter the entity ID that identifies this user across your systems
+
+### 2. Verify the entity in the dashboard
+
+Entities are created automatically the first time a Claude Code session writes a memory under a given entity ID. Owners and admins can view all entities from the Memori Enterprise dashboard.
+
+- Navigate to **Dashboard → Entities** to confirm the entity appears
+- Open the entity to browse its memories and verify they are accumulating correctly
+
+### 3. Delete all memories for an entity
+
+To delete all memories associated with a specific entity, including facts, session records, and knowledge graph nodes, use the SDK:
 
 ```python
 from memori import Memori
@@ -41,4 +53,6 @@ mem = Memori()
 mem.entity.delete(entity_id="user_123")
 ```
 
-This is the correct path for responding to user deletion requests under GDPR and similar data protection regulations. The deletion is permanent and recorded in the audit log.
+<Admonition type="tip">
+  This is the correct path for GDPR right-to-erasure requests and similar data deletion requirements. The deletion is permanent, covers all memory records for that entity ID, and is recorded in the audit log.
+</Admonition>

@@ -5,44 +5,44 @@ description: Memori Enterprise is built for regulated workloads, compliant acros
 
 # Compliance
 
-Memori Enterprise is designed for regulated industries. Compliance controls (data residency, access governance, audit logging, and retention) are built into the architecture, not bolted on.
+Memori Enterprise is designed for regulated industries. Compliance controls — data residency, access governance, audit logging, and retention — are built into the architecture, not bolted on.
+
+## What it's for
+
+Enterprise deployments satisfy compliance requirements by keeping all memory data inside the boundary you control. Memori does not copy, cache, or index data outside that boundary.
 
 ## Certifications and standards
 
-| Standard | Status | Notes |
-| -------- | ------ | ----- |
-| **SOC 2 Type II** | Compliant | Covers Security, Availability, and Confidentiality trust service criteria |
-| **HIPAA** | Compliant | BAA available for healthcare deployments |
-| **GDPR** | Compliant | Data residency controls, right-to-erasure support, and DPA available |
-| **ISO 27001** | Compliant | Information security management system certification |
+<Properties>
+  <Property name="SOC 2 Type II">
+    Covers Security, Availability, and Confidentiality trust service criteria. The report is available under NDA for enterprise customers and prospects.
+  </Property>
+  <Property name="HIPAA">
+    Supports deployment inside your own infrastructure so no PHI leaves your environment. Business Associate Agreement (BAA) available before deployment.
+  </Property>
+  <Property name="GDPR">
+    Data residency controls, right-to-erasure support, retention policies, and Data Processing Agreement (DPA) available from Memori Labs.
+  </Property>
+  <Property name="ISO 27001">
+    Information security management system certification. Documentation available under NDA for security reviews.
+  </Property>
+</Properties>
 
-Documentation is available under NDA for security reviews. Contact [support@memorilabs.ai](mailto:support@memorilabs.ai).
+Contact [support@memorilabs.ai](mailto:support@memorilabs.ai) to request documentation.
 
 ## Data residency
 
-In Enterprise deployments, all memory data stays inside the boundary you control. Memori does not copy, cache, or index data outside that boundary. For VPC deployments, the boundary is your cloud account. For on-premises deployments, it is your own hardware.
+In Enterprise deployments, all memory data stays inside the boundary you control. For VPC deployments, the boundary is your cloud account. For on-premises deployments, it is your own hardware. Memori's compute also runs in the same region as your data.
 
-If your compliance program requires data to stay within a specific geography, choose a region for your VPC deployment or an on-premises environment that satisfies the requirement. Memori's compute also runs in the same region as your data.
+If your compliance program requires data to stay within a specific geography, choose a VPC region or on-premises environment that satisfies the requirement.
 
-## HIPAA
+## Encryption
 
-For healthcare organizations, Memori Enterprise supports:
+All connections use TLS 1.2 or higher. Encryption at rest is managed by your infrastructure and cloud provider; Memori does not manage encryption keys. For key management requirements, we review your configuration during onboarding.
 
-- Deployment inside your own infrastructure (no PHI leaves your environment)
-- Access controls that satisfy HIPAA minimum-necessary requirements
-- Immutable audit logs for all memory access, suitable for HIPAA audit trail requirements
-- Business Associate Agreement (BAA) available before deployment
+---
 
-## GDPR
-
-Memori Enterprise supports GDPR compliance through:
-
-- **Data residency**: Store all memories in EU infrastructure under your control
-- **Right to erasure**: Delete all memories associated with a specific entity on demand
-- **Data processing agreement (DPA)**: Available from Memori Labs
-- **Retention controls**: TTL-based retention policies; memories expire automatically
-
-### Erasing an entity's memories
+## GDPR: erasing an entity's memories
 
 To delete all memories for a specific user in response to a deletion request:
 
@@ -53,21 +53,8 @@ mem = Memori()
 mem.entity.delete(entity_id="user_123")
 ```
 
-This removes all facts, session records, and knowledge graph nodes associated with that entity.
+This removes all facts, session records, and knowledge graph nodes associated with that entity. The deletion is permanent and recorded in the audit log.
 
-## SOC 2 Type II
-
-Memori Labs maintains SOC 2 Type II compliance covering:
-
-- **Security**: Access controls, encryption at rest and in transit, vulnerability management
-- **Availability**: Uptime commitments, incident response, and disaster recovery procedures
-- **Confidentiality**: Data handling policies and contractual commitments
-
-The SOC 2 Type II report is available under NDA for enterprise customers and prospects.
-
-## Encryption
-
-- **In transit**: TLS 1.2 or higher for all internal and external connections
-- **At rest**: Encryption managed by your infrastructure and cloud provider; Memori does not manage encryption keys
-
-For key management requirements, we can review your configuration during onboarding.
+<Admonition type="tip">
+  Run this within your standard data subject request workflow. The audit log entry provides the evidence record your compliance team needs to document the erasure.
+</Admonition>

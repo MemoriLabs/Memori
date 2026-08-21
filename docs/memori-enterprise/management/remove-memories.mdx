@@ -5,38 +5,48 @@ description: How to remove individual memories, pool memories, and all memories 
 
 # Memory Removal
 
-Memori provides several paths for removing memories, each with its own permission requirements. Understanding the difference between removing a memory from a pool and permanently deleting it from the memory bank is important before performing any removal.
+Memori provides several paths for removing memories, each with different scope and permission requirements. Understanding the difference between removing a memory from a pool and permanently deleting it from the memory bank is important before performing any removal.
 
 ## What removal means
 
-**Remove from pool** takes the memory out of that pool only. The memory remains in the memory bank and in any other pools it belongs to. Owners, admins, and users with pool remove-memories permission can do this.
+<Properties>
+  <Property name="Remove from pool">
+    Removes the memory from that pool only. The memory remains in the memory bank and in any other pools it belongs to. Owners, admins, and users with the remove-memories pool permission can do this.
+  </Property>
+  <Property name="Permanently delete">
+    Removes the memory from the memory bank and all pools it belongs to. This action is irreversible. Available to owners only.
+  </Property>
+  <Property name="Delete all entity memories">
+    Removes all memories for a specific entity, including facts, session records, and knowledge graph nodes. Owners can do this via the SDK.
+  </Property>
+</Properties>
 
-**Permanently delete** removes the memory from the memory bank and all pools. This action is irreversible and available to owners only.
+## Permissions
 
-**Delete all entity memories** removes all memories for a specific entity, including facts, session records, and knowledge graph nodes. Owners can do this via the SDK.
+All removal and deletion actions are recorded in the immutable audit log with the acting user and timestamp. Owners see all removal options. Admins and users with remove-memories permission see pool removal only.
 
-All removal and deletion actions are recorded in the immutable audit log with the acting user and timestamp.
+---
 
-## Removing individual memories
+## Removing memories
 
-To remove a memory from the Memory Explorer:
+### 1. Remove a memory from a pool
 
-1. Navigate to **Dashboard → Memory Explorer**.
-2. Search or filter to locate the memory.
-3. Click the memory to open its detail view.
-4. Select **Remove from pool** or **Delete permanently**, depending on your intent and permission level.
+Navigate to Memory Explorer, locate the memory, and remove it from the pool.
 
-Owners see both options. Admins and users with remove-memories permission see pool removal only.
+- Navigate to **Dashboard → Memory Explorer**
+- Search or filter to locate the memory
+- Select the memory to open its detail view
+- Select **Remove from pool**
 
-## Removing from a pool
+### 2. Permanently delete a memory
 
-Pool removal is the appropriate action when a memory is no longer relevant to a specific pool but should be preserved in the memory bank. The memory remains in the memory bank and in any other pools it belongs to. Only the association between this memory and this pool is severed.
+Follow the same path as pool removal, but select **Delete permanently**. This option is visible to owners only.
 
-## Permanently deleting a memory
+<Admonition type="warning">
+  Permanent deletion removes the memory from the memory bank entirely. It is no longer accessible from any pool or through any recall query and cannot be undone.
+</Admonition>
 
-Permanent deletion removes the memory from the memory bank entirely. It is no longer accessible from any pool or through any recall query. Use permanent deletion when a memory contains incorrect information that should not persist anywhere, or when a specific record must be removed to comply with a data subject request.
-
-## Deleting all memories for an entity
+### 3. Delete all memories for an entity
 
 To delete all memories associated with a specific entity, use the SDK:
 
@@ -47,6 +57,6 @@ mem = Memori()
 mem.entity.delete(entity_id="user_123")
 ```
 
-This is the path for responding to user deletion requests under GDPR's right to erasure and similar regulations. The deletion is permanent, covers all memory records for that entity ID, and is recorded in the audit log.
-
-See [Compliance](/docs/memori-enterprise/security/compliance) for more on GDPR and data subject rights handling.
+<Admonition type="tip">
+  This is the correct path for GDPR right-to-erasure requests. The deletion is permanent, covers all memory records for that entity ID, and is recorded in the audit log. See [Compliance](/docs/memori-enterprise/security/compliance) for more on data subject rights handling.
+</Admonition>

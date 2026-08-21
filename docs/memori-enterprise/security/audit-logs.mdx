@@ -5,60 +5,81 @@ description: Memori Enterprise maintains immutable audit logs for all memory ope
 
 # Audit Logs
 
-Memori Enterprise records every memory operation in an immutable audit. Your security and compliance teams have a complete record of what happened, who did it, and when.
+Memori Enterprise records every memory operation in an immutable audit log. Your security and compliance teams have a complete record of what happened, who did it, and when.
 
-## Audit log
+## What audit logs are for
 
-Every memory operation generates an audit event containing:
+The audit log supports security reviews, compliance evidence, and incident investigation. Because records are immutable and append-only, they cannot be modified or deleted by Memori administrators or your team.
 
-| Field | Description |
-| ----- | ----------- |
-| `timestamp` | UTC timestamp with millisecond precision |
-| `operation` | The operation type (`capture`, `recall`, `delete`, `permission_change`) |
-| `entity_id` | The entity whose memory was accessed |
-| `process_id` | The agent or application that performed the operation |
-| `session_id` | The session in which the operation occurred |
-| `result` | Whether the operation succeeded or was denied |
-| `denial_reason` | If denied: the access control rule that blocked the operation |
-| `memory_ids` | The specific memory records affected |
+## Audit log fields
 
-### Immutability
+Every memory operation generates an audit event with the following fields:
 
-Audit log records cannot be modified or deleted by Memori administrators or your team. The log is append-only and stored separately from operational data. For on-premises deployments, Memori provides guidance on write-once storage configuration to satisfy specific compliance requirements.
+<Properties>
+  <Property name="timestamp">UTC timestamp with millisecond precision.</Property>
+  <Property name="operation">The operation type: `capture`, `recall`, `delete`, or `permission_change`.</Property>
+  <Property name="entity_id">The entity whose memory was accessed.</Property>
+  <Property name="process_id">The agent or application that performed the operation.</Property>
+  <Property name="session_id">The session in which the operation occurred.</Property>
+  <Property name="result">Whether the operation succeeded or was denied.</Property>
+  <Property name="denial_reason">If denied: the access control rule that blocked the operation.</Property>
+  <Property name="memory_ids">The specific memory records affected.</Property>
+</Properties>
 
-### Retention
+## Retention
 
-Audit log retention is configurable independently of memory retention. Common configurations:
+Audit log retention is configurable independently of memory retention:
 
-| Requirement | Retention period |
-| ----------- | ---------------- |
-| 90-day default | 90 days |
-| 1-year HIPAA | 365 days |
-| Indefinite | No automatic expiry; archive to cold storage on a schedule |
+- **90-day default**: standard configuration
+- **1-year HIPAA**: required for healthcare deployments
+- **Indefinite**: no automatic expiry; archive to cold storage on a schedule
+
+For on-premises deployments, Memori provides guidance on write-once storage configuration to satisfy specific compliance requirements.
 
 ## Observability and telemetry
 
-Memori Enterprise exports metrics and traces into your existing stack. Supported export targets:
+Memori Enterprise exports metrics and traces into your existing stack:
 
-- **OpenTelemetry (OTLP)**: Export traces and metrics to any OTLP-compatible backend (Datadog, Grafana, Honeycomb, Jaeger, and others)
-- **Prometheus**: Scrape Memori's metrics endpoint directly
-- **CloudWatch / Cloud Monitoring / Azure Monitor**: Available for VPC deployments on the respective cloud provider
+- **OpenTelemetry (OTLP)**: export traces and metrics to any OTLP-compatible backend (Datadog, Grafana, Honeycomb, Jaeger, and others)
+- **Prometheus**: scrape Memori's metrics endpoint directly
+- **CloudWatch / Cloud Monitoring / Azure Monitor**: available for VPC deployments on the respective cloud provider
 
-### Key metrics
+## Key metrics
 
-| Metric | Description |
-| ------ | ----------- |
-| `memori_captures_total` | Total memory capture operations |
-| `memori_recalls_total` | Total recall operations |
-| `memori_augmentation_latency_seconds` | Augmentation pipeline duration |
-| `memori_recall_latency_seconds` | Recall query duration |
-| `memori_access_denials_total` | Operations blocked by access control |
-| `memori_entity_memory_count` | Memory count per entity |
+<Properties>
+  <Property name="memori_captures_total">Total memory capture operations.</Property>
+  <Property name="memori_recalls_total">Total recall operations.</Property>
+  <Property name="memori_augmentation_latency_seconds">Augmentation pipeline duration.</Property>
+  <Property name="memori_recall_latency_seconds">Recall query duration.</Property>
+  <Property name="memori_access_denials_total">Operations blocked by access control.</Property>
+  <Property name="memori_entity_memory_count">Memory count per entity.</Property>
+</Properties>
 
-### Traces
+Memori emits OpenTelemetry spans for every operation in the capture and recall paths, including end-to-end latency, augmentation pipeline stages, and access control evaluation.
 
-Memori emits OpenTelemetry spans for every operation in the capture and recall paths. Traces include:
+---
 
-- End-to-end latency for capture and recall
-- Augmentation pipeline stages (extraction, embedding, storage)
-- Access control evaluation
+## Setting up telemetry
+
+### 1. Configure the export target
+
+Set your telemetry export target in the Memori Enterprise configuration. Choose the backend that matches your observability stack.
+
+- **OTLP**: set `telemetry.otlp.endpoint` to your collector URL
+- **Prometheus**: enable the `/metrics` scrape endpoint
+- **Cloud monitoring**: use the provider-specific integration for your VPC region
+
+### 2. Set retention policy
+
+Configure audit log retention to match your compliance requirements in **Settings → Audit**.
+
+- Navigate to **Settings → Audit**
+- Set the retention period in days, or select **Indefinite** to disable automatic expiry
+
+### 3. Verify events are flowing
+
+After your first Claude Code session runs, confirm events are arriving in your observability stack.
+
+<Admonition type="tip">
+  Filter by `process_id` in your observability backend to see all operations from a specific identity. This is the fastest way to confirm a new integration is writing memories correctly.
+</Admonition>

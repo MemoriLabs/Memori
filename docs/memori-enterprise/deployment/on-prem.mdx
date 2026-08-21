@@ -7,6 +7,10 @@ description: Deploy and operate Memori entirely on your own hardware or private 
 
 On-premises deployment gives you complete operational control. Memori runs on your own hardware or private cloud, operated by your team with Memori-supported runbooks, upgrade procedures, and SLA-backed support. No external network access is required.
 
+## What it's for
+
+On-premises is the right choice when your environment is air-gapped, when compliance requirements prohibit third-party management of production systems, or when you need full operational control over every layer of the stack.
+
 ## When to choose on-premises
 
 - Regulated industries with strict data residency or sovereignty requirements
@@ -14,31 +18,14 @@ On-premises deployment gives you complete operational control. Memori runs on yo
 - Organizations that require full operational control over all infrastructure
 - Compliance requirements that prohibit third-party management of production systems
 
-## Architecture
-
-Memori installs on your infrastructure and runs entirely within your private network. The only external communication is optional telemetry (fully opt-out) and SLA-covered support channels.
-
-```
-Your Infrastructure
-├── Application layer (your agents)
-├── Memori Enterprise (installed and operated by your team)
-│   ├── Memory capture and augmentation
-│   ├── Intelligent Recall
-│   └── Enterprise controls (ReBAC, SSO, audit)
-└── Your storage
-    └── All memory data stored here
-```
-
 ## Infrastructure requirements
 
-We will provide exact sizing guidance based on your workload. General requirements:
+General requirements — we provide exact sizing guidance based on your workload:
 
-| Component | Minimum | Notes |
-| --------- | ------- | ----- |
-| Compute | 4 vCPU, 16 GB RAM | Per Memori node; scales horizontally |
-| Storage | 50 GB | For Memori operational data; memory data is stored in your infrastructure |
-| Network | Private network access | No public internet required |
-| OS | Linux (Ubuntu 22.04+, RHEL 8+) | Container runtime required |
+- **Compute**: 4 vCPU, 16 GB RAM per Memori node; scales horizontally
+- **Storage**: 50 GB for Memori operational data; memory data is stored in your infrastructure
+- **Network**: private network access required; no public internet required
+- **OS**: Linux (Ubuntu 22.04+, RHEL 8+) with container runtime
 
 ## What Memori provides
 
@@ -48,12 +35,26 @@ We will provide exact sizing guidance based on your workload. General requiremen
 - SLA-backed support with defined escalation paths
 - Scheduled upgrade coordination: Memori tests releases before you apply them
 
+---
+
 ## Deployment process
 
-1. **Architecture review**: We review your environment, confirm sizing, and document connectivity requirements.
-2. **Installation package**: Memori provides versioned installation packages and runbooks.
-3. **Installation**: Your team installs Memori following the provided runbooks. Memori is available throughout.
-4. **Validation**: End-to-end validation against your environment, with Memori engineers on the call.
-5. **Handoff**: Your team owns ongoing operations; Memori provides support and upgrade coordination under your SLA.
+### 1. Architecture review
 
-Email [support@memorilabs.ai](mailto:support@memorilabs.ai) to begin an on-premises engagement.
+We review your environment, confirm sizing, and document connectivity requirements. Reach out to [support@memorilabs.ai](mailto:support@memorilabs.ai) to begin.
+
+### 2. Receive the installation package
+
+Memori provides versioned installation packages and runbooks tailored to your environment.
+
+### 3. Install
+
+Your team installs Memori following the provided runbooks. Memori engineers are available throughout the installation.
+
+### 4. Validate
+
+End-to-end validation against your environment with Memori engineers on the call.
+
+<Admonition type="tip">
+  After validation, run a short Claude Code session and confirm memories appear in Memory Explorer before rolling out to your full team. Your SLA and upgrade coordination begin from this point.
+</Admonition>
