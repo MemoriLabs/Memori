@@ -5,7 +5,8 @@ description: Understand how Memori's open-source architecture works — from you
 
 # Architecture
 
-Memori is a modular memory layer for AI applications. You connect your LLM client, set attribution, point Memori at your database, and it handles everything else — storage, augmentation, knowledge graph construction, and recall. All data stays on your infrastructure.
+Memori is a modular memory layer for AI applications. You connect your LLM client, set attribution, point Memori at your database, and it handles everything else — storage, augmentation, knowledge graph construction, and recall. 
+All data stays on your infrastructure.
 
 ## System Overview
 
@@ -22,6 +23,14 @@ Memori is a modular memory layer for AI applications. You connect your LLM clien
 **Storage System** — Stores all data in your database with no external dependencies. Supports SQLAlchemy `sessionmaker`, DB-API 2.0 connections, Django ORM, and MongoDB. Works with SQLite, PostgreSQL, MySQL, MariaDB, TiDB, Oracle, CockroachDB, and OceanBase, including providers like Neon, Supabase, and AWS RDS/Aurora.
 
 **Advanced Augmentation** — Turns raw conversations and agent trace into structured memories. Extracts facts, preferences, and skills, generates vector embeddings locally, and builds a knowledge graph. Runs asynchronously with zero latency impact.
+
+### Prerequisites
+```bash
+export OPENAI_API_KEY=your_api_key
+```
+You need to make sure your OpenAI API key is configured.
+
+
 
 ## Configuration
 

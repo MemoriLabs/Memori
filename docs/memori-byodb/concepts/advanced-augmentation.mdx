@@ -115,7 +115,8 @@ db.close();
 
 ## Semantic Triples
 
-Advanced Augmentation uses named-entity recognition to extract semantic triples (subject, predicate, object). These form the building blocks of the [Knowledge Graph](/docs/memori-byodb/concepts/knowledge-graph).
+Advanced Augmentation uses named-entity recognition to extract semantic triples (subject, predicate, object).
+These form the building blocks of the [Knowledge Graph](/docs/memori-byodb/concepts/knowledge-graph).
 
 **Example** — from _"My favorite database is PostgreSQL and I use it with FastAPI"_:
 
@@ -125,7 +126,8 @@ Advanced Augmentation uses named-entity recognition to extract semantic triples 
 | user    | uses              | FastAPI              |
 | user    | uses_with         | PostgreSQL + FastAPI |
 
-Memori automatically deduplicates triples — if the same fact is mentioned multiple times, it increments the mention count and updates the timestamp.
+Memori automatically deduplicates triples — if the same fact is mentioned multiple times, 
+it increments the mention count and updates the timestamp.
 
 **Database tables:** `memori_subject`, `memori_predicate`, `memori_object`, `memori_knowledge_graph`
 
