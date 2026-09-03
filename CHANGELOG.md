@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `query` raises `ValueError`, matching the existing `limit` validation and
   failing fast instead of issuing an empty recall against the database/LLM path.
 
+### Fixed
+
+- OpenAI Responses recall queries now include every `input_text` block from a
+  multipart user message instead of silently dropping all but the first block.
+
 ## [3.3.6] - 2026-05-27
 
 ### Added
