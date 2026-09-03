@@ -1,0 +1,126 @@
+---
+title: MiniMax
+description: Using Memori with MiniMax models via the OpenAI-compatible and Anthropic-compatible APIs on Memori Cloud.
+---
+
+# MiniMax
+
+MiniMax exposes both an OpenAI-compatible API and an Anthropic-compatible API. Use the `openai` or `anthropic` Python package with a MiniMax `base_url` — no special adapter needed. Memori identifies the platform from the base URL for both the global and mainland-China endpoints.
+
+| Region | OpenAI-compatible base URL    | Anthropic-compatible base URL        |
+| ------ | ----------------------------- | ------------------------------------ |
+| Global | `https://api.minimax.io/v1`   | `https://api.minimax.io/anthropic`   |
+| China  | `https://api.minimaxi.com/v1` | `https://api.minimaxi.com/anthropic` |
+
+Current models: `MiniMax-M3` (1,000,000 token context) and `MiniMax-M2.7` (204,800 token context).
+
+<Note>
+  TypeScript support for MiniMax is coming soon.
+</Note>
+
+## OpenAI-Compatible API
+
+<CodeGroup title="MiniMax OpenAI-Compatible Integration">
+
+```python {{ title: 'Sync' }}
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.minimax.io/v1",
+    api_key=os.getenv("MINIMAX_API_KEY"),
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="minimax_assistant")
+
+response = client.chat.completions.create(
+    model="MiniMax-M3",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+```python {{ title: 'Async' }}
+import os, asyncio
+from memori import Memori
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
+    base_url="https://api.minimax.io/v1",
+    api_key=os.getenv("MINIMAX_API_KEY"),
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="minimax_assistant")
+
+async def main():
+    response = await client.chat.completions.create(
+        model="MiniMax-M2.7",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+```python {{ title: 'Streaming' }}
+import os
+from memori import Memori
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.minimax.io/v1",
+    api_key=os.getenv("MINIMAX_API_KEY"),
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="minimax_assistant")
+
+stream = client.chat.completions.create(
+    model="MiniMax-M3",
+    messages=[{"role": "user", "content": "Hello!"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+</CodeGroup>
+
+To use the mainland-China endpoint, set `base_url="https://api.minimaxi.com/v1"`.
+
+## Anthropic-Compatible API
+
+```python
+import os
+from memori import Memori
+from anthropic import Anthropic
+
+client = Anthropic(
+    base_url="https://api.minimax.io/anthropic",
+    api_key=os.getenv("MINIMAX_API_KEY"),
+)
+
+mem = Memori().llm.register(client)
+mem.attribution(entity_id="user_123", process_id="minimax_assistant")
+
+response = client.messages.create(
+    model="MiniMax-M3",
+    max_tokens=256,
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.content[0].text)
+```
+
+To use the mainland-China endpoint, set `base_url="https://api.minimaxi.com/anthropic"`.
+
+## Supported Modes
+
+| Mode         | Method                                   |
+| ------------ | ---------------------------------------- |
+| **Sync**     | `client.chat.completions.create()`       |
+| **Async**    | `await client.chat.completions.create()` |
+| **Streamed** | `stream=True` parameter                  |
