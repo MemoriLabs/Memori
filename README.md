@@ -347,7 +347,17 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 
 ## Memori Enterprise
 
-By integrating Memori's latest enterprise build into our clients' SDLC and QA automation workflows, they are seeing token cost savings in the seven-figure range.
+Memori Enterprise is built for any enterprise running production agents, particularly high-volume ones such as internal SDLC.
+
+Recently, a major project management platform automating QA with AI agents faced severe inefficiency as its agents suffered from session amnesia, repeatedly burning excessive tool calls.
+
+By integrating Memori's agent-native memory layer in a secure private VPC, the platform captured execution traces to stop redundant discoveries and improve run over run.
+
+This deployment delivered:
+- $2.1M/year reduction in token spend on just one QA automation workflow
+- Material soft ROI including increases in accuracy, reduction in latency, and reduction in human in the loop review
+
+Following this success, this enterprise has already identified four additional high-priority agentic workflows for Memori integration.
 
 Please email us at hello@memorilabs.ai if you'd like a preview.
 
