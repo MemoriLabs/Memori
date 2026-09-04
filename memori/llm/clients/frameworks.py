@@ -6,7 +6,13 @@ from memori.llm._constants import (
     LANGCHAIN_CHATVERTEXAI_LLM_PROVIDER,
     LANGCHAIN_FRAMEWORK_PROVIDER,
     LANGCHAIN_OPENAI_LLM_PROVIDER,
+    LLAMAINDEX_ANTHROPIC_LLM_PROVIDER,
+    LLAMAINDEX_FRAMEWORK_PROVIDER,
+    LLAMAINDEX_GOOGLE_LLM_PROVIDER,
+    LLAMAINDEX_OPENAI_LLM_PROVIDER,
 )
+from memori.llm._registry import Registry
+from memori.llm._utils import client_is_llamaindex
 from memori.llm.clients.direct import Anthropic, Google, OpenAi, XAi
 from memori.llm.invoke.invoke import Invoke, InvokeAsync, InvokeAsyncIterator
 
@@ -313,3 +319,97 @@ class Agno(BaseClient):
 
     def _is_agno_xai_model(self, model):
         return "agno.models.xai" in str(type(model).__module__)
+
+
+@Registry.register_client(client_is_llamaindex)
+class LlamaIndex(BaseClient):
+
+    """Memori integration for LlamaIndex LLM objects.
+
+    Transparently wraps the underlying LLM SDK client (OpenAI, Anthropic, or
+    Google) that powers the LlamaIndex LLM, so every LLM call made through
+    LlamaIndex is automatically intercepted for memory injection and capture.
+
+    Supported LlamaIndex LLMs:
+      - ``llama_index.llms.openai.OpenAI``
+      - ``llama_index.llms.anthropic.Anthropic``
+      - ``llama_index.llms.gemini.Gemini``
+
+    Example::
+
+        from llama_index.llms.openai import OpenAI
+        from memori import Memori
+
+        llm = OpenAI(model="gpt-4o-mini")
+        mem = Memori().llm.register(llm)
+        mem.attribution(entity_id="user_123", process_id="llamaindex-app")
+    """
+
+    # Attribute names checked (in order) to find the raw SDK client inside
+    # each LlamaIndex LLM wrapper class.
+    _OPENAI_ATTRS = ("_client", "_aclient")
+    _ANTHROPIC_ATTRS = ("_client",)
+    _GOOGLE_ATTRS = ("_client",)
+
+    def register(self, client) -> "LlamaIndex":
+        """Detect the underlying SDK and delegate to the appropriate wrapper."""
+        module = type(client).__module__
+
+        if "openai" in module:
+            self._register_openai(client)
+        elif "anthropic" in module:
+            self._register_anthropic(client)
+        elif "gemini" in module or "google" in module:
+            self._register_google(client)
+        else:
+            # Attempt generic detection via attribute presence
+            if any(hasattr(client, a) for a in self._OPENAI_ATTRS) and hasattr(
+                getattr(client, "_client", None), "chat"
+            ):
+                self._register_openai(client)
+            else:
+                from memori._exceptions import UnsupportedLLMProviderError
+
+                provider = f"{module}.{type(client).__name__}"
+                raise UnsupportedLLMProviderError(
+                    f"llamaindex:{provider} — only OpenAI, Anthropic, and "
+                    "Gemini LlamaIndex LLMs are supported"
+                )
+
+        return self
+
+    def _register_openai(self, llm) -> None:
+        """Patch the underlying openai.OpenAI / openai.AsyncOpenAI client."""
+        for attr in self._OPENAI_ATTRS:
+            inner = getattr(llm, attr, None)
+            if inner is not None and hasattr(inner, "chat"):
+                if not hasattr(inner, "_memori_installed"):
+                    OpenAi(self.config).register(
+                        inner, _provider=LLAMAINDEX_FRAMEWORK_PROVIDER
+                    )
+        self.config.framework.provider = LLAMAINDEX_FRAMEWORK_PROVIDER
+        self.config.llm.provider = LLAMAINDEX_OPENAI_LLM_PROVIDER
+
+    def _register_anthropic(self, llm) -> None:
+        """Patch the underlying anthropic.Anthropic / AsyncAnthropic client."""
+        for attr in self._ANTHROPIC_ATTRS:
+            inner = getattr(llm, attr, None)
+            if inner is not None and hasattr(inner, "messages"):
+                if not hasattr(inner, "_memori_installed"):
+                    Anthropic(self.config).register(
+                        inner, _provider=LLAMAINDEX_FRAMEWORK_PROVIDER
+                    )
+        self.config.framework.provider = LLAMAINDEX_FRAMEWORK_PROVIDER
+        self.config.llm.provider = LLAMAINDEX_ANTHROPIC_LLM_PROVIDER
+
+    def _register_google(self, llm) -> None:
+        """Patch the underlying google.genai.Client."""
+        for attr in self._GOOGLE_ATTRS:
+            inner = getattr(llm, attr, None)
+            if inner is not None and hasattr(inner, "models"):
+                if not hasattr(inner, "_memori_installed"):
+                    Google(self.config).register(
+                        inner, _provider=LLAMAINDEX_FRAMEWORK_PROVIDER
+                    )
+        self.config.framework.provider = LLAMAINDEX_FRAMEWORK_PROVIDER
+        self.config.llm.provider = LLAMAINDEX_GOOGLE_LLM_PROVIDER
