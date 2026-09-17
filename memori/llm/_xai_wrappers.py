@@ -8,7 +8,7 @@ r"""
                       memorilabs.ai
 """
 
-import asyncio
+import inspect
 import json
 import time
 from collections.abc import Mapping
@@ -123,7 +123,7 @@ class XAiWrappers:
             self.config.llm.version = model
 
         chat_obj._sample = chat_obj.sample
-        is_async = asyncio.iscoroutinefunction(chat_obj._sample)
+        is_async = inspect.iscoroutinefunction(chat_obj._sample)
 
         if is_async:
             chat_obj.sample = self._create_async_sample_wrapper(
