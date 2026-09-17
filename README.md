@@ -349,7 +349,7 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 
 Memori Enterprise is built for any enterprise running production agents, particularly high-volume ones such as internal SDLC.
 
-Recently, a major project management platform automating QA with AI agents faced severe inefficiency as its agents suffered from session amnesia, repeatedly burning excessive tool calls.
+Recently, a large enterprise looking to automate QA with AI agents faced severe inefficiency as its agents suffered from session amnesia, repeatedly burning excessive tool calls.
 
 By integrating Memori's agent-native memory layer in a secure private VPC, the platform captured execution traces to stop redundant discoveries and improve run over run.
 
@@ -358,6 +358,8 @@ This deployment delivered:
 - Material soft ROI including increases in accuracy, reduction in latency, and reduction in human in the loop review
 
 Following this success, this enterprise has already identified four additional high-priority agentic workflows for Memori integration.
+
+Memori Enterprise provides the governance capabilities required for enterprise deployment, including memory pooling, relationship-based access control (ReBAC), immutable audit logs, and deployment within customers' existing AWS environments through a VPC or on-premises infrastructure. Enterprise plans include unlimited memories created and recalled.
 
 Please email us at hello@memorilabs.ai if you'd like a preview.
 
