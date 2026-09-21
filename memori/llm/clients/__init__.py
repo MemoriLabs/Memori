@@ -6,7 +6,7 @@ from memori.llm.clients.direct import (
     PydanticAi,
     XAi,
 )
-from memori.llm.clients.frameworks import Agno, LangChain
+from memori.llm.clients.frameworks import Agno, LangChain, LlamaIndex
 
 __all__ = [
     "Agno",
@@ -14,6 +14,7 @@ __all__ = [
     "Google",
     "LangChain",
     "LiteLLM",
+    "LlamaIndex",
     "OpenAi",
     "PydanticAi",
     "XAi",
