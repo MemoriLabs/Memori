@@ -7,6 +7,11 @@
 <p align="center">
   <i>Memori plugs into the software and infrastructure you already use. It is LLM, datastore and framework agnostic and seamlessly integrates into the architecture you've already designed.</i>
 </p>
+## What is Memori?
+
+Memori is an open-source memory layer for AI agents and applications. It helps AI systems remember useful information from previous interactions and use that information in future conversations.
+
+Instead of an AI agent starting from scratch every time, Memori provides persistent memory that can be stored, organized, and recalled when needed. It is designed to work with the tools and infrastructure you already use, without requiring you to rebuild your existing application.
 
 <p align="center">
   <strong>→ <a href="https://memorilabs.ai/docs/memori-cloud/">Memori Cloud</a></strong> — Zero config. Get an API key and start building in minutes.
