@@ -570,3 +570,4 @@ def test_knowledge_graph_delete_by_entity(mock_conn):
     assert "delete" in object_delete_call[0][0].lower()
     assert "from memori_object" in object_delete_call[0][0].lower()
     assert "not exists" in object_delete_call[0][0].lower()
+

@@ -46,6 +46,8 @@ class Adapter(BaseStorageAdapter):
             detected = "tidb"
 
         self._detected_dialect = detected
+        if detected == "sqlite":
+            self.conn.connection().exec_driver_sql("PRAGMA foreign_keys = ON")
         return detected
 
     def _is_tidb_server(self) -> bool:
