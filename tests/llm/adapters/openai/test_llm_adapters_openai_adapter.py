@@ -89,14 +89,15 @@ def test_get_formatted_response_streamed():
     ) == [{"role": "assistant", "text": "abcdef", "type": "text"}]
 
 
-def test_get_formatted_response_unstreamed():
+@pytest.mark.parametrize("query", [{}, {"stream": None}, {"stream": False}])
+def test_get_formatted_response_unstreamed(query):
     assert Adapter().get_formatted_response({}) == []
     assert Adapter().get_formatted_query({"conversation": {"response": {}}}) == []
 
     assert Adapter().get_formatted_response(
         {
             "conversation": {
-                "query": {},
+                "query": query,
                 "response": {
                     "choices": [
                         {"message": {"content": "abc", "role": "assistant"}},
