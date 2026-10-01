@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve assistant messages in conversation memory and augmentation payloads
+  when OpenAI Chat Completions is called with explicit `stream=False`.
+
 ### Added
 
 - Added input validation for the `query` argument of `Memori.recall(...)`: a
