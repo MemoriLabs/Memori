@@ -1,6 +1,11 @@
 import copy
+import decimal
+import enum
 import json
+import pathlib
+import uuid
 from collections.abc import Mapping
+from datetime import date, datetime
 from typing import Any, cast
 
 from google.protobuf import json_format
@@ -26,6 +31,8 @@ def convert_to_json(obj, _seen=None):
     try:
         if obj is None or isinstance(obj, (bool, int, float, str)):
             return obj
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
         if isinstance(obj, list):
             return [convert_to_json(item, _seen.copy()) for item in obj]
         if isinstance(obj, dict):
@@ -34,9 +41,15 @@ def convert_to_json(obj, _seen=None):
                 for key, value in obj.items()
                 if not key.startswith("_")
             }
+        if isinstance(obj, enum.Enum):
+            return convert_to_json(obj.value, _seen.copy())
+        if isinstance(obj, (uuid.UUID, pathlib.Path, decimal.Decimal)):
+            return str(obj)
+        if isinstance(obj, (set, frozenset, tuple)):
+            return [convert_to_json(item, _seen.copy()) for item in obj]
         if hasattr(obj, "model_dump"):
             try:
-                return obj.model_dump()
+                return convert_to_json(obj.model_dump(), _seen.copy())
             except Exception:
                 pass
         if hasattr(obj, "__dict__"):

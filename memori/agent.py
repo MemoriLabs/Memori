@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 from memori._config import Config
 from memori._network import Api, ApiSubdomain
+from memori.llm.helpers.serialization import convert_to_json
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,10 @@ class Agent:
         """
         resolved_session_id = str(session_id or self.config.session_id)
         attribution = self._attribution()
+
+        if trace is not None:
+            trace = convert_to_json(trace)
+
         messages = [
             {"role": "user", "content": user_content, "type": "text", "trace": None},
             {
