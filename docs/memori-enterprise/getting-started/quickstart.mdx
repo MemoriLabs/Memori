@@ -5,71 +5,104 @@ description: Connect the harness to your Memori Enterprise instance.
 
 # Quickstart
 
-Connect the harness to your Memori Enterprise instance using the Memori plugin.
+Connect the harness to your Memori Enterprise deployment through the Memori gateway. Before each prompt, Memori pulls in relevant memories. After each turn, the conversation is sent to your Memori server and processed into durable memories.
+
+If your team routes harness requests through Amazon Bedrock, see [Bedrock setup](/docs/memori-enterprise/getting-started/bedrock) instead.
 
 ## Before you start
 
-You need three values from your Memori administrator or dashboard:
+Gather these values before you begin.
 
-- **API URL**, such as `https://api.<tenant_id>.memorilabs.ai`
-- **Identity ID**, which starts with `id_`
-- **Entity ID**, a lowercase name for the person whose memories this plugin should use, such as `jane-doe`
+<Properties>
+  <Property name="ANTHROPIC_BASE_URL">
+    Your company-specific Memori endpoint. Ask your admin for this value, such as `https://app.company-specific.memorilabs.ai`.
+  </Property>
+  <Property name="x-memori-entity-id">
+    A lowercase identifier for the person whose memories this session should use. We recommend your LDAP username, such as `johnd`.
+  </Property>
+  <Property name="x-memori-identity-token">
+    Shown in the Identities section of your Memori dashboard. Click the specific identity to copy this value.
+  </Property>
+  <Property name="x-memori-origin-id">
+    Optional. A unique identifier for this workload. Use it when more than one system writes to the same Memori deployment and you want to track or filter memories by source. If you only have one harness deployment, leave this out. Ask your admin for the right value.
+  </Property>
+  <Property name="ENABLE_TOOL_SEARCH">
+    Set to `true`. See step 3.
+  </Property>
+</Properties>
 
-Double-check your identity ID and entity ID. The identity ID should match the one shown in your dashboard, and your entity ID is entered during the configure step. If the identity ID is mistyped or you forget to enter an entity ID, you won't see memories stored or recalled in your assigned pools. A mistyped entity ID won't error. Memories will be created under the wrong entity, so the dashboard will look off. If your memory dashboard looks off, verify these two values first.
+Store your identity token, entity ID, and base URL in a secure store such as your enterprise cloud key vault or a local password manager.
 
-Use the same entity ID in every Memori client.
+---
 
-Once enabled and configured, the plugin sends your full conversation to your Memori server with no redaction: prompts, replies, tool calls, tool results, and attachments.
+## 1. Set the variables
 
-## 1. Install
+Add the following to `~/.claude/settings.json`. If `settings.json` already has an `env` block, add these keys inside it, do not add a second `env` block. If `ANTHROPIC_CUSTOM_HEADERS` is already set, add the Memori headers to the existing value, one per line.
 
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "PLACE_URL_FROM_ADMIN_HERE",
+    "ANTHROPIC_CUSTOM_HEADERS": "x-memori-entity-id: johnd\nx-memori-identity-token: id_test_your_token_here",
+    "ENABLE_TOOL_SEARCH": "true"
+  }
+}
 ```
-claude plugin marketplace add MemoriLabs/integrations
-claude plugin install memori@memorilabs
-claude plugin enable memori@memorilabs
+
+If your admin has given you an origin ID, add it as a third header:
+
+```json
+"ANTHROPIC_CUSTOM_HEADERS": "x-memori-entity-id: johnd\nx-memori-identity-token: id_test_your_token_here\nx-memori-origin-id: your-origin-id-here"
 ```
 
-The plugin starts disabled, so the final command is required. Then start a new session so the hooks load.
+In JSON, `\n` is a string escape, so the file holds those two characters and the harness receives a real newline between the headers.
 
-## 2. Configure
+Then restrict the file to your account, since it now holds the identity token:
 
-Start a session and run:
-
-```
-/memori:configure
+```bash
+chmod 600 ~/.claude/settings.json
 ```
 
-Claude asks for the three values and writes them to `~/.claude/memori/config.json`, readable only by you. Give them in one go if you prefer:
+## 2. Choose a scope
 
-```
-/memori:configure <your api url> <your identity id> <your entity id>
-```
+`~/.claude/settings.json` applies to every project on this machine. To scope to a specific project only, put the `env` block in that project's `.claude/settings.local.json` instead.
 
-Run it again any time to see what is set or to change something.
+## 3. Set ENABLE_TOOL_SEARCH
 
-## 3. Check if it worked
+A custom `ANTHROPIC_BASE_URL` makes some harness versions load every tool definition into the context upfront instead of on demand. Setting `ENABLE_TOOL_SEARCH` to `true` restores on-demand loading.
 
-Ask Claude:
+## 4. Restart the harness
 
-> Is Memori working?
+Settings and environment variables are read when a session starts. Editing `settings.json` inside a running session has no effect. Quit the harness and start a fresh new session.
 
-It reads your configuration back; the check itself does not contact your Memori server and changes nothing.
+## 5. Check if it worked
 
-Memori now recalls relevant memories before each prompt and captures new ones after each completed turn.
+Confirm your `settings.json` is valid JSON, then start the harness and have a short exchange. Open the Memori dashboard and check that memories are accumulating. On a new account the dashboard stays empty until a turn or two has been captured and extracted, so give it a couple of exchanges before concluding something is wrong.
 
-## If something is wrong
+<Admonition type="tip" title="Use the same entity ID everywhere">
+  Use the same entity ID in every Memori client. A mismatched entity ID won't error, but memories will be created under the wrong entity and the dashboard will look off.
+</Admonition>
 
-Nothing else about the plugin is visible from inside a session: the only thing it ever adds to a conversation is the memories it recalled, so a failure is silent by design. Work through these in order.
+---
 
-- Confirm the plugin is enabled with `claude plugin list`.
-- Confirm your configuration with `/memori:configure`, and that every Memori client uses the same entity ID.
-- Check the Memori dashboard, the only place that shows whether memories are accumulating. On a new account it stays empty until a turn or two has been captured and extracted.
-- Read the hook's own errors:
+## Troubleshooting
 
-  ```
-  claude --debug-file memori.log
-  ```
+**Sessions work but no memories appear**
 
-  A rejected identity ID, an entity that cannot read its pool, a URL that is not a Memori server, and a config file that cannot be parsed are all written there in full.
+- Confirm the identity token matches the one shown in your dashboard.
+- Confirm your entity ID matches the value used in other clients.
+- Start a fresh new session after changing any value.
 
-For further help, contact [support@memorilabs.ai](mailto:support@memorilabs.ai).
+**Requests fail outright**
+
+Double-check that `ANTHROPIC_BASE_URL` was entered correctly.
+
+**Context is larger than expected**
+
+Check that `ENABLE_TOOL_SEARCH` is set to `true`, per step 3.
+
+---
+
+## Uninstall
+
+Remove `ANTHROPIC_BASE_URL` and `ANTHROPIC_CUSTOM_HEADERS` from everywhere you set them, then start a fresh new session. The harness goes back to the Anthropic API directly.

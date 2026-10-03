@@ -40,9 +40,9 @@ Open the pool from Memory Explorer or pool settings, then select **Add identity*
   </Property>
 </Properties>
 
-### 3. Configure the plugin
+### 3. Configure the harness
 
-Store the identity ID in your secrets manager and configure the harness plugin using `/memori:configure`. The plugin authenticates every session using this identity ID.
+Store the identity ID in your secrets manager and add it to `~/.claude/settings.json` under `ANTHROPIC_CUSTOM_HEADERS`. See [Quickstart](/docs/memori-enterprise/getting-started/quickstart) for the full settings block.
 
 ### 4. Rotate an identity ID
 

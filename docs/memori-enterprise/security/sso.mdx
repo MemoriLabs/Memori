@@ -7,15 +7,21 @@ description: Integrate your identity provider with Memori Enterprise to centrall
 
 Memori Enterprise integrates with your identity provider (IdP) so that agent and user permissions are managed centrally through your existing systems. Once connected, team membership, role assignments, and access policies in your IdP drive Memori permissions automatically.
 
-## Supported Protocols
+## Supported protocols
 
-| Protocol | Use case |
-| -------- | -------- |
-| **SAML 2.0** | Enterprise SSO for dashboard access and administrative actions |
-| **OIDC (OpenID Connect)** | Token-based authentication for API access and agent identity |
-| **OAuth 2.0** | Scope-based authorization for agent memory operations |
+<Properties>
+  <Property name="SAML 2.0">
+    Enterprise SSO for dashboard access and administrative actions.
+  </Property>
+  <Property name="OIDC (OpenID Connect)">
+    Token-based authentication for API access and agent identity.
+  </Property>
+  <Property name="OAuth 2.0">
+    Scope-based authorization for agent memory operations.
+  </Property>
+</Properties>
 
-## Supported Identity Providers
+## Supported identity providers
 
 Memori Enterprise works with any standards-compliant IdP. Tested integrations include:
 
@@ -28,7 +34,7 @@ Memori Enterprise works with any standards-compliant IdP. Tested integrations in
 
 Custom or on-premises IdPs that support SAML 2.0 or OIDC are also supported.
 
-## How It Works
+## How it works
 
 **Dashboard access**: Administrators authenticate to the Memori Enterprise dashboard using your organization's SSO. Group membership in your IdP maps to Memori administrative roles.
 

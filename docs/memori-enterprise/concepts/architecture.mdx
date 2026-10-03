@@ -24,16 +24,14 @@ Memori's Generation 3 augmentation pipeline processes each captured turn and ext
 
 Individual entity memory is private to each user. Memory pools extend this with shared, permissioned collections of memories accessible to multiple users and identities. A team's shared pool can hold architecture decisions, known issues, and project context that every harness session on the team draws from.
 
-See [Memory Pools](/docs/memori-enterprise/memory-pool/overview) for pool setup.
+See [Memory pools](/docs/memori-enterprise/memory-pool/overview) for pool setup.
 
 ## Deployment boundary
 
 Memori Enterprise deploys inside your cloud or on-premises infrastructure:
 
-| Component | Where it runs |
-| --------- | ------------- |
-| Memori server | Your VPC or on-prem hardware |
-| Memory store | Your infrastructure |
-| Augmentation pipeline | Your infrastructure |
+- **Memori server** runs on your VPC or on-prem hardware.
+- **Memory store** runs on your infrastructure.
+- **Augmentation pipeline** runs on your infrastructure.
 
-All memory capture, extraction, and recall occurs within your environment. Telemetry is fully opt-out. See [VPC](/docs/memori-enterprise/vpc/overview) and [On-Premises](/docs/memori-enterprise/deployment/on-prem) for deployment options.
+All memory capture, extraction, and recall occurs within your environment. Telemetry is fully opt-out. See [VPC](/docs/memori-enterprise/vpc/overview) and [On-premises](/docs/memori-enterprise/deployment/on-prem) for deployment options.

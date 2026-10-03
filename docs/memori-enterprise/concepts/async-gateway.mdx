@@ -5,28 +5,6 @@ description: How Memori processes memory capture and extraction asynchronously, 
 
 # Async Gateway
 
-Memory capture and extraction in Memori are asynchronous. When a turn completes, the turn is transmitted to the server for memories to be structured.
+Memory capture and extraction in Memori are asynchronous. The turn is stored immediately; extraction runs in a background worker afterward and completes independently.
 
-## The Async Pipeline
-
-When a turn completes, the Stop hook transmits it to the Memori server. The hook completes once the turn is accepted and stored. Extraction runs in a background worker after that and completes independently of the hook.
-
-## Timing Expectations
-
-- **Immediately after a turn**: the turn is stored; memories are not yet available.
-- **After extraction completes**: memories appear in the dashboard and are included in subsequent recall queries.
-- **Extraction duration**: typically a few seconds to a few minutes depending on turn length and server load.
-
-If you check the dashboard immediately after a turn and see no new memories, wait a moment and refresh. Empty recall on the very next prompt after initial setup is expected; memories from the first turn will appear once extraction finishes.
-
-## Interrupted Turns
-
-A turn interrupted with `ESC` or otherwise terminated before the Stop hook fires is not transmitted. No turn is stored and no memories are extracted. Only completed turns reach the Memori server.
-
-## Pool Writes
-
-Pool memory writes follow the same async pipeline. A harness session writing to a pool submits the content for extraction; other sessions with pool access will see the resulting memories after extraction completes, not at the moment of submission.
-
-## Hook Timeout Considerations
-
-The Stop hook budget must cover both the turn transmission and any augmentation request made during the hook. Augmentation is the slower of the two steps. If the hook timeout is shorter than the observed augmentation latency, the hook may time out after storing the turn but before extraction completes. Failures at this stage are written to the hook's stderr and visible with `claude --debug-file`.
+More detail on this page is coming soon.

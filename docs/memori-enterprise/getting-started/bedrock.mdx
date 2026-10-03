@@ -1,0 +1,137 @@
+---
+title: Bedrock setup
+description: Connect the harness to your Memori Enterprise instance when your team routes requests through Amazon Bedrock.
+---
+
+# Bedrock setup
+
+Use this guide if your team already routes harness requests through Amazon Bedrock. If you use the standard Anthropic API path, see [Quickstart](/docs/memori-enterprise/getting-started/quickstart) instead.
+
+Memori sits in front of Bedrock as a gateway. Harness sessions go through Memori first, which injects memory context, forwards the request to Bedrock using your workload role, and sends the completed turn back for processing.
+
+## Before you start
+
+You need an existing AWS workload role with access to Bedrock models. Throughout this guide that role is called `your-ai-workload-role`. Memori provides three values during onboarding:
+
+<Properties>
+  <Property name="ANTHROPIC_BEDROCK_BASE_URL">
+    Your private, single-tenant Memori gateway URL. It ends at `/v1/gateway`. Do not append `/bedrock`.
+  </Property>
+  <Property name="MEMORI_GATEWAY_ROLE_ARN">
+    The ARN of the Memori gateway role that will assume your workload role to reach Bedrock.
+  </Property>
+  <Property name="MEMORI_ORGANIZATION_UUID">
+    Your organization's UUID, used as the `ExternalId` condition in the trust policy.
+  </Property>
+</Properties>
+
+---
+
+## Step 1: AWS setup
+
+### Permissions policy
+
+Attach the following policy to `your-ai-workload-role`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowMemoriBedrockRequests",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+`Resource: "*"` is intentional. It avoids access gaps when new models are provisioned and Memori's access is not updated in time.
+
+### Trust policy
+
+Add the following trust policy to `your-ai-workload-role`, replacing the placeholders with your values from above:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowMemoriGateway",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "<MEMORI_GATEWAY_ROLE_ARN>"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "<MEMORI_ORGANIZATION_UUID>"
+        }
+      }
+    }
+  ]
+}
+```
+
+The `ExternalId` condition ensures only your organization's Memori gateway can assume this role.
+
+## Step 2: Send Memori two values
+
+Once the role is configured, email or Slack your Memori contact:
+
+- The full ARN of `your-ai-workload-role`
+- The Bedrock region you want Memori to use, such as `us-east-1`
+
+Memori completes the gateway configuration on our end before you continue to step 3.
+
+## Step 3: Harness setup
+
+Add these environment variables to the process that launches the harness. Do not change your existing Bedrock model or region settings.
+
+```python
+env.update(
+    {
+        "CLAUDE_CODE_USE_BEDROCK": "1",
+        "CLAUDE_CODE_SKIP_BEDROCK_AUTH": "1",
+        "ANTHROPIC_BEDROCK_BASE_URL": "<ANTHROPIC_BEDROCK_BASE_URL>",
+        "ANTHROPIC_CUSTOM_HEADERS": (
+            "X-Memori-Entity-Id: <MEMORI_ENTITY_ID>\n"
+            "X-Memori-Identity-Token: <MEMORI_IDENTITY_TOKEN>\n"
+            "X-Memori-Origin-Id: <MEMORY_ORIGIN_ID>"
+        ),
+    }
+)
+```
+
+<Properties>
+  <Property name="CLAUDE_CODE_USE_BEDROCK">
+    Tells the harness to use the Bedrock request path.
+  </Property>
+  <Property name="CLAUDE_CODE_SKIP_BEDROCK_AUTH">
+    Tells the harness to skip its normal Bedrock credential chain. The Memori gateway handles auth by assuming your workload role. Your existing AWS credentials stay in the process for other tooling.
+  </Property>
+  <Property name="ANTHROPIC_BEDROCK_BASE_URL">
+    The Memori gateway URL from step 1. Use the value Memori provided. Do not append `/bedrock`.
+  </Property>
+  <Property name="X-Memori-Entity-Id">
+    A unique identifier for the person or workload whose memories this session should use. Memori can advise on the right value for your configuration.
+  </Property>
+  <Property name="X-Memori-Identity-Token">
+    Available in the Identities section of your Memori dashboard.
+  </Property>
+  <Property name="X-Memori-Origin-Id">
+    Optional. A unique identifier for this workload. Use it when more than one system writes to the same Memori deployment and you want to track or filter memories by source. If you only have one harness deployment, leave this out.
+  </Property>
+</Properties>
+
+## Step 4: Verify
+
+Run a short harness session and open the Memori dashboard. Confirm that memories are appearing under the correct entity. On a new account, allow a turn or two for extraction to complete before checking.
+
+<Admonition type="tip">
+  If memories are not appearing, confirm that `CLAUDE_CODE_SKIP_BEDROCK_AUTH` is set and that the `ANTHROPIC_BEDROCK_BASE_URL` ends at `/v1/gateway` with no trailing path.
+</Admonition>

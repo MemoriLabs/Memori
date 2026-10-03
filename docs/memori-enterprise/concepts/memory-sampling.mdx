@@ -1,0 +1,101 @@
+---
+title: Memory Sampling
+description: Pull memories directly from the memory bank by filter, without a prompt or active session. Use it to audit extraction quality, run offline evaluations, or pull records for a compliance review.
+---
+
+# Memory Sampling
+
+Memory Sampling pulls memories from the bank directly, without a prompt or active session. Unlike recall, which retrieves what is relevant to the current conversation, sampling returns what you ask for by filter. Use it to audit what has been extracted, run offline evaluations, or pull records for a compliance review.
+
+## What it's for
+
+- **Quality audits**: spot-check a random slice of memories to verify extraction is working correctly.
+- **Offline evaluation**: pull a labeled sample to measure recall accuracy or run holdout attribution outside of live sessions.
+- **Compliance review**: pull all memories for a specific entity to respond to a data subject access request or internal audit.
+- **Pool inspection**: check that a new pool is accumulating the right knowledge before rolling it out.
+
+## How sampling differs from recall
+
+Recall is prompt-driven. It queries the memory store using the current conversation as context and returns the most relevant memories for that moment.
+
+Sampling is filter-driven. You specify what you want by entity, pool, signal type, horizon, or date range, and get back everything that matches, regardless of any conversation context.
+
+## What you can sample
+
+A sample request can be scoped by any combination of:
+
+<Properties>
+  <Property name="Entity">
+    All memories for a specific entity ID.
+  </Property>
+  <Property name="Pool">
+    All memories in a specific pool.
+  </Property>
+  <Property name="Signal type">
+    One or more types: Fact, Preference, Goal, Constraint, Strategy, Workflow, Outcome, or Failure.
+  </Property>
+  <Property name="Horizon">
+    Standing, Decaying, or Volatile.
+  </Property>
+  <Property name="Date range">
+    Memories extracted within a specific window.
+  </Property>
+  <Property name="Confidence threshold">
+    Memories at or above a given confidence score.
+  </Property>
+</Properties>
+
+Results are paginated. Each memory in the response includes its content, signal type, horizon, confidence score, extraction timestamp, and source session reference.
+
+## Sample size and ordering
+
+Results come back newest-first by default. Pass `order: random` to get a random sample, which avoids recency bias when auditing.
+
+For large stores, paginate through results rather than raising the limit.
+
+## Using the SDK
+
+```python
+from memori import Memori
+
+mem = Memori()
+
+sample = mem.sample(
+    entity_id="jane-doe",
+    signal_types=["Fact", "Preference"],
+    horizon="Standing",
+    limit=50,
+    order="random"
+)
+
+for memory in sample.memories:
+    print(memory.content, memory.confidence)
+```
+
+To sample from a pool:
+
+```python
+sample = mem.sample(
+    pool_id="your-pool-id",
+    limit=100,
+    order="random"
+)
+```
+
+## Using Memory Explorer
+
+Owners and admins can browse the full memory store using Memory Explorer's filter panel. The filters match what the SDK exposes. Use it to inspect, edit, or export memories without writing code.
+
+<Admonition type="tip">
+  For compliance reviews, filter by entity in Memory Explorer and export the results. The export includes the same metadata fields as the SDK response.
+</Admonition>
+
+## Permissions
+
+Sampling follows the same access rules as recall:
+
+- Entity samples require access to that entity's memory space.
+- Pool samples require explicit pool membership.
+- Owners and admins can sample across all entities and pools.
+
+All sample operations are recorded in the audit log with the requesting identity, filters applied, and record count.

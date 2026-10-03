@@ -13,7 +13,7 @@ Entity memory is private to each person. A harness session configured with an en
 
 ## Entity IDs
 
-Each entity is identified by an entity ID: a lowercase string set during the harness plugin configuration with `/memori:configure`. Entity IDs can be any consistent identifier that maps to a person in your system, such as a username or email slug.
+Each entity is identified by an entity ID: a lowercase string configured in `~/.claude/settings.json` under `ANTHROPIC_CUSTOM_HEADERS`. Entity IDs can be any consistent identifier that maps to a person in your system, such as a username or email slug.
 
 ```
 jane-doe
@@ -30,10 +30,7 @@ If a person uses the harness on multiple machines or has other integrations writ
 
 ### 1. Configure the entity ID
 
-Set the entity ID during plugin configuration with `/memori:configure`. Use any consistent identifier that maps to a person in your system.
-
-- Run `/memori:configure` in a harness session
-- Enter the entity ID that identifies this user across your systems
+Set the entity ID in `~/.claude/settings.json` under `ANTHROPIC_CUSTOM_HEADERS` as `x-memori-entity-id`. Use any consistent identifier that maps to a person in your system. See [Quickstart](/docs/memori-enterprise/getting-started/quickstart) for the full settings block.
 
 ### 2. Verify the entity in the dashboard
 
