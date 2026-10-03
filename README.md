@@ -36,6 +36,10 @@
 ## Getting Started
 
 ### Installation
+Choose the SDK based on the language used in your project:
+
+- **Python** — for Python applications.
+- **TypeScript** — for TypeScript/JavaScript applications.
 
 <details>
 <summary><b>TypeScript SDK</b></summary>
