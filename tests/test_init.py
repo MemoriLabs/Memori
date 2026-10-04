@@ -206,7 +206,7 @@ def test_set_session_resets_cache(mocker):
     mem.config.cache.conversation_id = 123
     mem.config.cache.session_id = 456
 
-    mem.new_session()
+    mem.set_session("66cf2a0b-7503-4dcd-b717-b29c826fa1db")
 
     assert mem.config.cache.conversation_id is None
     assert mem.config.cache.session_id is None

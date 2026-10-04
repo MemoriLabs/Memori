@@ -221,8 +221,9 @@ class Memori:
         return self
 
     def set_session(self, session_id: Any) -> "Memori":
-        """Set an explicit session identifier on the current instance."""
+        """Set an explicit session identifier and clear in-memory caches."""
         self.config.session_id = session_id
+        self.config.reset_cache()
         return self
 
     def recall(
