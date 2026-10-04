@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `query` raises `ValueError`, matching the existing `limit` validation and
   failing fast instead of issuing an empty recall against the database/LLM path.
 
+### Fixed
+
+- Clear cached persistence identifiers in `Memori.set_session(...)` so subsequent
+  conversation reads and writes use the selected session, including when resuming
+  an existing session.
+
 ## [3.3.6] - 2026-05-27
 
 ### Added
