@@ -1,7 +1,11 @@
+import sqlite3
+
 import pytest
 
 from memori import Memori
 from memori._exceptions import MissingMemoriApiKeyError
+from memori.llm.pipelines.conversation_injection import inject_conversation_messages
+from memori.memory._manager import Manager as MemoryManager
 
 
 def test_cloud_false_when_conn_provided(mocker):
@@ -162,6 +166,67 @@ def test_attribution_rejects_empty_process_id(mocker):
         Memori(conn=lambda: mock_conn).attribution(entity_id="user-1", process_id="")
 
     assert str(e.value) == "process_id cannot be empty"
+
+
+@pytest.mark.parametrize(
+    ("next_entity", "next_process"),
+    [("bob", "support"), ("alice", "sales")],
+)
+def test_attribution_change_isolates_conversation(next_entity, next_process, mocker):
+    conn = sqlite3.connect(":memory:")
+    mem = Memori(conn=lambda: conn, use_rust_core=False)
+    try:
+        mem.config.storage.build()
+        mem.config.llm.provider = "openai"
+        mem.attribution("alice", "support")
+        MemoryManager(mem.config).execute(
+            {"messages": [{"role": "user", "type": None, "text": "first turn"}]}
+        )
+
+        mem.attribution(next_entity, next_process)
+        invoke = mocker.Mock(config=mem.config)
+        invoke._ensure_cached_conversation_id.return_value = False
+        outbound = inject_conversation_messages(
+            invoke, {"messages": [{"role": "user", "content": "second turn"}]}
+        )["messages"]
+        MemoryManager(mem.config).execute(
+            {"messages": [{"role": "user", "type": None, "text": "second turn"}]}
+        )
+
+        rows = conn.execute(
+            """
+            SELECT e.external_id, p.external_id, m.content
+            FROM memori_conversation_message m
+            JOIN memori_conversation c ON c.id = m.conversation_id
+            JOIN memori_session s ON s.id = c.session_id
+            JOIN memori_entity e ON e.id = s.entity_id
+            JOIN memori_process p ON p.id = s.process_id
+            ORDER BY m.id
+            """
+        ).fetchall()
+
+        assert rows == [
+            ("alice", "support", "first turn"),
+            (next_entity, next_process, "second turn"),
+        ]
+        assert outbound == [{"role": "user", "content": "second turn"}]
+    finally:
+        mem.close()
+
+
+def test_attribution_keeps_session_for_initial_and_unchanged_identity(mocker):
+    mock_conn = mocker.Mock(spec=["cursor", "commit", "rollback"])
+    mock_conn.__module__ = "psycopg"
+    type(mock_conn).__module__ = "psycopg"
+    mock_conn.cursor = mocker.MagicMock()
+
+    mem = Memori(conn=lambda: mock_conn, use_rust_core=False)
+    mem.set_session("chosen-session")
+    mem.attribution("alice", "support")
+    assert mem.config.session_id == "chosen-session"
+
+    mem.attribution("alice", "support")
+    assert mem.config.session_id == "chosen-session"
 
 
 def test_new_session(mocker):

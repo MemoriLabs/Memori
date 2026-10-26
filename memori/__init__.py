@@ -190,7 +190,11 @@ class Memori:
         entity_id: str,
         process_id: str | None = None,
     ) -> "Memori":
-        """Set attribution identifiers used when persisting and recalling memory."""
+        """Set attribution identifiers used when persisting and recalling memory.
+
+        Changing attribution starts a new session so conversation history stays
+        scoped to the selected entity and process.
+        """
         if not isinstance(entity_id, str):
             raise TypeError("entity_id must be a string")
 
@@ -208,6 +212,15 @@ class Memori:
 
         if process_id is not None and len(process_id) > 100:
             raise RuntimeError("process_id cannot be greater than 100 characters")
+
+        if (
+            self.config.entity_id is not None
+            or self.config.cache.session_id is not None
+        ) and (self.config.entity_id, self.config.process_id) != (
+            entity_id,
+            process_id,
+        ):
+            self.new_session()
 
         self.config.entity_id = entity_id
         self.config.process_id = process_id
