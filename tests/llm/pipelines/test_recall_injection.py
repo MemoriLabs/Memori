@@ -1,6 +1,13 @@
+from copy import deepcopy
+
+import pytest
+
+from memori._config import Config
+from memori.llm._base import BaseInvoke
 from memori.llm.pipelines.recall_injection import (
     format_recalled_fact_lines,
     format_recalled_summary_lines,
+    inject_recalled_facts,
 )
 
 # --- format_recalled_fact_lines tests ---
@@ -149,3 +156,105 @@ def test_format_recalled_summary_lines_orders_primary_first():
         "- Fact 1 Additional Summary",
         "- Fact 2 Additional Summary",
     ]
+
+
+@pytest.fixture
+def recalled_invoke(mocker):
+    config = Config()
+    config.cloud = True
+    config.entity_id = "public-test-user"
+    config.llm.provider = "openai"
+    config.recall_relevance_threshold = 0.0
+    recall = mocker.patch("memori.memory.recall.Recall")
+    recall.return_value.search_facts.return_value = {
+        "facts": [{"content": "User prefers concise replies", "similarity": 1.0}],
+        "messages": [],
+    }
+    return BaseInvoke(config, "create"), recall
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        [],
+        [{"type": "text", "text": "Base instructions"}],
+        [
+            {
+                "type": "text",
+                "text": "Base instructions",
+                "cache_control": {"type": "ephemeral"},
+            },
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://example.com/image.png"},
+            },
+        ],
+    ],
+)
+def test_inject_recalled_facts_preserves_structured_system_parts(
+    recalled_invoke, parts
+):
+    invoke, recall = recalled_invoke
+    original = deepcopy(parts)
+    user_message = {"role": "user", "content": "Hello"}
+    kwargs = {
+        "messages": [{"role": "system", "content": parts}, user_message],
+        "model": "test-model",
+    }
+
+    result = inject_recalled_facts(invoke, kwargs)
+
+    assert result is kwargs
+    assert result["messages"][1] is user_message
+    assert result["model"] == "test-model"
+    content = result["messages"][0]["content"]
+    assert content[:-1] == original
+    assert all(
+        actual is expected for actual, expected in zip(content, parts, strict=False)
+    )
+    assert parts == original
+    assert content[-1]["type"] == "text"
+    assert "<memori_context>" in content[-1]["text"]
+    assert "User prefers concise replies" in content[-1]["text"]
+    recall.return_value.search_facts.assert_called_once_with("Hello")
+
+
+def test_inject_recalled_facts_string_system_matches_structured_text(recalled_invoke):
+    invoke, _ = recalled_invoke
+    structured = {
+        "messages": [
+            {"role": "system", "content": []},
+            {"role": "user", "content": "Hello"},
+        ]
+    }
+    plain = {
+        "messages": [
+            {"role": "system", "content": "Base instructions"},
+            {"role": "user", "content": "Hello"},
+        ]
+    }
+
+    inject_recalled_facts(invoke, structured)
+    inject_recalled_facts(invoke, plain)
+
+    assert plain["messages"][0]["content"] == (
+        "Base instructions" + structured["messages"][0]["content"][0]["text"]
+    )
+
+
+def test_inject_recalled_facts_no_facts_leaves_structured_content_untouched(
+    recalled_invoke,
+):
+    invoke, recall = recalled_invoke
+    recall.return_value.search_facts.return_value = {"facts": [], "messages": []}
+    parts = [{"type": "text", "text": "Base instructions"}]
+    kwargs = {
+        "messages": [
+            {"role": "system", "content": parts},
+            {"role": "user", "content": "Hello"},
+        ]
+    }
+    original = deepcopy(kwargs)
+
+    assert inject_recalled_facts(invoke, kwargs) == original
+    assert kwargs["messages"][0]["content"] is parts
