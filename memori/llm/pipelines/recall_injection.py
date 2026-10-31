@@ -213,7 +213,14 @@ def inject_recalled_facts(invoke, kwargs: dict) -> dict:
     else:
         messages = kwargs.get("messages", [])
         if messages and messages[0].get("role") == "system":
-            messages[0]["content"] = messages[0]["content"] + recall_context
+            content = messages[0]["content"]
+            if isinstance(content, list):
+                messages[0]["content"] = [
+                    *content,
+                    {"type": "text", "text": recall_context},
+                ]
+            else:
+                messages[0]["content"] = content + recall_context
         else:
             messages.insert(
                 0,

@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `query` raises `ValueError`, matching the existing `limit` validation and
   failing fast instead of issuing an empty recall against the database/LLM path.
 
+### Fixed
+
+- Append recalled context as a text part for OpenAI-compatible system messages
+  with structured content, preserving their existing parts instead of raising
+  a `TypeError`.
+
 ## [3.3.6] - 2026-05-27
 
 ### Added
