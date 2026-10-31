@@ -41,6 +41,30 @@ def test_get_formatted_response_unstreamed():
     ]
 
 
+def test_get_formatted_response_unstreamed_skips_non_text_blocks():
+    assert Adapter().get_formatted_response(
+        {
+            "conversation": {
+                "response": {
+                    "content": [
+                        {"thinking": "...", "signature": "sig", "type": "thinking"},
+                        {"text": "Let me check the weather.", "type": "text"},
+                        {
+                            "id": "toolu_01A09q90qw90lq9178350182",
+                            "input": {"location": "San Francisco, CA"},
+                            "name": "get_current_weather",
+                            "type": "tool_use",
+                        },
+                    ],
+                    "role": "assistant",
+                }
+            }
+        }
+    ) == [
+        {"role": "assistant", "text": "Let me check the weather.", "type": "text"},
+    ]
+
+
 def test_get_formatted_query_with_injected_messages():
     assert Adapter().get_formatted_query(
         {

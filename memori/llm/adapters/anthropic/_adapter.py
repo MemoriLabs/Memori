@@ -48,6 +48,9 @@ class Adapter(BaseLlmAdaptor):
             #   }
             # ]
             for entry in content:
+                # tool_use, thinking and other non-text blocks carry no "text".
+                if "text" not in entry:
+                    continue
                 response.append(
                     {
                         "role": payload["conversation"]["response"].get("role", None),
