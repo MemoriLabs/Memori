@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve synchronous streaming when registering an OpenAI-compatible client
+  with `stream=True`; consume and record responses through the existing iterator
+  lifecycle instead of returning an unawaited coroutine.
+
 ### Added
 
 - Added input validation for the `query` argument of `Memori.recall(...)`: a

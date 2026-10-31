@@ -139,16 +139,5 @@ class InvokeAsyncStream(BaseInvoke):
         handle_post_response(self, kwargs, start, raw_response)
 
 
-class InvokeStream(BaseInvoke):
-    async def invoke(self, **kwargs):
-        start = time.time()
-
-        kwargs = inject_conversation_messages(
-            self,
-            inject_recalled_facts(self, self.configure_for_streaming_usage(kwargs)),
-        )
-
-        raw_response = await self._method(**kwargs)
-
-        handle_post_response(self, kwargs, start, raw_response)
-        return raw_response
+class InvokeStream(Invoke):
+    """Use the synchronous invocation and iterator lifecycle for streaming clients."""
