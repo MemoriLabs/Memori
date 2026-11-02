@@ -111,6 +111,32 @@ def test_get_formatted_response_unstreamed():
     ]
 
 
+def test_get_formatted_response_explicitly_unstreamed():
+    payload = {
+        "conversation": {
+            "query": {"stream": False},
+            "response": {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "The capital of France is Paris.",
+                            "role": "assistant",
+                        }
+                    }
+                ]
+            },
+        }
+    }
+
+    assert Adapter().get_formatted_response(payload) == [
+        {
+            "role": "assistant",
+            "text": "The capital of France is Paris.",
+            "type": "text",
+        }
+    ]
+
+
 def test_get_formatted_query_with_injected_messages():
     assert Adapter().get_formatted_query(
         {

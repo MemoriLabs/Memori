@@ -118,7 +118,7 @@ class Adapter(BaseLlmAdaptor):
         choices = response.get("choices", None)
         results = []
         if choices is not None:
-            if payload["conversation"]["query"].get("stream", None) is None:
+            if not payload["conversation"]["query"].get("stream", False):
                 # Unstreamed
                 # [
                 #   {
