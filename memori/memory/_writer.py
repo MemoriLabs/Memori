@@ -41,13 +41,27 @@ class Writer:
             try:
                 self._execute_transaction(payload)
                 return self
-            except _RETRYABLE_DB_ERRORS as e:
-                if "restart transaction" in str(e) and attempt < max_retries - 1:
+            except Exception as e:
+                rolled_back = False
+                if self.config.storage.adapter is not None:
+                    try:
+                        self.config.storage.adapter.rollback()
+                        rolled_back = True
+                    except Exception:
+                        logger.exception(
+                            "Failed to roll back conversation message write"
+                        )
+                self.config.reset_cache()
+
+                if (
+                    rolled_back
+                    and isinstance(e, _RETRYABLE_DB_ERRORS)
+                    and "restart transaction" in str(e)
+                    and attempt < max_retries - 1
+                ):
                     logger.debug(
                         "Writer retry attempt %d due to OperationalError", attempt + 1
                     )
-                    if self.config.storage.adapter:
-                        self.config.storage.adapter.rollback()
                     time.sleep(RETRY_BACKOFF_BASE * (2**attempt))
                     continue
                 raise

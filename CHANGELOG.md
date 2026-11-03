@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Roll back failed Python BYODB conversation message writes, including exhausted
+  transaction retries, so a later successful turn cannot commit a partial failed
+  turn. A rollback failure preserves the original write error and stops retries.
+
 ### Added
 
 - Added input validation for the `query` argument of `Memori.recall(...)`: a
