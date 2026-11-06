@@ -54,6 +54,9 @@ class Conversation(BaseConversation):
                 else existing["date_created"]
             )
 
+            if last_activity.tzinfo is None:
+                last_activity = last_activity.replace(tzinfo=timezone.utc)
+
             now = datetime.now(timezone.utc)
             minutes_elapsed = (now - last_activity).total_seconds() / 60
 

@@ -1,6 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 from uuid import UUID
+
+import pytest
+from bson import BSON
+from bson.codec_options import CodecOptions
 
 from memori.storage.drivers.mongodb._driver import (
     Conversation,
@@ -832,3 +836,37 @@ def test_knowledge_graph_delete_by_entity_cleans_orphan_dimensions(mock_conn):
         "delete_many",
         {"_id": {"$nin": [5, 6]}},
     )
+
+
+@pytest.mark.parametrize("has_message", [False, True])
+@pytest.mark.parametrize("age_minutes", [15, 45])
+@pytest.mark.parametrize("tz_aware", [False, True])
+def test_conversation_create_with_bson_timestamps(
+    mock_conn, has_message, age_minutes, tz_aware
+):
+    # Use the real BSON decoder to cover MongoClient's default naive UTC dates
+    # as well as clients configured with an aware, non-UTC timezone.
+    options = CodecOptions(
+        tz_aware=tz_aware,
+        tzinfo=timezone(timedelta(hours=5, minutes=30)) if tz_aware else None,
+    )
+    last_activity = datetime.now(timezone.utc) - timedelta(minutes=age_minutes)
+    existing = BSON.encode(
+        {
+            "_id": 999,
+            "date_created": last_activity - timedelta(minutes=60)
+            if has_message
+            else last_activity,
+        }
+    ).decode(codec_options=options)
+    message = (
+        BSON.encode({"date_created": last_activity}).decode(codec_options=options)
+        if has_message
+        else None
+    )
+    mock_conn.execute.side_effect = [existing, message, Mock(inserted_id=202)]
+
+    result = Conversation(mock_conn).create(session_id=789, timeout_minutes=30)
+
+    assert result == (999 if age_minutes < 30 else 202)
+    assert mock_conn.execute.call_count == (2 if age_minutes < 30 else 3)
