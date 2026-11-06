@@ -343,3 +343,47 @@ def test_get_formatted_response_with_dict_without_text():
         )
         == []
     )
+
+
+def test_get_formatted_response_streamed_chunks():
+    payload = {
+        "conversation": {
+            "response": [
+                {"choices": [{"delta": {"role": "assistant", "content": "Hello"}}]},
+                {"choices": [{"delta": {"content": " world!"}}]},
+            ]
+        }
+    }
+    assert Adapter().get_formatted_response(payload) == [
+        {"role": "assistant", "text": "Hello world!", "type": "text"}
+    ]
+
+
+def test_get_formatted_response_none_response():
+    assert Adapter().get_formatted_response({"conversation": {"response": None}}) == []
+
+
+def test_get_formatted_response_empty_list():
+    assert Adapter().get_formatted_response({"conversation": {"response": []}}) == []
+
+
+def test_get_formatted_response_streamed_chunks_default_role():
+    payload = {
+        "conversation": {
+            "response": [
+                {"choices": [{"delta": {"content": "Testing streaming"}}]}
+            ]
+        }
+    }
+    assert Adapter().get_formatted_response(payload) == [
+        {"role": "assistant", "text": "Testing streaming", "type": "text"}
+    ]
+
+
+def test_get_formatted_response_streamed_malformed():
+    payload = {
+        "conversation": {
+            "response": [None, "invalid", {"choices": "not-a-list"}]
+        }
+    }
+    assert Adapter().get_formatted_response(payload) == []
