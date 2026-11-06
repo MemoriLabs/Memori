@@ -303,6 +303,15 @@ def test_schema_version_read(mock_conn, mock_single_result):
     assert "FROM memori_schema_version" in select_call[0][0]
 
 
+def test_schema_version_read_returns_none_when_table_is_empty(
+    mock_conn, mock_single_result
+):
+    """An empty memori_schema_version table reads as no version, not an error."""
+    mock_conn.execute.return_value = mock_single_result(None)
+
+    assert SchemaVersion(mock_conn).read() is None
+
+
 def test_schema_version_delete(mock_conn):
     """Test deleting schema version records."""
     schema_version = SchemaVersion(mock_conn)

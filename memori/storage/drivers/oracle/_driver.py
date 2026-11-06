@@ -737,7 +737,7 @@ class SchemaVersion(BaseSchemaVersion):
         )
 
     def read(self):
-        return (
+        row = (
             self.conn.execute(
                 """
                 SELECT num
@@ -746,8 +746,8 @@ class SchemaVersion(BaseSchemaVersion):
             )
             .mappings()
             .fetchone()
-            .get("num", None)
         )
+        return row.get("num", None) if row else None
 
 
 @Registry.register_driver("oracle")
