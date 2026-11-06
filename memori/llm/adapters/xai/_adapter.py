@@ -58,36 +58,79 @@ class Adapter(BaseLlmAdaptor):
     def get_formatted_response(self, payload):
         try:
             response_data = payload["conversation"]["response"]
-        except KeyError:
+        except (KeyError, TypeError):
+            return []
+
+        if not response_data:
             return []
 
         response = []
 
-        if "choices" in response_data:
-            for choice in response_data.get("choices", []):
-                message = choice.get("message", {})
-                content = message.get("content", None)
-                role = message.get("role", None)
-                if content is not None and role is not None:
-                    response.append({"role": role, "text": content, "type": "text"})
-        else:
-            content = response_data.get("content", None)
-            role = response_data.get("role", None)
+        if isinstance(response_data, list):
+            content_parts = []
+            role = None
+            for item in response_data:
+                if not isinstance(item, dict):
+                    continue
+                if "choices" in item:
+                    for choice in item.get("choices", []):
+                        if not isinstance(choice, dict):
+                            continue
+                        msg = choice.get("delta") or choice.get("message") or {}
+                        if role is None:
+                            role = msg.get("role", None)
+                        text = msg.get("content", None)
+                        if text:
+                            content_parts.append(text)
+                else:
+                    if role is None:
+                        role = item.get("role", None)
+                    item_content = item.get("content", None)
+                    if isinstance(item_content, str):
+                        content_parts.append(item_content)
+                    elif isinstance(item_content, list):
+                        for sub in item_content:
+                            if isinstance(sub, dict) and sub.get("text"):
+                                content_parts.append(sub.get("text"))
+                            elif isinstance(sub, str):
+                                content_parts.append(sub)
 
-            if content is not None and role is not None:
-                if isinstance(content, str):
-                    response.append({"role": role, "text": content, "type": "text"})
-                elif isinstance(content, list):
-                    for item in content:
-                        if isinstance(item, dict):
-                            text = item.get("text", None)
-                            if text is not None:
+            if content_parts:
+                response.append(
+                    {
+                        "role": role or "assistant",
+                        "text": "".join(content_parts),
+                        "type": "text",
+                    }
+                )
+        elif isinstance(response_data, dict):
+            if "choices" in response_data:
+                for choice in response_data.get("choices", []):
+                    if not isinstance(choice, dict):
+                        continue
+                    message = choice.get("message") or choice.get("delta") or {}
+                    content = message.get("content", None)
+                    role = message.get("role", None)
+                    if content is not None and role is not None:
+                        response.append({"role": role, "text": content, "type": "text"})
+            else:
+                content = response_data.get("content", None)
+                role = response_data.get("role", None)
+
+                if content is not None and role is not None:
+                    if isinstance(content, str):
+                        response.append({"role": role, "text": content, "type": "text"})
+                    elif isinstance(content, list):
+                        for item in content:
+                            if isinstance(item, dict):
+                                text = item.get("text", None)
+                                if text is not None:
+                                    response.append(
+                                        {"role": role, "text": text, "type": "text"}
+                                    )
+                            elif isinstance(item, str):
                                 response.append(
-                                    {"role": role, "text": text, "type": "text"}
+                                    {"role": role, "text": item, "type": "text"}
                                 )
-                        elif isinstance(item, str):
-                            response.append(
-                                {"role": role, "text": item, "type": "text"}
-                            )
 
         return response
