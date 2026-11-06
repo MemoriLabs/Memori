@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Handle MongoDB's default naive UTC timestamps when checking conversation timeouts.
+
 ### Added
 
 - Added input validation for the `query` argument of `Memori.recall(...)`: a
