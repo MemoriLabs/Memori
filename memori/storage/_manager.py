@@ -10,7 +10,7 @@ r"""
 
 from memori._config import Config
 from memori.storage._builder import Builder
-from memori.storage._connection import connection_context
+from memori.storage._connection import ConnectionFactory, connection_context
 from memori.storage._registry import Registry
 
 
@@ -40,7 +40,7 @@ class Manager:
         if callable(conn):
             self.conn_factory = conn
         else:
-            self.conn_factory = lambda: conn
+            self.conn_factory = ConnectionFactory(lambda: conn, should_close=False)
 
         self.adapter = Registry().adapter(conn)
         self.driver = Registry().driver(self.adapter)
