@@ -20,7 +20,7 @@ from memori.memory.augmentation._db_writer import WriteTask, get_db_writer
 from memori.memory.augmentation._registry import Registry as AugmentationRegistry
 from memori.memory.augmentation._runtime import get_runtime
 from memori.memory.augmentation.input import AugmentationInput
-from memori.storage._connection import connection_context
+from memori.storage._connection import ConnectionFactory, connection_context
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class Manager:
         if callable(conn):
             self.conn_factory = conn
         else:
-            self.conn_factory = lambda: conn
+            self.conn_factory = ConnectionFactory(lambda: conn, should_close=False)
 
         self._active = True
 

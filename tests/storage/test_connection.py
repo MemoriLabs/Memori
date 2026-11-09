@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from memori.storage._connection import connection_context
+from memori.storage._connection import ConnectionFactory, connection_context
 
 
 def test_connection_context_with_none_factory():
@@ -41,6 +41,27 @@ def test_connection_context_success():
         mock_registry.driver.assert_called_once_with(mock_adapter)
         mock_adapter.commit.assert_called_once()
         mock_adapter.close.assert_called_once()
+
+
+def test_connection_context_keeps_a_non_owning_factory_connection_open():
+    mock_conn = Mock()
+    mock_adapter = Mock()
+    mock_driver = Mock()
+    conn_factory = ConnectionFactory(lambda: mock_conn, should_close=False)
+
+    with patch("memori.storage._connection.Registry") as mock_registry_class:
+        mock_registry = Mock()
+        mock_registry.adapter.return_value = mock_adapter
+        mock_registry.driver.return_value = mock_driver
+        mock_registry_class.return_value = mock_registry
+
+        with connection_context(conn_factory) as (conn, adapter, driver):
+            assert conn == mock_conn
+            assert adapter == mock_adapter
+            assert driver == mock_driver
+
+        mock_adapter.commit.assert_called_once()
+        mock_adapter.close.assert_not_called()
 
 
 def test_connection_context_exception_in_body():

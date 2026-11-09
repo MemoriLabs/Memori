@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `query` raises `ValueError`, matching the existing `limit` validation and
   failing fast instead of issuing an empty recall against the database/LLM path.
 
+### Fixed
+
+- A connection instance passed to `Memori(conn=...)` is no longer closed after
+  the first storage operation. Memori keeps a caller-owned connection open
+  across operations and closes it only through `Memori.close()`. Connections
+  created by a factory are still released after each use.
+
 ## [3.3.6] - 2026-05-27
 
 ### Added
