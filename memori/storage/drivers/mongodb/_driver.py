@@ -37,7 +37,10 @@ class Conversation(BaseConversation):
 
     def create(self, session_id, timeout_minutes: int):
         existing = self.conn.execute(
-            "memori_conversation", "find_one", {"session_id": session_id}
+            "memori_conversation",
+            "find_one",
+            {"session_id": session_id},
+            sort=[("date_created", -1)],
         )
 
         if existing:

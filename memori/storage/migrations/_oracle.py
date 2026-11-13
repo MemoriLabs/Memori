@@ -399,4 +399,10 @@ migrations = {
             """,
         },
     ],
+    3: [
+        {
+            "description": "allow multiple conversations per session",
+            "operation": "ALTER TABLE memori_conversation DROP CONSTRAINT uk_memori_conversation_session_id",
+        },
+    ],
 }

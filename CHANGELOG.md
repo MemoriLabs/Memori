@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A session that times out now starts a new conversation instead of reusing the
+  expired one. The `memori_conversation.session_id` unique constraint is removed
+  (migration 3), the newly inserted conversation is selected by UUID, and MongoDB
+  no longer raises `DuplicateKeyError`. (Refs #638)
+
 ### Added
 
 - Added input validation for the `query` argument of `Memori.recall(...)`: a

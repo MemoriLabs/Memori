@@ -305,4 +305,10 @@ migrations = {
             """,
         },
     ],
+    3: [
+        {
+            "description": "allow multiple conversations per session",
+            "operation": "ALTER TABLE memori_conversation DROP INDEX session_id",
+        },
+    ],
 }

@@ -149,14 +149,12 @@ def test_conversation_create(mock_conn, mock_single_result):
     assert "COALESCE(MAX(m.date_created), c.date_created)" in existing_call[0][0]
     assert existing_call[0][1] == (789,)
 
-    # Verify MERGE query
-    merge_call = mock_conn.execute.call_args_list[1]
-    assert "MERGE INTO memori_conversation" in merge_call[0][0]
-    assert "USING (SELECT :1" in merge_call[0][0]
-    assert "FROM DUAL)" in merge_call[0][0]
+    # Verify INSERT query
+    insert_call = mock_conn.execute.call_args_list[1]
+    assert "INSERT INTO memori_conversation" in insert_call[0][0]
 
     # Verify the UUID is generated and session_id is passed
-    uuid_arg, session_id_arg = merge_call[0][1]
+    uuid_arg, session_id_arg = insert_call[0][1]
     UUID(uuid_arg)  # Validate UUID
     assert session_id_arg == 789
 
@@ -164,7 +162,7 @@ def test_conversation_create(mock_conn, mock_single_result):
     select_call = mock_conn.execute.call_args_list[2]
     assert "SELECT id" in select_call[0][0]
     assert "FROM memori_conversation" in select_call[0][0]
-    assert select_call[0][1] == (789,)
+    assert select_call[0][1] == (uuid_arg,)
 
 
 def test_conversation_create_returns_existing_within_timeout(mock_conn):

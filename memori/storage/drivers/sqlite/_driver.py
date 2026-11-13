@@ -44,6 +44,8 @@ class Conversation(BaseConversation):
                   LEFT JOIN memori_conversation_message m ON m.conversation_id = c.id
                  WHERE c.session_id = ?
                  GROUP BY c.id, c.date_created
+                 ORDER BY last_activity DESC
+                 LIMIT 1
                 """,
                 (session_id,),
             )
@@ -82,9 +84,9 @@ class Conversation(BaseConversation):
                 """
                 SELECT id
                   FROM memori_conversation
-                 WHERE session_id = ?
+                 WHERE uuid = ?
                 """,
-                (session_id,),
+                (uuid,),
             )
             .mappings()
             .fetchone()

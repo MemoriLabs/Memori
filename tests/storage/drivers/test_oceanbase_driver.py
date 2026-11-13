@@ -178,7 +178,7 @@ def test_conversation_create(mock_conn, mock_single_result):
     select_call = mock_conn.execute.call_args_list[2]
     assert "SELECT id" in select_call[0][0]
     assert "FROM memori_conversation" in select_call[0][0]
-    assert select_call[0][1] == (789,)
+    assert select_call[0][1] == (insert_call[0][1][0],)
 
 
 def test_conversation_create_returns_existing_within_timeout(mock_conn):
