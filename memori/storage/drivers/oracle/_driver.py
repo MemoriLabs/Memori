@@ -44,6 +44,8 @@ class Conversation(BaseConversation):
                   LEFT JOIN memori_conversation_message m ON m.conversation_id = c.id
                  WHERE c.session_id = :1
                  GROUP BY c.id, c.date_created
+                 ORDER BY last_activity DESC
+                 FETCH FIRST 1 ROWS ONLY
                 """,
                 (session_id,),
             )
@@ -66,12 +68,13 @@ class Conversation(BaseConversation):
         uuid = str(uuid4())
         self.conn.execute(
             """
-            MERGE INTO memori_conversation dst
-            USING (SELECT :1 AS uuid, :2 AS session_id FROM DUAL) src
-            ON (dst.session_id = src.session_id)
-            WHEN NOT MATCHED THEN
-                INSERT (uuid, session_id)
-                VALUES (src.uuid, src.session_id)
+            INSERT INTO memori_conversation(
+                uuid,
+                session_id
+            ) VALUES (
+                :1,
+                :2
+            )
             """,
             (
                 uuid,
@@ -85,9 +88,9 @@ class Conversation(BaseConversation):
                 """
                 SELECT id
                   FROM memori_conversation
-                 WHERE session_id = :1
+                 WHERE uuid = :1
                 """,
-                (session_id,),
+                (uuid,),
             )
             .mappings()
             .fetchone()

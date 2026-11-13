@@ -310,4 +310,56 @@ migrations = {
             """,
         },
     ],
+    3: [
+        {
+            "description": "prepare to allow multiple conversations per session",
+            "operation": "PRAGMA foreign_keys=OFF",
+        },
+        {
+            "description": "drop a leftover migration table",
+            "operation": "DROP TABLE IF EXISTS memori_conversation_v3",
+        },
+        {
+            "description": "create memori_conversation without a unique session_id",
+            "operation": """
+                CREATE TABLE memori_conversation_v3(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid TEXT NOT NULL,
+                    session_id INTEGER NOT NULL,
+                    summary TEXT DEFAULT NULL,
+                    date_created TEXT NOT NULL DEFAULT (datetime('now')),
+                    date_updated TEXT DEFAULT NULL,
+                    --
+                    CONSTRAINT uk_memori_conversation_v3_uuid UNIQUE (uuid),
+                    --
+                    CONSTRAINT fk_memori_conv_v3_session
+                       FOREIGN KEY (session_id)
+                        REFERENCES memori_session (id)
+                         ON DELETE CASCADE
+                )
+            """,
+        },
+        {
+            "description": "copy existing conversations",
+            "operation": """
+                INSERT INTO memori_conversation_v3(
+                    id, uuid, session_id, summary, date_created, date_updated
+                )
+                SELECT id, uuid, session_id, summary, date_created, date_updated
+                  FROM memori_conversation
+            """,
+        },
+        {
+            "description": "drop the old conversation table",
+            "operation": "DROP TABLE memori_conversation",
+        },
+        {
+            "description": "rename the conversation table",
+            "operation": "ALTER TABLE memori_conversation_v3 RENAME TO memori_conversation",
+        },
+        {
+            "description": "restore foreign key enforcement",
+            "operation": "PRAGMA foreign_keys=ON",
+        },
+    ],
 }

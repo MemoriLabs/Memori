@@ -299,4 +299,16 @@ migrations = {
             ],
         },
     ],
+    3: [
+        {
+            "description": "allow multiple conversations per session",
+            "operations": [
+                {
+                    "collection": "memori_conversation",
+                    "method": "drop_index",
+                    "args": ["session_id_1"],
+                },
+            ],
+        },
+    ],
 }

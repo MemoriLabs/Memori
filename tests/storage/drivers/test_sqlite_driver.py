@@ -161,7 +161,7 @@ def test_conversation_create(mock_conn, mock_single_result):
     select_call = mock_conn.execute.call_args_list[2]
     assert "select id" in select_call[0][0].lower()
     assert "from memori_conversation" in select_call[0][0].lower()
-    assert select_call[0][1] == (789,)
+    assert select_call[0][1] == (uuid_arg,)
 
 
 def test_conversation_create_returns_existing_within_timeout(mock_conn):
@@ -570,3 +570,44 @@ def test_knowledge_graph_delete_by_entity(mock_conn):
     assert "delete" in object_delete_call[0][0].lower()
     assert "from memori_object" in object_delete_call[0][0].lower()
     assert "not exists" in object_delete_call[0][0].lower()
+
+
+def test_conversation_timeout_creates_a_new_conversation():
+    """A session that times out starts a new conversation instead of reusing the old one."""
+    import sqlite3
+
+    from memori.storage.adapters.dbapi._adapter import Adapter
+    from memori.storage.drivers.sqlite._driver import Driver
+    from memori.storage.migrations._sqlite import migrations
+
+    raw = sqlite3.connect(":memory:")
+    raw.execute("PRAGMA foreign_keys=ON")
+    adapter = Adapter(lambda: raw)
+
+    for number in sorted(migrations):
+        for step in migrations[number]:
+            adapter.execute(step.get("operations") or step.get("operation"))
+            adapter.commit()
+
+    driver = Driver(adapter)
+    entity_id = driver.entity.create("test-entity")
+    process_id = driver.process.create("test-process")
+    session_id = driver.session.create("test-session", entity_id, process_id)
+
+    first = driver.conversation.create(session_id, 30)
+    raw.execute(
+        "UPDATE memori_conversation SET date_created = datetime('now', '-60 minutes') WHERE id = ?",
+        (first,),
+    )
+    raw.commit()
+
+    second = driver.conversation.create(session_id, 30)
+
+    assert second != first
+    assert (
+        raw.execute(
+            "SELECT COUNT(*) FROM memori_conversation WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()[0]
+        == 2
+    )
